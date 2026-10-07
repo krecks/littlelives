@@ -1,0 +1,264 @@
+/* Design tokens. Change the look of the whole UI here. */
+:root {
+  --font: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --text: #1d2230;
+  --text-muted: #6a7182;
+  --text-inverse: #ffffff;
+  --accent: #5b7cfa;
+  --accent-soft: rgba(91, 124, 250, 0.14);
+
+  --good: #4fbf85;
+  --warn: #f0b54a;
+  --bad: #ec6a5c;
+
+  --glass: rgba(255, 255, 255, 0.66);
+  --glass-strong: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.75);
+  --glass-blur: 18px;
+  --hairline: rgba(29, 34, 48, 0.08);
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 2px 8px rgba(24, 30, 50, 0.08);
+  --shadow-md: 0 10px 30px rgba(24, 30, 50, 0.14);
+
+  --gap: 12px;
+  --edge: 16px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --fast: 140ms;
+  --slow: 320ms;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #cfe0ee;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Frosted panel used by all HUD surfaces. */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}
+
+/* ---- Shared controls ------------------------------------------------------ */
+
+:root {
+  --ui-scale: 1;
+  --surface: #ffffff;
+  --surface-muted: #f4f5f8;
+  --backdrop: rgba(20, 24, 36, 0.38);
+}
+
+.scaled {
+  zoom: var(--ui-scale);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--fast) var(--ease), background var(--fast) var(--ease), box-shadow var(--fast) var(--ease),
+    color var(--fast) var(--ease);
+}
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--text-inverse);
+}
+.btn.ghost {
+  background: transparent;
+  box-shadow: none;
+  border-color: transparent;
+}
+.btn.ghost:hover:not(:disabled) {
+  background: var(--hairline);
+  box-shadow: none;
+}
+.btn.danger {
+  color: var(--bad);
+}
+.btn.danger.solid {
+  background: var(--bad);
+  color: var(--text-inverse);
+  border-color: transparent;
+}
+.btn.large {
+  height: 52px;
+  font-size: 16px;
+  border-radius: var(--radius-lg);
+}
+
+.input {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  font: inherit;
+  color: var(--text);
+  user-select: text;
+  outline: none;
+  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+}
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+input[type='range'] {
+  accent-color: var(--accent);
+  width: 100%;
+}
+
+:root.reduce-motion *,
+:root.reduce-motion *::before,
+:root.reduce-motion *::after {
+  transition-duration: 0ms !important;
+  animation-duration: 0ms !important;
+}
+
+/* ---- Speech bubbles (positioned per frame by game/bubbles.ts) ------------- */
+
+.bubble-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.speech-bubble {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+.bubble-body {
+  --tone: var(--accent);
+  position: absolute;
+  left: -21px;
+  bottom: 10px;
+  width: 42px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 6px 18px rgba(24, 30, 50, 0.18);
+  transform-origin: 50% 120%;
+}
+.bubble-body::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  bottom: -4px;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+.bubble-body[data-tone='love'] {
+  --tone: #e0607e;
+}
+.bubble-body[data-tone='angry'] {
+  --tone: var(--bad);
+}
+.bubble-body[data-tone='bad'] {
+  --tone: #7a8194;
+}
+.bubble-body[data-tone='good'] {
+  --tone: var(--good);
+}
+.bubble-icon {
+  position: relative;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  background: var(--tone);
+  mask: var(--icon) center / contain no-repeat;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+}
+.bubble-body.pop {
+  animation: bubble-pop 360ms var(--ease);
+}
+@keyframes bubble-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4) translateY(6px);
+  }
+}
