@@ -1,0 +1,13 @@
+[package]
+name = "sim-wasm"
+description = "Thin wasm-bindgen layer exposing sim-core to the browser."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+sim-core = { path = "../sim-core" }
+wasm-bindgen = "=0.2.129"
