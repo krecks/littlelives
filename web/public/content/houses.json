@@ -1,0 +1,608 @@
+{
+ "plot": {
+  "width": 26,
+  "depth": 22
+ },
+ "houses": [
+  {
+   "id": "maple",
+   "name": "Maple Cottage",
+   "description": "Cosy two-room cottage with a separate bedroom.",
+   "bedrooms": 1,
+   "walls": [
+    [
+     5,
+     4,
+     19,
+     4
+    ],
+    [
+     5,
+     16,
+     19,
+     16
+    ],
+    [
+     5,
+     4,
+     5,
+     16
+    ],
+    [
+     19,
+     4,
+     19,
+     16
+    ],
+    [
+     13,
+     4,
+     13,
+     16
+    ],
+    [
+     13,
+     10,
+     19,
+     10
+    ]
+   ],
+   "doors": [
+    {
+     "x": 8,
+     "z": 4,
+     "axis": "x"
+    },
+    {
+     "x": 13,
+     "z": 6,
+     "axis": "z"
+    },
+    {
+     "x": 13,
+     "z": 13,
+     "axis": "z"
+    }
+   ],
+   "objects": [
+    {
+     "def": "fridge",
+     "x": 5,
+     "z": 15,
+     "rot": 2
+    },
+    {
+     "def": "sink",
+     "x": 6,
+     "z": 15,
+     "rot": 2
+    },
+    {
+     "def": "sofa",
+     "x": 8,
+     "z": 6,
+     "rot": 0
+    },
+    {
+     "def": "tv",
+     "x": 9,
+     "z": 9,
+     "rot": 2
+    },
+    {
+     "def": "armchair",
+     "x": 11,
+     "z": 8,
+     "rot": 3
+    },
+    {
+     "def": "bookshelf",
+     "x": 12,
+     "z": 12,
+     "rot": 3
+    },
+    {
+     "def": "plant",
+     "x": 5,
+     "z": 4,
+     "rot": 0
+    },
+    {
+     "def": "toilet",
+     "x": 18,
+     "z": 4,
+     "rot": 3
+    },
+    {
+     "def": "shower",
+     "x": 18,
+     "z": 8,
+     "rot": 3
+    },
+    {
+     "def": "sink",
+     "x": 15,
+     "z": 4,
+     "rot": 0
+    },
+    {
+     "def": "bed",
+     "x": 17,
+     "z": 12,
+     "rot": 3
+    },
+    {
+     "def": "plant",
+     "x": 18,
+     "z": 15,
+     "rot": 3
+    }
+   ],
+   "spawns": [
+    [
+     8.5,
+     2.5
+    ],
+    [
+     9.5,
+     2.5
+    ],
+    [
+     7.5,
+     2.5
+    ],
+    [
+     10.5,
+     2.5
+    ]
+   ]
+  },
+  {
+   "id": "willow",
+   "name": "Willow Studio",
+   "description": "Bright open-plan studio with a tiny bathroom.",
+   "bedrooms": 1,
+   "walls": [
+    [
+     7,
+     5,
+     18,
+     5
+    ],
+    [
+     7,
+     14,
+     18,
+     14
+    ],
+    [
+     7,
+     5,
+     7,
+     14
+    ],
+    [
+     18,
+     5,
+     18,
+     14
+    ],
+    [
+     14,
+     10,
+     14,
+     14
+    ],
+    [
+     14,
+     10,
+     18,
+     10
+    ]
+   ],
+   "doors": [
+    {
+     "x": 10,
+     "z": 5,
+     "axis": "x"
+    },
+    {
+     "x": 14,
+     "z": 11,
+     "axis": "z"
+    }
+   ],
+   "objects": [
+    {
+     "def": "fridge",
+     "x": 7,
+     "z": 13,
+     "rot": 2
+    },
+    {
+     "def": "sink",
+     "x": 8,
+     "z": 13,
+     "rot": 2
+    },
+    {
+     "def": "bed",
+     "x": 11,
+     "z": 12,
+     "rot": 2
+    },
+    {
+     "def": "sofa",
+     "x": 7,
+     "z": 7,
+     "rot": 1
+    },
+    {
+     "def": "tv",
+     "x": 10,
+     "z": 7,
+     "rot": 3
+    },
+    {
+     "def": "bookshelf",
+     "x": 13,
+     "z": 5,
+     "rot": 0
+    },
+    {
+     "def": "toilet",
+     "x": 17,
+     "z": 13,
+     "rot": 3
+    },
+    {
+     "def": "shower",
+     "x": 17,
+     "z": 10,
+     "rot": 3
+    },
+    {
+     "def": "sink",
+     "x": 15,
+     "z": 13,
+     "rot": 2
+    },
+    {
+     "def": "plant",
+     "x": 7,
+     "z": 5,
+     "rot": 0
+    },
+    {
+     "def": "bush",
+     "x": 5,
+     "z": 3,
+     "rot": 0
+    },
+    {
+     "def": "tree",
+     "x": 21,
+     "z": 17,
+     "rot": 0
+    }
+   ],
+   "spawns": [
+    [
+     10.5,
+     3.5
+    ],
+    [
+     11.5,
+     3.5
+    ],
+    [
+     9.5,
+     3.5
+    ],
+    [
+     12.5,
+     3.5
+    ]
+   ]
+  },
+  {
+   "id": "oakridge",
+   "name": "Oakridge House",
+   "description": "Roomy family home with two bedrooms.",
+   "bedrooms": 2,
+   "walls": [
+    [
+     3,
+     4,
+     23,
+     4
+    ],
+    [
+     3,
+     17,
+     23,
+     17
+    ],
+    [
+     3,
+     4,
+     3,
+     17
+    ],
+    [
+     23,
+     4,
+     23,
+     17
+    ],
+    [
+     13,
+     4,
+     13,
+     17
+    ],
+    [
+     13,
+     10,
+     23,
+     10
+    ],
+    [
+     3,
+     13,
+     9,
+     13
+    ]
+   ],
+   "doors": [
+    {
+     "x": 7,
+     "z": 4,
+     "axis": "x"
+    },
+    {
+     "x": 6,
+     "z": 13,
+     "axis": "x"
+    },
+    {
+     "x": 13,
+     "z": 7,
+     "axis": "z"
+    },
+    {
+     "x": 13,
+     "z": 14,
+     "axis": "z"
+    }
+   ],
+   "objects": [
+    {
+     "def": "fridge",
+     "x": 12,
+     "z": 16,
+     "rot": 2
+    },
+    {
+     "def": "sink",
+     "x": 11,
+     "z": 16,
+     "rot": 2
+    },
+    {
+     "def": "sofa",
+     "x": 5,
+     "z": 6,
+     "rot": 0
+    },
+    {
+     "def": "tv",
+     "x": 6,
+     "z": 9,
+     "rot": 2
+    },
+    {
+     "def": "armchair",
+     "x": 3,
+     "z": 9,
+     "rot": 1
+    },
+    {
+     "def": "bookshelf",
+     "x": 12,
+     "z": 5,
+     "rot": 3
+    },
+    {
+     "def": "plant",
+     "x": 3,
+     "z": 4,
+     "rot": 0
+    },
+    {
+     "def": "toilet",
+     "x": 3,
+     "z": 16,
+     "rot": 1
+    },
+    {
+     "def": "shower",
+     "x": 8,
+     "z": 16,
+     "rot": 3
+    },
+    {
+     "def": "sink",
+     "x": 5,
+     "z": 16,
+     "rot": 2
+    },
+    {
+     "def": "bed",
+     "x": 21,
+     "z": 5,
+     "rot": 3
+    },
+    {
+     "def": "plant",
+     "x": 22,
+     "z": 9,
+     "rot": 3
+    },
+    {
+     "def": "bed",
+     "x": 21,
+     "z": 14,
+     "rot": 3
+    },
+    {
+     "def": "armchair",
+     "x": 14,
+     "z": 16,
+     "rot": 2
+    },
+    {
+     "def": "tree",
+     "x": 1,
+     "z": 19,
+     "rot": 0
+    },
+    {
+     "def": "bush",
+     "x": 24,
+     "z": 2,
+     "rot": 0
+    }
+   ],
+   "spawns": [
+    [
+     7.5,
+     2.5
+    ],
+    [
+     8.5,
+     2.5
+    ],
+    [
+     6.5,
+     2.5
+    ],
+    [
+     9.5,
+     2.5
+    ]
+   ]
+  }
+ ],
+ "parks": [
+  {
+   "id": "park",
+   "name": "Town Park",
+   "description": "Benches, flowers and shade.",
+   "objects": [
+    {
+     "def": "bench",
+     "x": 8,
+     "z": 8,
+     "rot": 0
+    },
+    {
+     "def": "bench",
+     "x": 16,
+     "z": 8,
+     "rot": 0
+    },
+    {
+     "def": "bench",
+     "x": 12,
+     "z": 14,
+     "rot": 2
+    },
+    {
+     "def": "flowerbed",
+     "x": 12,
+     "z": 10,
+     "rot": 0
+    },
+    {
+     "def": "flowerbed",
+     "x": 13,
+     "z": 10,
+     "rot": 0
+    },
+    {
+     "def": "tree",
+     "x": 3,
+     "z": 3,
+     "rot": 0
+    },
+    {
+     "def": "tree",
+     "x": 22,
+     "z": 3,
+     "rot": 0
+    },
+    {
+     "def": "pine",
+     "x": 3,
+     "z": 18,
+     "rot": 0
+    },
+    {
+     "def": "tree",
+     "x": 22,
+     "z": 18,
+     "rot": 0
+    },
+    {
+     "def": "pine",
+     "x": 6,
+     "z": 15,
+     "rot": 0
+    },
+    {
+     "def": "tree",
+     "x": 19,
+     "z": 5,
+     "rot": 0
+    },
+    {
+     "def": "pine",
+     "x": 4,
+     "z": 10,
+     "rot": 0
+    },
+    {
+     "def": "tree",
+     "x": 21,
+     "z": 12,
+     "rot": 0
+    },
+    {
+     "def": "bush",
+     "x": 10,
+     "z": 3,
+     "rot": 0
+    },
+    {
+     "def": "bush",
+     "x": 15,
+     "z": 18,
+     "rot": 0
+    },
+    {
+     "def": "bush",
+     "x": 2,
+     "z": 13,
+     "rot": 0
+    },
+    {
+     "def": "bush",
+     "x": 17,
+     "z": 15,
+     "rot": 0
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,2075 @@
+{
+  "needs": [
+    {
+      "id": "hunger",
+      "label": "Hunger",
+      "decayPerHour": 0.07,
+      "icon": "icon.need.hunger"
+    },
+    {
+      "id": "energy",
+      "label": "Energy",
+      "decayPerHour": 0.055,
+      "icon": "icon.need.energy"
+    },
+    {
+      "id": "bladder",
+      "label": "Bladder",
+      "decayPerHour": 0.12,
+      "icon": "icon.need.bladder"
+    },
+    {
+      "id": "hygiene",
+      "label": "Hygiene",
+      "decayPerHour": 0.045,
+      "icon": "icon.need.hygiene"
+    },
+    {
+      "id": "fun",
+      "label": "Fun",
+      "decayPerHour": 0.08,
+      "icon": "icon.need.fun"
+    },
+    {
+      "id": "comfort",
+      "label": "Comfort",
+      "decayPerHour": 0.07,
+      "icon": "icon.need.comfort"
+    },
+    {
+      "id": "social",
+      "label": "Social",
+      "decayPerHour": 0.08,
+      "icon": "icon.need.social"
+    }
+  ],
+  "rules": {
+    "minTraits": 1,
+    "maxTraits": 3,
+    "perkPoints": 5,
+    "maxHousehold": 4
+  },
+  "genders": [
+    {
+      "id": "female",
+      "label": "Female",
+      "pronouns": {
+        "subject": "she",
+        "object": "her",
+        "possessive": "her"
+      }
+    },
+    {
+      "id": "male",
+      "label": "Male",
+      "pronouns": {
+        "subject": "he",
+        "object": "him",
+        "possessive": "his"
+      }
+    }
+  ],
+  "traits": [
+    {
+      "id": "foodie",
+      "label": "Foodie",
+      "icon": "icon.trait.foodie",
+      "description": "Lives to eat. Gets hungry faster and loves the kitchen.",
+      "effects": {
+        "needDecay": {
+          "hunger": 1.15
+        },
+        "needGain": {
+          "hunger": 1.2
+        },
+        "tagPreference": {
+          "food": 1.6,
+          "cooking": 1.8
+        }
+      }
+    },
+    {
+      "id": "bookworm",
+      "label": "Bookworm",
+      "icon": "icon.trait.bookworm",
+      "description": "Happiest with a good book; reading is twice as tempting.",
+      "effects": {
+        "tagPreference": {
+          "reading": 2.2
+        }
+      }
+    },
+    {
+      "id": "couchPotato",
+      "label": "Couch Potato",
+      "icon": "icon.trait.couchPotato",
+      "description": "Drawn to the TV and the sofa. Not in a hurry.",
+      "effects": {
+        "walkSpeed": 0.9,
+        "needDecay": {
+          "comfort": 1.1
+        },
+        "tagPreference": {
+          "screen": 1.8,
+          "lounge": 1.4
+        }
+      }
+    },
+    {
+      "id": "neat",
+      "label": "Neat",
+      "icon": "icon.trait.neat",
+      "description": "Feels grubby quickly and keeps up with chores.",
+      "conflicts": [
+        "slob"
+      ],
+      "effects": {
+        "needDecay": {
+          "hygiene": 1.2
+        },
+        "tagPreference": {
+          "hygiene": 1.5,
+          "chores": 1.6
+        }
+      }
+    },
+    {
+      "id": "slob",
+      "label": "Slob",
+      "icon": "icon.trait.slob",
+      "description": "Barely notices the dirt. Showers are optional.",
+      "conflicts": [
+        "neat"
+      ],
+      "effects": {
+        "needDecay": {
+          "hygiene": 0.7
+        },
+        "tagPreference": {
+          "hygiene": 0.6,
+          "chores": 0.5
+        }
+      }
+    },
+    {
+      "id": "energetic",
+      "label": "Energetic",
+      "icon": "icon.trait.energetic",
+      "description": "Always on the move and slow to tire.",
+      "conflicts": [
+        "lazy"
+      ],
+      "effects": {
+        "walkSpeed": 1.15,
+        "needDecay": {
+          "energy": 0.8
+        },
+        "tagPreference": {
+          "rest": 0.8
+        }
+      }
+    },
+    {
+      "id": "lazy",
+      "label": "Lazy",
+      "icon": "icon.trait.lazy",
+      "description": "Tires quickly and never says no to a nap.",
+      "conflicts": [
+        "energetic"
+      ],
+      "effects": {
+        "walkSpeed": 0.85,
+        "needDecay": {
+          "energy": 1.2
+        },
+        "tagPreference": {
+          "rest": 1.6
+        }
+      }
+    },
+    {
+      "id": "cheerful",
+      "label": "Cheerful",
+      "icon": "icon.trait.cheerful",
+      "description": "Sees the bright side. Mood gets a steady boost.",
+      "conflicts": [
+        "gloomy"
+      ],
+      "effects": {
+        "mood": 0.1,
+        "tagAcceptance": {
+          "friendly": 0.05
+        }
+      }
+    },
+    {
+      "id": "gloomy",
+      "label": "Gloomy",
+      "icon": "icon.trait.gloomy",
+      "description": "A little melancholy; bored more easily.",
+      "conflicts": [
+        "cheerful"
+      ],
+      "effects": {
+        "mood": -0.1,
+        "needDecay": {
+          "fun": 1.2
+        },
+        "tagAcceptance": {
+          "fun": -0.1
+        }
+      }
+    },
+    {
+      "id": "natureLover",
+      "label": "Nature Lover",
+      "icon": "icon.trait.natureLover",
+      "description": "Feels at home around plants and loves tending them.",
+      "effects": {
+        "mood": 0.03,
+        "tagPreference": {
+          "nature": 3.0
+        }
+      }
+    },
+    {
+      "id": "outgoing",
+      "label": "Outgoing",
+      "icon": "icon.trait.outgoing",
+      "description": "Loves company and gets lonely fast.",
+      "conflicts": [
+        "loner"
+      ],
+      "effects": {
+        "needDecay": {
+          "social": 1.3
+        },
+        "tagPreference": {
+          "social": 1.4
+        },
+        "tagSuccess": {
+          "friendly": 0.05
+        }
+      }
+    },
+    {
+      "id": "loner",
+      "label": "Loner",
+      "icon": "icon.trait.loner",
+      "description": "Happy with their own company; small talk is a chore.",
+      "conflicts": [
+        "outgoing"
+      ],
+      "effects": {
+        "needDecay": {
+          "social": 0.6
+        },
+        "tagPreference": {
+          "social": 0.6
+        }
+      }
+    },
+    {
+      "id": "romantic",
+      "label": "Romantic",
+      "icon": "icon.trait.romantic",
+      "description": "Dreams of love; flirts often and is easy to woo.",
+      "effects": {
+        "tagPreference": {
+          "romantic": 1.8
+        },
+        "tagAcceptance": {
+          "romantic": 0.12
+        }
+      }
+    },
+    {
+      "id": "hotHeaded",
+      "label": "Hot-headed",
+      "icon": "icon.trait.hotHeaded",
+      "description": "Quick to anger and slow to forgive.",
+      "conflicts": [
+        "kind"
+      ],
+      "effects": {
+        "tagPreference": {
+          "mean": 2.2,
+          "makeup": 0.5
+        },
+        "tagAcceptance": {
+          "friendly": -0.08
+        }
+      }
+    },
+    {
+      "id": "kind",
+      "label": "Kind",
+      "icon": "icon.trait.kind",
+      "description": "Warm and forgiving; never starts trouble.",
+      "conflicts": [
+        "hotHeaded"
+      ],
+      "effects": {
+        "tagPreference": {
+          "mean": 0.15,
+          "friendly": 1.3,
+          "makeup": 1.6
+        },
+        "tagAcceptance": {
+          "makeup": 0.15
+        }
+      }
+    }
+  ],
+  "perks": [
+    {
+      "id": "ironBladder",
+      "label": "Iron Bladder",
+      "icon": "icon.perk.ironBladder",
+      "cost": 2,
+      "description": "Bladder fills 30% slower.",
+      "effects": {
+        "needDecay": {
+          "bladder": 0.7
+        }
+      }
+    },
+    {
+      "id": "powerNapper",
+      "label": "Power Napper",
+      "icon": "icon.perk.powerNapper",
+      "cost": 2,
+      "description": "Recovers energy 30% faster from rest.",
+      "effects": {
+        "needGain": {
+          "energy": 1.3
+        }
+      }
+    },
+    {
+      "id": "lightEater",
+      "label": "Light Eater",
+      "icon": "icon.perk.lightEater",
+      "cost": 1,
+      "description": "Hunger grows 15% slower.",
+      "effects": {
+        "needDecay": {
+          "hunger": 0.85
+        }
+      }
+    },
+    {
+      "id": "speedWalker",
+      "label": "Speed Walker",
+      "icon": "icon.perk.speedWalker",
+      "cost": 1,
+      "description": "Walks 20% faster.",
+      "effects": {
+        "walkSpeed": 1.2
+      }
+    },
+    {
+      "id": "freshScent",
+      "label": "Fresh Scent",
+      "icon": "icon.perk.freshScent",
+      "cost": 1,
+      "description": "Stays clean 20% longer.",
+      "effects": {
+        "needDecay": {
+          "hygiene": 0.8
+        }
+      }
+    },
+    {
+      "id": "easilyAmused",
+      "label": "Easily Amused",
+      "icon": "icon.perk.easilyAmused",
+      "cost": 2,
+      "description": "Gets 30% more fun out of everything.",
+      "effects": {
+        "needGain": {
+          "fun": 1.3
+        }
+      }
+    },
+    {
+      "id": "comfortSeeker",
+      "label": "Comfort Seeker",
+      "icon": "icon.perk.comfortSeeker",
+      "cost": 1,
+      "description": "Gets 30% more comfort when relaxing.",
+      "effects": {
+        "needGain": {
+          "comfort": 1.3
+        }
+      }
+    },
+    {
+      "id": "sunnyDisposition",
+      "label": "Sunny Disposition",
+      "icon": "icon.perk.sunnyDisposition",
+      "cost": 3,
+      "description": "A permanent lift in mood.",
+      "effects": {
+        "mood": 0.08
+      }
+    },
+    {
+      "id": "charming",
+      "label": "Charming",
+      "icon": "icon.perk.charming",
+      "cost": 2,
+      "description": "Friendly and romantic advances land more often.",
+      "effects": {
+        "tagSuccess": {
+          "friendly": 0.08,
+          "romantic": 0.1
+        }
+      }
+    }
+  ],
+  "names": {
+    "first": [
+      "Mika",
+      "Jonah",
+      "Ada",
+      "Leo",
+      "Noor",
+      "Elif",
+      "Theo",
+      "Maya",
+      "Finn",
+      "Iris",
+      "Kai",
+      "Lena",
+      "Omar",
+      "Zoe",
+      "Ravi",
+      "Mila",
+      "Jun",
+      "Clara",
+      "Ezra",
+      "Nia"
+    ],
+    "last": [
+      "Park",
+      "Lindqvist",
+      "Okafor",
+      "Moreau",
+      "Haddad",
+      "Novak",
+      "Silva",
+      "Brennan",
+      "Kaya",
+      "Ito",
+      "Weber",
+      "Costa"
+    ],
+    "towns": [
+      "Willowbrook",
+      "Maple Hollow",
+      "Brightwater",
+      "Larkspur",
+      "Fern Valley",
+      "Cedar Bay",
+      "Sunny Meadows",
+      "Oak Harbor"
+    ],
+    "streets": [
+      "Maple Street",
+      "Elm Road",
+      "Willow Lane",
+      "Birch Avenue",
+      "Linden Way",
+      "Juniper Close"
+    ]
+  },
+  "emotions": [
+    {
+      "id": "happy",
+      "label": "Happy",
+      "icon": "icon.emotion.happy",
+      "effects": {
+        "tagPreference": {
+          "friendly": 1.3
+        }
+      }
+    },
+    {
+      "id": "flirty",
+      "label": "Flirty",
+      "icon": "icon.emotion.flirty",
+      "effects": {
+        "tagPreference": {
+          "romantic": 2.2
+        },
+        "tagAcceptance": {
+          "romantic": 0.1
+        }
+      }
+    },
+    {
+      "id": "angry",
+      "label": "Angry",
+      "icon": "icon.emotion.angry",
+      "effects": {
+        "tagPreference": {
+          "mean": 3.5,
+          "friendly": 0.5,
+          "romantic": 0.3
+        },
+        "tagAcceptance": {
+          "friendly": -0.15,
+          "romantic": -0.25
+        }
+      }
+    },
+    {
+      "id": "sad",
+      "label": "Sad",
+      "icon": "icon.emotion.sad",
+      "effects": {
+        "tagPreference": {
+          "friendly": 1.3,
+          "romantic": 0.5,
+          "lounge": 1.4
+        },
+        "tagAcceptance": {
+          "friendly": 0.05
+        }
+      }
+    },
+    {
+      "id": "embarrassed",
+      "label": "Embarrassed",
+      "icon": "icon.emotion.embarrassed",
+      "effects": {
+        "tagPreference": {
+          "social": 0.6
+        }
+      }
+    }
+  ],
+  "moodlets": [
+    {
+      "id": "goodChat",
+      "label": "Good conversation",
+      "emotion": "happy",
+      "mood": 0.05,
+      "hours": 3
+    },
+    {
+      "id": "laughed",
+      "label": "Had a laugh",
+      "emotion": "happy",
+      "mood": 0.08,
+      "hours": 3
+    },
+    {
+      "id": "flattered",
+      "label": "Flattered",
+      "emotion": "happy",
+      "mood": 0.07,
+      "hours": 4
+    },
+    {
+      "id": "bonded",
+      "label": "Bonded",
+      "emotion": "happy",
+      "mood": 0.1,
+      "hours": 8
+    },
+    {
+      "id": "hugged",
+      "label": "Warm hug",
+      "emotion": "happy",
+      "mood": 0.07,
+      "hours": 3
+    },
+    {
+      "id": "flirty",
+      "label": "Butterflies",
+      "emotion": "flirty",
+      "mood": 0.08,
+      "hours": 4
+    },
+    {
+      "id": "kissed",
+      "label": "Sweet kiss",
+      "emotion": "flirty",
+      "mood": 0.12,
+      "hours": 8
+    },
+    {
+      "id": "inLove",
+      "label": "In love",
+      "emotion": "flirty",
+      "mood": 0.2,
+      "hours": 48
+    },
+    {
+      "id": "awkward",
+      "label": "Awkward moment",
+      "emotion": "embarrassed",
+      "mood": -0.04,
+      "hours": 2
+    },
+    {
+      "id": "rejected",
+      "label": "Rejected",
+      "emotion": "embarrassed",
+      "mood": -0.1,
+      "hours": 6
+    },
+    {
+      "id": "insulted",
+      "label": "Insulted",
+      "emotion": "angry",
+      "mood": -0.1,
+      "hours": 6
+    },
+    {
+      "id": "argued",
+      "label": "Heated argument",
+      "emotion": "angry",
+      "mood": -0.08,
+      "hours": 5
+    },
+    {
+      "id": "pranked",
+      "label": "Pranked",
+      "emotion": "angry",
+      "mood": -0.06,
+      "hours": 3
+    },
+    {
+      "id": "wonFight",
+      "label": "Won a fight",
+      "emotion": "angry",
+      "mood": 0.02,
+      "hours": 6
+    },
+    {
+      "id": "lostFight",
+      "label": "Lost a fight",
+      "emotion": "embarrassed",
+      "mood": -0.15,
+      "hours": 12
+    },
+    {
+      "id": "jealous",
+      "label": "Jealous",
+      "emotion": "angry",
+      "mood": -0.15,
+      "hours": 8
+    },
+    {
+      "id": "heartbroken",
+      "label": "Heartbroken",
+      "emotion": "sad",
+      "mood": -0.25,
+      "hours": 48
+    },
+    {
+      "id": "relieved",
+      "label": "Relieved",
+      "emotion": "happy",
+      "mood": 0.06,
+      "hours": 4
+    },
+    {
+      "id": "promoted",
+      "label": "Got promoted",
+      "emotion": "happy",
+      "mood": 0.2,
+      "hours": 24
+    },
+    {
+      "id": "skippedWork",
+      "label": "Skipped work",
+      "emotion": "embarrassed",
+      "mood": -0.1,
+      "hours": 12
+    }
+  ],
+  "socials": [
+    {
+      "id": "introduce",
+      "label": "Introduce yourself",
+      "category": "friendly",
+      "icon": "icon.social.introduce",
+      "minutes": 8,
+      "animation": "talk",
+      "tags": [
+        "social",
+        "friendly"
+      ],
+      "requires": {
+        "met": false
+      },
+      "prefer": "any",
+      "acceptance": {
+        "base": 0.95
+      },
+      "needs": {
+        "social": 0.15
+      },
+      "targetNeeds": {
+        "social": 0.15
+      },
+      "success": {
+        "friendship": 8,
+        "targetFriendship": 8
+      }
+    },
+    {
+      "id": "chat",
+      "label": "Chat",
+      "category": "friendly",
+      "icon": "icon.social.chat",
+      "minutes": 20,
+      "animation": "talk",
+      "tags": [
+        "social",
+        "friendly"
+      ],
+      "prefer": "liked",
+      "autonomyWeight": 1.2,
+      "acceptance": {
+        "base": 0.8,
+        "friendship": 0.004,
+        "mood": 0.4
+      },
+      "needs": {
+        "social": 0.35,
+        "fun": 0.05
+      },
+      "targetNeeds": {
+        "social": 0.3
+      },
+      "success": {
+        "friendship": 3,
+        "targetFriendship": 3,
+        "moodlet": "goodChat",
+        "targetMoodlet": "goodChat"
+      },
+      "failure": {
+        "friendship": -2,
+        "targetFriendship": -2,
+        "moodlet": "awkward"
+      }
+    },
+    {
+      "id": "joke",
+      "label": "Tell a joke",
+      "category": "friendly",
+      "icon": "icon.social.joke",
+      "minutes": 10,
+      "animation": "laugh",
+      "tags": [
+        "social",
+        "friendly",
+        "fun"
+      ],
+      "prefer": "liked",
+      "acceptance": {
+        "base": 0.6,
+        "friendship": 0.004,
+        "mood": 0.5
+      },
+      "needs": {
+        "social": 0.2,
+        "fun": 0.15
+      },
+      "targetNeeds": {
+        "social": 0.15,
+        "fun": 0.15
+      },
+      "success": {
+        "friendship": 5,
+        "targetFriendship": 5,
+        "moodlet": "laughed",
+        "targetMoodlet": "laughed"
+      },
+      "failure": {
+        "friendship": -2,
+        "targetFriendship": -3,
+        "moodlet": "awkward"
+      }
+    },
+    {
+      "id": "compliment",
+      "label": "Compliment",
+      "category": "friendly",
+      "icon": "icon.social.compliment",
+      "minutes": 5,
+      "animation": "talk",
+      "tags": [
+        "social",
+        "friendly"
+      ],
+      "prefer": "liked",
+      "acceptance": {
+        "base": 0.85,
+        "friendship": 0.002
+      },
+      "needs": {
+        "social": 0.1
+      },
+      "targetNeeds": {
+        "social": 0.1
+      },
+      "success": {
+        "friendship": 3,
+        "targetFriendship": 6,
+        "targetMoodlet": "flattered"
+      },
+      "failure": {
+        "targetFriendship": -2,
+        "moodlet": "awkward"
+      }
+    },
+    {
+      "id": "deepTalk",
+      "label": "Deep conversation",
+      "category": "friendly",
+      "icon": "icon.social.deepTalk",
+      "minutes": 40,
+      "animation": "talk",
+      "tags": [
+        "social",
+        "friendly"
+      ],
+      "prefer": "liked",
+      "requires": {
+        "minFriendship": 30
+      },
+      "acceptance": {
+        "base": 0.6,
+        "friendship": 0.006,
+        "mood": 0.3
+      },
+      "needs": {
+        "social": 0.55
+      },
+      "targetNeeds": {
+        "social": 0.5
+      },
+      "success": {
+        "friendship": 8,
+        "targetFriendship": 8,
+        "moodlet": "bonded",
+        "targetMoodlet": "bonded"
+      },
+      "failure": {
+        "friendship": -2,
+        "targetFriendship": -3,
+        "moodlet": "awkward"
+      }
+    },
+    {
+      "id": "hug",
+      "label": "Hug",
+      "category": "friendly",
+      "icon": "icon.social.hug",
+      "minutes": 4,
+      "animation": "hug",
+      "tags": [
+        "social",
+        "friendly",
+        "touch"
+      ],
+      "distance": 0.55,
+      "prefer": "liked",
+      "requires": {
+        "minFriendship": 40
+      },
+      "acceptance": {
+        "base": 0.45,
+        "friendship": 0.006,
+        "romance": 0.003
+      },
+      "needs": {
+        "social": 0.15
+      },
+      "targetNeeds": {
+        "social": 0.15
+      },
+      "success": {
+        "friendship": 5,
+        "targetFriendship": 5,
+        "moodlet": "hugged",
+        "targetMoodlet": "hugged"
+      },
+      "failure": {
+        "friendship": -3,
+        "targetFriendship": -6,
+        "moodlet": "awkward"
+      }
+    },
+    {
+      "id": "flirt",
+      "label": "Flirt",
+      "category": "romantic",
+      "icon": "icon.social.flirt",
+      "minutes": 10,
+      "animation": "flirt",
+      "tags": [
+        "social",
+        "romantic"
+      ],
+      "prefer": "romance",
+      "requires": {
+        "minFriendship": 5
+      },
+      "acceptance": {
+        "base": 0.3,
+        "friendship": 0.004,
+        "romance": 0.006,
+        "chemistry": 0.3,
+        "mood": 0.2,
+        "takenPenalty": 0.35
+      },
+      "needs": {
+        "social": 0.2,
+        "fun": 0.05
+      },
+      "targetNeeds": {
+        "social": 0.15
+      },
+      "success": {
+        "romance": 7,
+        "targetRomance": 8,
+        "friendship": 2,
+        "targetFriendship": 2,
+        "moodlet": "flirty",
+        "targetMoodlet": "flirty"
+      },
+      "failure": {
+        "romance": -3,
+        "targetRomance": -5,
+        "targetFriendship": -3,
+        "moodlet": "rejected"
+      }
+    },
+    {
+      "id": "sweetTalk",
+      "label": "Sweet talk",
+      "category": "romantic",
+      "icon": "icon.social.sweetTalk",
+      "minutes": 20,
+      "animation": "flirt",
+      "tags": [
+        "social",
+        "romantic"
+      ],
+      "prefer": "romance",
+      "requires": {
+        "minRomance": 20
+      },
+      "acceptance": {
+        "base": 0.45,
+        "romance": 0.008,
+        "chemistry": 0.25,
+        "takenPenalty": 0.3
+      },
+      "needs": {
+        "social": 0.35
+      },
+      "targetNeeds": {
+        "social": 0.3
+      },
+      "success": {
+        "romance": 8,
+        "targetRomance": 8,
+        "moodlet": "flirty",
+        "targetMoodlet": "flirty"
+      },
+      "failure": {
+        "romance": -3,
+        "targetRomance": -4,
+        "moodlet": "awkward"
+      }
+    },
+    {
+      "id": "kiss",
+      "label": "Kiss",
+      "category": "romantic",
+      "icon": "icon.social.kiss",
+      "minutes": 4,
+      "animation": "kiss",
+      "tags": [
+        "social",
+        "romantic",
+        "touch"
+      ],
+      "distance": 0.5,
+      "prefer": "romance",
+      "requires": {
+        "minRomance": 40
+      },
+      "acceptance": {
+        "base": 0.15,
+        "romance": 0.01,
+        "chemistry": 0.25,
+        "takenPenalty": 0.4
+      },
+      "needs": {
+        "social": 0.15
+      },
+      "targetNeeds": {
+        "social": 0.15
+      },
+      "success": {
+        "romance": 10,
+        "targetRomance": 10,
+        "moodlet": "kissed",
+        "targetMoodlet": "kissed",
+        "effect": "kiss"
+      },
+      "failure": {
+        "romance": -6,
+        "targetRomance": -10,
+        "targetFriendship": -4,
+        "moodlet": "rejected"
+      }
+    },
+    {
+      "id": "askPartner",
+      "label": "Ask to be partners",
+      "category": "romantic",
+      "icon": "icon.social.askPartner",
+      "minutes": 10,
+      "animation": "talk",
+      "tags": [
+        "social",
+        "romantic"
+      ],
+      "prefer": "romance",
+      "autonomyWeight": 0.6,
+      "requires": {
+        "minRomance": 60,
+        "partners": false
+      },
+      "acceptance": {
+        "base": -0.3,
+        "romance": 0.012,
+        "chemistry": 0.25,
+        "takenPenalty": 0.5
+      },
+      "needs": {
+        "social": 0.2
+      },
+      "targetNeeds": {
+        "social": 0.2
+      },
+      "success": {
+        "romance": 10,
+        "targetRomance": 10,
+        "moodlet": "inLove",
+        "targetMoodlet": "inLove",
+        "effect": "becomePartners"
+      },
+      "failure": {
+        "romance": -10,
+        "targetRomance": -5,
+        "moodlet": "rejected"
+      }
+    },
+    {
+      "id": "breakUp",
+      "label": "Break up",
+      "category": "romantic",
+      "icon": "icon.social.breakUp",
+      "minutes": 10,
+      "animation": "argue",
+      "tags": [
+        "social",
+        "romantic",
+        "breakup"
+      ],
+      "prefer": "unloved",
+      "requires": {
+        "partners": true
+      },
+      "acceptance": {
+        "base": 1.0
+      },
+      "needs": {
+        "social": 0.05
+      },
+      "success": {
+        "moodlet": "relieved",
+        "effect": "breakUp"
+      },
+      "failure": {
+        "effect": "breakUp"
+      }
+    },
+    {
+      "id": "insult",
+      "label": "Insult",
+      "category": "mean",
+      "icon": "icon.social.insult",
+      "minutes": 5,
+      "animation": "argue",
+      "tags": [
+        "social",
+        "mean"
+      ],
+      "prefer": "disliked",
+      "autonomyWeight": 0.4,
+      "acceptance": {
+        "base": 1.0
+      },
+      "needs": {
+        "social": 0.1
+      },
+      "success": {
+        "friendship": -5,
+        "targetFriendship": -12,
+        "targetMoodlet": "insulted"
+      }
+    },
+    {
+      "id": "argue",
+      "label": "Argue",
+      "category": "mean",
+      "icon": "icon.social.argue",
+      "minutes": 20,
+      "animation": "argue",
+      "tags": [
+        "social",
+        "mean"
+      ],
+      "prefer": "disliked",
+      "autonomyWeight": 0.5,
+      "requires": {
+        "maxFriendship": 20
+      },
+      "acceptance": {
+        "base": 1.0
+      },
+      "needs": {
+        "social": 0.15
+      },
+      "targetNeeds": {
+        "social": 0.05
+      },
+      "success": {
+        "friendship": -10,
+        "targetFriendship": -10,
+        "moodlet": "argued",
+        "targetMoodlet": "argued"
+      }
+    },
+    {
+      "id": "prank",
+      "label": "Prank",
+      "category": "mean",
+      "icon": "icon.social.prank",
+      "minutes": 8,
+      "animation": "laugh",
+      "tags": [
+        "social",
+        "mean",
+        "fun"
+      ],
+      "prefer": "any",
+      "autonomyWeight": 0.4,
+      "acceptance": {
+        "base": 0.35,
+        "friendship": 0.006,
+        "mood": 0.3
+      },
+      "needs": {
+        "fun": 0.2,
+        "social": 0.1
+      },
+      "targetNeeds": {
+        "social": 0.05
+      },
+      "success": {
+        "friendship": 4,
+        "targetFriendship": 4,
+        "moodlet": "laughed",
+        "targetMoodlet": "laughed"
+      },
+      "failure": {
+        "friendship": -2,
+        "targetFriendship": -8,
+        "targetMoodlet": "pranked"
+      }
+    },
+    {
+      "id": "fight",
+      "label": "Start a fight",
+      "category": "mean",
+      "icon": "icon.social.fight",
+      "minutes": 8,
+      "animation": "fight",
+      "tags": [
+        "social",
+        "mean",
+        "violent"
+      ],
+      "distance": 0.8,
+      "prefer": "disliked",
+      "autonomyWeight": 0.35,
+      "requires": {
+        "maxFriendship": -35
+      },
+      "acceptance": {
+        "base": 1.0
+      },
+      "needs": {
+        "social": 0.05
+      },
+      "success": {
+        "friendship": -15,
+        "targetFriendship": -18,
+        "needs": {
+          "hygiene": -0.2,
+          "energy": -0.15,
+          "comfort": -0.1
+        },
+        "targetNeeds": {
+          "hygiene": -0.2,
+          "energy": -0.15,
+          "comfort": -0.1
+        },
+        "effect": "fight",
+        "winnerMoodlet": "wonFight",
+        "loserMoodlet": "lostFight"
+      }
+    },
+    {
+      "id": "apologize",
+      "label": "Apologize",
+      "category": "makeup",
+      "icon": "icon.social.apologize",
+      "minutes": 10,
+      "animation": "talk",
+      "tags": [
+        "social",
+        "makeup"
+      ],
+      "prefer": "any",
+      "autonomyWeight": 0.7,
+      "requires": {
+        "maxFriendship": 10
+      },
+      "acceptance": {
+        "base": 0.45,
+        "friendship": 0.004,
+        "mood": 0.4
+      },
+      "needs": {
+        "social": 0.2
+      },
+      "targetNeeds": {
+        "social": 0.15
+      },
+      "success": {
+        "friendship": 10,
+        "targetFriendship": 14,
+        "moodlet": "relieved",
+        "targetMoodlet": "relieved"
+      },
+      "failure": {
+        "friendship": -2,
+        "targetFriendship": -3,
+        "moodlet": "awkward"
+      }
+    }
+  ],
+  "bondPresets": {
+    "roommates": {
+      "friendship": 25
+    },
+    "friends": {
+      "friendship": 60
+    },
+    "bestFriends": {
+      "friendship": 85
+    },
+    "partners": {
+      "friendship": 55,
+      "romance": 75,
+      "partners": true
+    },
+    "rivals": {
+      "friendship": -45
+    },
+    "acquaintances": {
+      "friendship": 10
+    }
+  },
+  "socialRules": {
+    "busyTags": [
+      "sleep",
+      "bathroom",
+      "hygiene"
+    ],
+    "romanticTags": [
+      "romantic"
+    ],
+    "defaultBond": "roommates",
+    "jealousyRange": 8,
+    "jealousyFriendship": -10,
+    "jealousyRomance": -15,
+    "jealousyMoodlet": "jealous",
+    "heartbreakMoodlet": "heartbroken",
+    "friendshipDecay": 1.5,
+    "romanceDecay": 3
+  },
+  "careers": [
+    {
+      "id": "culinary",
+      "label": "Culinary",
+      "icon": "icon.career.culinary",
+      "workEffects": {
+        "hunger": 0.25,
+        "energy": -0.3,
+        "hygiene": -0.25,
+        "fun": -0.1,
+        "social": 0.2
+      },
+      "levels": [
+        {
+          "title": "Dishwasher",
+          "pay": 120,
+          "start": 9,
+          "hours": 6,
+          "days": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "title": "Line Cook",
+          "pay": 190,
+          "start": 10,
+          "hours": 7,
+          "days": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "title": "Sous Chef",
+          "pay": 300,
+          "start": 12,
+          "hours": 8,
+          "days": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "title": "Head Chef",
+          "pay": 480,
+          "start": 14,
+          "hours": 8,
+          "days": [
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tech",
+      "label": "Tech",
+      "icon": "icon.career.tech",
+      "workEffects": {
+        "hunger": -0.15,
+        "energy": -0.25,
+        "fun": -0.15,
+        "comfort": -0.1,
+        "social": 0.1
+      },
+      "levels": [
+        {
+          "title": "Support Intern",
+          "pay": 140,
+          "start": 9,
+          "hours": 7,
+          "days": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "title": "Junior Developer",
+          "pay": 230,
+          "start": 9,
+          "hours": 8,
+          "days": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "title": "Software Engineer",
+          "pay": 360,
+          "start": 10,
+          "hours": 8,
+          "days": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "title": "Tech Lead",
+          "pay": 560,
+          "start": 10,
+          "hours": 8,
+          "days": [
+            0,
+            1,
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "healthcare",
+      "label": "Healthcare",
+      "icon": "icon.career.healthcare",
+      "workEffects": {
+        "hunger": -0.2,
+        "energy": -0.4,
+        "hygiene": -0.15,
+        "social": 0.25
+      },
+      "levels": [
+        {
+          "title": "Orderly",
+          "pay": 130,
+          "start": 7,
+          "hours": 8,
+          "days": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "title": "Nurse",
+          "pay": 220,
+          "start": 7,
+          "hours": 9,
+          "days": [
+            0,
+            1,
+            2,
+            5,
+            6
+          ]
+        },
+        {
+          "title": "Resident",
+          "pay": 340,
+          "start": 8,
+          "hours": 10,
+          "days": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "title": "Doctor",
+          "pay": 600,
+          "start": 9,
+          "hours": 8,
+          "days": [
+            0,
+            1,
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "arts",
+      "label": "Arts",
+      "icon": "icon.career.arts",
+      "workEffects": {
+        "hunger": -0.2,
+        "energy": -0.2,
+        "fun": 0.15,
+        "social": 0.15
+      },
+      "levels": [
+        {
+          "title": "Gallery Assistant",
+          "pay": 100,
+          "start": 11,
+          "hours": 6,
+          "days": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "title": "Illustrator",
+          "pay": 170,
+          "start": 12,
+          "hours": 6,
+          "days": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "title": "Art Director",
+          "pay": 290,
+          "start": 12,
+          "hours": 7,
+          "days": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "title": "Celebrated Artist",
+          "pay": 520,
+          "start": 14,
+          "hours": 5,
+          "days": [
+            2,
+            3,
+            4
+          ]
+        }
+      ]
+    },
+    {
+      "id": "retail",
+      "label": "Retail",
+      "icon": "icon.career.retail",
+      "workEffects": {
+        "hunger": -0.2,
+        "energy": -0.25,
+        "comfort": -0.2,
+        "social": 0.3
+      },
+      "levels": [
+        {
+          "title": "Cashier",
+          "pay": 110,
+          "start": 8,
+          "hours": 7,
+          "days": [
+            0,
+            1,
+            2,
+            4,
+            5
+          ]
+        },
+        {
+          "title": "Sales Associate",
+          "pay": 160,
+          "start": 9,
+          "hours": 7,
+          "days": [
+            0,
+            1,
+            2,
+            4,
+            5
+          ]
+        },
+        {
+          "title": "Store Manager",
+          "pay": 260,
+          "start": 9,
+          "hours": 8,
+          "days": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "title": "Regional Manager",
+          "pay": 420,
+          "start": 9,
+          "hours": 8,
+          "days": [
+            0,
+            1,
+            2,
+            3
+          ]
+        }
+      ]
+    }
+  ],
+  "careerRules": {
+    "commuteMinutes": 30,
+    "lateMinutes": 60,
+    "missedPenalty": 20,
+    "performancePerShift": 12,
+    "promotionMoodlet": "promoted",
+    "missedMoodlet": "skippedWork"
+  },
+  "schedule": [
+    {
+      "from": 22,
+      "to": 6,
+      "effects": {
+        "tagPreference": {
+          "sleep": 4,
+          "rest": 2,
+          "entertainment": 0.35,
+          "social": 0.4,
+          "food": 0.5,
+          "outdoors": 0.1,
+          "chores": 0.3
+        }
+      }
+    },
+    {
+      "from": 6,
+      "to": 9,
+      "effects": {
+        "tagPreference": {
+          "food": 1.6,
+          "hygiene": 1.7,
+          "sleep": 0.4,
+          "bathroom": 1.3
+        }
+      }
+    },
+    {
+      "from": 12,
+      "to": 14,
+      "effects": {
+        "tagPreference": {
+          "food": 1.5
+        }
+      }
+    },
+    {
+      "from": 17,
+      "to": 22,
+      "effects": {
+        "tagPreference": {
+          "social": 1.4,
+          "entertainment": 1.3,
+          "visit": 1.6,
+          "cooking": 1.4
+        }
+      }
+    }
+  ],
+  "visits": {
+    "needs": {
+      "social": 0.5,
+      "fun": 0.15
+    },
+    "hours": 2.5,
+    "minFriendship": 15,
+    "earliestHour": 10,
+    "latestHour": 20
+  },
+  "economy": {
+    "startingFunds": 1500
+  },
+  "events": {
+    "met": "{a} met {b}",
+    "becameFriends": "{a} and {b} are now friends",
+    "becameGoodFriends": "{a} and {b} are good friends",
+    "becameBestFriends": "{a} and {b} are best friends!",
+    "becameEnemies": "{a} and {b} can't stand each other",
+    "crush": "{a} has a crush on {b}",
+    "firstKiss": "{a} and {b} shared their first kiss",
+    "startedDating": "{a} and {b} are now a couple",
+    "brokeUp": "{a} broke up with {b}",
+    "proposalRejected": "{b} turned {a} down",
+    "fight": "{a} won a fight against {b}",
+    "jealous": "{a} saw {b} flirting with {c}",
+    "promoted": "{a} got promoted!",
+    "missedWork": "{a} missed work",
+    "visited": "{a} is visiting {b}"
+  },
+  "objects": [
+    {
+      "id": "fridge",
+      "name": "Fridge",
+      "model": "model.fridge",
+      "footprint": [
+        1,
+        1
+      ],
+      "interactions": [
+        {
+          "id": "snack",
+          "label": "Grab a snack",
+          "minutes": 10,
+          "effects": {
+            "hunger": 0.3
+          },
+          "tags": [
+            "food"
+          ]
+        },
+        {
+          "id": "meal",
+          "label": "Make a meal",
+          "minutes": 40,
+          "effects": {
+            "hunger": 0.85,
+            "fun": 0.05
+          },
+          "tags": [
+            "food",
+            "cooking"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sink",
+      "name": "Sink",
+      "model": "model.sink",
+      "footprint": [
+        1,
+        1
+      ],
+      "interactions": [
+        {
+          "id": "wash",
+          "label": "Wash hands",
+          "minutes": 4,
+          "effects": {
+            "hygiene": 0.15
+          },
+          "tags": [
+            "hygiene"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bed",
+      "name": "Double bed",
+      "model": "model.bed",
+      "footprint": [
+        2,
+        2
+      ],
+      "interactions": [
+        {
+          "id": "sleep",
+          "label": "Sleep",
+          "minutes": 480,
+          "pose": "lie",
+          "effects": {
+            "energy": 1.0,
+            "comfort": 0.4
+          },
+          "tags": [
+            "rest",
+            "sleep"
+          ]
+        },
+        {
+          "id": "nap",
+          "label": "Take a nap",
+          "minutes": 60,
+          "pose": "lie",
+          "effects": {
+            "energy": 0.25,
+            "comfort": 0.2
+          },
+          "tags": [
+            "rest",
+            "sleep"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "toilet",
+      "name": "Toilet",
+      "model": "model.toilet",
+      "footprint": [
+        1,
+        1
+      ],
+      "interactions": [
+        {
+          "id": "use",
+          "label": "Use toilet",
+          "minutes": 8,
+          "pose": "sit",
+          "effects": {
+            "bladder": 1.0
+          },
+          "tags": [
+            "bathroom"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shower",
+      "name": "Shower",
+      "model": "model.shower",
+      "footprint": [
+        1,
+        1
+      ],
+      "interactions": [
+        {
+          "id": "shower",
+          "label": "Take a shower",
+          "minutes": 20,
+          "effects": {
+            "hygiene": 1.0
+          },
+          "tags": [
+            "hygiene"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sofa",
+      "name": "Sofa",
+      "model": "model.sofa",
+      "footprint": [
+        2,
+        1
+      ],
+      "interactions": [
+        {
+          "id": "relax",
+          "label": "Relax",
+          "minutes": 30,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.6
+          },
+          "tags": [
+            "rest",
+            "lounge"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tv",
+      "name": "Television",
+      "model": "model.tv",
+      "footprint": [
+        1,
+        1
+      ],
+      "interactions": [
+        {
+          "id": "watch",
+          "label": "Watch TV",
+          "minutes": 60,
+          "effects": {
+            "fun": 0.7
+          },
+          "tags": [
+            "entertainment",
+            "screen"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bookshelf",
+      "name": "Bookshelf",
+      "model": "model.bookshelf",
+      "footprint": [
+        1,
+        1
+      ],
+      "interactions": [
+        {
+          "id": "read",
+          "label": "Read a book",
+          "minutes": 45,
+          "effects": {
+            "fun": 0.45
+          },
+          "tags": [
+            "entertainment",
+            "reading"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "armchair",
+      "name": "Armchair",
+      "model": "model.armchair",
+      "footprint": [
+        1,
+        1
+      ],
+      "interactions": [
+        {
+          "id": "sit",
+          "label": "Sit down",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.5
+          },
+          "tags": [
+            "lounge"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant",
+      "name": "Potted plant",
+      "model": "model.plant",
+      "footprint": [
+        1,
+        1
+      ],
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water plant",
+          "minutes": 5,
+          "autonomous": false,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bench",
+      "name": "Park bench",
+      "model": "model.bench",
+      "footprint": [
+        2,
+        1
+      ],
+      "interactions": [
+        {
+          "id": "sit",
+          "label": "Sit on the bench",
+          "minutes": 30,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.35,
+            "fun": 0.05
+          },
+          "tags": [
+            "lounge",
+            "outdoors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flowerbed",
+      "name": "Flower bed",
+      "model": "model.flowerbed",
+      "footprint": [
+        1,
+        1
+      ],
+      "interactions": [
+        {
+          "id": "tend",
+          "label": "Tend the flowers",
+          "minutes": 15,
+          "effects": {
+            "fun": 0.12
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "outdoors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tree",
+      "name": "Tree",
+      "model": "model.tree",
+      "footprint": [
+        1,
+        1
+      ],
+      "interactions": []
+    },
+    {
+      "id": "pine",
+      "name": "Pine tree",
+      "model": "model.pine",
+      "footprint": [
+        1,
+        1
+      ],
+      "interactions": []
+    },
+    {
+      "id": "bush",
+      "name": "Bush",
+      "model": "model.bush",
+      "footprint": [
+        1,
+        1
+      ],
+      "interactions": []
+    }
+  ]
+}
