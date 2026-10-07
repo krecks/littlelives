@@ -1,0 +1,10 @@
+[package]
+name = "sim-core"
+description = "Platform-independent life-simulation core. No browser or rendering code lives here."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
