@@ -5,8 +5,9 @@
 
   /**
    * A Sim's avatar: a head-and-shoulders portrait rendered from the in-game 3D character
-   * (`services.previews`, cached by look), filling a `size` × `size` box. Until it's ready, or
-   * without `gender` or 3D support, a flat illustration stands in.
+   * (`services.previews`, cached by look), filling a `size` × `size` box. Until it's ready a
+   * neutral silhouette shimmers in its place; only without `gender` or 3D support does a flat
+   * illustration stand in (never briefly, so a face doesn't visibly swap for another).
    *
    * `gender` defaults to the one the look was created for (drafts from `randomSim`).
    * `id` is the Sim's id in a running game (older saves derive clothes from it).
@@ -20,22 +21,31 @@
   }: { appearance: Appearance; gender?: string; id?: number; size?: number; animate?: boolean } = $props();
 
   let url = $state<string | null>(null);
+  /** No 3D portrait possible: show the flat illustration instead. */
+  let flat = $state(false);
 
   const body = $derived(gender ?? genderOfLook(appearance));
 
   $effect(() => {
-    if (!body || !services.previews) return;
+    if (!body || !services.previews) {
+      flat = true;
+      return;
+    }
     const look: SimLook = { gender: body, appearance: $state.snapshot(appearance) as Appearance, id };
     const hit = services.previews.cachedPortrait(look);
     if (hit) {
       url = hit;
+      flat = false;
       return;
     }
     let alive = true;
+    // A new look keeps the previous portrait until its own is ready (no flash in between).
     // Coalesce quick changes (sliders) and let siblings join the same batch.
     const timer = setTimeout(() => {
       void services.previews.portrait(look).then((u) => {
-        if (alive && u) url = u;
+        if (!alive) return;
+        if (u) url = u;
+        flat = !u && !url;
       });
     }, 90);
     return () => {
@@ -48,6 +58,11 @@
 <span class="sim-portrait" style="width:{size}px;height:{size}px" aria-hidden="true">
   {#if url}
     {#key url}<img src={url} alt="" width={size} height={size} draggable="false" />{/key}
+  {:else if !flat}
+    <svg class="pending" viewBox="0 0 100 100">
+      <circle cx="50" cy="40" r="17" />
+      <path d="M18 100c0-22 14-36 32-36s32 14 32 36Z" />
+    </svg>
   {:else}
     <svg width={size} height={size} viewBox="36 6 128 128">
       <rect x="62" y="96" width="76" height="140" rx="38" fill={appearance.body} />
@@ -85,6 +100,22 @@
   img {
     object-fit: cover;
     animation: portrait-in 260ms var(--ease, ease-out);
+  }
+  /* Waiting for the 3D portrait: a faceless silhouette that gently shimmers. */
+  .pending {
+    fill: rgba(120, 130, 150, 0.28);
+    animation: portrait-wait 1.2s ease-in-out infinite alternate;
+  }
+  @keyframes portrait-wait {
+    from {
+      opacity: 0.55;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  :global(.reduce-motion) .pending {
+    animation: none;
   }
   @keyframes portrait-in {
     from {

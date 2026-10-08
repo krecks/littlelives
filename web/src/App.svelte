@@ -7,6 +7,7 @@
   import { latestSave } from './persistence/saves';
   import { settings } from './settings/settings.svelte';
   import { app } from './ui/app.svelte';
+  import { services } from './ui/services';
   import { toast } from './ui/state.svelte';
   import Modal from './ui/kit/Modal.svelte';
   import ChooseHome from './ui/screens/ChooseHome.svelte';
@@ -68,6 +69,10 @@
         menuScene.highlight({});
         menuScene.shoot({ kind: screen }, screen === 'menu' ? 2.4 : 2);
         await menuScene.show(draft).catch((err: unknown) => console.warn('[menu] town preview failed', err));
+        // "New game" starts from this neighbourhood: have its residents' portraits ready by then.
+        if (!cancelled && screen === 'menu') {
+          services.previews?.prefetch(draft.households.flatMap((h) => h.household.members.map((m) => ({ gender: m.gender, appearance: m.appearance }))));
+        }
       })();
     }
     return () => {

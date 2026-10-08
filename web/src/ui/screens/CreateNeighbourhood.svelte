@@ -188,7 +188,7 @@
               <button class="pick" aria-label="Show the {h.household.name}s' home" onclick={() => select(h.slot)}>
                 <span class="faces">
                   {#each h.household.members as m (m.uid)}
-                    <span class="face" title={m.name}><SimPreview appearance={m.appearance} size={46} animate={false} /></span>
+                    <span class="face" title={m.name}><SimPreview appearance={m.appearance} gender={m.gender} size={46} /></span>
                   {/each}
                 </span>
                 <span class="info">
