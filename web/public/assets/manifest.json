@@ -4116,7 +4116,8 @@
           "material": "material.finish.satin",
           "segments": 5
         }
-      ]
+      ],
+      "url": "nature/garden_flowerbed.glb"
     },
     "model.tree": {
       "type": "model",
@@ -4279,7 +4280,8 @@
           "noise": 0.24
         }
       ],
-      "url": "nature/oak.glb"
+      "url": "nature/oak.glb",
+      "vary": 0.12
     },
     "model.pine": {
       "type": "model",
@@ -4382,7 +4384,8 @@
           "segments": 11
         }
       ],
-      "url": "nature/pine.glb"
+      "url": "nature/pine.glb",
+      "vary": 0.12
     },
     "model.bush": {
       "type": "model",
@@ -4436,7 +4439,8 @@
           "noise": 0.22
         }
       ],
-      "url": "nature/bush.glb"
+      "url": "nature/bush.glb",
+      "vary": 0.12
     },
     "material.road": {
       "type": "material",
@@ -5051,7 +5055,8 @@
           "material": "material.finish.foliage",
           "noise": 0.24
         }
-      ]
+      ],
+      "vary": 0.12
     },
     "model.tree.birch.far": {
       "type": "model",
@@ -5377,7 +5382,8 @@
           "material": "material.finish.foliage",
           "noise": 0.24
         }
-      ]
+      ],
+      "vary": 0.12
     },
     "model.tree.blossom.far": {
       "type": "model",
@@ -5703,7 +5709,8 @@
           "material": "material.finish.foliage",
           "noise": 0.24
         }
-      ]
+      ],
+      "vary": 0.12
     },
     "model.tree.fruit.far": {
       "type": "model",
@@ -5868,9 +5875,1731 @@
         }
       ]
     },
+    "model.tree.maple": {
+      "type": "model",
+      "url": "nature/maple.glb",
+      "placeholder": [
+        {
+          "shape": "cylinder",
+          "size": [
+            0.36,
+            2.9,
+            0.36
+          ],
+          "at": [
+            0,
+            1.45,
+            0
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.5,
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.12,
+            1.5,
+            0.12
+          ],
+          "at": [
+            0.45,
+            3.0,
+            0.1
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            0,
+            0,
+            -38
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.11,
+            1.4,
+            0.11
+          ],
+          "at": [
+            -0.4,
+            3.1,
+            -0.15
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            12,
+            0,
+            35
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.9,
+            2.3,
+            2.8
+          ],
+          "at": [
+            0,
+            4.1,
+            0
+          ],
+          "color": "#6A8E3A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.0,
+            1.7,
+            2.0
+          ],
+          "at": [
+            0.95,
+            4.5,
+            0.4
+          ],
+          "color": "#78A044",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.1,
+            1.8,
+            2.0
+          ],
+          "at": [
+            -1.0,
+            4.3,
+            -0.4
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.5,
+            1.7
+          ],
+          "at": [
+            0.2,
+            5.2,
+            -0.5
+          ],
+          "color": "#82A84A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.3,
+            1.6
+          ],
+          "at": [
+            -0.3,
+            3.5,
+            0.9
+          ],
+          "color": "#6E933E",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.5,
+            1.3,
+            1.5
+          ],
+          "at": [
+            0.7,
+            3.6,
+            -0.8
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        }
+      ],
+      "vary": 0.12
+    },
+    "model.tree.maple.far": {
+      "type": "model",
+      "url": "nature/maple_far.glb",
+      "placeholder": [
+        {
+          "shape": "cylinder",
+          "size": [
+            0.36,
+            2.9,
+            0.36
+          ],
+          "at": [
+            0,
+            1.45,
+            0
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.5,
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.12,
+            1.5,
+            0.12
+          ],
+          "at": [
+            0.45,
+            3.0,
+            0.1
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            0,
+            0,
+            -38
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.11,
+            1.4,
+            0.11
+          ],
+          "at": [
+            -0.4,
+            3.1,
+            -0.15
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            12,
+            0,
+            35
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.9,
+            2.3,
+            2.8
+          ],
+          "at": [
+            0,
+            4.1,
+            0
+          ],
+          "color": "#6A8E3A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.0,
+            1.7,
+            2.0
+          ],
+          "at": [
+            0.95,
+            4.5,
+            0.4
+          ],
+          "color": "#78A044",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.1,
+            1.8,
+            2.0
+          ],
+          "at": [
+            -1.0,
+            4.3,
+            -0.4
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.5,
+            1.7
+          ],
+          "at": [
+            0.2,
+            5.2,
+            -0.5
+          ],
+          "color": "#82A84A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.3,
+            1.6
+          ],
+          "at": [
+            -0.3,
+            3.5,
+            0.9
+          ],
+          "color": "#6E933E",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.5,
+            1.3,
+            1.5
+          ],
+          "at": [
+            0.7,
+            3.6,
+            -0.8
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        }
+      ]
+    },
+    "model.tree.japaneseMaple": {
+      "type": "model",
+      "url": "nature/japanese_maple.glb",
+      "placeholder": [
+        {
+          "shape": "cylinder",
+          "size": [
+            0.36,
+            2.9,
+            0.36
+          ],
+          "at": [
+            0,
+            1.45,
+            0
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.5,
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.12,
+            1.5,
+            0.12
+          ],
+          "at": [
+            0.45,
+            3.0,
+            0.1
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            0,
+            0,
+            -38
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.11,
+            1.4,
+            0.11
+          ],
+          "at": [
+            -0.4,
+            3.1,
+            -0.15
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            12,
+            0,
+            35
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.9,
+            2.3,
+            2.8
+          ],
+          "at": [
+            0,
+            4.1,
+            0
+          ],
+          "color": "#6A8E3A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.0,
+            1.7,
+            2.0
+          ],
+          "at": [
+            0.95,
+            4.5,
+            0.4
+          ],
+          "color": "#78A044",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.1,
+            1.8,
+            2.0
+          ],
+          "at": [
+            -1.0,
+            4.3,
+            -0.4
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.5,
+            1.7
+          ],
+          "at": [
+            0.2,
+            5.2,
+            -0.5
+          ],
+          "color": "#82A84A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.3,
+            1.6
+          ],
+          "at": [
+            -0.3,
+            3.5,
+            0.9
+          ],
+          "color": "#6E933E",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.5,
+            1.3,
+            1.5
+          ],
+          "at": [
+            0.7,
+            3.6,
+            -0.8
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        }
+      ],
+      "vary": 0.12
+    },
+    "model.tree.japaneseMaple.far": {
+      "type": "model",
+      "url": "nature/japanese_maple_far.glb",
+      "placeholder": [
+        {
+          "shape": "cylinder",
+          "size": [
+            0.36,
+            2.9,
+            0.36
+          ],
+          "at": [
+            0,
+            1.45,
+            0
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.5,
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.12,
+            1.5,
+            0.12
+          ],
+          "at": [
+            0.45,
+            3.0,
+            0.1
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            0,
+            0,
+            -38
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.11,
+            1.4,
+            0.11
+          ],
+          "at": [
+            -0.4,
+            3.1,
+            -0.15
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            12,
+            0,
+            35
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.9,
+            2.3,
+            2.8
+          ],
+          "at": [
+            0,
+            4.1,
+            0
+          ],
+          "color": "#6A8E3A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.0,
+            1.7,
+            2.0
+          ],
+          "at": [
+            0.95,
+            4.5,
+            0.4
+          ],
+          "color": "#78A044",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.1,
+            1.8,
+            2.0
+          ],
+          "at": [
+            -1.0,
+            4.3,
+            -0.4
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.5,
+            1.7
+          ],
+          "at": [
+            0.2,
+            5.2,
+            -0.5
+          ],
+          "color": "#82A84A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.3,
+            1.6
+          ],
+          "at": [
+            -0.3,
+            3.5,
+            0.9
+          ],
+          "color": "#6E933E",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.5,
+            1.3,
+            1.5
+          ],
+          "at": [
+            0.7,
+            3.6,
+            -0.8
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        }
+      ]
+    },
+    "model.tree.magnolia": {
+      "type": "model",
+      "url": "nature/magnolia.glb",
+      "placeholder": [
+        {
+          "shape": "cylinder",
+          "size": [
+            0.36,
+            2.9,
+            0.36
+          ],
+          "at": [
+            0,
+            1.45,
+            0
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.5,
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.12,
+            1.5,
+            0.12
+          ],
+          "at": [
+            0.45,
+            3.0,
+            0.1
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            0,
+            0,
+            -38
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.11,
+            1.4,
+            0.11
+          ],
+          "at": [
+            -0.4,
+            3.1,
+            -0.15
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            12,
+            0,
+            35
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.9,
+            2.3,
+            2.8
+          ],
+          "at": [
+            0,
+            4.1,
+            0
+          ],
+          "color": "#6A8E3A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.0,
+            1.7,
+            2.0
+          ],
+          "at": [
+            0.95,
+            4.5,
+            0.4
+          ],
+          "color": "#78A044",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.1,
+            1.8,
+            2.0
+          ],
+          "at": [
+            -1.0,
+            4.3,
+            -0.4
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.5,
+            1.7
+          ],
+          "at": [
+            0.2,
+            5.2,
+            -0.5
+          ],
+          "color": "#82A84A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.3,
+            1.6
+          ],
+          "at": [
+            -0.3,
+            3.5,
+            0.9
+          ],
+          "color": "#6E933E",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.5,
+            1.3,
+            1.5
+          ],
+          "at": [
+            0.7,
+            3.6,
+            -0.8
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        }
+      ],
+      "vary": 0.12
+    },
+    "model.tree.magnolia.far": {
+      "type": "model",
+      "url": "nature/magnolia_far.glb",
+      "placeholder": [
+        {
+          "shape": "cylinder",
+          "size": [
+            0.36,
+            2.9,
+            0.36
+          ],
+          "at": [
+            0,
+            1.45,
+            0
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.5,
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.12,
+            1.5,
+            0.12
+          ],
+          "at": [
+            0.45,
+            3.0,
+            0.1
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            0,
+            0,
+            -38
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.11,
+            1.4,
+            0.11
+          ],
+          "at": [
+            -0.4,
+            3.1,
+            -0.15
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            12,
+            0,
+            35
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.9,
+            2.3,
+            2.8
+          ],
+          "at": [
+            0,
+            4.1,
+            0
+          ],
+          "color": "#6A8E3A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.0,
+            1.7,
+            2.0
+          ],
+          "at": [
+            0.95,
+            4.5,
+            0.4
+          ],
+          "color": "#78A044",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.1,
+            1.8,
+            2.0
+          ],
+          "at": [
+            -1.0,
+            4.3,
+            -0.4
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.5,
+            1.7
+          ],
+          "at": [
+            0.2,
+            5.2,
+            -0.5
+          ],
+          "color": "#82A84A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.3,
+            1.6
+          ],
+          "at": [
+            -0.3,
+            3.5,
+            0.9
+          ],
+          "color": "#6E933E",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.5,
+            1.3,
+            1.5
+          ],
+          "at": [
+            0.7,
+            3.6,
+            -0.8
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        }
+      ]
+    },
+    "model.tree.willow": {
+      "type": "model",
+      "url": "nature/willow.glb",
+      "placeholder": [
+        {
+          "shape": "cylinder",
+          "size": [
+            0.36,
+            2.9,
+            0.36
+          ],
+          "at": [
+            0,
+            1.45,
+            0
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.5,
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.12,
+            1.5,
+            0.12
+          ],
+          "at": [
+            0.45,
+            3.0,
+            0.1
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            0,
+            0,
+            -38
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.11,
+            1.4,
+            0.11
+          ],
+          "at": [
+            -0.4,
+            3.1,
+            -0.15
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            12,
+            0,
+            35
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.9,
+            2.3,
+            2.8
+          ],
+          "at": [
+            0,
+            4.1,
+            0
+          ],
+          "color": "#6A8E3A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.0,
+            1.7,
+            2.0
+          ],
+          "at": [
+            0.95,
+            4.5,
+            0.4
+          ],
+          "color": "#78A044",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.1,
+            1.8,
+            2.0
+          ],
+          "at": [
+            -1.0,
+            4.3,
+            -0.4
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.5,
+            1.7
+          ],
+          "at": [
+            0.2,
+            5.2,
+            -0.5
+          ],
+          "color": "#82A84A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.3,
+            1.6
+          ],
+          "at": [
+            -0.3,
+            3.5,
+            0.9
+          ],
+          "color": "#6E933E",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.5,
+            1.3,
+            1.5
+          ],
+          "at": [
+            0.7,
+            3.6,
+            -0.8
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        }
+      ],
+      "vary": 0.12
+    },
+    "model.tree.willow.far": {
+      "type": "model",
+      "url": "nature/willow_far.glb",
+      "placeholder": [
+        {
+          "shape": "cylinder",
+          "size": [
+            0.36,
+            2.9,
+            0.36
+          ],
+          "at": [
+            0,
+            1.45,
+            0
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.5,
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.12,
+            1.5,
+            0.12
+          ],
+          "at": [
+            0.45,
+            3.0,
+            0.1
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            0,
+            0,
+            -38
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.11,
+            1.4,
+            0.11
+          ],
+          "at": [
+            -0.4,
+            3.1,
+            -0.15
+          ],
+          "color": "#D9D2C8",
+          "material": "material.finish.bark",
+          "taper": 0.4,
+          "segments": 6,
+          "rotate": [
+            12,
+            0,
+            35
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.9,
+            2.3,
+            2.8
+          ],
+          "at": [
+            0,
+            4.1,
+            0
+          ],
+          "color": "#6A8E3A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.0,
+            1.7,
+            2.0
+          ],
+          "at": [
+            0.95,
+            4.5,
+            0.4
+          ],
+          "color": "#78A044",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            2.1,
+            1.8,
+            2.0
+          ],
+          "at": [
+            -1.0,
+            4.3,
+            -0.4
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.5,
+            1.7
+          ],
+          "at": [
+            0.2,
+            5.2,
+            -0.5
+          ],
+          "color": "#82A84A",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.7,
+            1.3,
+            1.6
+          ],
+          "at": [
+            -0.3,
+            3.5,
+            0.9
+          ],
+          "color": "#6E933E",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        },
+        {
+          "shape": "blob",
+          "size": [
+            1.5,
+            1.3,
+            1.5
+          ],
+          "at": [
+            0.7,
+            3.6,
+            -0.8
+          ],
+          "color": "#5F8236",
+          "material": "material.finish.foliage",
+          "noise": 0.24
+        }
+      ]
+    },
     "model.pine.far": {
       "type": "model",
       "url": "nature/pine_far.glb",
+      "placeholder": [
+        {
+          "shape": "cylinder",
+          "size": [
+            0.3,
+            2.0,
+            0.3
+          ],
+          "at": [
+            0,
+            1.0,
+            0
+          ],
+          "color": "#D2C6B8",
+          "material": "material.finish.bark",
+          "taper": 0.6,
+          "segments": 8
+        },
+        {
+          "shape": "cone",
+          "size": [
+            2.7,
+            2.0,
+            2.7
+          ],
+          "at": [
+            0,
+            1.9,
+            0
+          ],
+          "color": "#3E6236",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            2.2,
+            1.9,
+            2.2
+          ],
+          "at": [
+            0,
+            3.0,
+            0
+          ],
+          "color": "#466B3B",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            1.75,
+            1.8,
+            1.75
+          ],
+          "at": [
+            0,
+            4.0,
+            0
+          ],
+          "color": "#4E7542",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            1.25,
+            1.6,
+            1.25
+          ],
+          "at": [
+            0,
+            4.9,
+            0
+          ],
+          "color": "#3A5A34",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.7,
+            1.3,
+            0.7
+          ],
+          "at": [
+            0,
+            5.7,
+            0
+          ],
+          "color": "#3E6236",
+          "material": "material.finish.foliage",
+          "segments": 11
+        }
+      ]
+    },
+    "model.spruce": {
+      "type": "model",
+      "url": "nature/spruce.glb",
+      "placeholder": [
+        {
+          "shape": "cylinder",
+          "size": [
+            0.3,
+            2.0,
+            0.3
+          ],
+          "at": [
+            0,
+            1.0,
+            0
+          ],
+          "color": "#D2C6B8",
+          "material": "material.finish.bark",
+          "taper": 0.6,
+          "segments": 8
+        },
+        {
+          "shape": "cone",
+          "size": [
+            2.7,
+            2.0,
+            2.7
+          ],
+          "at": [
+            0,
+            1.9,
+            0
+          ],
+          "color": "#3E6236",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            2.2,
+            1.9,
+            2.2
+          ],
+          "at": [
+            0,
+            3.0,
+            0
+          ],
+          "color": "#466B3B",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            1.75,
+            1.8,
+            1.75
+          ],
+          "at": [
+            0,
+            4.0,
+            0
+          ],
+          "color": "#4E7542",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            1.25,
+            1.6,
+            1.25
+          ],
+          "at": [
+            0,
+            4.9,
+            0
+          ],
+          "color": "#3A5A34",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.7,
+            1.3,
+            0.7
+          ],
+          "at": [
+            0,
+            5.7,
+            0
+          ],
+          "color": "#3E6236",
+          "material": "material.finish.foliage",
+          "segments": 11
+        }
+      ],
+      "vary": 0.12
+    },
+    "model.spruce.far": {
+      "type": "model",
+      "url": "nature/spruce_far.glb",
+      "placeholder": [
+        {
+          "shape": "cylinder",
+          "size": [
+            0.3,
+            2.0,
+            0.3
+          ],
+          "at": [
+            0,
+            1.0,
+            0
+          ],
+          "color": "#D2C6B8",
+          "material": "material.finish.bark",
+          "taper": 0.6,
+          "segments": 8
+        },
+        {
+          "shape": "cone",
+          "size": [
+            2.7,
+            2.0,
+            2.7
+          ],
+          "at": [
+            0,
+            1.9,
+            0
+          ],
+          "color": "#3E6236",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            2.2,
+            1.9,
+            2.2
+          ],
+          "at": [
+            0,
+            3.0,
+            0
+          ],
+          "color": "#466B3B",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            1.75,
+            1.8,
+            1.75
+          ],
+          "at": [
+            0,
+            4.0,
+            0
+          ],
+          "color": "#4E7542",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            1.25,
+            1.6,
+            1.25
+          ],
+          "at": [
+            0,
+            4.9,
+            0
+          ],
+          "color": "#3A5A34",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.7,
+            1.3,
+            0.7
+          ],
+          "at": [
+            0,
+            5.7,
+            0
+          ],
+          "color": "#3E6236",
+          "material": "material.finish.foliage",
+          "segments": 11
+        }
+      ]
+    },
+    "model.cypress": {
+      "type": "model",
+      "url": "nature/cypress.glb",
+      "placeholder": [
+        {
+          "shape": "cylinder",
+          "size": [
+            0.3,
+            2.0,
+            0.3
+          ],
+          "at": [
+            0,
+            1.0,
+            0
+          ],
+          "color": "#D2C6B8",
+          "material": "material.finish.bark",
+          "taper": 0.6,
+          "segments": 8
+        },
+        {
+          "shape": "cone",
+          "size": [
+            2.7,
+            2.0,
+            2.7
+          ],
+          "at": [
+            0,
+            1.9,
+            0
+          ],
+          "color": "#3E6236",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            2.2,
+            1.9,
+            2.2
+          ],
+          "at": [
+            0,
+            3.0,
+            0
+          ],
+          "color": "#466B3B",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            1.75,
+            1.8,
+            1.75
+          ],
+          "at": [
+            0,
+            4.0,
+            0
+          ],
+          "color": "#4E7542",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            1.25,
+            1.6,
+            1.25
+          ],
+          "at": [
+            0,
+            4.9,
+            0
+          ],
+          "color": "#3A5A34",
+          "material": "material.finish.foliage",
+          "segments": 11
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.7,
+            1.3,
+            0.7
+          ],
+          "at": [
+            0,
+            5.7,
+            0
+          ],
+          "color": "#3E6236",
+          "material": "material.finish.foliage",
+          "segments": 11
+        }
+      ],
+      "vary": 0.12
+    },
+    "model.cypress.far": {
+      "type": "model",
+      "url": "nature/cypress_far.glb",
       "placeholder": [
         {
           "shape": "cylinder",
@@ -6378,6 +8107,10 @@
       "type": "icon",
       "url": "icons/eye.svg"
     },
+    "icon.skill.gardening": {
+      "type": "icon",
+      "url": "icons/watering-can.svg"
+    },
     "icon.skill.dexterity": {
       "type": "icon",
       "url": "icons/hand.svg"
@@ -6465,6 +8198,10 @@
     "icon.category.outdoor": {
       "type": "icon",
       "url": "icons/sprout.svg"
+    },
+    "icon.category.garden": {
+      "type": "icon",
+      "url": "icons/tree.svg"
     },
     "icon.category.wellness": {
       "type": "icon",
@@ -33377,6 +35114,1041 @@
           "segments": 12
         }
       ]
+    },
+    "model.garden.tulips": {
+      "type": "model",
+      "url": "nature/garden_tulips.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.daffodils": {
+      "type": "model",
+      "url": "nature/garden_daffodils.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.daisies": {
+      "type": "model",
+      "url": "nature/garden_daisies.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.sunflowers": {
+      "type": "model",
+      "url": "nature/garden_sunflowers.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.poppies": {
+      "type": "model",
+      "url": "nature/garden_poppies.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.marigolds": {
+      "type": "model",
+      "url": "nature/garden_marigolds.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.pansies": {
+      "type": "model",
+      "url": "nature/garden_pansies.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.lilies": {
+      "type": "model",
+      "url": "nature/garden_lilies.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.lupins": {
+      "type": "model",
+      "url": "nature/garden_lupins.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.forgetMeNots": {
+      "type": "model",
+      "url": "nature/garden_forget_me_nots.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.cosmos": {
+      "type": "model",
+      "url": "nature/garden_cosmos.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.meadow": {
+      "type": "model",
+      "url": "nature/garden_meadow.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.geraniums": {
+      "type": "model",
+      "url": "nature/garden_geraniums.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.flowerBox": {
+      "type": "model",
+      "url": "nature/garden_flower_box.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.boxwood": {
+      "type": "model",
+      "url": "nature/garden_boxwood.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.topiaryCone": {
+      "type": "model",
+      "url": "nature/garden_topiary_cone.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.hydrangea": {
+      "type": "model",
+      "url": "nature/garden_hydrangea.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.rosebush": {
+      "type": "model",
+      "url": "nature/garden_rosebush.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.azalea": {
+      "type": "model",
+      "url": "nature/garden_azalea.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.lavender": {
+      "type": "model",
+      "url": "nature/garden_lavender.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.fern": {
+      "type": "model",
+      "url": "nature/garden_fern.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.grass": {
+      "type": "model",
+      "url": "nature/garden_grass.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.hosta": {
+      "type": "model",
+      "url": "nature/garden_hosta.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.hedge": {
+      "type": "model",
+      "url": "nature/garden_hedge.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.vegPatch": {
+      "type": "model",
+      "url": "nature/garden_veg_patch.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.tomatoes": {
+      "type": "model",
+      "url": "nature/garden_tomatoes.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.strawberries": {
+      "type": "model",
+      "url": "nature/garden_strawberries.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.herbs": {
+      "type": "model",
+      "url": "nature/garden_herbs.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.pumpkins": {
+      "type": "model",
+      "url": "nature/garden_pumpkins.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
+    },
+    "model.garden.lemonTree": {
+      "type": "model",
+      "url": "nature/garden_lemon_tree.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.monstera": {
+      "type": "model",
+      "url": "nature/garden_monstera.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.fiddleFig": {
+      "type": "model",
+      "url": "nature/garden_fiddle_fig.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.snakePlant": {
+      "type": "model",
+      "url": "nature/garden_snake_plant.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.cacti": {
+      "type": "model",
+      "url": "nature/garden_cacti.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.succulents": {
+      "type": "model",
+      "url": "nature/garden_succulents.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.bostonFern": {
+      "type": "model",
+      "url": "nature/garden_boston_fern.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.palm": {
+      "type": "model",
+      "url": "nature/garden_palm.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.orchid": {
+      "type": "model",
+      "url": "nature/garden_orchid.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.bonsai": {
+      "type": "model",
+      "url": "nature/garden_bonsai.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.birdbath": {
+      "type": "model",
+      "url": "nature/garden_birdbath.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.fountain": {
+      "type": "model",
+      "url": "nature/garden_fountain.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.gnome": {
+      "type": "model",
+      "url": "nature/garden_gnome.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.pond": {
+      "type": "model",
+      "url": "nature/garden_pond.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.lantern": {
+      "type": "model",
+      "url": "nature/garden_lantern.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.wheelbarrow": {
+      "type": "model",
+      "url": "nature/garden_wheelbarrow.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ]
+    },
+    "model.garden.boulder": {
+      "type": "model",
+      "url": "nature/garden_boulder.glb",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.45,
+            0.7
+          ],
+          "at": [
+            0,
+            0.22,
+            0
+          ],
+          "color": "#6A9444",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        }
+      ],
+      "vary": 0.1
     }
   }
 }

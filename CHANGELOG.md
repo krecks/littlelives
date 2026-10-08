@@ -2,6 +2,37 @@
 
 All notable changes to Littlelives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
+## 0.5.0 — 2026-10-08
+
+**Play it in your browser:** https://krecks.github.io/littlelives/
+
+Nature and the garden.
+
+### New
+- **New trees:** crowns are now soft clumps of dense, painterly leaves on real branches, and turn to face the camera, so they look full from every side instead of showing flat leaf cards edge-on. They cast proper canopy shadows.
+  - Eleven species: oak, maple, silver birch, cherry blossom, apple, Japanese maple, magnolia, weeping willow, pine, blue spruce and Italian cypress.
+  - Town gardens get maples, magnolias and Japanese maples among their trees, the woods mix in maples and spruces, and the borders along the houses now have hydrangeas, roses, lavender and clipped boxwood.
+- **Garden category** in Buy mode, with groups: Trees · Shrubs & hedges · Flowers · Fruit & veg · Houseplants (over 50 plants).
+  - **Shrubs and hedges:** boxwood balls, topiary cones, clipped hedges, hydrangeas, roses, azaleas, lavender, ferns, ornamental grass and hostas.
+  - **Flowers:** tulips, daffodils, daisies, sunflowers, poppies, marigolds, pansies, lilies, lupins, forget-me-nots, cosmos, a wildflower meadow, potted geraniums and a petunia box, and the raised flower bed, now full of flowers.
+  - **Fruit and vegetables:** a vegetable patch, tomatoes, strawberries, a herb planter, pumpkins, an apple tree and a potted lemon tree.
+  - **Houseplants:** monstera, fiddle-leaf fig, snake plant, cacti, succulents, a fern on a stand, a parlour palm, orchids and a bonsai.
+  - **Garden decor** (Outdoor): bird bath, stone fountain, garden pond, gnome, stone lantern, wheelbarrow planter and boulders.
+  - Placed plants each get their own turn and size, so a row of them doesn't look stamped.
+- **Gardening skill:**
+  - Residents train it when they water, tend, trim and harvest.
+  - Good gardeners harvest more and feel *Proud gardener*.
+  - Harvests are a free meal (*Homegrown*), and roses, lavender and lilies have a *Sweet scent*.
+  - Fresh herbs make anyone a better cook for a few hours, and a skilled hand finds *Zen* in pruning the bonsai.
+  - It's the main skill of the Gardening & Horticulture career, and farmers use it too.
+  - Nature Lovers start with some Gardening and learn it faster.
+- **More to do outside:** relax in the shade of a tree, pick apples, watch the birds, feed the fish, make a wish at the fountain, talk to your house plants.
+
+### Changed
+- Trees, flower beds, ponds and other garden things can only be placed outdoors; the price tag says "Goes outdoors" when you point indoors. Pots and planters go anywhere.
+- The Town Park and Willow Studio get maples, a cherry, willows, a birch, a spruce, hydrangeas, roses and lavender (new towns).
+- Content packs: objects can name a `group` within their category (categories list their `groups`) and set `outdoors`; manifest models can set `vary` (see `docs/content-packs.md`).
+
 ## 0.4.0 — 2026-10-08
 
 **Play it in your browser:** https://krecks.github.io/littlelives/

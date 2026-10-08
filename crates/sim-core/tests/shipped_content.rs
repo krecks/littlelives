@@ -116,7 +116,7 @@ fn a_thousand_jobs_with_grades_and_skills() {
     let positions: usize = content.careers.iter().map(|c| c.levels.len()).sum();
     assert_eq!(positions, 1000);
     assert_eq!(content.career_categories.len(), 25);
-    assert_eq!(content.skills.len(), 12);
+    assert_eq!(content.skills.len(), 13);
     for c in &content.careers {
         let first = &c.levels[0];
         assert!(
@@ -326,4 +326,40 @@ fn every_shipped_interaction_has_an_animation() {
             assert!(anim < content.animations.len());
         }
     }
+}
+
+#[test]
+fn gardening_feeds_the_household_and_trains_its_skill() {
+    use sim_core::Command;
+    // The starter lot as the household's own plot.
+    let mut lot: serde_json::Value = serde_json::from_str(&starter_with_household()).unwrap();
+    lot["plots"] = serde_json::json!([{ "name": "Home", "x": 0, "z": 0, "w": 26, "d": 22, "entry": [8.5, 1.5] }]);
+    lot["households"] = serde_json::json!([{ "name": "Player", "plot": 0, "player": true, "funds": 10000 }]);
+    let mut world = World::from_json(&content(), &lot.to_string(), 1).unwrap();
+    world.autonomy = false;
+    world.households[0].funds = 10_000;
+    // Garden things find a spot outdoors on their own.
+    let patch = world
+        .buy(0, "garden.vegPatch", None, None)
+        .expect("a vegetable patch fits in the garden");
+    let o = &world.objects[patch as usize];
+    assert_eq!(world.lot.room_at(o.x, o.z), sim_core::lot::OUTDOORS);
+    let def = &world.content.objects[o.def];
+    let harvest = def.interactions.iter().position(|i| i.id == "harvest").unwrap();
+    let hunger = world.content.needs.iter().position(|n| n.id == "hunger").unwrap();
+    let gardening = world.content.skill_index("gardening").unwrap();
+    world.sims[0].needs[hunger] = 0.2;
+    world
+        .apply(Command::Use {
+            sim: 0,
+            object: patch,
+            interaction: harvest,
+        })
+        .unwrap();
+    // An hour and a half of game time (one game minute per second of ticks).
+    for _ in 0..90 * sim_core::TICKS_PER_SECOND {
+        world.tick_once();
+    }
+    assert!(world.sims[0].needs[hunger] > 0.4, "a fresh harvest fed them");
+    assert!(world.sims[0].skills[gardening] > 0.0, "and taught some Gardening");
 }

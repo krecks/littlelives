@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Littlelives model gallery</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #9cc2e0; overflow: hidden; font: 12px system-ui, sans-serif; }
+      canvas { width: 100%; height: 100%; display: block; outline: none; }
+      #labels { position: fixed; inset: 0; pointer-events: none; }
+      #labels span { position: absolute; transform: translate(-50%, 0); padding: 1px 5px; border-radius: 4px; background: #0008; color: #fff; white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="labels"></div>
+    <script type="module" src="/src/debug/gallery.ts"></script>
+  </body>
+</html>

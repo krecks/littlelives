@@ -434,7 +434,7 @@
      "rot": 0
     },
     {
-     "def": "tree",
+     "def": "garden.willow",
      "x": 21,
      "z": 17,
      "rot": 0
@@ -792,13 +792,13 @@
      "rot": 0
     },
     {
-     "def": "tree",
+     "def": "garden.maple",
      "x": 3,
      "z": 3,
      "rot": 0
     },
     {
-     "def": "tree",
+     "def": "garden.cherry",
      "x": 22,
      "z": 3,
      "rot": 0
@@ -810,19 +810,19 @@
      "rot": 0
     },
     {
-     "def": "tree",
+     "def": "garden.willow",
      "x": 22,
      "z": 18,
      "rot": 0
     },
     {
-     "def": "pine",
+     "def": "garden.spruce",
      "x": 6,
      "z": 15,
      "rot": 0
     },
     {
-     "def": "tree",
+     "def": "garden.birch",
      "x": 19,
      "z": 5,
      "rot": 0
@@ -840,19 +840,19 @@
      "rot": 0
     },
     {
-     "def": "bush",
+     "def": "garden.hydrangea",
      "x": 10,
      "z": 3,
      "rot": 0
     },
     {
-     "def": "bush",
+     "def": "garden.roses",
      "x": 15,
      "z": 18,
      "rot": 0
     },
     {
-     "def": "bush",
+     "def": "garden.lavender",
      "x": 2,
      "z": 13,
      "rot": 0

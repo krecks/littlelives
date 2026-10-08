@@ -48,6 +48,11 @@ export interface ModelEntry {
   rotationY?: number;
   offset?: Vec3;
   placeholder?: PlaceholderPart[];
+  /**
+   * Natural variation for placed objects (plants): each one gets its own turn and a size up to
+   * ±`vary` (0.1 = 10%) larger or smaller, fixed by where it stands.
+   */
+  vary?: number;
 }
 
 export interface MaterialEntry {

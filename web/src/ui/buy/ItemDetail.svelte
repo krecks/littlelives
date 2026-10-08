@@ -17,7 +17,11 @@
   const rules = $derived(game.catalog?.objectRules);
   const price = $derived(def.price ?? 0);
   const short = $derived(owned ? 0 : Math.max(0, price - game.funds));
-  const category = $derived(content.buyCategories.find((c) => c.id === def.category)?.label);
+  const category = $derived.by(() => {
+    const c = content.buyCategories.find((c) => c.id === def.category);
+    const group = c?.groups?.find((g) => g.id === def.group)?.label;
+    return c && group ? `${c.label} · ${group}` : c?.label;
+  });
   const collection = $derived(collectionOf(content, def));
   const model = $derived(styledModel(content, services.assets, def, owned ? owned.style : game.householdStyle));
   const glyph = $derived(info.boosts[0]?.need.icon ?? 'icon.ui.buy');
@@ -200,6 +204,7 @@
   {/if}
 
   {#if info.slots > 1}<p class="facts">Fits {info.slots} residents at once</p>{/if}
+  {#if def.outdoors}<p class="facts">Goes outdoors</p>{/if}
 
 </div>
 

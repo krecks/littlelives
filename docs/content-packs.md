@@ -86,6 +86,8 @@ fields) load unchanged: both mergers rename the keys first (`LEGACY_KEYS` in `pa
 | `footprint` | `[width, depth]` in tiles, default `[1, 1]`. The resident uses it from the tile in front of the footprint's centre (local +z), which must be free. |
 | `price` | Buy-mode price in dollars. Without a price the object isn't sold (scenery). |
 | `category` | Buy-mode category id (see [Buy categories](#buy-categories)). |
+| `group` | Optional group within the category, for categories that have `groups` (the garden: `trees`, `shrubs`, `flowers`, `edibles`, `houseplants`). The catalog shows the groups as chips. |
+| `outdoors` | `true` for things that can only stand outdoors (trees, flower beds, ponds). Buying or moving one indoors is refused ("Goes outdoors"). Default `false`. |
 | `slots` | How many residents use it at once, 1 or 2 (double bed, sofa, hot tub). Default 1. |
 | `description` | Catalog text: say what it's for and what makes it special. |
 | `interactions` | What residents can do with it (below). Can be empty for decor. |
@@ -280,14 +282,17 @@ look for walls, the first style for doors and windows). Ids must be unique withi
 
 - **Needs:** `hunger`, `energy`, `bladder`, `hygiene`, `fun`, `comfort`, `social`.
 - **Skills:** `intelligence`, `strength`, `endurance`, `charisma`, `creativity`,
-  `technology`, `handiness`, `cooking`, `writing`, `perception`, `dexterity`, `business`.
+  `technology`, `handiness`, `cooking`, `writing`, `perception`, `dexterity`, `business`,
+  `gardening`.
 - **Emotions:** `happy`, `flirty`, `angry`, `sad`, `embarrassed`, `focused` (likes
   `training`), `inspired` (likes `creative`), `energized` (likes `fitness`), `relaxed`
   (likes `rest`, `lounge`, `spa`). Icons are `icon.emotion.<id>`.
 - **Buy categories:** `kitchen`, `bathroom`, `bedroom`, `living`, `office`, `fitness`,
-  `hobbies`, `decor`, `outdoor`, `wellness` (example pack). Add a category with
+  `hobbies`, `decor`, `outdoor`, `garden` (groups `trees`, `shrubs`, `flowers`, `edibles`,
+  `houseplants`), `wellness` (example pack). Add a category with
   `"buyCategories": [{ "id": "...", "label": "...", "icon": "icon.category.<id>" }]` only if
-  none fits (`icon` is optional: the catalog tab's icon, an `icon` asset key).
+  none fits (`icon` is optional: the catalog tab's icon, an `icon` asset key; `groups`
+  optional: `[{ "id": "...", "label": "..." }]`, chips that objects pick with `group`).
 - **Traits** (for `traitPatches`): `foodie`, `bookworm`, `couchPotato`, `neat`, `slob`,
   `energetic`, `lazy`, `cheerful`, `gloomy`, `natureLover`, `outgoing`, `loner`,
   `romantic`, `hotHeaded`, `kind`.

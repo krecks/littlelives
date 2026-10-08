@@ -1,0 +1,2284 @@
+{
+  "$comment": "The garden catalog (v0.5): the Gardening skill, the Garden buy category with its groups, garden feelings and plants. Models: tools/art/garden_models.py.",
+  "skills": [
+    {
+      "id": "gardening",
+      "label": "Gardening",
+      "icon": "icon.skill.gardening",
+      "description": "Growing flowers, fruit and vegetables."
+    }
+  ],
+  "buyCategories": [
+    {
+      "id": "garden",
+      "label": "Garden",
+      "icon": "icon.category.garden",
+      "groups": [
+        {
+          "id": "trees",
+          "label": "Trees"
+        },
+        {
+          "id": "shrubs",
+          "label": "Shrubs & hedges"
+        },
+        {
+          "id": "flowers",
+          "label": "Flowers"
+        },
+        {
+          "id": "edibles",
+          "label": "Fruit & veg"
+        },
+        {
+          "id": "houseplants",
+          "label": "Houseplants"
+        }
+      ]
+    }
+  ],
+  "feelings": [
+    {
+      "id": "garden.sweetScent",
+      "label": "Sweet scent",
+      "emotion": "relaxed",
+      "mood": 0.06,
+      "hours": 3,
+      "effects": {
+        "needDecay": {
+          "comfort": 0.9
+        }
+      }
+    },
+    {
+      "id": "garden.proudGardener",
+      "label": "Proud gardener",
+      "emotion": "happy",
+      "mood": 0.08,
+      "hours": 6
+    },
+    {
+      "id": "garden.homegrown",
+      "label": "Homegrown",
+      "emotion": "happy",
+      "mood": 0.08,
+      "hours": 6,
+      "effects": {
+        "needDecay": {
+          "hunger": 0.9
+        }
+      }
+    },
+    {
+      "id": "garden.freshHerbs",
+      "label": "Fresh herbs",
+      "emotion": "inspired",
+      "mood": 0.05,
+      "hours": 6,
+      "effects": {
+        "skillGain": {
+          "cooking": 1.3
+        }
+      }
+    },
+    {
+      "id": "garden.zen",
+      "label": "Zen",
+      "emotion": "focused",
+      "mood": 0.08,
+      "hours": 6,
+      "effects": {
+        "skillGain": {
+          "gardening": 1.15,
+          "creativity": 1.15
+        }
+      }
+    },
+    {
+      "id": "garden.wish",
+      "label": "Made a wish",
+      "emotion": "happy",
+      "mood": 0.05,
+      "hours": 8
+    }
+  ],
+  "objects": [
+    {
+      "id": "garden.maple",
+      "name": "Maple tree",
+      "model": "model.tree.maple",
+      "price": 160,
+      "category": "garden",
+      "group": "trees",
+      "outdoors": true,
+      "description": "A dense, round crown of fresh green maple leaves. Gives deep shade on summer afternoons.",
+      "interactions": [
+        {
+          "id": "shade",
+          "label": "Relax in the shade",
+          "anim": "relax",
+          "minutes": 30,
+          "effects": {
+            "comfort": 0.18,
+            "fun": 0.08
+          },
+          "tags": [
+            "lounge",
+            "nature",
+            "outdoors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "garden.birch",
+      "name": "Silver birch",
+      "model": "model.tree.birch",
+      "price": 130,
+      "category": "garden",
+      "group": "trees",
+      "outdoors": true,
+      "description": "White bark and an airy crown of small leaves that flicker in every breeze.",
+      "interactions": [
+        {
+          "id": "shade",
+          "label": "Relax in the shade",
+          "anim": "relax",
+          "minutes": 30,
+          "effects": {
+            "comfort": 0.18,
+            "fun": 0.08
+          },
+          "tags": [
+            "lounge",
+            "nature",
+            "outdoors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "garden.cherry",
+      "name": "Cherry blossom tree",
+      "model": "model.tree.blossom",
+      "price": 280,
+      "category": "garden",
+      "group": "trees",
+      "outdoors": true,
+      "description": "A low, spreading crown covered in pink blossom.",
+      "interactions": [
+        {
+          "id": "shade",
+          "label": "Relax in the shade",
+          "anim": "relax",
+          "minutes": 30,
+          "effects": {
+            "comfort": 0.18,
+            "fun": 0.08
+          },
+          "tags": [
+            "lounge",
+            "nature",
+            "outdoors"
+          ]
+        },
+        {
+          "id": "admire",
+          "label": "Admire the blossom",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.apple",
+      "name": "Apple tree",
+      "model": "model.tree.fruit",
+      "price": 240,
+      "category": "garden",
+      "group": "trees",
+      "outdoors": true,
+      "description": "A compact fruit tree. Pick a fresh apple whenever someone is peckish; good gardeners get more out of it.",
+      "interactions": [
+        {
+          "id": "pick",
+          "label": "Pick an apple",
+          "anim": "eat",
+          "minutes": 15,
+          "effects": {
+            "hunger": 0.25,
+            "fun": 0.05
+          },
+          "tags": [
+            "food",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skill": "gardening",
+          "skills": {
+            "gardening": 0.1
+          },
+          "feeling": "garden.homegrown",
+          "feelingMinSkill": 3
+        },
+        {
+          "id": "shade",
+          "label": "Relax in the shade",
+          "anim": "relax",
+          "minutes": 30,
+          "effects": {
+            "comfort": 0.18,
+            "fun": 0.08
+          },
+          "tags": [
+            "lounge",
+            "nature",
+            "outdoors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "garden.japaneseMaple",
+      "name": "Japanese maple",
+      "model": "model.tree.japaneseMaple",
+      "price": 320,
+      "category": "garden",
+      "group": "trees",
+      "outdoors": true,
+      "description": "A small, layered tree with deep red leaves: the star of any garden.",
+      "interactions": [
+        {
+          "id": "shade",
+          "label": "Relax in the shade",
+          "anim": "relax",
+          "minutes": 30,
+          "effects": {
+            "comfort": 0.18,
+            "fun": 0.08
+          },
+          "tags": [
+            "lounge",
+            "nature",
+            "outdoors"
+          ]
+        },
+        {
+          "id": "shape",
+          "label": "Shape the maple",
+          "anim": "garden",
+          "minutes": 25,
+          "effects": {
+            "fun": 0.08,
+            "hygiene": -0.06
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.3,
+            "dexterity": 0.05
+          },
+          "skill": "gardening",
+          "feeling": "garden.proudGardener",
+          "feelingMinSkill": 4
+        }
+      ]
+    },
+    {
+      "id": "garden.magnolia",
+      "name": "Magnolia",
+      "model": "model.tree.magnolia",
+      "price": 300,
+      "category": "garden",
+      "group": "trees",
+      "outdoors": true,
+      "description": "Big, pale pink goblet flowers on an open crown.",
+      "interactions": [
+        {
+          "id": "shade",
+          "label": "Relax in the shade",
+          "anim": "relax",
+          "minutes": 30,
+          "effects": {
+            "comfort": 0.18,
+            "fun": 0.08
+          },
+          "tags": [
+            "lounge",
+            "nature",
+            "outdoors"
+          ]
+        },
+        {
+          "id": "smell",
+          "label": "Smell the magnolia",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.willow",
+      "name": "Weeping willow",
+      "model": "model.tree.willow",
+      "price": 340,
+      "category": "garden",
+      "group": "trees",
+      "outdoors": true,
+      "description": "Long green curtains of willow sweep down to the lawn. A private spot to sit beneath.",
+      "interactions": [
+        {
+          "id": "shade",
+          "label": "Relax in the shade",
+          "anim": "relax",
+          "minutes": 30,
+          "effects": {
+            "comfort": 0.18,
+            "fun": 0.08
+          },
+          "tags": [
+            "lounge",
+            "nature",
+            "outdoors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "garden.spruce",
+      "name": "Blue spruce",
+      "model": "model.spruce",
+      "price": 170,
+      "category": "garden",
+      "group": "trees",
+      "outdoors": true,
+      "description": "A dense, regular conifer with blue-green needles; evergreen.",
+      "interactions": []
+    },
+    {
+      "id": "garden.cypress",
+      "name": "Italian cypress",
+      "model": "model.cypress",
+      "price": 150,
+      "category": "garden",
+      "group": "trees",
+      "outdoors": true,
+      "description": "A slim, dark green column. Plant a row of them along a path.",
+      "interactions": []
+    },
+    {
+      "id": "garden.lemonTree",
+      "name": "Potted lemon tree",
+      "model": "model.garden.lemonTree",
+      "price": 260,
+      "category": "garden",
+      "group": "trees",
+      "description": "A little lemon tree in a terracotta pot, happy indoors or out. Pick a lemon for a fresh boost.",
+      "interactions": [
+        {
+          "id": "pick",
+          "label": "Pick a lemon",
+          "anim": "eat",
+          "minutes": 15,
+          "effects": {
+            "hunger": 0.1,
+            "fun": 0.08,
+            "energy": 0.05
+          },
+          "tags": [
+            "food",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skill": "gardening",
+          "skills": {
+            "gardening": 0.1
+          },
+          "feeling": "garden.homegrown",
+          "feelingMinSkill": 3
+        },
+        {
+          "id": "water",
+          "label": "Water the plant",
+          "anim": "garden",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.03
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden"
+          ],
+          "skills": {
+            "gardening": 0.15
+          }
+        }
+      ]
+    },
+    {
+      "id": "garden.boxwood",
+      "name": "Boxwood ball",
+      "model": "model.garden.boxwood",
+      "price": 70,
+      "category": "garden",
+      "group": "shrubs",
+      "outdoors": true,
+      "description": "A neatly clipped evergreen ball.",
+      "interactions": [
+        {
+          "id": "trim",
+          "label": "Clip the boxwood",
+          "anim": "garden",
+          "minutes": 25,
+          "effects": {
+            "fun": 0.08,
+            "hygiene": -0.06
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.3,
+            "dexterity": 0.05
+          },
+          "skill": "gardening",
+          "feeling": "garden.proudGardener",
+          "feelingMinSkill": 4
+        }
+      ]
+    },
+    {
+      "id": "garden.topiary",
+      "name": "Topiary cone",
+      "model": "model.garden.topiaryCone",
+      "price": 160,
+      "category": "garden",
+      "group": "shrubs",
+      "description": "A clipped boxwood cone in a slate planter, at home on a porch or in a hall.",
+      "interactions": [
+        {
+          "id": "trim",
+          "label": "Clip the topiary",
+          "anim": "garden",
+          "minutes": 25,
+          "effects": {
+            "fun": 0.08,
+            "hygiene": -0.06
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.3,
+            "dexterity": 0.05
+          },
+          "skill": "gardening",
+          "feeling": "garden.proudGardener",
+          "feelingMinSkill": 4
+        }
+      ]
+    },
+    {
+      "id": "garden.hedge",
+      "name": "Clipped hedge",
+      "model": "model.garden.hedge",
+      "price": 50,
+      "category": "garden",
+      "group": "shrubs",
+      "outdoors": true,
+      "description": "One metre of dense, clipped hedge. Put several in a row for a green wall.",
+      "interactions": [
+        {
+          "id": "trim",
+          "label": "Trim the hedge",
+          "anim": "garden",
+          "minutes": 25,
+          "effects": {
+            "fun": 0.08,
+            "hygiene": -0.06
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.3,
+            "dexterity": 0.05
+          },
+          "skill": "gardening",
+          "feeling": "garden.proudGardener",
+          "feelingMinSkill": 4
+        }
+      ]
+    },
+    {
+      "id": "garden.hydrangea",
+      "name": "Hydrangea",
+      "model": "model.garden.hydrangea",
+      "price": 110,
+      "category": "garden",
+      "group": "shrubs",
+      "outdoors": true,
+      "description": "Big blue-violet flower balls all summer long.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the flowers",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        },
+        {
+          "id": "admire",
+          "label": "Admire the hydrangea",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "garden.roses",
+      "name": "Rose bush",
+      "model": "model.garden.rosebush",
+      "price": 130,
+      "category": "garden",
+      "group": "shrubs",
+      "outdoors": true,
+      "description": "Deep red roses. Stop and smell them now and then.",
+      "interactions": [
+        {
+          "id": "smell",
+          "label": "Smell the roses",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        },
+        {
+          "id": "prune",
+          "label": "Prune the roses",
+          "anim": "garden",
+          "minutes": 25,
+          "effects": {
+            "fun": 0.08,
+            "hygiene": -0.06
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.3,
+            "dexterity": 0.05
+          },
+          "skill": "gardening",
+          "feeling": "garden.proudGardener",
+          "feelingMinSkill": 4
+        }
+      ]
+    },
+    {
+      "id": "garden.azalea",
+      "name": "Azalea",
+      "model": "model.garden.azalea",
+      "price": 100,
+      "category": "garden",
+      "group": "shrubs",
+      "outdoors": true,
+      "description": "A mound of small leaves smothered in bright pink flowers.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the flowers",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        },
+        {
+          "id": "trim",
+          "label": "Prune the azalea",
+          "anim": "garden",
+          "minutes": 25,
+          "effects": {
+            "fun": 0.08,
+            "hygiene": -0.06
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.3,
+            "dexterity": 0.05
+          },
+          "skill": "gardening",
+          "feeling": "garden.proudGardener",
+          "feelingMinSkill": 4
+        }
+      ]
+    },
+    {
+      "id": "garden.lavender",
+      "name": "Lavender",
+      "model": "model.garden.lavender",
+      "price": 60,
+      "category": "garden",
+      "group": "shrubs",
+      "outdoors": true,
+      "description": "Silvery leaves and purple spikes that smell of summer; bees love it.",
+      "interactions": [
+        {
+          "id": "smell",
+          "label": "Smell the lavender",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        },
+        {
+          "id": "cut",
+          "label": "Cut lavender",
+          "anim": "garden",
+          "minutes": 25,
+          "effects": {
+            "fun": 0.08,
+            "hygiene": -0.06
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.3,
+            "dexterity": 0.05
+          },
+          "skill": "gardening",
+          "feeling": "garden.proudGardener",
+          "feelingMinSkill": 4
+        }
+      ]
+    },
+    {
+      "id": "garden.fern",
+      "name": "Garden fern",
+      "model": "model.garden.fern",
+      "price": 45,
+      "category": "garden",
+      "group": "shrubs",
+      "outdoors": true,
+      "description": "Arching green fronds for a shady corner.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the fern",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        }
+      ]
+    },
+    {
+      "id": "garden.grass",
+      "name": "Ornamental grass",
+      "model": "model.garden.grass",
+      "price": 55,
+      "category": "garden",
+      "group": "shrubs",
+      "outdoors": true,
+      "description": "A fountain of fine blades with soft, feathery plumes.",
+      "interactions": []
+    },
+    {
+      "id": "garden.hosta",
+      "name": "Hosta",
+      "model": "model.garden.hosta",
+      "price": 50,
+      "category": "garden",
+      "group": "shrubs",
+      "outdoors": true,
+      "description": "Broad blue-green leaves and pale lilac flower spikes.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the hosta",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        }
+      ]
+    },
+    {
+      "id": "garden.tulips",
+      "name": "Tulips",
+      "model": "model.garden.tulips",
+      "price": 40,
+      "category": "garden",
+      "group": "flowers",
+      "outdoors": true,
+      "description": "A bed of tulips in red, yellow, pink and white.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the flowers",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        },
+        {
+          "id": "smell",
+          "label": "Smell the flowers",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.daffodils",
+      "name": "Daffodils",
+      "model": "model.garden.daffodils",
+      "price": 35,
+      "category": "garden",
+      "group": "flowers",
+      "outdoors": true,
+      "description": "Cheerful yellow trumpets, the first sign of spring.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the flowers",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        },
+        {
+          "id": "smell",
+          "label": "Smell the flowers",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.daisies",
+      "name": "Daisies",
+      "model": "model.garden.daisies",
+      "price": 30,
+      "category": "garden",
+      "group": "flowers",
+      "outdoors": true,
+      "description": "A carpet of white daisies with sunny centres.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the flowers",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        },
+        {
+          "id": "smell",
+          "label": "Smell the flowers",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.sunflowers",
+      "name": "Sunflowers",
+      "model": "model.garden.sunflowers",
+      "price": 45,
+      "category": "garden",
+      "group": "flowers",
+      "outdoors": true,
+      "description": "Tall sunflowers taller than anyone in town.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the flowers",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        },
+        {
+          "id": "admire",
+          "label": "Admire the sunflowers",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "garden.poppies",
+      "name": "Poppies",
+      "model": "model.garden.poppies",
+      "price": 35,
+      "category": "garden",
+      "group": "flowers",
+      "outdoors": true,
+      "description": "Bright red poppies dancing on thin stems.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the flowers",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        },
+        {
+          "id": "smell",
+          "label": "Smell the flowers",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.marigolds",
+      "name": "Marigolds",
+      "model": "model.garden.marigolds",
+      "price": 25,
+      "category": "garden",
+      "group": "flowers",
+      "outdoors": true,
+      "description": "Low mounds of orange and yellow pompoms. Easy to grow.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the flowers",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        },
+        {
+          "id": "smell",
+          "label": "Smell the flowers",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.pansies",
+      "name": "Pansies",
+      "model": "model.garden.pansies",
+      "price": 25,
+      "category": "garden",
+      "group": "flowers",
+      "outdoors": true,
+      "description": "Little faces in purple, yellow and white.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the flowers",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        },
+        {
+          "id": "smell",
+          "label": "Smell the flowers",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.lilies",
+      "name": "Lilies",
+      "model": "model.garden.lilies",
+      "price": 55,
+      "category": "garden",
+      "group": "flowers",
+      "outdoors": true,
+      "description": "Tall stems of orange and pink lilies with a heady scent.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the flowers",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        },
+        {
+          "id": "smell",
+          "label": "Smell the flowers",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.lupins",
+      "name": "Lupins",
+      "model": "model.garden.lupins",
+      "price": 45,
+      "category": "garden",
+      "group": "flowers",
+      "outdoors": true,
+      "description": "Towering spikes of purple, pink and white over palm-shaped leaves.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the flowers",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        },
+        {
+          "id": "smell",
+          "label": "Smell the flowers",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.forgetMeNots",
+      "name": "Forget-me-nots",
+      "model": "model.garden.forgetMeNots",
+      "price": 30,
+      "category": "garden",
+      "group": "flowers",
+      "outdoors": true,
+      "description": "A cloud of tiny sky-blue flowers.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the flowers",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        },
+        {
+          "id": "smell",
+          "label": "Smell the flowers",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.cosmos",
+      "name": "Cosmos",
+      "model": "model.garden.cosmos",
+      "price": 35,
+      "category": "garden",
+      "group": "flowers",
+      "outdoors": true,
+      "description": "Airy pink, white and magenta flowers above feathery leaves.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the flowers",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        },
+        {
+          "id": "smell",
+          "label": "Smell the flowers",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.meadow",
+      "name": "Wildflower meadow",
+      "model": "model.garden.meadow",
+      "price": 20,
+      "category": "garden",
+      "group": "flowers",
+      "outdoors": true,
+      "description": "A patch of long grass and wildflowers. No mowing needed.",
+      "interactions": [
+        {
+          "id": "pickFlower",
+          "label": "Pick a wildflower",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.geraniums",
+      "name": "Potted geraniums",
+      "model": "model.garden.geraniums",
+      "price": 50,
+      "category": "garden",
+      "group": "flowers",
+      "description": "Red geraniums in a terracotta pot, for a doorstep or a sunny window.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the plant",
+          "anim": "garden",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.03
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden"
+          ],
+          "skills": {
+            "gardening": 0.15
+          }
+        },
+        {
+          "id": "smell",
+          "label": "Smell the flowers",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.flowerBox",
+      "name": "Flower box",
+      "model": "model.garden.flowerBox",
+      "price": 80,
+      "category": "garden",
+      "group": "flowers",
+      "description": "A painted planter spilling over with petunias.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the petunias",
+          "anim": "garden",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.03
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden"
+          ],
+          "skills": {
+            "gardening": 0.15
+          }
+        },
+        {
+          "id": "smell",
+          "label": "Smell the flowers",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.vegPatch",
+      "name": "Vegetable patch",
+      "model": "model.garden.vegPatch",
+      "price": 90,
+      "category": "garden",
+      "group": "edibles",
+      "outdoors": true,
+      "description": "Rows of lettuce, carrots and cabbages. Harvest a fresh, free meal; good gardeners get more out of it.",
+      "interactions": [
+        {
+          "id": "tend",
+          "label": "Weed and water",
+          "anim": "garden",
+          "minutes": 30,
+          "effects": {
+            "fun": 0.1,
+            "hygiene": -0.1
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.35
+          }
+        },
+        {
+          "id": "harvest",
+          "label": "Harvest vegetables",
+          "anim": "garden",
+          "minutes": 20,
+          "effects": {
+            "hunger": 0.45,
+            "hygiene": -0.05
+          },
+          "tags": [
+            "food",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skill": "gardening",
+          "skills": {
+            "gardening": 0.15
+          },
+          "feeling": "garden.homegrown",
+          "feelingMinSkill": 2
+        }
+      ]
+    },
+    {
+      "id": "garden.tomatoes",
+      "name": "Tomato plants",
+      "model": "model.garden.tomatoes",
+      "price": 75,
+      "category": "garden",
+      "group": "edibles",
+      "outdoors": true,
+      "description": "Staked tomato plants heavy with red and orange fruit.",
+      "interactions": [
+        {
+          "id": "tend",
+          "label": "Tie up and water",
+          "anim": "garden",
+          "minutes": 30,
+          "effects": {
+            "fun": 0.1,
+            "hygiene": -0.1
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.35
+          }
+        },
+        {
+          "id": "harvest",
+          "label": "Pick tomatoes",
+          "anim": "garden",
+          "minutes": 20,
+          "effects": {
+            "hunger": 0.3,
+            "hygiene": -0.05
+          },
+          "tags": [
+            "food",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skill": "gardening",
+          "skills": {
+            "gardening": 0.15
+          },
+          "feeling": "garden.homegrown",
+          "feelingMinSkill": 2
+        }
+      ]
+    },
+    {
+      "id": "garden.strawberries",
+      "name": "Strawberry bed",
+      "model": "model.garden.strawberries",
+      "price": 85,
+      "category": "garden",
+      "group": "edibles",
+      "outdoors": true,
+      "description": "A low bed of strawberries: a sweet snack straight from the garden.",
+      "interactions": [
+        {
+          "id": "tend",
+          "label": "Weed and water",
+          "anim": "garden",
+          "minutes": 30,
+          "effects": {
+            "fun": 0.1,
+            "hygiene": -0.1
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.35
+          }
+        },
+        {
+          "id": "harvest",
+          "label": "Pick strawberries",
+          "anim": "garden",
+          "minutes": 20,
+          "effects": {
+            "hunger": 0.25,
+            "fun": 0.1
+          },
+          "tags": [
+            "food",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skill": "gardening",
+          "skills": {
+            "gardening": 0.15
+          },
+          "feeling": "garden.homegrown",
+          "feelingMinSkill": 2
+        }
+      ]
+    },
+    {
+      "id": "garden.herbs",
+      "name": "Herb planter",
+      "model": "model.garden.herbs",
+      "price": 110,
+      "category": "garden",
+      "group": "edibles",
+      "description": "Basil, rosemary and chives in a raised planter. Fresh herbs make anyone a better cook for a while.",
+      "interactions": [
+        {
+          "id": "pickHerbs",
+          "label": "Pick fresh herbs",
+          "anim": "garden",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.04
+          },
+          "tags": [
+            "garden",
+            "nature",
+            "cooking"
+          ],
+          "skills": {
+            "gardening": 0.1
+          },
+          "feeling": "garden.freshHerbs"
+        },
+        {
+          "id": "water",
+          "label": "Water the herbs",
+          "anim": "garden",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.03
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden"
+          ],
+          "skills": {
+            "gardening": 0.15
+          }
+        }
+      ]
+    },
+    {
+      "id": "garden.pumpkins",
+      "name": "Pumpkin patch",
+      "model": "model.garden.pumpkins",
+      "price": 80,
+      "category": "garden",
+      "group": "edibles",
+      "outdoors": true,
+      "description": "Sprawling leaves and fat orange pumpkins.",
+      "interactions": [
+        {
+          "id": "tend",
+          "label": "Weed and water",
+          "anim": "garden",
+          "minutes": 30,
+          "effects": {
+            "fun": 0.1,
+            "hygiene": -0.1
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.35
+          }
+        },
+        {
+          "id": "harvest",
+          "label": "Harvest a pumpkin",
+          "anim": "garden",
+          "minutes": 20,
+          "effects": {
+            "hunger": 0.5,
+            "hygiene": -0.05
+          },
+          "tags": [
+            "food",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skill": "gardening",
+          "skills": {
+            "gardening": 0.15
+          },
+          "feeling": "garden.homegrown",
+          "feelingMinSkill": 2
+        }
+      ]
+    },
+    {
+      "id": "garden.monstera",
+      "name": "Monstera",
+      "model": "model.garden.monstera",
+      "price": 90,
+      "category": "garden",
+      "group": "houseplants",
+      "description": "Big split leaves in a white pot: instant jungle.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the plant",
+          "anim": "garden",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.03
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden"
+          ],
+          "skills": {
+            "gardening": 0.15
+          }
+        },
+        {
+          "id": "talk",
+          "label": "Talk to the plant",
+          "anim": "talk",
+          "minutes": 10,
+          "effects": {
+            "social": 0.06,
+            "fun": 0.04
+          },
+          "tags": [
+            "nature"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "garden.fiddleFig",
+      "name": "Fiddle-leaf fig",
+      "model": "model.garden.fiddleFig",
+      "price": 130,
+      "category": "garden",
+      "group": "houseplants",
+      "description": "A tall indoor tree with big, glossy leaves.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the plant",
+          "anim": "garden",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.03
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden"
+          ],
+          "skills": {
+            "gardening": 0.15
+          }
+        },
+        {
+          "id": "talk",
+          "label": "Talk to the plant",
+          "anim": "talk",
+          "minutes": 10,
+          "effects": {
+            "social": 0.06,
+            "fun": 0.04
+          },
+          "tags": [
+            "nature"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "garden.snakePlant",
+      "name": "Snake plant",
+      "model": "model.garden.snakePlant",
+      "price": 45,
+      "category": "garden",
+      "group": "houseplants",
+      "description": "Upright striped leaves. Almost impossible to kill.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the plant",
+          "anim": "garden",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.03
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden"
+          ],
+          "skills": {
+            "gardening": 0.15
+          }
+        },
+        {
+          "id": "talk",
+          "label": "Talk to the plant",
+          "anim": "talk",
+          "minutes": 10,
+          "effects": {
+            "social": 0.06,
+            "fun": 0.04
+          },
+          "tags": [
+            "nature"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "garden.cacti",
+      "name": "Cactus trio",
+      "model": "model.garden.cacti",
+      "price": 35,
+      "category": "garden",
+      "group": "houseplants",
+      "description": "Three little cacti in terracotta pots, one of them in bloom.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the plant",
+          "anim": "garden",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.03
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden"
+          ],
+          "skills": {
+            "gardening": 0.15
+          }
+        },
+        {
+          "id": "talk",
+          "label": "Talk to the plant",
+          "anim": "talk",
+          "minutes": 10,
+          "effects": {
+            "social": 0.06,
+            "fun": 0.04
+          },
+          "tags": [
+            "nature"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "garden.succulents",
+      "name": "Succulent bowl",
+      "model": "model.garden.succulents",
+      "price": 40,
+      "category": "garden",
+      "group": "houseplants",
+      "description": "A glazed bowl of rosette succulents in soft colours.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the plant",
+          "anim": "garden",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.03
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden"
+          ],
+          "skills": {
+            "gardening": 0.15
+          }
+        },
+        {
+          "id": "talk",
+          "label": "Talk to the plant",
+          "anim": "talk",
+          "minutes": 10,
+          "effects": {
+            "social": 0.06,
+            "fun": 0.04
+          },
+          "tags": [
+            "nature"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "garden.bostonFern",
+      "name": "Fern on a stand",
+      "model": "model.garden.bostonFern",
+      "price": 70,
+      "category": "garden",
+      "group": "houseplants",
+      "description": "A Boston fern spilling over its pot on a wooden plant stand.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the plant",
+          "anim": "garden",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.03
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden"
+          ],
+          "skills": {
+            "gardening": 0.15
+          }
+        },
+        {
+          "id": "talk",
+          "label": "Talk to the plant",
+          "anim": "talk",
+          "minutes": 10,
+          "effects": {
+            "social": 0.06,
+            "fun": 0.04
+          },
+          "tags": [
+            "nature"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "garden.palm",
+      "name": "Parlour palm",
+      "model": "model.garden.palm",
+      "price": 85,
+      "category": "garden",
+      "group": "houseplants",
+      "description": "Soft, arching palm fronds for a bright corner.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the plant",
+          "anim": "garden",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.03
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden"
+          ],
+          "skills": {
+            "gardening": 0.15
+          }
+        },
+        {
+          "id": "talk",
+          "label": "Talk to the plant",
+          "anim": "talk",
+          "minutes": 10,
+          "effects": {
+            "social": 0.06,
+            "fun": 0.04
+          },
+          "tags": [
+            "nature"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "garden.orchid",
+      "name": "Orchid",
+      "model": "model.garden.orchid",
+      "price": 75,
+      "category": "garden",
+      "group": "houseplants",
+      "description": "White and pink orchids on a slim plant stand.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the plant",
+          "anim": "garden",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.03
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden"
+          ],
+          "skills": {
+            "gardening": 0.15
+          }
+        },
+        {
+          "id": "talk",
+          "label": "Talk to the plant",
+          "anim": "talk",
+          "minutes": 10,
+          "effects": {
+            "social": 0.06,
+            "fun": 0.04
+          },
+          "tags": [
+            "nature"
+          ]
+        },
+        {
+          "id": "admire",
+          "label": "Admire the orchids",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "garden.bonsai",
+      "name": "Bonsai",
+      "model": "model.garden.bonsai",
+      "price": 240,
+      "category": "garden",
+      "group": "houseplants",
+      "description": "A tiny, patient tree. Pruning it trains Gardening and Creativity, and a skilled hand finds real calm in it.",
+      "interactions": [
+        {
+          "id": "prune",
+          "label": "Prune the bonsai",
+          "anim": "tinker",
+          "minutes": 45,
+          "effects": {
+            "fun": 0.15,
+            "comfort": 0.05
+          },
+          "tags": [
+            "nature",
+            "garden",
+            "training"
+          ],
+          "skills": {
+            "gardening": 0.3,
+            "creativity": 0.08
+          },
+          "skill": "gardening",
+          "feeling": "garden.zen",
+          "feelingMinSkill": 3
+        },
+        {
+          "id": "water",
+          "label": "Water the plant",
+          "anim": "garden",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.03
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden"
+          ],
+          "skills": {
+            "gardening": 0.15
+          }
+        }
+      ]
+    },
+    {
+      "id": "garden.birdbath",
+      "name": "Bird bath",
+      "model": "model.garden.birdbath",
+      "price": 140,
+      "category": "outdoor",
+      "outdoors": true,
+      "description": "A stone bird bath. Visitors guaranteed.",
+      "interactions": [
+        {
+          "id": "birdwatch",
+          "label": "Watch the birds",
+          "anim": "look",
+          "minutes": 20,
+          "effects": {
+            "fun": 0.12,
+            "comfort": 0.06
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "skills": {
+            "perception": 0.1
+          }
+        }
+      ]
+    },
+    {
+      "id": "garden.fountain",
+      "name": "Stone fountain",
+      "model": "model.garden.fountain",
+      "price": 900,
+      "category": "outdoor",
+      "outdoors": true,
+      "description": "A two-tier stone fountain. Toss a coin and make a wish, or just listen to the water.",
+      "interactions": [
+        {
+          "id": "wish",
+          "label": "Toss a coin and make a wish",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06
+          },
+          "tags": [
+            "outdoors"
+          ],
+          "cost": 1,
+          "feeling": "garden.wish"
+        },
+        {
+          "id": "listen",
+          "label": "Listen to the water",
+          "anim": "relax",
+          "minutes": 20,
+          "effects": {
+            "comfort": 0.15,
+            "fun": 0.06
+          },
+          "tags": [
+            "lounge",
+            "nature",
+            "outdoors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "garden.gnome",
+      "name": "Garden gnome",
+      "model": "model.garden.gnome",
+      "price": 30,
+      "category": "outdoor",
+      "outdoors": true,
+      "description": "He guards the flower beds. Pat his hat for luck.",
+      "interactions": [
+        {
+          "id": "pat",
+          "label": "Pat the gnome for luck",
+          "anim": "look",
+          "minutes": 2,
+          "effects": {
+            "fun": 0.04
+          },
+          "tags": [
+            "outdoors"
+          ],
+          "autonomous": false
+        }
+      ]
+    },
+    {
+      "id": "garden.pond",
+      "name": "Garden pond",
+      "model": "model.garden.pond",
+      "price": 650,
+      "category": "outdoor",
+      "outdoors": true,
+      "footprint": [
+        2,
+        2
+      ],
+      "description": "A round pond with water lilies, reeds and a few goldfish.",
+      "interactions": [
+        {
+          "id": "fish",
+          "label": "Watch the fish",
+          "anim": "look",
+          "minutes": 20,
+          "effects": {
+            "comfort": 0.12,
+            "fun": 0.1
+          },
+          "tags": [
+            "lounge",
+            "nature",
+            "outdoors"
+          ]
+        },
+        {
+          "id": "feedFish",
+          "label": "Feed the fish",
+          "anim": "garden",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.08
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "cost": 2
+        }
+      ]
+    },
+    {
+      "id": "garden.lantern",
+      "name": "Stone lantern",
+      "model": "model.garden.lantern",
+      "price": 180,
+      "category": "outdoor",
+      "outdoors": true,
+      "description": "A Japanese-style stone lantern.",
+      "interactions": []
+    },
+    {
+      "id": "garden.wheelbarrow",
+      "name": "Wheelbarrow planter",
+      "model": "model.garden.wheelbarrow",
+      "price": 95,
+      "category": "outdoor",
+      "outdoors": true,
+      "description": "An old wheelbarrow, retired and full of flowers.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the flowers",
+          "anim": "garden",
+          "minutes": 10,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.2
+          }
+        },
+        {
+          "id": "smell",
+          "label": "Smell the flowers",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
+        }
+      ]
+    },
+    {
+      "id": "garden.boulder",
+      "name": "Garden boulders",
+      "model": "model.garden.boulder",
+      "price": 60,
+      "category": "outdoor",
+      "outdoors": true,
+      "description": "Three weathered stones in the grass.",
+      "interactions": []
+    }
+  ],
+  "traitPatches": {
+    "natureLover": {
+      "effects": {
+        "skillGain": {
+          "gardening": 1.25
+        }
+      },
+      "startingSkills": {
+        "gardening": 2
+      }
+    }
+  }
+}

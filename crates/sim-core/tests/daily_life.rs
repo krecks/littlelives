@@ -16,7 +16,8 @@ const CONTENT: &str = r#"{
         {"id":"lift","label":"Lift","minutes":60,"effects":{"hygiene":-0.2},"tags":["training"],"skills":{"strength":0.5}}]},
       {"id":"shower","name":"Shower","price":600,"interactions":[
         {"id":"shower","label":"Shower","minutes":30,"effects":{"hygiene":0.4},"tags":["hygiene"]}]},
-      {"id":"rock","name":"Rock","interactions":[]}],
+      {"id":"rock","name":"Rock","interactions":[]},
+      {"id":"sapling","name":"Sapling","price":50,"outdoors":true,"interactions":[]}],
     "feelings":[{"id":"inDebt","label":"Worried","mood":-0.1,"hours":24}],
     "grades":[{"id":"A","label":"Entry","payPerHour":10,"skillLevel":0},
               {"id":"B","label":"Junior","payPerHour":20,"skillLevel":2},
@@ -316,6 +317,39 @@ fn building_walls_costs_money_and_never_shuts_things_in() {
             .is_err(),
         "off the plot"
     );
+}
+
+#[test]
+fn garden_things_only_go_outdoors() {
+    use sim_core::command::{EdgeAxis, EdgeEdit, EdgeKind};
+    let mut w = world();
+    let edge = |axis, x, z, kind| EdgeEdit::new(axis, x, z, kind);
+    // A free-standing room (x 1..4, z 4..7) with a door; areas touching the lot edge stay outdoors.
+    let mut room: Vec<_> = (1..4)
+        .flat_map(|x| [edge(EdgeAxis::H, x, 4, EdgeKind::Wall), edge(EdgeAxis::H, x, 7, EdgeKind::Wall)])
+        .collect();
+    room.extend((4..7).map(|z| edge(EdgeAxis::V, 1, z, EdgeKind::Wall)));
+    room.extend((4..7).map(|z| edge(EdgeAxis::V, 4, z, if z == 5 { EdgeKind::Door } else { EdgeKind::Wall })));
+    w.build(0, &room).unwrap();
+    let err = w.buy(0, "sapling", Some([2, 5, 0]), None).unwrap_err();
+    assert!(err.to_string().contains("outside"), "{err}");
+    let id = w.buy(0, "sapling", Some([6, 8, 0]), None).unwrap();
+    // Moving it indoors fails and leaves it where it was.
+    let moved = w.apply(Command::MoveObject {
+        sim: 0,
+        object: id,
+        x: 2,
+        z: 5,
+        rot: 0,
+    });
+    assert!(moved.is_err());
+    let o = w.objects.iter().find(|o| o.x == 6 && o.z == 8);
+    assert!(o.is_some(), "still where it was");
+    // Auto-placement picks an outdoor spot.
+    let id = w.buy(0, "sapling", None, None).unwrap();
+    let o = &w.objects[id as usize];
+    let inside = (1..4).contains(&o.x) && (4..7).contains(&o.z);
+    assert!(!inside, "placed outdoors, at {},{}", o.x, o.z);
 }
 
 #[test]

@@ -151,6 +151,7 @@ export class BuildBuyInput {
     game.buildValid = true;
     game.buildRoom = null;
     game.placeValid = true;
+    game.placeHint = null;
   }
 
   /** Model key for an object in a style, falling back to the plain model. */
@@ -196,25 +197,37 @@ export class BuildBuyInput {
     const [w, d] = placing.rot % 2 === 0 ? [fw, fd] : [fd, fw];
     const x = Math.floor(ground.x - w / 2 + 0.5);
     const z = Math.floor(ground.z - d / 2 + 0.5);
-    return { def, rot: placing.rot, x, z, w, d, valid: this.fits(x, z, w, d, placing.rot, placing.objectId, def) };
+    const fit = this.fits(x, z, w, d, placing.rot, placing.objectId, def);
+    return { def, rot: placing.rot, x, z, w, d, valid: fit === true, reason: fit === true ? null : fit };
   }
 
-  /** Same checks as the simulation, minus reachability: on the home plot, free tiles, affordable. */
-  private fits(x: number, z: number, w: number, d: number, rot: number, moving: number | null, def: ObjectDef): boolean {
+  /** Whether a tile is indoors (a tile split by a diagonal wall is when either half is, as in the simulation). */
+  private indoors(tx: number, tz: number): boolean {
+    return (this.rooms[tz * this.width + tx] ?? 0) !== 0;
+  }
+
+  /**
+   * Same checks as the simulation, minus reachability: on the home plot, free tiles, outdoors for
+   * garden things, affordable. True, or why not (a short hint; null for the usual "doesn't fit").
+   */
+  private fits(x: number, z: number, w: number, d: number, rot: number, moving: number | null, def: ObjectDef): true | string | null {
     const home = this.home();
-    if (!home) return false;
+    if (!home) return null;
     const onPlot = (tx: number, tz: number) => tx >= home.x && tz >= home.z && tx < home.x + home.w && tz < home.z + home.d;
     const taken = (tx: number, tz: number) =>
       game.objects.some((o) => o.id !== moving && tx >= o.x && tz >= o.z && tx < o.x + o.w && tz < o.z + o.d);
-    for (let tz = z; tz < z + d; tz++) for (let tx = x; tx < x + w; tx++) if (!onPlot(tx, tz) || taken(tx, tz)) return false;
+    for (let tz = z; tz < z + d; tz++) for (let tx = x; tx < x + w; tx++) if (!onPlot(tx, tz) || taken(tx, tz)) return null;
+    if (def.outdoors) {
+      for (let tz = z; tz < z + d; tz++) for (let tx = x; tx < x + w; tx++) if (this.indoors(tx, tz)) return 'Goes outdoors';
+    }
     const front = [
       [x + Math.floor((w - 1) / 2), z + d],
       [x + w, z + Math.floor((d - 1) / 2)],
       [x + Math.floor((w - 1) / 2), z - 1],
       [x - 1, z + Math.floor((d - 1) / 2)],
     ][rot % 4];
-    if (!onPlot(front[0], front[1]) || taken(front[0], front[1])) return false;
-    return moving !== null || game.funds >= (def.price ?? Infinity);
+    if (!onPlot(front[0], front[1]) || taken(front[0], front[1])) return null;
+    return moving !== null || game.funds >= (def.price ?? Infinity) ? true : null;
   }
 
   private hoverBuy(ground: Point): void {
@@ -223,6 +236,7 @@ export class BuildBuyInput {
     const style = p && game.placing?.objectId != null ? (game.objects.find((o) => o.id === game.placing!.objectId)?.style ?? 0) : game.householdStyle;
     this.preview.setPlacementGhost?.({ model: this.styledModel(p.def, style), x: p.x, z: p.z, rot: p.rot, w: p.w, d: p.d, valid: p.valid });
     if (game.placeValid !== p.valid) game.placeValid = p.valid;
+    if (game.placeHint !== p.reason) game.placeHint = p.reason;
   }
 
   private clickBuy(ground: Point | null, objectId: number | null): boolean {

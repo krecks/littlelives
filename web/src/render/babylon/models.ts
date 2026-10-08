@@ -34,6 +34,7 @@ import {
 import '@babylonjs/loaders/glTF';
 import type { Material } from '@babylonjs/core';
 import type { ModelEntry, PlaceholderPart, Vec3 } from '../../assets/types';
+import { bakeFoliageCards } from './foliageCards';
 import { DEFAULT_FINISH, encodeFinish, MaterialLibrary } from './materials';
 
 export type TintSlot = NonNullable<PlaceholderPart['tint']>;
@@ -482,6 +483,7 @@ async function loadGltf(scene: Scene, name: string, entry: ModelEntry): Promise<
     node.rotationQuaternion = null;
     node.rotation.setAll(0);
     node.scaling.setAll(1);
+    bakeFoliageCards(node, world);
     node.bakeTransformIntoVertices(world);
     node.refreshBoundingInfo();
     node.name = name;
@@ -551,6 +553,7 @@ function fitInto(meshes: Mesh[], [w, h, d]: Vec3, align: 'centre' | 'back', [ox,
   const tz = align === 'back' ? -0.5 + oz : oz;
   const m = Matrix.Scaling(sx, sy, sz).multiply(Matrix.Translation(ox - cx * sx, oy - min.y * sy, tz - cz * sz));
   for (const mesh of meshes) {
+    bakeFoliageCards(mesh, m);
     mesh.bakeTransformIntoVertices(m);
     mesh.refreshBoundingInfo();
   }
@@ -614,6 +617,15 @@ function mergeByMaterial(meshes: Mesh[], name: string): Mesh[] {
     out.push(...group.filter((m) => !m.isDisposed()));
   }
   return out;
+}
+
+/**
+ * The natural variation of a placed plant (manifest `vary`): its own turn (radians) and size,
+ * fixed by the tile it stands on so it looks the same after a reload. None when `vary` is 0.
+ */
+export function placementVariation(vary: number, x: number, z: number): { turn: number; size: number } {
+  if (!vary) return { turn: 0, size: 1 };
+  return { turn: hash3(x, z, 101) * Math.PI * 2, size: 1 + (hash3(x, z, 102) * 2 - 1) * vary };
 }
 
 // ---- small math helpers -------------------------------------------------------------

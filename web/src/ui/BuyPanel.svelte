@@ -38,6 +38,8 @@
   ];
 
   let category = $state(ALL);
+  /** Group within the open category ('' = all of it). */
+  let group = $state('');
   let query = $state('');
   let sort = $state<Sort>('default');
   let affordableOnly = $state(false);
@@ -91,8 +93,19 @@
     for (const def of matching) map.set(categoryOf(def), (map.get(categoryOf(def)) ?? 0) + 1);
     return map;
   });
+  /** The open category's groups, with how many matching items each holds. */
+  const groups = $derived.by(() => {
+    const defs = content.buyCategories.find((c) => c.id === category)?.groups ?? [];
+    return defs.map((g) => ({ ...g, n: matching.filter((d) => categoryOf(d) === category && d.group === g.id).length }));
+  });
+  const groupRank = (def: ObjectDef) => {
+    const i = groups.findIndex((g) => g.id === def.group);
+    return i < 0 ? groups.length : i;
+  };
   const items = $derived.by(() => {
-    const list = category === ALL ? [...matching] : matching.filter((d) => categoryOf(d) === category);
+    const list = category === ALL ? [...matching] : matching.filter((d) => categoryOf(d) === category && (!group || d.group === group));
+    // Featured: a grouped category lists its groups in order (content order within each).
+    if (sort === 'default' && groups.length) list.sort((a, b) => groupRank(a) - groupRank(b));
     if (sort === 'cheap') list.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
     else if (sort === 'pricey') list.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
     else if (sort === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
@@ -114,6 +127,13 @@
   function pickCategory(id: string) {
     if (category !== id) play('tab');
     category = id;
+    group = '';
+    hovered = null;
+  }
+
+  function pickGroup(id: string) {
+    if (group !== id) play('tab');
+    group = id;
     hovered = null;
   }
 
@@ -188,8 +208,19 @@
           {/if}
         </div>
 
+        {#if groups.length}
+          <div class="subgroups" role="tablist" aria-label="{categoryLabel(category)} groups">
+            <button class="chip" role="tab" aria-selected={!group} class:active={!group} onclick={() => pickGroup('')}>All</button>
+            {#each groups as g (g.id)}
+              <button class="chip" role="tab" aria-selected={group === g.id} class:active={group === g.id} class:empty={g.n === 0} onclick={() => pickGroup(g.id)}
+                >{g.label} <small class="tabular">{g.n}</small></button
+              >
+            {/each}
+          </div>
+        {/if}
+
         <div class="body">
-          {#key category}
+          {#key `${category}/${group}`}
             <ul class="items">
               {#each items as def, i (def.id)}
                 <li style="--i:{Math.min(i, 16)}">
@@ -411,6 +442,14 @@
   .chip small {
     font-size: 10px;
     opacity: 0.75;
+  }
+  .subgroups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .chip.empty {
+    opacity: 0.45;
   }
   /* While something is in hand, the catalog folds away unless the pointer comes back to it. */
   .drawer {

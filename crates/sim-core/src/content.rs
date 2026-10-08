@@ -113,6 +113,8 @@ pub struct ObjectDef {
     pub price: Option<i64>,
     /// How many Sims can use it at once (1..=MAX_SLOTS).
     pub slots: u8,
+    /// Can only be placed outdoors (trees, flower beds, ponds).
+    pub outdoors: bool,
 }
 
 /// Multipliers and offsets a trait, perk or emotion applies to a Sim.
@@ -861,6 +863,8 @@ struct ObjectRaw {
     price: Option<i64>,
     #[serde(default = "one_slot")]
     slots: u8,
+    #[serde(default)]
+    outdoors: bool,
 }
 
 fn one_slot() -> u8 {
@@ -1258,6 +1262,7 @@ impl Content {
                 interactions,
                 price: obj.price,
                 slots: obj.slots,
+                outdoors: obj.outdoors,
             });
         }
 

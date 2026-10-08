@@ -3,11 +3,12 @@
  * dome. Everything is static and instanced (one draw call per model type), generated
  * deterministically from the town's seed so a loaded game looks the same.
  *
- * Trees, bushes, hedges and lawn tufts are low-poly leaf-card glbs (`assets/nature/`, built by
- * tools/art/nature_models.py): ~1-1.5k triangles per tree near the town, `*.far` LODs (~150-300)
- * for the distant woods. `installNature` adds vertex-shader wind and per-instance tint variation
+ * Trees, bushes, hedges, lawn tufts and the garden catalog's plants are low-poly leaf-card glbs
+ * (`assets/nature/`, built by tools/art/nature_models.py and garden_models.py): ~1-1.5k triangles
+ * per tree near the town, `*.far` LODs (~150-400) for the distant woods. `installNature` adds
+ * vertex-shader wind, per-instance tint variation and camera-facing crown cards (foliageCards.ts)
  * to their `nature.*` materials; `natureDecor` turns the house builder's garden dressing into
- * species (hedges or shrub borders, mixed lot trees kept clear of the street and paths).
+ * species (hedges or mixed borders, mixed lot trees kept clear of the street and paths).
  */
 
 import {
@@ -25,6 +26,7 @@ import {
   VertexBuffer,
   VertexData,
   type AbstractEngine,
+  type AbstractMesh,
   type Material,
   type MaterialDefines,
   type Nullable,
@@ -35,6 +37,7 @@ import {
 import type { AssetRegistry } from '../../assets/registry';
 import type { WorldStructure } from '../../core/protocol';
 import type { Lighting } from './environment';
+import { foliageCardCode } from './foliageCards';
 import { MaterialLibrary } from './materials';
 import { buildModel } from './models';
 
@@ -221,10 +224,10 @@ export class Landscape {
         if (roll < 0.08) kind = 'model.rock';
         else if (roll < 0.2) kind = 'model.bush';
         else if (roll < 0.26) kind = 'model.bush.small';
-        else if (forest > 0.56 && rand() < 0.62) kind = 'model.pine';
+        else if (forest > 0.56 && rand() < 0.62) kind = rand() < 0.4 ? 'model.spruce' : 'model.pine';
         else if (grove > 0.55 && rand() < 0.7) kind = 'model.tree.birch';
-        else kind = 'model.tree';
-        const tree = kind.startsWith('model.tree') || kind === 'model.pine';
+        else kind = rand() < 0.35 ? 'model.tree.maple' : 'model.tree';
+        const tree = kind.startsWith('model.tree') || kind === 'model.pine' || kind === 'model.spruce';
         const scale = kind === 'model.rock' ? 0.6 + rand() * 0.7 : tree ? 0.75 + rand() * 0.6 : 0.8 + rand() * 0.6;
         const m = Matrix.Compose(
           new Vector3(scale, scale * (0.9 + rand() * 0.25), scale),
@@ -422,9 +425,9 @@ function clearTreeSpot(x: number, z: number, world: WorldStructure, view: { x: n
 
 /**
  * Splits the house builder's garden dressing (`model.tree` lot trees, `model.bush` foundation
- * shrubs; items are [x, z, scale, yaw]) into species. Lot trees mix shade, blossom, fruit and birch
- * trees; each house gets either a clipped hedge along its walls or a mixed border of round and
- * flowering shrubs. Deterministic per position.
+ * shrubs; items are [x, z, scale, yaw]) into species. Lot trees mix oaks, maples, blossom, fruit,
+ * birch, magnolia and Japanese maple; each house gets either a clipped hedge along its walls or a
+ * mixed border of shrubs, hydrangeas, roses, lavender and clipped balls. Deterministic per position.
  */
 export function natureDecor(key: string, items: Decor, world?: WorldStructure, view?: { x: number; z: number; w: number; d: number } | null): [string, Decor][] {
   const out = new Map<string, Decor>();
@@ -435,7 +438,9 @@ export function natureDecor(key: string, items: Decor, world?: WorldStructure, v
       // Crowns are ~2 m in radius: keep trunks well off the sidewalk, its streetlights and props.
       const spot = world ? clearTreeSpot(item[0], item[1], world, view ?? null) : [item[0], item[1]];
       if (!spot) continue;
-      put(h < 0.36 ? 'model.tree' : h < 0.58 ? 'model.tree.blossom' : h < 0.78 ? 'model.tree.fruit' : 'model.tree.birch', [spot[0], spot[1], item[2], item[3]]);
+      const species =
+        h < 0.24 ? 'model.tree' : h < 0.4 ? 'model.tree.maple' : h < 0.55 ? 'model.tree.blossom' : h < 0.68 ? 'model.tree.fruit' : h < 0.8 ? 'model.tree.birch' : h < 0.9 ? 'model.tree.magnolia' : 'model.tree.japaneseMaple';
+      put(species, [spot[0], spot[1], item[2], item[3]]);
     }
   } else if (key === 'model.bush' && items.length) {
     // One border style per house (the first shrub's position stands in for the lot).
@@ -448,7 +453,10 @@ export function natureDecor(key: string, items: Decor, world?: WorldStructure, v
         const alongX = Math.abs(x - Math.floor(x) - 0.5) < 0.05;
         put('model.hedge', [x, z, 0.95 + (s - 0.55) * 0.2, alongX ? 0 : Math.PI / 2]);
       } else {
-        put(h < 0.45 ? 'model.bush' : h < 0.75 ? 'model.bush.flowering' : 'model.bush.small', [x, z, s * 1.1, item[3]]);
+        // A mixed border: green shrubs with hydrangeas, roses, lavender and clipped balls among them.
+        const kind =
+          h < 0.3 ? 'model.bush' : h < 0.45 ? 'model.bush.flowering' : h < 0.55 ? 'model.bush.small' : h < 0.67 ? 'model.garden.hydrangea' : h < 0.78 ? 'model.garden.rosebush' : h < 0.89 ? 'model.garden.lavender' : 'model.garden.boxwood';
+        put(kind, [x, z, s * (kind.startsWith('model.garden') ? 1.25 : 1.1), item[3]]);
       }
     }
   } else if (items.length) {
@@ -482,7 +490,7 @@ class NatureWindPlugin extends MaterialPluginBase {
     private readonly state: { time: number; strength: number },
     private readonly foliage: boolean,
   ) {
-    super(material, 'NatureWind', 230, { NATUREWIND: false, NATURETINT: false }, true, false);
+    super(material, 'NatureWind', 230, { NATUREWIND: false, NATURETINT: false, NATUREBILLBOARD: false }, true, false);
     this.registerForExtraEvents = true;
     this._enable(true);
   }
@@ -495,9 +503,10 @@ class NatureWindPlugin extends MaterialPluginBase {
     return true;
   }
 
-  override prepareDefines(defines: MaterialDefines): void {
+  override prepareDefines(defines: MaterialDefines, _scene: Scene, mesh: AbstractMesh): void {
     defines.NATUREWIND = true;
     defines.NATURETINT = this.foliage;
+    defines.NATUREBILLBOARD = this.foliage && mesh.isVerticesDataPresent(VertexBuffer.UV3Kind);
     if (this.foliage) defines.TWOSIDEDLIGHTING = false;
   }
 
@@ -550,7 +559,10 @@ class NatureWindPlugin extends MaterialPluginBase {
 }
 #endif
 `;
-    return { CUSTOM_VERTEX_DEFINITIONS: definitions, CUSTOM_VERTEX_UPDATE_POSITION: wgsl ? body.replace(/vec4f/g, 'vec4f') : body.replace(/vec4f/g, 'vec4') };
+    return {
+      CUSTOM_VERTEX_DEFINITIONS: definitions,
+      CUSTOM_VERTEX_UPDATE_POSITION: foliageCardCode(wgsl) + (wgsl ? body : body.replace(/vec4f/g, 'vec4')),
+    };
   }
 }
 

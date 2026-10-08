@@ -2021,7 +2021,7 @@
       "interactions": [
         {
           "id": "water",
-          "label": "Water plant",
+          "label": "Water the plant",
           "anim": "garden",
           "minutes": 5,
           "autonomous": false,
@@ -2030,12 +2030,18 @@
           },
           "tags": [
             "chores",
-            "nature"
-          ]
+            "nature",
+            "garden"
+          ],
+          "skills": {
+            "gardening": 0.15
+          }
         }
       ],
       "price": 40,
-      "category": "decor"
+      "category": "garden",
+      "group": "houseplants",
+      "description": "A leafy plant in a terracotta pot."
     },
     {
       "id": "bench",
@@ -2068,7 +2074,7 @@
     },
     {
       "id": "flowerbed",
-      "name": "Flower bed",
+      "name": "Raised flower bed",
       "model": "model.flowerbed",
       "footprint": [
         1,
@@ -2079,34 +2085,76 @@
           "id": "tend",
           "label": "Tend the flowers",
           "anim": "garden",
-          "minutes": 15,
+          "minutes": 20,
           "effects": {
-            "fun": 0.12
+            "fun": 0.12,
+            "hygiene": -0.05
           },
           "tags": [
             "chores",
             "nature",
+            "garden",
             "outdoors"
           ],
           "skills": {
-            "perception": 0.05
-          }
+            "gardening": 0.3,
+            "perception": 0.03
+          },
+          "skill": "gardening",
+          "feeling": "garden.proudGardener",
+          "feelingMinSkill": 4
+        },
+        {
+          "id": "smell",
+          "label": "Smell the flowers",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.06,
+            "comfort": 0.04
+          },
+          "tags": [
+            "nature",
+            "outdoors"
+          ],
+          "feeling": "garden.sweetScent"
         }
       ],
       "price": 60,
-      "category": "outdoor"
+      "category": "garden",
+      "group": "flowers",
+      "description": "A wooden bed full of mixed bedding flowers. Tending it trains Gardening; a skilled gardener is proud of the result."
     },
     {
       "id": "tree",
-      "name": "Tree",
+      "name": "Oak tree",
       "model": "model.tree",
       "footprint": [
         1,
         1
       ],
-      "interactions": [],
+      "interactions": [
+        {
+          "id": "shade",
+          "label": "Relax in the shade",
+          "anim": "relax",
+          "minutes": 30,
+          "effects": {
+            "comfort": 0.18,
+            "fun": 0.08
+          },
+          "tags": [
+            "lounge",
+            "nature",
+            "outdoors"
+          ]
+        }
+      ],
       "price": 120,
-      "category": "outdoor"
+      "category": "garden",
+      "group": "trees",
+      "outdoors": true,
+      "description": "A broad, rounded shade tree. Its crown spreads about five metres across."
     },
     {
       "id": "pine",
@@ -2118,19 +2166,49 @@
       ],
       "interactions": [],
       "price": 120,
-      "category": "outdoor"
+      "category": "garden",
+      "group": "trees",
+      "outdoors": true,
+      "description": "A tall evergreen pine."
     },
     {
       "id": "bush",
-      "name": "Bush",
+      "name": "Round shrub",
       "model": "model.bush",
       "footprint": [
         1,
         1
       ],
-      "interactions": [],
+      "interactions": [
+        {
+          "id": "trim",
+          "label": "Trim the shrub",
+          "anim": "garden",
+          "minutes": 25,
+          "effects": {
+            "fun": 0.08,
+            "hygiene": -0.06
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden",
+            "outdoors"
+          ],
+          "skills": {
+            "gardening": 0.3,
+            "dexterity": 0.05
+          },
+          "skill": "gardening",
+          "feeling": "garden.proudGardener",
+          "feelingMinSkill": 4
+        }
+      ],
       "price": 40,
-      "category": "outdoor"
+      "category": "garden",
+      "group": "shrubs",
+      "outdoors": true,
+      "description": "A rounded green shrub for borders and corners."
     },
     {
       "id": "treadmill",
@@ -2736,6 +2814,7 @@
   ],
   "include": [
     "careers.json",
+    "garden.json",
     "packs/example.json",
     "packs/foodie.json",
     "packs/bookworm.json",

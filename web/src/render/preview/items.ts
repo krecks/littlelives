@@ -32,6 +32,7 @@ import {
 import type { AssetRegistry } from '../../assets/registry';
 import { MaterialLibrary } from '../babylon/materials';
 import { buildModel } from '../babylon/models';
+import { installNature } from '../babylon/nature';
 import type { ItemPreviews } from '../types';
 
 /** Picture sizes in pixels (cards show ~80 CSS px; the detail's turntable ~200). */
@@ -305,6 +306,8 @@ class ItemStudio {
       const scene = new Scene(engine);
       scene.clearColor = new Color4(0, 0, 0, 0);
       scene.skipPointerMovePicking = true;
+      // Foliage cards turn to face the camera here too (and sway a little in the turntable).
+      installNature(scene);
       const ip = scene.imageProcessingConfiguration;
       ip.toneMappingEnabled = true;
       ip.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;

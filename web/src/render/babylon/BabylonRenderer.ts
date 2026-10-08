@@ -74,7 +74,7 @@ import { createLighting, lightingAt } from './environment';
 import { HALF_WALL_HEIGHT, HouseBuilder, WALL_HEIGHT, WALL_STUB } from './house';
 import { Street } from './street';
 import { MaterialLibrary } from './materials';
-import { buildModel, type ModelTemplate } from './models';
+import { buildModel, placementVariation, type ModelTemplate } from './models';
 import { Characters, MAX_CHARACTERS } from './characters';
 import { installNature, Landscape, natureDecor, Sky } from './nature';
 import { LAYER_ALL, LAYER_TOWN, LAYER_WORLD } from './layers';
@@ -260,8 +260,6 @@ export class BabylonRenderer implements Renderer {
   private paintBuffer = new Float32Array(64 * 16);
 
   // Scratch objects for allocation-free updates.
-  private readonly mRot = new Matrix();
-  private readonly mPos = new Matrix();
   private readonly mOut = new Matrix();
   private simCount = 0;
   private readonly simInView = (x: number, z: number) => this.inView(x, z, SIM_VIEW_MARGIN);
@@ -1556,13 +1554,14 @@ export class BabylonRenderer implements Renderer {
     );
     // Soft contact shadows under every object, sized to its footprint.
     const blobs = new Float32Array(Math.max(1, shown.length) * 16);
-    [...byModel.values()].forEach((list, n) => {
+    [...byModel.entries()].forEach(([group, list], n) => {
       const template = templates[n];
       const matrices = new Float32Array(list.length * 16);
+      const vary = this.deps.assets.get(group.slice(group.indexOf('|') + 1), 'model')?.vary ?? 0;
       list.forEach((o, i) => {
-        Matrix.RotationYToRef((o.rot * Math.PI) / 2, this.mRot);
-        Matrix.TranslationToRef(o.x + o.w / 2, 0, o.z + o.d / 2, this.mPos);
-        this.mRot.multiplyToRef(this.mPos, this.mOut);
+        const { turn, size } = placementVariation(vary, o.x, o.z);
+        Quaternion.RotationYawPitchRollToRef((o.rot * Math.PI) / 2 + turn, 0, 0, this.qTmp);
+        Matrix.ComposeToRef(this.vScale.setAll(size), this.qTmp, this.vTmp.set(o.x + o.w / 2, 0, o.z + o.d / 2), this.mOut);
         this.mOut.copyToArray(matrices, i * 16);
         this.placed.push({ id: o.id, minX: o.x, minZ: o.z, maxX: o.x + o.w, maxZ: o.z + o.d, height: template.height, pop: { meshes: template.meshes, matrices, index: i } });
       });

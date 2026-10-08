@@ -41,7 +41,9 @@
       "model": "model.natureLover.veggieBed",
       "footprint": [2, 1],
       "price": 180,
-      "category": "outdoor",
+      "category": "garden",
+      "group": "edibles",
+      "outdoors": true,
       "slots": 1,
       "description": "Lettuce, carrots and tomatoes: tend it for a little Perception and fun, or pick a free, fresh snack straight from the soil.",
       "interactions": [

@@ -25,9 +25,17 @@ Run Python with `-I` (isolated mode); downloads are treated as data only.
 | `furniture.py [out.json]` | Entries for the base objects and their `@modern` / `@cozy` / `@minimal` variants: library glTFs restyled with the game finishes (`fit`, `materials`, `parts`, see `render/babylon/models.ts`) and primitive-part models (some reused or recoloured from `objects_extra.py`). Validates footprints; apply with `apply_entries.py` |
 | `pack_<trait>.py` | Model entries for one personality pack (`model.<trait>.*`), written with `apply_pack.py` |
 | `nature_atlas.py <leafsets_dir> <bark_albedo.jpg> <out_dir>` | Leaf-cluster atlas `leaves.webp` (twig sprays composited from ambientCG LeafSet 024/002/004/019, procedural blossoms, grass, apples, wildflowers; colour bled under the alpha) and `bark.webp` (brown + procedural birch). Needs Pillow, numpy, scipy |
-| `nature_models.py <out_dir>` | Low-poly leaf-card trees (oak, birch, blossom, apple, spruce, each with a `*_far` LOD), bushes, hedge, grass tuft and wildflowers as `.glb` files that reference the two WebP textures in the same folder (`EXT_texture_webp`). Material names `nature.bark` / `nature.leaves` / `nature.grass` get wind sway in `render/babylon/nature.ts` |
-| `nature_entries.py <manifest>` | Points `model.tree` / `pine` / `bush` / `grassTuft` / `flowers` at the nature glbs and adds the species and `.far` keys |
+| `foliage_atlas.py <nature_dir> [region…]` | The foliage atlas `foliage.webp` (2048 px): procedural leaf clumps (broadleaf, small-leaf, maple, blossom, needle, flowering), willow strands, plant leaves, flower heads, fruit, soil and stem strips, plus the conifer, sprig and grass cells copied from `leaves.webp`. Drawn nearly white so the models colour them; the region table `REGIONS` is what the model scripts import. With region names, redraws only those. Needs Pillow, numpy, scipy |
+| `nature_models.py <out_dir>` | Trees (oak, maple, birch, cherry blossom, apple, Japanese maple, magnolia, weeping willow, pine, blue spruce, Italian cypress, each with a `*_far` LOD), bushes, hedge, grass tuft and wildflowers as `.glb` files on `foliage.webp` / `bark.webp` in the same folder (`EXT_texture_webp`). Crowns are clumps of *camera-facing* cards (card centre and corner offset in TEXCOORD_1/2, turned by `render/babylon/foliageCards.ts`). Material names `nature.bark` / `nature.leaves` / `nature.grass` get wind sway in `render/babylon/nature.ts` |
+| `garden_models.py <out_dir> [name…]` | The garden catalog's models (`garden_*.glb`): flower beds, shrubs, fruit and vegetables, house plants, potted trees and garden decor, from the same cards plus untextured `garden.solid` / `garden.glazed` / `garden.water` meshes |
+| `nature_entries.py <manifest>` | Points `model.tree` / `pine` / `bush` / `grassTuft` / `flowers` at the nature glbs and adds the species and `.far` keys (placed trees get `vary`) |
+| `garden_entries.py <manifest>` | Adds `model.garden.<name>` for every garden model (loose plants get `vary`) and points `model.flowerbed` at the new bed |
 | `apply_pack.py <trait> <entries.json>` | Merges entries into `web/public/assets/packs/<trait>/manifest.json` in place |
+
+Nature and garden flow: `foliage_atlas.py` → `nature_models.py` / `garden_models.py` → `nature_entries.py` /
+`garden_entries.py`. To look at the results without starting a game, run `pnpm dev` and open
+`/gallery.html` (dev only): it draws models in a grid with the game's loader and foliage shader
+(`?filter=garden`, `?keys=model.tree,model.pine`, `?cols=`, `?gap=`; drag to orbit).
 
 Typical flow: download → `process.py` → copy into `web/public/assets/textures/` →
 `materials.py` / `models.py` → `apply_entries.py web/public/assets/manifest.json materials.json` (and `models.json`).

@@ -101,6 +101,8 @@ class GameState {
   buildRoom = $state.raw<[number, number] | null>(null);
   /** Whether the object in hand fits where the pointer is. */
   placeValid = $state(true);
+  /** Why the item in hand doesn't fit where it points ("Goes outdoors"); null for the usual reason. */
+  placeHint = $state<string | null>(null);
   jobBoardOpen = $state(false);
   /** Plot currently shown. */
   viewPlot = $state<number | null>(null);

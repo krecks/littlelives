@@ -49,9 +49,13 @@ export interface ObjectDef {
   price?: number;
   /** Buy-mode category id. */
   category?: string;
+  /** Group within the category (one of its `groups`), e.g. `trees` in the garden. */
+  group?: string;
   description?: string;
   /** Sims that can use it at once. */
   slots?: number;
+  /** Can only be placed outdoors (trees, flower beds, ponds). */
+  outdoors?: boolean;
 }
 
 export interface SkillDef {
@@ -72,6 +76,8 @@ export interface BuyCategory {
   label: string;
   /** Icon asset key for the catalog tab. */
   icon?: string;
+  /** Sub-groups shown as chips when the category is open; objects name theirs in `group`. */
+  groups?: { id: string; label: string }[];
 }
 
 /** A wall covering (Build mode's paint): a finish (texture) tinted with a colour. Price per face. */

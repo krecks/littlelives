@@ -31,10 +31,11 @@
       if (!placing) return null;
       const def = services.content.object(placing.def);
       if (!def) return null;
-      if (placing.objectId !== null) return { text: `Move ${def.name}`, sub: game.placeValid ? undefined : "Doesn't fit here", bad: !game.placeValid };
+      const misfit = game.placeHint ?? "Doesn't fit here";
+      if (placing.objectId !== null) return { text: `Move ${def.name}`, sub: game.placeValid ? undefined : misfit, bad: !game.placeValid };
       const short = (def.price ?? 0) - game.funds;
       if (short > 0) return { text: def.name, sub: `${money(short)} short`, bad: true };
-      return { text: money(def.price ?? 0), sub: game.placeValid ? def.name : "Doesn't fit here", bad: !game.placeValid };
+      return { text: money(def.price ?? 0), sub: game.placeValid ? def.name : misfit, bad: !game.placeValid };
     }
     const tool = game.buildTool;
     if (game.buildEdges === 0) return null;

@@ -13,7 +13,7 @@
  * game world is on screen, and the other way round (see `BabylonRenderer.showTown`).
  */
 
-import { ArcRotateCamera, Color3, Constants, Matrix, StandardMaterial, Vector3, type Mesh, type Scene } from '@babylonjs/core';
+import { ArcRotateCamera, Color3, Constants, Matrix, Quaternion, StandardMaterial, Vector3, type Mesh, type Scene } from '@babylonjs/core';
 import type { AssetRegistry } from '../../assets/registry';
 import type { Content } from '../../content/content';
 import type { ObjectPlacement, PlotInfo, WorldStructure } from '../../core/protocol';
@@ -22,7 +22,7 @@ import { Geo, type V3 } from './geometry';
 import type { HouseBuilder } from './house';
 import { LAYER_TOWN } from './layers';
 import type { MaterialLibrary } from './materials';
-import { buildModel, type ModelTemplate } from './models';
+import { buildModel, placementVariation, type ModelTemplate } from './models';
 import { Street } from './street';
 
 /** Height that labels and fits allow for (roofs, chimneys, crowns). */
@@ -223,9 +223,10 @@ export class TownOverview {
     };
     const groups = Map.groupBy(world.objects.filter(outdoor), (o) => this.content.object(o.def)?.model ?? `model.${o.def}`);
     const out = new Map<string, { template: ModelTemplate; matrices: Float32Array }>();
-    const rot = new Matrix();
-    const pos = new Matrix();
     const m = new Matrix();
+    const q = new Quaternion();
+    const scale = new Vector3();
+    const at = new Vector3();
     for (const [key, list] of groups) {
       let t = this.templates.get(key);
       if (!t) {
@@ -242,10 +243,11 @@ export class TownOverview {
       }
       const template = await t;
       const matrices = new Float32Array(list.length * 16);
+      const vary = this.assets.get(key, 'model')?.vary ?? 0;
       list.forEach((o, i) => {
-        Matrix.RotationYToRef((o.rot * Math.PI) / 2, rot);
-        Matrix.TranslationToRef(o.x + o.w / 2, 0, o.z + o.d / 2, pos);
-        rot.multiplyToRef(pos, m);
+        const { turn, size } = placementVariation(vary, o.x, o.z);
+        Quaternion.RotationYawPitchRollToRef((o.rot * Math.PI) / 2 + turn, 0, 0, q);
+        Matrix.ComposeToRef(scale.setAll(size), q, at.set(o.x + o.w / 2, 0, o.z + o.d / 2), m);
         m.copyToArray(matrices, i * 16);
       });
       out.set(key, { template, matrices });

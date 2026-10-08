@@ -192,6 +192,9 @@ impl World {
         if !self.fits_on_plot(&obj, plot) {
             return Err(Error::new("that has to go on your own lot"));
         }
+        if self.content.objects[def].outdoors && !self.all_outdoors(&obj) {
+            return Err(Error::new("that has to go outside"));
+        }
         if self.sim_in_the_way(&obj) {
             return Err(Error::new("someone is standing there"));
         }
@@ -206,7 +209,15 @@ impl World {
         Ok(id)
     }
 
-    /// A good free spot for `def` on the plot: indoors, back to a wall, away from doors.
+    /// Whether every tile of `obj` is outdoors (a tile split by a diagonal wall counts as indoors
+    /// when either half is).
+    fn all_outdoors(&self, obj: &ObjectInstance) -> bool {
+        obj.tiles(&self.content)
+            .all(|(x, z)| self.lot.room_at(x, z) == OUTDOORS)
+    }
+
+    /// A good free spot for `def` on the plot: indoors (outdoors for garden things), back to a
+    /// wall, away from doors.
     fn find_spot(&self, plot: u32, def: usize) -> Vec<(i32, i32, u8)> {
         let p = &self.plots[plot as usize];
         let lot = &self.lot;
@@ -238,7 +249,8 @@ impl World {
                         _ => (z..z + d).all(|tz| wall(lot.v_edge((x + w) as usize, tz as usize))),
                     };
                     let indoors = lot.room_at(x, z) != OUTDOORS;
-                    let score = indoors as i32 * 10 + back_to_wall as i32 * 5;
+                    let wanted = indoors != self.content.objects[def].outdoors;
+                    let score = wanted as i32 * 10 + back_to_wall as i32 * 5;
                     spots.push((score, x, z, rot));
                 }
             }

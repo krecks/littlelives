@@ -784,7 +784,7 @@
         {
           "id": "nature.farming",
           "label": "Farming",
-          "skills": { "strength": 1, "handiness": 0.5, "endurance": 0.4 },
+          "skills": { "strength": 1, "gardening": 0.5, "endurance": 0.4 },
           "titles": ["Farmhand", "Harvest Worker", "Tractor Driver", "Herd Manager", "Farm Supervisor", "Tenant Farmer", "Farm Owner", "Estate Manager", "Agribusiness Director", "Agricultural Tycoon"]
         },
         {
@@ -797,7 +797,7 @@
         {
           "id": "nature.horticulture",
           "label": "Gardening & Horticulture",
-          "skills": { "creativity": 1, "handiness": 0.6, "endurance": 0.3 },
+          "skills": { "gardening": 1, "creativity": 0.5, "endurance": 0.3 },
           "shift": { "start": 7, "hours": 8, "days": [0, 1, 2, 3, 4] },
           "titles": ["Garden Helper", "Groundskeeper", "Gardener", "Horticulturist", "Landscape Gardener", "Head Gardener", "Landscape Designer", "Estate Gardens Manager", "Botanical Garden Director", "Celebrated Garden Designer"]
         },
