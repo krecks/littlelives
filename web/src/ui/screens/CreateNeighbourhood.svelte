@@ -58,11 +58,28 @@
     town = { ...town, households: town.households.filter((_, j) => j !== i) };
   }
 
-  function next() {
+  /** The town as the next step should see it (with the name typed here). */
+  function keep() {
     if (!town) return;
     app.town = { ...town, name: name.trim() || town.name };
+  }
+
+  function next() {
+    if (!town) return;
+    keep();
     app.screen = 'create';
   }
+
+  /** The other path: take over a household that already lives here. */
+  function play(slot: number) {
+    if (!town) return;
+    keep();
+    app.playSlot = slot;
+    app.screen = 'play';
+  }
+
+  /** The household on the lot in focus (offered to play from the 3D view). */
+  const focused = $derived(town && focus !== null ? town.households.find((h) => h.slot === focus) : undefined);
 
   /** Click on a lot (3D, tag or card): the camera glides to it; again (or empty ground) back out. */
   function select(plot: number | null) {
@@ -118,6 +135,7 @@
     <div class="title">
       <span class="eyebrow">Step 1 of 3 · Your neighbourhood</span>
       <input class="input town-name" aria-label="Town name" bind:value={name} maxlength="24" />
+      <p class="lede">Play one of the households who live here, or create your own.</p>
     </div>
     <div class="actions">
       <button class="btn" onclick={() => generate()}><Icon name="icon.ui.dice" size={18} /> New neighbours</button>
@@ -165,7 +183,14 @@
         </div>
       {/if}
       {#if focus !== null}
-        <button class="btn whole" use:avoid onclick={() => (focus = null)}><Icon name="icon.ui.town" size={16} /> Whole town</button>
+        <div class="lot-actions" use:avoid>
+          <button class="btn" onclick={() => (focus = null)}><Icon name="icon.ui.town" size={16} /> Whole town</button>
+          {#if focused}
+            {#key focused.slot}
+              <button class="btn primary play-lot" onclick={() => play(focused.slot)}>Play the {focused.household.name}s →</button>
+            {/key}
+          {/if}
+        </div>
       {/if}
     </section>
 
@@ -188,23 +213,22 @@
               <button class="pick" aria-label="Show the {h.household.name}s' home" onclick={() => select(h.slot)}>
                 <span class="faces">
                   {#each h.household.members as m (m.uid)}
-                    <span class="face" title={m.name}><SimPreview appearance={m.appearance} gender={m.gender} size={46} /></span>
+                    <span class="face" title={m.name}><SimPreview appearance={m.appearance} gender={m.gender} size={42} /></span>
                   {/each}
                 </span>
                 <span class="info">
                   <b>The {h.household.name}s</b>
                   <span class="addr">{town.slots[h.slot].name}</span>
                   <span class="members">
-                    {#each h.household.members as m, j (m.uid)}
-                      {m.name}{#if m.traits.length}<em> · {m.traits.map((t) => content.trait(t)?.label).join(', ')}</em>{/if}{j <
-                      h.household.members.length - 1
-                        ? ' — '
-                        : ''}
+                    {#each h.household.members as m (m.uid)}
+                      {@const traits = m.traits.map((t) => content.trait(t)?.label).join(', ')}
+                      <span class="member" title={traits ? `${m.name} · ${traits}` : m.name}>{m.name}{#if traits}<em> · {traits}</em>{/if}</span>
                     {/each}
                   </span>
                 </span>
               </button>
               <div class="row-actions">
+                <button class="btn play" aria-label="Play this household: the {h.household.name}s" title="Play the {h.household.name}s" onclick={() => play(h.slot)}>Play</button>
                 <button class="btn ghost" aria-label="Reroll the {h.household.name}s" onclick={() => rerollHousehold(i)}>
                   <Icon name="icon.ui.dice" size={16} />
                 </button>
@@ -281,7 +305,7 @@
     position: relative;
     min-height: 0;
     display: grid;
-    grid-template-columns: 1fr minmax(360px, 440px);
+    grid-template-columns: 1fr minmax(400px, 480px);
     gap: 24px;
   }
   .view {
@@ -330,10 +354,22 @@
   .stats .sale {
     background: rgba(233, 162, 59, 0.16);
   }
-  .whole {
+  .lede {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 550;
+    color: #3b4254;
+  }
+  .lot-actions {
     position: absolute;
     top: 0;
     left: 0;
+    display: flex;
+    gap: 10px;
+    animation: rise 320ms var(--ease) both;
+  }
+  .play-lot {
+    box-shadow: 0 10px 28px rgba(60, 90, 220, 0.35);
     animation: rise 320ms var(--ease) both;
   }
   .households {
@@ -394,18 +430,20 @@
     padding: 8px;
     text-align: left;
   }
+  /* Room for three overlapping faces, so every card's text lines up. */
   .faces {
     display: flex;
     flex: none;
+    width: 98px;
   }
   .face {
-    width: 46px;
-    height: 46px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     overflow: hidden;
     background: var(--surface-muted);
     border: 2px solid var(--surface);
-    margin-left: -12px;
+    margin-left: -14px;
     display: grid;
     place-items: start center;
     box-shadow: var(--shadow-sm);
@@ -427,7 +465,15 @@
     font-weight: 550;
   }
   .members {
+    display: flex;
+    flex-direction: column;
     font-size: 13px;
+  }
+  /* One line per resident; long trait lists end in an ellipsis (full text on hover). */
+  .member {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   .members em {
     color: var(--text-muted);
@@ -437,8 +483,28 @@
     display: flex;
     flex: none;
   }
+  .row-actions {
+    align-items: center;
+    gap: 2px;
+  }
   .row-actions .btn {
     padding: 0 10px;
+  }
+  .row-actions .play {
+    height: 34px;
+    padding: 0 14px;
+    margin-right: 4px;
+    border-color: transparent;
+    background: var(--accent-soft);
+    color: var(--accent);
+    box-shadow: none;
+    font-weight: 700;
+  }
+  .row-actions .play:hover,
+  .household.focus .play,
+  .play:focus-visible {
+    background: var(--accent);
+    color: var(--text-inverse);
   }
   .empty {
     color: var(--text-muted);

@@ -465,6 +465,13 @@ pub struct BuildRules {
     pub remove: i64,
 }
 
+impl BuildRules {
+    /// A diagonal wall spans a tile corner to corner (√2 m): `wall × 1.414`, rounded.
+    pub fn diagonal_wall(&self) -> i64 {
+        (self.wall as f64 * 1.414).round() as i64
+    }
+}
+
 /// A look the player can pick for objects. Purely visual: price and effects never change.
 #[derive(Debug)]
 pub struct StyleDef {

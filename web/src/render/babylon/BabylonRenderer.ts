@@ -17,6 +17,7 @@
 
 import {
   ArcRotateCamera,
+  type ArcRotateCameraPointersInput,
   Color3,
   Color4,
   ColorCurves,
@@ -535,15 +536,24 @@ export class BabylonRenderer implements Renderer {
       const h = e.kind === 'door' ? 2.1 : e.kind === 'window' ? 1.2 : e.kind === 'open' ? WALL_HEIGHT + 0.06 : WALL_HEIGHT;
       const y0 = e.kind === 'window' ? 0.9 : 0;
       const t = e.kind === 'open' ? 0.22 : e.kind === 'window' ? 0.2 : 0.16;
-      const sx = e.axis === 'h' ? 1 : t;
-      const sz = e.axis === 'h' ? t : 1;
-      const cx = e.axis === 'h' ? e.x + 0.5 : e.x;
-      const cz = e.axis === 'h' ? e.z : e.z + 0.5;
       const o = n * 16;
       buf.fill(0, o, o + 16);
-      buf[o] = sx;
+      if (e.axis === 'dp' || e.axis === 'dn') {
+        // Diagonal across the tile: a √2-long slab turned ±45° about its centre (scale, then yaw).
+        const c = Math.SQRT1_2;
+        const sn = e.axis === 'dp' ? -c : c;
+        buf[o] = Math.SQRT2 * c;
+        buf[o + 2] = -Math.SQRT2 * sn;
+        buf[o + 8] = t * sn;
+        buf[o + 10] = t * c;
+      } else {
+        buf[o] = e.axis === 'h' ? 1 : t;
+        buf[o + 10] = e.axis === 'h' ? t : 1;
+      }
+      const diagonal = e.axis === 'dp' || e.axis === 'dn';
+      const cx = diagonal || e.axis === 'h' ? e.x + 0.5 : e.x;
+      const cz = diagonal ? e.z + 0.5 : e.axis === 'h' ? e.z : e.z + 0.5;
       buf[o + 5] = h;
-      buf[o + 10] = sz;
       buf[o + 12] = cx;
       buf[o + 13] = y0 + h / 2;
       buf[o + 14] = cz;
@@ -569,6 +579,12 @@ export class BabylonRenderer implements Renderer {
       }
       this.resetSnapshot();
     }
+  }
+
+  /** Build tools: whether a left-drag turns the camera (off while a wall is being drawn). */
+  setLeftDragCamera(on: boolean): void {
+    const pointers = this.camera.inputs.attached.pointers as ArcRotateCameraPointersInput | undefined;
+    if (pointers) pointers.buttons = on ? [0, 1, 2] : [1, 2];
   }
 
   setBuildGrid(rect: ViewRect | null): void {

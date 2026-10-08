@@ -14,12 +14,16 @@ import type { Renderer } from '../render/types';
 import { qualityFromSettings, RESTART_KEYS, type Settings } from '../settings/settings.svelte';
 import { app } from '../ui/app.svelte';
 import { game } from '../ui/state.svelte';
+import type { HouseholdDraft } from './household';
 import { loadGameData, startSession, type GameSession, type StartRequest } from './session';
 
 function requestKey(r: StartRequest): string {
-  return r.kind === 'load'
-    ? `load:${r.saveId}`
-    : `new:${r.town.name}:${r.slot}:${r.household.name}:${r.household.members.map((m) => m.uid).join(',')}`;
+  if (r.kind === 'load') return `load:${r.saveId}`;
+  const members = (h: HouseholdDraft) => h.members.map((m) => m.uid).join(',');
+  // The whole town counts: going back and changing the neighbours needs a new session.
+  const town = `${r.town.name}:${r.town.seed}:${r.town.slots.map((s) => s.template).join(',')}:${r.town.households.map((h) => `${h.slot}=${members(h.household)}`).join(';')}`;
+  // A household edited after its session was prepared (back to step 2) needs a new one too.
+  return `${r.existing ? 'play' : 'new'}:${town}:${r.slot}:${JSON.stringify(r.household)}`;
 }
 
 /** Seconds the camera takes to fly from the menu's view of a lot into the game. */
@@ -144,7 +148,7 @@ class GameHost {
     renderer.setActive(true);
     let veiled = false;
     if (renderer.townShown) {
-      // The menus showed this very town (choosing a home): fly into the lot. Otherwise fade.
+      // The menus showed this very town (choosing a home or a household to play): fly into the lot. Otherwise fade.
       const meta = this.town?.world.meta;
       const same = request.kind === 'new' && !!meta && request.town.seed === meta.seed && request.town.width === this.town?.world.width;
       if (same && !reducedMotion()) {

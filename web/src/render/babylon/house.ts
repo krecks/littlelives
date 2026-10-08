@@ -8,7 +8,12 @@
  * curtains, glowing at night), porches, chimneys and garages; `street.ts` lays out the rest.
  *
  * Wall layout comes from the simulation's structure (`WorldStructure.walls`: every wall edge;
- * `openings`: doors and windows placed in them), so build-mode edits arrive as new structures.
+ * `openings`: doors and windows placed in them; `diagonals`: walls corner to corner across a
+ * tile, with doors and windows too), so build-mode edits arrive as new structures. A diagonal
+ * splits its tile into two halves with their own rooms: floors, wall faces, lawn and shrubs follow
+ * the half they are on. Where diagonals meet other walls, the corner post is a mitred outline
+ * (`slanted.ts`). Houses with diagonal sides get a hip roof following their outline when it is
+ * convex; otherwise the usual rectangles cover the split tiles whole (a deeper eave there).
  * Every wall vertex carries cutaway data (`geometry.ts`); the vertex shader lowers walls
  * between the camera and the rooms behind them, so the cutaway costs no CPU.
  *
@@ -17,10 +22,11 @@
  */
 
 import { Color3, type Material, type Mesh, type PBRMaterial, type Scene } from '@babylonjs/core';
-import type { Opening, WorldStructure } from '../../core/protocol';
+import type { DiagonalWall, Opening, WorldStructure } from '../../core/protocol';
 import type { ViewRect } from '../types';
 import { Cut, facing, Geo, LOOK, type V3 } from './geometry';
 import { MaterialLibrary } from './materials';
+import { addHipPolygon, area, convexHull, diagonalEnds, halfAt, halfCentroid, halfTriangle, postOutline, WallFrame, type P2 } from './slanted';
 
 export const WALL_HEIGHT = 2.8;
 export const WALL_STUB = 0.35;
@@ -213,6 +219,31 @@ export class HouseBuilder {
     const D = world.depth;
     const room = (x: number, z: number) => (x >= 0 && z >= 0 && x < W && z < D ? world.rooms[z * W + x] : 0);
     const inView = (x: number, z: number) => !view || (x >= view.x && z >= view.z && x < view.x + view.w && z < view.z + view.d);
+    // Diagonal walls by tile; a tile they split has a room per half.
+    const diagAt = new Map<number, DiagonalWall>();
+    for (const d of world.diagonals ?? []) diagAt.set(d.z * W + d.x, d);
+    const diagonal = (x: number, z: number) => (x >= 0 && z >= 0 && x < W && z < D ? diagAt.get(z * W + x) : undefined);
+    /** Room at a world point (the half of a split tile it lies in). */
+    const roomP = (px: number, pz: number): number => {
+      const x = Math.floor(px);
+      const z = Math.floor(pz);
+      const d = diagonal(x, z);
+      return d ? d.rooms[halfAt(d.axis, px - x, pz - z)] : room(x, z);
+    };
+    /** Diagonal walls ending at grid corner (x, z), with their unit direction away from it. */
+    const diagonalsAt = (x: number, z: number): { d: DiagonalWall; dir: P2 }[] => {
+      const out: { d: DiagonalWall; dir: P2 }[] = [];
+      const add = (tx: number, tz: number, axis: 'dp' | 'dn', dx: number, dz: number) => {
+        const d = diagonal(tx, tz);
+        if (d && d.axis === axis) out.push({ d, dir: [dx * Math.SQRT1_2, dz * Math.SQRT1_2] });
+      };
+      add(x, z, 'dp', 1, 1);
+      add(x - 1, z - 1, 'dp', -1, -1);
+      add(x - 1, z, 'dn', -1, 1);
+      add(x, z - 1, 'dn', 1, -1);
+      return out;
+    };
+    const diagonalAtNode = (x: number, z: number) => diagonalsAt(x, z).length > 0;
 
     // ---- wall edges in view (inclusive of the view's boundary lines) ------------------
     const edges = new Edges(W + 8);
@@ -259,16 +290,27 @@ export class HouseBuilder {
     let minZ = Infinity;
     let maxX = -Infinity;
     let maxZ = -Infinity;
+    const addArea = (r: number, n: number, cx: number, cz: number) => {
+      if (!kinds.has(r)) kinds.set(r, kindOf(r));
+      const t = roomTiles.get(r) ?? { n: 0, sx: 0, sz: 0 };
+      t.n += n;
+      t.sx += cx * n;
+      t.sz += cz * n;
+      roomTiles.set(r, t);
+    };
     for (let z = 0; z < D; z++) {
       for (let x = 0; x < W; x++) {
         const r = room(x, z);
         if (r === 0 || !inView(x, z)) continue;
-        if (!kinds.has(r)) kinds.set(r, kindOf(r));
-        const t = roomTiles.get(r) ?? { n: 0, sx: 0, sz: 0 };
-        t.n++;
-        t.sx += x + 0.5;
-        t.sz += z + 0.5;
-        roomTiles.set(r, t);
+        const d = diagonal(x, z);
+        if (d) {
+          // Half tiles: half the area, at the triangle's centroid.
+          for (const h of [0, 1] as const) {
+            if (d.rooms[h] === 0) continue;
+            const [cx, cz] = halfCentroid(d.axis, h);
+            addArea(d.rooms[h], 0.5, x + cx, z + cz);
+          }
+        } else addArea(r, 1, x + 0.5, z + 0.5);
         minX = Math.min(minX, x);
         minZ = Math.min(minZ, z);
         maxX = Math.max(maxX, x + 1);
@@ -300,16 +342,15 @@ export class HouseBuilder {
     const H = WALL_HEIGHT;
     /** Looking along which directions this edge hides the room behind it. */
     const edgeMask = (axis: 'h' | 'v', x: number, z: number): number => {
-      if (axis === 'h') return (room(x, z) ? LOOK.PosZ : 0) | (room(x, z - 1) ? LOOK.NegZ : 0);
-      return (room(x, z) ? LOOK.PosX : 0) | (room(x - 1, z) ? LOOK.NegX : 0);
+      if (axis === 'h') return (roomP(x + 0.5, z + 0.25) ? LOOK.PosZ : 0) | (roomP(x + 0.5, z - 0.25) ? LOOK.NegZ : 0);
+      return (roomP(x + 0.25, z + 0.5) ? LOOK.PosX : 0) | (roomP(x - 0.25, z + 0.5) ? LOOK.NegX : 0);
     };
 
     /**
      * One wall face (a rectangle on the plane of a wall side) from `a0` to `a1` along the
-     * wall, `y0` to `y1` high. `n` is the outward normal; `tile` the tile that face looks into.
+     * wall, `y0` to `y1` high. `n` is the outward normal; `r` the room that face looks into.
      */
-    const face = (axis: 'h' | 'v', plane: number, a0: number, a1: number, y0: number, y1: number, n: V3, tileX: number, tileZ: number) => {
-      const r = room(tileX, tileZ);
+    const face = (axis: 'h' | 'v', plane: number, a0: number, a1: number, y0: number, y1: number, n: V3, r: number) => {
       const P = (a: number, y: number): V3 => (axis === 'h' ? [a, y, plane] : [plane, y, a]);
       if (r === 0) {
         // Exterior: stone plinth below, siding/brick above, frieze board under the eaves.
@@ -354,12 +395,12 @@ export class HouseBuilder {
       const a0 = s0 ?? (axis === 'h' ? x : z) + T;
       const a1 = s1 ?? (axis === 'h' ? x : z) + 1 - T;
       if (axis === 'h') {
-        face('h', z - T, a0, a1, y0, y1, [0, 0, -1], x, z - 1);
-        face('h', z + T, a0, a1, y0, y1, [0, 0, 1], x, z);
+        face('h', z - T, a0, a1, y0, y1, [0, 0, -1], roomP(x + 0.5, z - 0.25));
+        face('h', z + T, a0, a1, y0, y1, [0, 0, 1], roomP(x + 0.5, z + 0.25));
         if (cap) trim.box(a0, y1 - 0.001, z - T, a1, y1, z + T, 'ny nx px nz pz');
       } else {
-        face('v', x - T, a0, a1, y0, y1, [-1, 0, 0], x - 1, z);
-        face('v', x + T, a0, a1, y0, y1, [1, 0, 0], x, z);
+        face('v', x - T, a0, a1, y0, y1, [-1, 0, 0], roomP(x - 0.25, z + 0.5));
+        face('v', x + T, a0, a1, y0, y1, [1, 0, 0], roomP(x + 0.25, z + 0.5));
         if (cap) trim.box(x - T, y1 - 0.001, a0, x + T, y1, a1, 'ny nx px nz pz');
       }
     };
@@ -392,7 +433,7 @@ export class HouseBuilder {
       const nx = axis === 'h' ? x + end : x;
       const nz = axis === 'h' ? z : z + end;
       const cross = axis === 'h' ? edges.get('v', nx, nz) ?? edges.get('v', nx, nz - 1) : edges.get('h', nx, nz) ?? edges.get('h', nx - 1, nz);
-      return next === 'wall' && cross === undefined;
+      return next === 'wall' && cross === undefined && !diagonalAtNode(nx, nz);
     };
 
     // Wall segments, lintels, door casings, windows.
@@ -403,10 +444,10 @@ export class HouseBuilder {
           segment(axis, x, z, 0, H, Cut.Clamp);
         } else if (kind === 'window') {
           windowWall(axis, x, z);
-          this.window(axis, x, z, edgeMask(axis, x, z), room, scheme, trim, glass, [plainEnd(axis, x, z, 0), plainEnd(axis, x, z, 1)]);
+          this.window(axis, x, z, edgeMask(axis, x, z), roomP, scheme, trim, glass, [plainEnd(axis, x, z, 0), plainEnd(axis, x, z, 1)]);
         } else {
           segment(axis, x, z, DOOR_HEIGHT, H, Cut.Hide);
-          this.doorway(axis, x, z, edgeMask(axis, x, z), trim, room, scheme);
+          this.doorway(axis, x, z, edgeMask(axis, x, z), trim, roomP, scheme);
         }
       }
     }
@@ -419,6 +460,8 @@ export class HouseBuilder {
         const vd = edges.get('v', x, z - 1);
         const vu = edges.get('v', x, z);
         if (!hl && !hr && !vd && !vu) continue;
+        // Corners where a diagonal meets get a mitred post (below).
+        if (diagonalAtNode(x, z)) continue;
         let maskH: number = LOOK.All;
         let maskV: number = LOOK.All;
         if (hl) maskH &= edgeMask('h', x - 1, z);
@@ -429,7 +472,8 @@ export class HouseBuilder {
         trim.box(x - T, H - 0.001, z - T, x + T, H, z + T, 'ny nx px nz pz');
         // Faces towards a door are jambs. Faces towards a wall sit inside it while it stands and
         // close its end when that wall is cut but the post is not.
-        const side = (dir: 'px' | 'nx' | 'pz' | 'nz', e: EdgeKind | undefined, n: V3, tx: number, tz: number, tx2: number, tz2: number) => {
+        // `ra`, `rb`: the rooms of the two quadrants on that side of the corner.
+        const side = (dir: 'px' | 'nx' | 'pz' | 'nz', e: EdgeKind | undefined, n: V3, ra: number, rb: number) => {
           const axis = dir[1] === 'x' ? 'v' : 'h';
           const plane = dir === 'px' ? x + T : dir === 'nx' ? x - T : dir === 'pz' ? z + T : z - T;
           const a0 = axis === 'v' ? z - T : x - T;
@@ -443,17 +487,217 @@ export class HouseBuilder {
             );
             return;
           }
-          // Free end or outer corner: exterior if either tile on that side is outdoors.
-          const outdoor = room(tx, tz) === 0 || room(tx2, tz2) === 0;
-          const tile = outdoor ? (room(tx, tz) === 0 ? [tx, tz] : [tx2, tz2]) : [tx, tz];
-          face(axis, plane, a0, a1, 0, H, n, tile[0], tile[1]);
+          // Free end or outer corner: exterior if either quadrant on that side is outdoors.
+          face(axis, plane, a0, a1, 0, H, n, ra === 0 || rb === 0 ? 0 : ra);
         };
-        side('px', hr, [1, 0, 0], x, z - 1, x, z);
-        side('nx', hl, [-1, 0, 0], x - 1, z - 1, x - 1, z);
-        side('pz', vu, [0, 0, 1], x - 1, z, x, z);
-        side('nz', vd, [0, 0, -1], x - 1, z - 1, x, z - 1);
+        const q = (dx: number, dz: number) => roomP(x + dx * 0.25, z + dz * 0.25);
+        side('px', hr, [1, 0, 0], q(1, -1), q(1, 1));
+        side('nx', hl, [-1, 0, 0], q(-1, -1), q(-1, 1));
+        side('pz', vu, [0, 0, 1], q(-1, 1), q(1, 1));
+        side('nz', vd, [0, 0, -1], q(-1, -1), q(1, -1));
         // Corner boards where an outside corner turns.
-        this.cornerBoards(x, z, { hl, hr, vd, vu }, room, trim);
+        this.cornerBoards(x, z, { hl, hr, vd, vu }, roomP, trim);
+      }
+    }
+
+    // ---- diagonal walls ----------------------------------------------------------------
+    /** Look directions in which a wall hides the room on the side `(nx, nz)` of it. */
+    const lookBits = (nx: number, nz: number) => (nx > 0 ? LOOK.PosX : nx < 0 ? LOOK.NegX : 0) | (nz > 0 ? LOOK.PosZ : nz < 0 ? LOOK.NegZ : 0);
+    /** A diagonal's frame from its first to its second corner; `n` points into half 1. */
+    const frameOf = (d: DiagonalWall) => {
+      const [a, b] = diagonalEnds(d.axis, d.x, d.z);
+      return new WallFrame(a[0], a[1], b[0], b[1]);
+    };
+    const diagMask = (d: DiagonalWall) => {
+      const f = frameOf(d);
+      return (d.rooms[1] ? lookBits(f.nx, f.nz) : 0) | (d.rooms[0] ? lookBits(-f.nx, -f.nz) : 0);
+    };
+    /**
+     * `face` for walls of any direction: a rectangle on the plane `dOff` across frame `f`, facing
+     * side `sign`, `a0..a1` along it, into room `r` (exterior cladding outdoors, wallpaper inside).
+     */
+    const faceG = (f: WallFrame, a0: number, a1: number, y0: number, y1: number, dOff: number, sign: number, r: number) => {
+      const out = (o: number): [number, number] => (sign > 0 ? [dOff, dOff + o] : [dOff - o, dOff]);
+      // Contact shadow on the floor along the face (fading out `o0..o1` from it).
+      const ground = (y: number, o0: number, o1: number, alphas: number[]) => {
+        ao.poly([f.at(a0, y, dOff + sign * o0), f.at(a1, y, dOff + sign * o0), f.at(a1, y, dOff + sign * o1), f.at(a0, y, dOff + sign * o1)], [0, 1, 0], undefined, alphas);
+      };
+      if (r === 0) {
+        if (y0 < PLINTH) {
+          const ledge = 0.03;
+          f.face(stone, a0, a1, y0, Math.min(PLINTH, y1), dOff, sign);
+          stone.poly([f.at(a0, PLINTH, dOff), f.at(a1, PLINTH, dOff), f.at(a1, PLINTH, dOff + sign * ledge), f.at(a0, PLINTH, dOff + sign * ledge)], [0, 1, 0]);
+          f.face(stone, a0, a1, y0, PLINTH, dOff + sign * ledge, sign);
+        }
+        const yb = Math.max(y0, PLINTH);
+        if (y1 > yb) f.face(ext, a0, a1, yb, y1, dOff, sign);
+        if (y1 >= H - 0.01) {
+          const k = trim.kind;
+          trim.kind = Cut.Hide;
+          f.box(trim, a0, a1, H - 0.2, H, ...out(0.025), sign > 0 ? 'nd' : 'pd');
+          trim.kind = k;
+        }
+        if (y0 < 0.01) ground(0.012, 0, 0.45, [0.32, 0.32, 0, 0]);
+        return;
+      }
+      const tint = roomWall(r);
+      const bath = kinds.get(r) === 'bath';
+      const split = bath ? Math.min(Math.max(1.25, y0), y1) : y0;
+      if (split > y0) f.face(wainscot.color('#F4F4F2'), a0, a1, y0, split, dOff, sign);
+      if (y1 > split) f.face(int.color(tint), a0, a1, split, y1, dOff, sign);
+      if (y0 < 0.01) {
+        f.box(trim, a0, a1, 0, 0.1, ...out(0.014), sign > 0 ? 'nd' : 'pd');
+        ground(0.013, 0.014, 0.34, [0.3, 0.3, 0, 0]);
+      }
+    };
+    /** Both faces, the cap and the cutaway data of part `a0..a1` of a diagonal wall. */
+    const diagSegment = (f: WallFrame, d: DiagonalWall, y0: number, y1: number, kind: number, a0: number, a1: number, cap = true) => {
+      const mask = diagMask(d);
+      for (const g of [ext, int, wainscot, stone, trim, ao]) g.cutting(kind, mask);
+      faceG(f, a0, a1, y0, y1, -T, -1, d.rooms[0]);
+      faceG(f, a0, a1, y0, y1, T, 1, d.rooms[1]);
+      if (cap) trim.poly([f.at(a0, y1, -T), f.at(a1, y1, -T), f.at(a1, y1, T), f.at(a0, y1, T)], [0, 1, 0]);
+    };
+    /** Whether a diagonal run continues as a plain wall past one end (room for a shutter). */
+    const plainDiagEnd = (d: DiagonalWall, end: 0 | 1) => {
+      const [a, b] = diagonalEnds(d.axis, d.x, d.z);
+      const [cx, cz] = end ? b : a;
+      const step = end ? 1 : -1;
+      const next = diagonal(d.x + step, d.z + (d.axis === 'dp' ? step : -step));
+      const axisWalls = edges.get('h', cx - 1, cz) ?? edges.get('h', cx, cz) ?? edges.get('v', cx, cz - 1) ?? edges.get('v', cx, cz);
+      return next?.axis === d.axis && next.kind === 'wall' && axisWalls === undefined && diagonalsAt(cx, cz).length === 2;
+    };
+    for (const d of world.diagonals ?? []) {
+      if (!inView(d.x, d.z)) continue;
+      const f = frameOf(d);
+      const L = f.length;
+      const [a0, a1] = [T, L - T];
+      const mask = diagMask(d);
+      if (d.kind === 'wall') {
+        diagSegment(f, d, 0, H, Cut.Clamp, a0, a1);
+      } else if (d.kind === 'window') {
+        // The same glazing as a straight window, centred, with wider piers either side.
+        const [g0, g1] = [L / 2 - (0.5 - WIN_INSET), L / 2 + (0.5 - WIN_INSET)];
+        diagSegment(f, d, 0, SILL, Cut.Clamp, a0, a1);
+        diagSegment(f, d, HEAD, H, Cut.Hide, a0, a1);
+        diagSegment(f, d, SILL, HEAD, Cut.Hide, a0, g0, false);
+        diagSegment(f, d, SILL, HEAD, Cut.Hide, g1, a1, false);
+        trim.poly([f.at(g0, SILL, -T), f.at(g0, SILL, T), f.at(g0, HEAD, T), f.at(g0, HEAD, -T)], [f.ux, 0, f.uz]);
+        trim.poly([f.at(g1, SILL, -T), f.at(g1, HEAD, -T), f.at(g1, HEAD, T), f.at(g1, SILL, T)], [-f.ux, 0, -f.uz]);
+        trim.poly([f.at(g0, HEAD, -T), f.at(g0, HEAD, T), f.at(g1, HEAD, T), f.at(g1, HEAD, -T)], [0, -1, 0]);
+        // Muntins between the panes, then per face: a pane, frame, sill and (outside) shutters.
+        const recess = 0.03;
+        const mid = (g0 + g1) / 2;
+        trim.cutting(Cut.Hide, mask).color(TRIM);
+        f.box(trim, mid - 0.016, mid + 0.016, SILL, HEAD, -T + recess, T - recess);
+        f.box(trim, g0, g1, (SILL + HEAD) / 2 + 0.1, (SILL + HEAD) / 2 + 0.13, -T + recess, T - recess);
+        for (const sign of [-1, 1]) {
+          const plane = sign * T;
+          const outside = d.rooms[sign > 0 ? 1 : 0] === 0;
+          const out = (o: number): [number, number] => (sign > 0 ? [plane, plane + o] : [plane - o, plane]);
+          glass.cutting(Cut.Hide, mask);
+          f.face(glass, g0, g1, SILL, HEAD, plane - sign * recess, sign);
+          trim.cutting(Cut.Hide, mask).color(TRIM);
+          const fr = 0.07;
+          f.box(trim, g0 - fr, g0, SILL, HEAD, ...out(0.035));
+          f.box(trim, g1, g1 + fr, SILL, HEAD, ...out(0.035));
+          f.box(trim, g0 - fr, g1 + fr, HEAD, HEAD + fr, ...out(0.035));
+          f.box(trim, g0 - fr - 0.04, g1 + fr + 0.04, SILL - 0.05, SILL, ...out(outside ? 0.07 : 0.05));
+          if (outside && scheme.shutters) {
+            trim.color(scheme.accent);
+            if (g0 - fr - 0.36 >= a0 || plainDiagEnd(d, 0)) f.box(trim, g0 - fr - 0.36, g0 - fr - 0.02, SILL - 0.02, HEAD + 0.04, ...out(0.03));
+            if (g1 + fr + 0.36 <= a1 || plainDiagEnd(d, 1)) f.box(trim, g1 + fr + 0.02, g1 + fr + 0.36, SILL - 0.02, HEAD + 0.04, ...out(0.03));
+            trim.color(TRIM);
+          }
+        }
+      } else {
+        // A door as wide as a straight one, centred, with wall either side and a lintel above.
+        const [o0, o1] = [L / 2 - (0.5 - T), L / 2 + (0.5 - T)];
+        diagSegment(f, d, 0, H, Cut.Clamp, a0, o0);
+        diagSegment(f, d, 0, H, Cut.Clamp, o1, a1);
+        diagSegment(f, d, DOOR_HEIGHT, H, Cut.Hide, o0, o1);
+        trim.cutting(Cut.Clamp, mask).color(TRIM);
+        trim.poly([f.at(o0, 0, -T), f.at(o0, 0, T), f.at(o0, DOOR_HEIGHT, T), f.at(o0, DOOR_HEIGHT, -T)], [f.ux, 0, f.uz]);
+        trim.poly([f.at(o1, 0, -T), f.at(o1, DOOR_HEIGHT, -T), f.at(o1, DOOR_HEIGHT, T), f.at(o1, 0, T)], [-f.ux, 0, -f.uz]);
+        trim.cutting(Cut.Hide, mask);
+        trim.poly([f.at(o0, DOOR_HEIGHT, -T), f.at(o0, DOOR_HEIGHT, T), f.at(o1, DOOR_HEIGHT, T), f.at(o1, DOOR_HEIGHT, -T)], [0, -1, 0]);
+        for (const sign of [-1, 1]) {
+          const plane = sign * T;
+          const out = (o: number): [number, number] => (sign > 0 ? [plane, plane + o] : [plane - o, plane]);
+          trim.cutting(Cut.Clamp, mask);
+          f.box(trim, o0 - 0.1, o0 + 0.01, 0, DOOR_HEIGHT + 0.1, ...out(0.022));
+          f.box(trim, o1 - 0.01, o1 + 0.1, 0, DOOR_HEIGHT + 0.1, ...out(0.022));
+          trim.cutting(Cut.Hide, mask);
+          f.box(trim, o0 - 0.1, o1 + 0.1, DOOR_HEIGHT, DOOR_HEIGHT + 0.12, ...out(0.024));
+        }
+        // The leaf, open 90° towards the indoor side (accent colour on a front door).
+        const out0 = d.rooms[0] === 0;
+        const front = out0 !== (d.rooms[1] === 0);
+        const into = out0 ? 1 : -1;
+        const [l0, l1] = [into * (T + 0.01), into * (T + 0.01 + 0.8)];
+        trim.color(front ? scheme.accent : '#EDEAE2').cutting(Cut.Hide, mask);
+        f.box(trim, o0 + 0.02, o0 + 0.065, 0.01, DOOR_HEIGHT - 0.03, Math.min(l0, l1), Math.max(l0, l1));
+        trim.color(TRIM);
+      }
+    }
+
+    // Mitred posts where diagonals meet other walls (or end): the outline joins every wall's
+    // faces, and each side of it is dressed like the wall face it continues.
+    for (let z = bounds.z; z <= bounds.z + bounds.d; z++) {
+      for (let x = bounds.x; x <= bounds.x + bounds.w; x++) {
+        const diags = diagonalsAt(x, z).filter(({ d }) => inView(d.x, d.z));
+        if (!diags.length) continue;
+        const walls: { dir: P2; kind: EdgeKind; mask: number; group: 0 | 1 }[] = diags.map(({ d, dir }) => ({ dir, kind: d.kind === 'door' ? 'wall' : d.kind, mask: diagMask(d), group: d.axis === 'dp' ? 0 : 1 }));
+        const axisWall = (kind: EdgeKind | undefined, dir: P2, axis: 'h' | 'v', ex: number, ez: number) => {
+          if (kind) walls.push({ dir, kind, mask: edgeMask(axis, ex, ez), group: axis === 'h' ? 0 : 1 });
+        };
+        axisWall(edges.get('h', x - 1, z), [-1, 0], 'h', x - 1, z);
+        axisWall(edges.get('h', x, z), [1, 0], 'h', x, z);
+        axisWall(edges.get('v', x, z - 1), [0, -1], 'v', x, z - 1);
+        axisWall(edges.get('v', x, z), [0, 1], 'v', x, z);
+        walls.sort((a, b) => Math.atan2(a.dir[1], a.dir[0]) - Math.atan2(b.dir[1], b.dir[0]));
+        let maskA: number = LOOK.All;
+        let maskB: number = LOOK.All;
+        for (const w of walls) {
+          if (w.group === 0) maskA &= w.mask;
+          else maskB &= w.mask;
+        }
+        for (const g of [ext, int, wainscot, stone, trim, ao]) g.cutting(Cut.Clamp, maskA, maskB);
+        const outline: P2[] = [];
+        for (const p of postOutline([x, z], walls.map((w) => w.dir), T)) {
+          const last = outline[outline.length - 1];
+          if (!last || Math.hypot(p[0] - last[0], p[1] - last[1]) > 1e-5) outline.push(p);
+        }
+        while (outline.length > 1 && Math.hypot(outline[0][0] - outline[outline.length - 1][0], outline[0][1] - outline[outline.length - 1][1]) < 1e-5) outline.pop();
+        for (let k = 0; k < outline.length; k++) {
+          const p0 = outline[k];
+          const p1 = outline[(k + 1) % outline.length];
+          trim.poly([[x, H, z], [p0[0], H, p0[1]], [p1[0], H, p1[1]]], [0, 1, 0]);
+          // Frames run along +x (or +z) so textures line up with the walls they continue.
+          const flip = p1[0] < p0[0] - 1e-9 || (Math.abs(p1[0] - p0[0]) <= 1e-9 && p1[1] < p0[1]);
+          const f = flip ? new WallFrame(p1[0], p1[1], p0[0], p0[1]) : new WallFrame(p0[0], p0[1], p1[0], p1[1]);
+          // Outward: the right-hand side of a counter-clockwise outline.
+          const ox = p1[1] - p0[1];
+          const oz = -(p1[0] - p0[0]);
+          const sign = f.nx * ox + f.nz * oz > 0 ? 1 : -1;
+          const mx = (p0[0] + p1[0]) / 2;
+          const mz = (p0[1] + p1[1]) / 2;
+          // A side across a wall's end (hidden in it while it stands): a door jamb, or the wall's end.
+          const end = walls.find((w) => Math.hypot(mx - x - w.dir[0] * T, mz - z - w.dir[1] * T) < 1e-4);
+          if (end?.kind === 'door') {
+            f.face(trim, 0, f.length, 0, DOOR_HEIGHT, 0, sign);
+            continue;
+          }
+          const ol = Math.hypot(ox, oz) || 1;
+          let r: number;
+          if (end) {
+            const [ux, uz] = end.dir;
+            const ra = roomP(x + ux * (T + 0.15) - uz * 0.2, z + uz * (T + 0.15) + ux * 0.2);
+            const rb = roomP(x + ux * (T + 0.15) + uz * 0.2, z + uz * (T + 0.15) - ux * 0.2);
+            r = ra === 0 || rb === 0 ? 0 : ra;
+          } else r = roomP(mx + (ox / ol) * 0.2, mz + (oz / ol) * 0.2);
+          faceG(f, 0, f.length, 0, H, 0, sign, r);
+        }
       }
     }
 
@@ -466,9 +710,23 @@ export class HouseBuilder {
       for (let x = bounds.x; x < bounds.x + bounds.w; x++) {
         const r = room(x, z);
         if (r === 0) continue;
-        const kind = kinds.get(r) ?? 'living';
-        const g = kind === 'bath' || kind === 'kitchen' ? tile.color(kind === 'bath' ? '#F4F4F2' : '#E6DCCB') : kind === 'bedroom' ? carpet.color(carpetTint) : wood;
-        g.poly([[x, 0.01, z], [x + 1, 0.01, z], [x + 1, 0.01, z + 1], [x, 0.01, z + 1]], [0, 1, 0]);
+        const floorOf = (r: number) => {
+          const kind = kinds.get(r) ?? 'living';
+          return kind === 'bath' || kind === 'kitchen' ? tile.color(kind === 'bath' ? '#F4F4F2' : '#E6DCCB') : kind === 'bedroom' ? carpet.color(carpetTint) : wood;
+        };
+        const d = diagonal(x, z);
+        if (d) {
+          // A triangle per indoor half of a split tile.
+          for (const h of [0, 1] as const) {
+            if (d.rooms[h] === 0) continue;
+            floorOf(d.rooms[h]).poly(
+              halfTriangle(d.axis, h).map(([fx, fz]) => [x + fx, 0.01, z + fz] as V3),
+              [0, 1, 0],
+            );
+          }
+          continue;
+        }
+        floorOf(r).poly([[x, 0.01, z], [x + 1, 0.01, z], [x + 1, 0.01, z + 1], [x, 0.01, z + 1]], [0, 1, 0]);
       }
     }
 
@@ -476,16 +734,74 @@ export class HouseBuilder {
     const roof = new Geo().color(scheme.roof);
     const roofTrim = new Geo().color(TRIM);
     const gables = new Geo().color(scheme.wall);
-    if (Number.isFinite(minX)) {
+    const viewDiagonals = (world.diagonals ?? []).some((d) => inView(d.x, d.z) && (d.rooms[0] !== 0 || d.rooms[1] !== 0));
+    if (Number.isFinite(minX) && !viewDiagonals) {
       for (const rect of indoorRects(room, minX, minZ, maxX, maxZ)) {
         addRoof(rect, scheme.hip, roof, roofTrim, gables);
+      }
+    } else if (Number.isFinite(minX)) {
+      // With diagonal walls: per connected indoor area. A convex outline (a diamond, a box with
+      // cut corners) gets a hip roof that follows it; any other shape gets the usual rectangles
+      // over its tiles, split tiles included whole (their outdoor half under a deeper eave).
+      const seen = new Set<number>();
+      for (let z = minZ; z < maxZ; z++) {
+        for (let x = minX; x < maxX; x++) {
+          const start = z * W + x;
+          if (room(x, z) === 0 || !inView(x, z) || seen.has(start)) continue;
+          const tiles: number[] = [];
+          const queue = [start];
+          seen.add(start);
+          while (queue.length) {
+            const i = queue.pop()!;
+            tiles.push(i);
+            const tx = i % W;
+            const tz = Math.floor(i / W);
+            for (const [nx, nz] of [[tx + 1, tz], [tx - 1, tz], [tx, tz + 1], [tx, tz - 1]]) {
+              const n = nz * W + nx;
+              if (nx >= minX && nz >= minZ && nx < maxX && nz < maxZ && room(nx, nz) !== 0 && inView(nx, nz) && !seen.has(n)) {
+                seen.add(n);
+                queue.push(n);
+              }
+            }
+          }
+          const inArea = new Set(tiles);
+          const corners: P2[] = [];
+          let indoorArea = 0;
+          let split = false;
+          for (const i of tiles) {
+            const tx = i % W;
+            const tz = Math.floor(i / W);
+            const d = diagonal(tx, tz);
+            if (!d) {
+              indoorArea += 1;
+              corners.push([tx, tz], [tx + 1, tz], [tx + 1, tz + 1], [tx, tz + 1]);
+              continue;
+            }
+            split = true;
+            for (const h of [0, 1] as const) {
+              if (d.rooms[h] === 0) continue;
+              indoorArea += 0.5;
+              for (const [fx, fz] of halfTriangle(d.axis, h)) corners.push([tx + fx, tz + fz]);
+            }
+          }
+          const hull = convexHull(corners);
+          if (split && indoorArea >= 2 && Math.abs(area(hull) - indoorArea) < 1e-3) {
+            addHipPolygon(hull, roof, roofTrim, H, T, OVERHANG, PITCH, ROOF_THICKNESS);
+            continue;
+          }
+          // Here every leftover gets its own small roof too, so no part of the room stays open.
+          const indoor = (tx: number, tz: number) => (inArea.has(tz * W + tx) ? 1 : 0);
+          for (const rect of indoorRects(indoor, minX, minZ, maxX, maxZ, 1)) addRoof(rect, scheme.hip, roof, roofTrim, gables);
+        }
       }
     }
 
     // ---- garden: foundation shrubs and a few lot trees --------------------------------
     const paths = [...(world.meta?.paths ?? []), ...(world.meta?.streets ?? [])];
     const paved = (x: number, z: number) => paths.some((r) => x >= r.x - 0.6 && x < r.x + r.w + 0.6 && z >= r.z - 0.6 && z < r.z + r.d + 0.6);
-    const free = (x: number, z: number) => inView(Math.floor(x), Math.floor(z)) && room(Math.floor(x), Math.floor(z)) === 0 && !occupied.has(Math.floor(z) * W + Math.floor(x)) && !paved(x, z);
+    // Garden spots: outdoors, off furniture and paths, and not on a tile split by a diagonal.
+    const free = (x: number, z: number) =>
+      inView(Math.floor(x), Math.floor(z)) && roomP(x, z) === 0 && !diagonal(Math.floor(x), Math.floor(z)) && !occupied.has(Math.floor(z) * W + Math.floor(x)) && !paved(x, z);
     const shrubs: [number, number, number, number][] = [];
     for (const axis of ['h', 'v'] as const) {
       for (const [x, z, kind] of edges.all(axis)) {
@@ -496,13 +812,25 @@ export class HouseBuilder {
           const px = axis === 'h' ? x + 0.5 : x + side * 0.55;
           const pz = axis === 'h' ? z + side * 0.55 : z + 0.5;
           // Only along a house's outside: a free-standing wall (drawn in build mode) stays bare.
-          const indoorX = axis === 'h' ? x : side < 0 ? x : x - 1;
-          const indoorZ = axis === 'h' ? (side < 0 ? z : z - 1) : z;
-          if (room(indoorX, indoorZ) === 0) continue;
+          const indoor = axis === 'h' ? roomP(x + 0.5, z - side * 0.25) : roomP(x - side * 0.25, z + 0.5);
+          if (indoor === 0) continue;
           if (!free(px, pz) || hash(x * 3 + side, z, 31) < 0.3) continue;
           shrubs.push([px, pz, 0.55 + hash(x, z, 32 + side) * 0.3, hash(x, z, 33) * 6.28]);
         }
       }
+    }
+    // Along diagonal walls with a room on one side: a shrub in the outdoor half (not by doors).
+    for (const d of world.diagonals ?? []) {
+      if (d.kind === 'door' || !inView(d.x, d.z) || (d.rooms[0] === 0) === (d.rooms[1] === 0)) continue;
+      const step = d.axis === 'dp' ? 1 : -1;
+      if (diagonal(d.x - 1, d.z - step)?.kind === 'door' || diagonal(d.x + 1, d.z + step)?.kind === 'door') continue;
+      const f = frameOf(d);
+      const sign = d.rooms[1] === 0 ? 1 : -1;
+      // Out in the triangle's far corner (as far from the wall as shrubs along straight walls).
+      const px = d.x + 0.5 + f.nx * sign * 0.62;
+      const pz = d.z + 0.5 + f.nz * sign * 0.62;
+      if (paved(px, pz) || hash(d.x * 3 + 7, d.z, 31) < 0.3) continue;
+      shrubs.push([px, pz, 0.5 + hash(d.x, d.z, 34) * 0.2, hash(d.x, d.z, 33) * 6.28]);
     }
     const trees: [number, number, number, number][] = [];
     if (view && Number.isFinite(minX)) {
@@ -741,7 +1069,7 @@ export class HouseBuilder {
     z: number,
     mask: number,
     trim: Geo,
-    room: (x: number, z: number) => number,
+    roomP: (px: number, pz: number) => number,
     scheme: HouseScheme,
   ): void {
     // Casings on both faces: two side boards (clamped to stubs when cut) and a head (hidden).
@@ -757,8 +1085,8 @@ export class HouseBuilder {
     }
     // An open door leaf hinged on one jamb, swung 90 degrees into the room (or the outdoor
     // side's opposite for front doors), standing against the opening's edge.
-    const outdoorA = axis === 'h' ? room(x, z - 1) === 0 : room(x - 1, z) === 0;
-    const outdoorB = axis === 'h' ? room(x, z) === 0 : room(x, z) === 0;
+    const outdoorA = axis === 'h' ? roomP(x + 0.5, z - 0.25) === 0 : roomP(x - 0.25, z + 0.5) === 0;
+    const outdoorB = axis === 'h' ? roomP(x + 0.5, z + 0.25) === 0 : roomP(x + 0.25, z + 0.5) === 0;
     const front = outdoorA !== outdoorB;
     const into = outdoorA ? 1 : -1; // swing towards the indoor side
     const leaf = 0.8;
@@ -784,7 +1112,7 @@ export class HouseBuilder {
     x: number,
     z: number,
     mask: number,
-    room: (x: number, z: number) => number,
+    roomP: (px: number, pz: number) => number,
     scheme: HouseScheme,
     trim: Geo,
     glass: Geo,
@@ -806,7 +1134,7 @@ export class HouseBuilder {
     for (const sign of [-1, 1]) {
       const n: V3 = axis === 'h' ? [0, 0, sign] : [sign, 0, 0];
       const plane = axis === 'h' ? z + sign * T : x + sign * T;
-      const tileRoom = axis === 'h' ? room(x, sign < 0 ? z - 1 : z) : room(sign < 0 ? x - 1 : x, z);
+      const tileRoom = axis === 'h' ? roomP(x + 0.5, z + sign * 0.25) : roomP(x + sign * 0.25, z + 0.5);
       const outside = tileRoom === 0;
       const P = (a: number, y: number, d: number): V3 => (axis === 'h' ? [a, y, plane + n[2] * d] : [plane + n[0] * d, y, a]);
       // One clear pane per face, facing out of it (back faces are culled, so each side sees
@@ -832,7 +1160,7 @@ export class HouseBuilder {
     x: number,
     z: number,
     e: { hl?: EdgeKind; hr?: EdgeKind; vd?: EdgeKind; vu?: EdgeKind },
-    room: (x: number, z: number) => number,
+    roomP: (px: number, pz: number) => number,
     trim: Geo,
   ): void {
     // An outside corner: exactly one h and one v edge meet and the outer quadrant is outdoors.
@@ -840,9 +1168,7 @@ export class HouseBuilder {
     const v = e.vd ? -1 : e.vu ? 1 : 0;
     if (!h || !v || (e.hl && e.hr) || (e.vd && e.vu)) return;
     // The quadrant opposite both walls is the outer one.
-    const qx = h < 0 ? x : x - 1;
-    const qz = v < 0 ? z : z - 1;
-    if (room(qx, qz) !== 0) return;
+    if (roomP(h < 0 ? x + 0.25 : x - 0.25, v < 0 ? z + 0.25 : z - 0.25) !== 0) return;
     const sx = -h; // outward along x
     const sz = -v;
     const w = 0.13;
@@ -876,8 +1202,11 @@ function span(axis: 'h' | 'v', plane: number, n: V3, a0: number, a1: number, y0:
   return axis === 'h' ? [a0, y0, lo, a1, y1, hi] : [lo, y0, a0, hi, y1, a1];
 }
 
-/** Covers the indoor tiles of a bounding box with a few rectangles (greedy, row-major). */
-function indoorRects(room: (x: number, z: number) => number, x0: number, z0: number, x1: number, z1: number): { x0: number; z0: number; x1: number; z1: number }[] {
+/**
+ * Covers the indoor tiles of a bounding box with a few rectangles (greedy, row-major). Leftovers
+ * smaller than `minArea` tiles (e.g. a single-tile porch notch) don't get their own roof.
+ */
+function indoorRects(room: (x: number, z: number) => number, x0: number, z0: number, x1: number, z1: number, minArea = 4): { x0: number; z0: number; x1: number; z1: number }[] {
   const w = x1 - x0;
   const covered = new Uint8Array(w * (z1 - z0));
   const indoor = (x: number, z: number) => room(x, z) !== 0;
@@ -895,8 +1224,7 @@ function indoorRects(room: (x: number, z: number) => number, x0: number, z0: num
         ze++;
       }
       for (let zz = z; zz < ze; zz++) for (let k = x; k < xe; k++) covered[(zz - z0) * w + k - x0] = 1;
-      // Tiny leftovers (e.g. a single-tile porch notch) don't get their own roof.
-      if ((xe - x) * (ze - z) >= 4) out.push({ x0: x, z0: z, x1: xe, z1: ze });
+      if ((xe - x) * (ze - z) >= minArea) out.push({ x0: x, z0: z, x1: xe, z1: ze });
     }
   }
   return out;

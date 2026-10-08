@@ -40,6 +40,9 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
 
+      - name: Version check (web and Rust must match)
+        run: node tools/release/version.mjs
+
       - name: Simulation tests
         run: cargo test -p sim-core
 

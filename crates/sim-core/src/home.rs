@@ -3,12 +3,14 @@
 //!
 //! Every change is checked against the home plot and paid from household funds. Nothing
 //! may cut Sims off from what they could reach before (an object's front tile, a room).
+//! With diagonal walls the same rule holds: a tile crossed by a diagonal wall can't be stood
+//! on, so walling across an object's front tile or around a resident is refused.
 
 use std::collections::VecDeque;
 
 use crate::Error;
 use crate::command::{EdgeAxis, EdgeEdit, EdgeKind};
-use crate::lot::{Edge, OUTDOORS};
+use crate::lot::{Diagonal, Edge, OUTDOORS};
 use crate::path::NavGrid;
 use crate::social::EventKind;
 use crate::world::{ObjectInstance, Task, TaskKind, World, end_activity};
@@ -170,9 +172,13 @@ impl World {
         quality: u8,
         value: i64,
     ) -> Result<u32, Error> {
-        let obj = self
-            .check_fit(def, x, z, rot)
-            .map_err(|_| Error::new("there's no room for that here"))?;
+        let obj = self.check_fit(def, x, z, rot).map_err(|e| {
+            Error::new(if e.to_string().contains("diagonal") {
+                "furniture can't stand on a tile with a diagonal wall"
+            } else {
+                "there's no room for that here"
+            })
+        })?;
         if !self.fits_on_plot(&obj, plot) {
             return Err(Error::new("that has to go on your own lot"));
         }
@@ -355,9 +361,14 @@ impl World {
 
     /// Changes wall edges on the home plot, paying per changed edge.
     ///
-    /// Like in the Sims, doors and windows go into walls: their edge must already have a wall
-    /// (plain, or with a door or window to replace), unless the same edit draws the wall
-    /// around it (a wall edge next to it on the same line).
+    /// As in classic life-simulation games, doors and windows go into walls: their edge must already
+    /// have a wall (plain, or with a door or window to replace), unless the same edit draws the
+    /// wall around it (a wall edge next to it on the same line).
+    ///
+    /// Diagonal walls (`dp` / `dn`) cross one tile corner to corner and cost
+    /// [`BuildRules::diagonal_wall`](crate::content::BuildRules::diagonal_wall). A tile holds at
+    /// most one diagonal; it can't go across furniture or a resident, and furniture never
+    /// stands on a tile with a diagonal. Doors and windows go into diagonal walls too.
     pub fn build(&mut self, sim: u32, edits: &[EdgeEdit]) -> Result<(), Error> {
         let (h, plot) = self.home_of(sim)?;
         let p = self.plots[plot as usize].clone();
@@ -365,11 +376,18 @@ impl World {
         let edge_at = |lot: &crate::lot::Lot, e: &EdgeEdit| match e.axis {
             EdgeAxis::H => lot.h_edge(e.x as usize, e.z as usize),
             EdgeAxis::V => lot.v_edge(e.x as usize, e.z as usize),
+            // What stands across the tile in this direction (a diagonal the other way is
+            // reported separately).
+            EdgeAxis::Dp | EdgeAxis::Dn => lot
+                .diag(e.x, e.z)
+                .filter(|d| Some(d.dir) == e.axis.diagonal())
+                .map_or(Edge::Open, |d| d.edge),
         };
-        // Tiles on either side of an edge.
+        // Tiles on either side of an edge (the tile itself, twice, for a diagonal).
         let sides = |e: &EdgeEdit| match e.axis {
             EdgeAxis::H => ((e.x, e.z - 1), (e.x, e.z)),
             EdgeAxis::V => ((e.x - 1, e.z), (e.x, e.z)),
+            EdgeAxis::Dp | EdgeAxis::Dn => ((e.x, e.z), (e.x, e.z)),
         };
         let object_at = |x: i32, z: i32| {
             self.objects.iter().position(|o| {
@@ -382,6 +400,8 @@ impl World {
             let (dx, dz) = match e.axis {
                 EdgeAxis::H => (1, 0),
                 EdgeAxis::V => (0, 1),
+                EdgeAxis::Dp => (1, 1),
+                EdgeAxis::Dn => (1, -1),
             };
             edits.iter().any(|o| {
                 o.kind == EdgeKind::Wall
@@ -410,18 +430,36 @@ impl World {
                         && e.x <= lw
                         && e.z < ld
                 }
+                EdgeAxis::Dp | EdgeAxis::Dn => p.contains(e.x, e.z) && self.lot.in_bounds(e.x, e.z),
             };
             if !on_plot || e.x < 0 || e.z < 0 {
                 return Err(Error::new("you can only build on your own lot"));
             }
+            let target = edge_kind(e.kind);
+            let diagonal = e.axis.diagonal();
             let (a, b) = sides(e);
             if e.kind != EdgeKind::Open
                 && object_at(a.0, a.1).is_some_and(|o| object_at(b.0, b.1) == Some(o))
             {
                 return Err(Error::new("a wall can't go through furniture"));
             }
+            if let Some(dir) = diagonal
+                && target != Edge::Open
+            {
+                if self.lot.diag(e.x, e.z).is_some_and(|d| d.dir != dir) {
+                    return Err(Error::new(
+                        "a wall already crosses that tile the other way — remove it first",
+                    ));
+                }
+                let someone = self
+                    .sims
+                    .iter()
+                    .any(|s| s.away_until.is_none() && s.tile() == (e.x, e.z));
+                if target.blocks() && someone {
+                    return Err(Error::new("someone is standing there"));
+                }
+            }
             let current = edge_at(&self.lot, e);
-            let target = edge_kind(e.kind);
             if matches!(target, Edge::Door | Edge::Window)
                 && !current.is_wall()
                 && !walled_beside(e)
@@ -437,6 +475,7 @@ impl World {
             }
             if current != target {
                 cost += match target {
+                    Edge::Wall if diagonal.is_some() => rules.diagonal_wall(),
                     Edge::Wall => rules.wall,
                     Edge::Door => rules.door,
                     Edge::Window => rules.window,
@@ -454,6 +493,15 @@ impl World {
             match e.axis {
                 EdgeAxis::H => self.lot.set_h(e.x as usize, e.z as usize, target),
                 EdgeAxis::V => self.lot.set_v(e.x as usize, e.z as usize, target),
+                EdgeAxis::Dp | EdgeAxis::Dn => {
+                    let dir = e.axis.diagonal().expect("diagonal axis");
+                    let current = self.lot.diag(e.x, e.z);
+                    // Removing only clears a diagonal running the same way.
+                    if target != Edge::Open || current.is_some_and(|d| d.dir == dir) {
+                        let d = (target != Edge::Open).then_some(Diagonal { dir, edge: target });
+                        self.lot.set_diag(e.x as usize, e.z as usize, d);
+                    }
+                }
             }
         }
         if !self.keeps_reach(plot, &before, None) {

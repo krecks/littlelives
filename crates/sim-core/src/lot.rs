@@ -3,6 +3,16 @@
 //! Coordinates: tile `(x, z)` covers `[x, x+1] × [z, z+1]` in metres (1 tile = 1 m).
 //! Horizontal edges lie on the line `z = const` and run along x; vertical edges
 //! lie on `x = const` and run along z.
+//!
+//! **Diagonal walls** run corner to corner across one tile (at most one per tile): `/`
+//! ([`DiagDir::Dp`]) from `(x, z)` to `(x + 1, z + 1)`, `\` ([`DiagDir::Dn`]) from
+//! `(x, z + 1)` to `(x + 1, z)`. They split the tile into two triangular halves: half 0
+//! touches the tile's `-z` side, half 1 its `+z` side (see [`Lot::half_at_side`]). Rooms are
+//! found per half, so the two halves can belong to different rooms (inside and outside).
+//!
+//! Movement stays on whole tiles: nobody stands on a tile crossed by a diagonal wall or
+//! window (it blocks the whole tile; see `NavGrid`), while a diagonal *door* tile is walked
+//! across like a doorway. Objects never stand on a tile with a diagonal.
 
 use std::collections::VecDeque;
 
@@ -32,6 +42,64 @@ impl Edge {
     }
 }
 
+/// Which way a diagonal wall runs across its tile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DiagDir {
+    /// `/`: from corner `(x, z)` to `(x + 1, z + 1)`.
+    Dp,
+    /// `\`: from corner `(x, z + 1)` to `(x + 1, z)`.
+    Dn,
+}
+
+/// A diagonal wall across a tile: its direction and what stands there (never `Open`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Diagonal {
+    pub dir: DiagDir,
+    pub edge: Edge,
+}
+
+impl Diagonal {
+    /// Whether this diagonal ends at grid corner `(cx, cz)` of tile `(x, z)`.
+    pub fn touches(self, x: i32, z: i32, cx: i32, cz: i32) -> bool {
+        match self.dir {
+            DiagDir::Dp => (cx, cz) == (x, z) || (cx, cz) == (x + 1, z + 1),
+            DiagDir::Dn => (cx, cz) == (x, z + 1) || (cx, cz) == (x + 1, z),
+        }
+    }
+}
+
+/// A side of a tile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Side {
+    NegX,
+    PosX,
+    NegZ,
+    PosZ,
+}
+
+impl Side {
+    pub const ALL: [Side; 4] = [Side::PosX, Side::NegX, Side::PosZ, Side::NegZ];
+
+    pub fn offset(self) -> (i32, i32) {
+        match self {
+            Side::NegX => (-1, 0),
+            Side::PosX => (1, 0),
+            Side::NegZ => (0, -1),
+            Side::PosZ => (0, 1),
+        }
+    }
+
+    pub fn opposite(self) -> Side {
+        match self {
+            Side::NegX => Side::PosX,
+            Side::PosX => Side::NegX,
+            Side::NegZ => Side::PosZ,
+            Side::PosZ => Side::NegZ,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Axis {
@@ -54,6 +122,9 @@ pub struct LotFile {
     /// Windows, like doors: each must sit on a wall.
     #[serde(default)]
     pub windows: Vec<DoorRaw>,
+    /// Diagonal walls (optional), one per tile.
+    #[serde(default)]
+    pub diagonals: Vec<DiagRaw>,
     #[serde(default)]
     pub objects: Vec<PlacementRaw>,
     #[serde(default)]
@@ -123,6 +194,17 @@ pub struct DoorRaw {
     pub axis: Axis,
 }
 
+/// A diagonal wall across tile `(x, z)`, optionally with a door or window in it.
+#[derive(Debug, Deserialize)]
+pub struct DiagRaw {
+    pub x: u16,
+    pub z: u16,
+    pub dir: DiagDir,
+    /// `wall` (default), `door` or `window`.
+    #[serde(default)]
+    pub kind: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct PlacementRaw {
     pub def: String,
@@ -171,8 +253,13 @@ pub struct Lot {
     h_edges: Vec<Edge>,
     /// `(width + 1) × (depth)` vertical edges.
     v_edges: Vec<Edge>,
-    /// Room id per tile; `OUTDOORS` for outside.
+    /// Diagonal wall per tile, if any.
+    diags: Vec<Option<Diagonal>>,
+    /// Room id per tile; `OUTDOORS` for outside. A tile split by a diagonal reports the
+    /// room of an indoor half if it has one (see `halves` for both).
     rooms: Vec<u16>,
+    /// Room id of each half of each tile (equal for tiles without a diagonal).
+    halves: Vec<[u16; 2]>,
 }
 
 impl Lot {
@@ -182,7 +269,9 @@ impl Lot {
             depth,
             h_edges: vec![Edge::Open; width * (depth + 1)],
             v_edges: vec![Edge::Open; (width + 1) * depth],
+            diags: vec![None; width * depth],
             rooms: vec![OUTDOORS; width * depth],
+            halves: vec![[OUTDOORS; 2]; width * depth],
         }
     }
 
@@ -225,16 +314,31 @@ impl Lot {
                 Axis::Z => lot.set_v(x, z, kind),
             }
         }
+        for d in &file.diagonals {
+            let (x, z) = (d.x as usize, d.z as usize);
+            if x >= w || z >= lot.depth {
+                return Err(Error::new(format!("diagonal at {x},{z} is out of bounds")));
+            }
+            let edge = match d.kind.as_deref().unwrap_or("wall") {
+                "wall" => Edge::Wall,
+                "door" => Edge::Door,
+                "window" => Edge::Window,
+                other => return Err(Error::new(format!("unknown diagonal kind '{other}'"))),
+            };
+            lot.set_diag(x, z, Some(Diagonal { dir: d.dir, edge }));
+        }
         lot.compute_rooms();
         Ok(lot)
     }
 
-    /// Rebuilds a lot from saved edge arrays (see `edges`).
+    /// Rebuilds a lot from saved edge arrays (see `edges`) and diagonals (see `diagonals`;
+    /// empty for saves made before diagonal walls existed).
     pub fn from_edges(
         width: usize,
         depth: usize,
         h: Vec<Edge>,
         v: Vec<Edge>,
+        diags: Vec<Option<Diagonal>>,
     ) -> Result<Self, Error> {
         if width == 0 || depth == 0 || width > 256 || depth > 256 {
             return Err(Error::new("lot size must be within 1..=256"));
@@ -242,12 +346,22 @@ impl Lot {
         if h.len() != width * (depth + 1) || v.len() != (width + 1) * depth {
             return Err(Error::new("saved lot edges have the wrong size"));
         }
+        let diags = match diags.len() {
+            0 => vec![None; width * depth],
+            n if n == width * depth => diags,
+            _ => return Err(Error::new("saved diagonal walls have the wrong size")),
+        };
+        if diags.iter().flatten().any(|d| d.edge == Edge::Open) {
+            return Err(Error::new("corrupt diagonal walls in save"));
+        }
         let mut lot = Self {
             width,
             depth,
             h_edges: h,
             v_edges: v,
+            diags,
             rooms: vec![OUTDOORS; width * depth],
+            halves: vec![[OUTDOORS; 2]; width * depth],
         };
         lot.compute_rooms();
         Ok(lot)
@@ -256,6 +370,60 @@ impl Lot {
     /// Horizontal and vertical edge arrays, for saving.
     pub fn edges(&self) -> (&[Edge], &[Edge]) {
         (&self.h_edges, &self.v_edges)
+    }
+
+    /// Diagonal wall per tile (row-major), for saving.
+    pub fn diagonals(&self) -> &[Option<Diagonal>] {
+        &self.diags
+    }
+
+    /// The diagonal wall across tile `(x, z)`, if any (none off the lot).
+    pub fn diag(&self, x: i32, z: i32) -> Option<Diagonal> {
+        if self.in_bounds(x, z) {
+            self.diags[self.tile_index(x, z)]
+        } else {
+            None
+        }
+    }
+
+    /// Sets or clears (`None`) the diagonal across a tile. Call `compute_rooms` afterwards.
+    pub fn set_diag(&mut self, x: usize, z: usize, d: Option<Diagonal>) {
+        self.diags[z * self.width + x] = d.filter(|d| d.edge != Edge::Open);
+    }
+
+    /// Whether a diagonal wall or window stands across the tile: nobody can stand on it.
+    pub fn diag_blocks(&self, x: i32, z: i32) -> bool {
+        self.diag(x, z).is_some_and(|d| d.edge.blocks())
+    }
+
+    /// Whether tile `(x, z)` has a diagonal ending at grid corner `(cx, cz)`.
+    pub fn diag_touches(&self, x: i32, z: i32, cx: i32, cz: i32) -> bool {
+        self.diag(x, z).is_some_and(|d| d.touches(x, z, cx, cz))
+    }
+
+    /// Which half (0 or 1) of tile `(x, z)` touches `side`; always 0 without a diagonal.
+    pub fn half_at_side(&self, x: i32, z: i32, side: Side) -> usize {
+        let Some(d) = self.diag(x, z) else {
+            return 0;
+        };
+        match (side, d.dir) {
+            (Side::NegZ, _) | (Side::PosX, DiagDir::Dp) | (Side::NegX, DiagDir::Dn) => 0,
+            _ => 1,
+        }
+    }
+
+    /// Room of half `half` (0 or 1) of a tile; `OUTDOORS` off the lot.
+    pub fn half_room(&self, x: i32, z: i32, half: usize) -> u16 {
+        if self.in_bounds(x, z) {
+            self.halves[self.tile_index(x, z)][half & 1]
+        } else {
+            OUTDOORS
+        }
+    }
+
+    /// Rooms of both halves of every tile (row-major; equal for tiles without a diagonal).
+    pub fn half_rooms(&self) -> &[[u16; 2]] {
+        &self.halves
     }
 
     pub fn h_edge(&self, x: usize, z: usize) -> Edge {
@@ -310,45 +478,64 @@ impl Lot {
         &self.rooms
     }
 
-    /// Flood-fills rooms. Doors and windows separate rooms; any area touching the lot border is outdoors.
+    /// Flood-fills rooms over tile halves. Walls, doors and windows (straight or diagonal)
+    /// separate rooms; any area touching the lot border is outdoors.
     pub fn compute_rooms(&mut self) {
         const UNSET: u16 = u16::MAX;
-        self.rooms.fill(UNSET);
+        for h in &mut self.halves {
+            *h = [UNSET; 2];
+        }
+        // A tile without a diagonal is one node (half 0); its half 1 copies it at the end.
+        let split = |lot: &Lot, i: usize| lot.diags[i].is_some();
         let mut next_room = 1;
         let mut queue = VecDeque::new();
-        for start in 0..self.rooms.len() {
-            if self.rooms[start] != UNSET {
+        let mut nodes = Vec::new();
+        for start in 0..self.halves.len() * 2 {
+            let (si, sh) = (start / 2, start % 2);
+            if (sh == 1 && !split(self, si)) || self.halves[si][sh] != UNSET {
                 continue;
             }
-            let mut tiles = Vec::new();
+            nodes.clear();
             let mut touches_border = false;
-            self.rooms[start] = next_room;
-            queue.push_back(start);
-            while let Some(i) = queue.pop_front() {
-                tiles.push(i);
+            self.halves[si][sh] = next_room;
+            queue.push_back((si, sh));
+            while let Some((i, h)) = queue.pop_front() {
+                nodes.push((i, h));
                 let (x, z) = ((i % self.width) as i32, (i / self.width) as i32);
-                if x == 0 || z == 0 || x as usize == self.width - 1 || z as usize == self.depth - 1
-                {
-                    touches_border = true;
-                }
-                for (nx, nz) in [(x + 1, z), (x - 1, z), (x, z + 1), (x, z - 1)] {
-                    if !self.in_bounds(nx, nz) || self.edge_between(x, z, nx, nz) != Edge::Open {
+                for side in Side::ALL {
+                    if split(self, i) && self.half_at_side(x, z, side) != h {
+                        continue;
+                    }
+                    let (dx, dz) = side.offset();
+                    let (nx, nz) = (x + dx, z + dz);
+                    if !self.in_bounds(nx, nz) {
+                        touches_border = true;
+                        continue;
+                    }
+                    if self.edge_between(x, z, nx, nz) != Edge::Open {
                         continue;
                     }
                     let n = self.tile_index(nx, nz);
-                    if self.rooms[n] == UNSET {
-                        self.rooms[n] = next_room;
-                        queue.push_back(n);
+                    let nh = self.half_at_side(nx, nz, side.opposite());
+                    if self.halves[n][nh] == UNSET {
+                        self.halves[n][nh] = next_room;
+                        queue.push_back((n, nh));
                     }
                 }
             }
             if touches_border {
-                for i in tiles {
-                    self.rooms[i] = OUTDOORS;
+                for &(i, h) in &nodes {
+                    self.halves[i][h] = OUTDOORS;
                 }
             } else {
                 next_room += 1;
             }
+        }
+        for (i, h) in self.halves.iter_mut().enumerate() {
+            if self.diags[i].is_none() {
+                h[1] = h[0];
+            }
+            self.rooms[i] = if h[0] != OUTDOORS { h[0] } else { h[1] };
         }
     }
 }
@@ -398,6 +585,79 @@ mod tests {
         // The rooms stay closed: a window doesn't join them or let the outdoors in.
         assert_ne!(lot.room_at(4, 6), lot.room_at(5, 6));
         assert_ne!(lot.room_at(6, 2), OUTDOORS);
+    }
+
+    #[test]
+    fn diagonals_split_tiles_into_rooms_by_half() {
+        // A diamond with corners (1,3), (3,1), (5,3), (3,5): eight diagonal tiles around four
+        // whole tiles. One diagonal has a door, which separates rooms like a wall.
+        let file: LotFile = serde_json::from_str(
+            r#"{"width":8,"depth":8,"diagonals":[
+                {"x":1,"z":2,"dir":"dn"},{"x":2,"z":1,"dir":"dn"},
+                {"x":3,"z":1,"dir":"dp"},{"x":4,"z":2,"dir":"dp"},
+                {"x":4,"z":3,"dir":"dn","kind":"door"},{"x":3,"z":4,"dir":"dn"},
+                {"x":2,"z":4,"dir":"dp"},{"x":1,"z":3,"dir":"dp"}]}"#,
+        )
+        .unwrap();
+        let lot = Lot::from_file(&file).unwrap();
+        let inside = lot.room_at(2, 2);
+        assert_ne!(inside, OUTDOORS);
+        for (x, z) in [(2, 2), (3, 2), (2, 3), (3, 3)] {
+            assert_eq!(lot.room_at(x, z), inside, "whole tile {x},{z}");
+            assert_eq!(lot.half_room(x, z, 0), lot.half_room(x, z, 1));
+        }
+        // Each diagonal tile: the half towards the centre is inside, the other outside.
+        let centre_half = |x: i32, z: i32| {
+            let d = lot.diag(x, z).unwrap();
+            // Signed side of the tile centre's offset towards the diamond centre (3, 3).
+            let (cx, cz) = (3.0 - (x as f32 + 0.5), 3.0 - (z as f32 + 0.5));
+            match d.dir {
+                DiagDir::Dp => usize::from(cz > cx),
+                DiagDir::Dn => usize::from(cx + cz > 0.0),
+            }
+        };
+        for d in &file.diagonals {
+            let (x, z) = (d.x as i32, d.z as i32);
+            let h = centre_half(x, z);
+            assert_eq!(lot.half_room(x, z, h), inside, "inner half of {x},{z}");
+            assert_eq!(
+                lot.half_room(x, z, 1 - h),
+                OUTDOORS,
+                "outer half of {x},{z}"
+            );
+            assert_eq!(
+                lot.room_at(x, z),
+                inside,
+                "split tiles report the indoor half"
+            );
+        }
+        // Side lookups match the halves.
+        assert_eq!(lot.half_at_side(1, 2, Side::NegX), 0);
+        assert_eq!(lot.half_at_side(1, 2, Side::PosX), 1);
+        assert_eq!(lot.half_at_side(3, 1, Side::PosX), 0);
+        assert_eq!(lot.half_at_side(3, 1, Side::NegX), 1);
+        assert!(lot.diag_blocks(1, 2));
+        assert!(
+            !lot.diag_blocks(4, 3),
+            "a diagonal door can be walked through"
+        );
+        assert!(lot.diag_touches(3, 1, 3, 1) && lot.diag_touches(3, 1, 4, 2));
+        assert!(!lot.diag_touches(3, 1, 4, 1));
+    }
+
+    #[test]
+    fn half_open_diagonal_rooms_stay_outdoors() {
+        // Three sides of the diamond only: the area leaks out and stays outdoors.
+        let file: LotFile = serde_json::from_str(
+            r#"{"width":8,"depth":8,"diagonals":[
+                {"x":1,"z":2,"dir":"dn"},{"x":2,"z":1,"dir":"dn"},
+                {"x":3,"z":1,"dir":"dp"},{"x":4,"z":2,"dir":"dp"},
+                {"x":4,"z":3,"dir":"dn"},{"x":3,"z":4,"dir":"dn"}]}"#,
+        )
+        .unwrap();
+        let lot = Lot::from_file(&file).unwrap();
+        assert!(lot.half_rooms().iter().all(|h| *h == [OUTDOORS; 2]));
+        assert!(lot.rooms().iter().all(|&r| r == OUTDOORS));
     }
 
     #[test]

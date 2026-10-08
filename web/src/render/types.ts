@@ -84,10 +84,11 @@ export interface PlacementGhost {
 
 /**
  * Wall-tool preview segment. An `h` edge at (x, z) runs from (x, z) to (x + 1, z) in world
- * metres; a `v` edge from (x, z) to (x, z + 1). `open` marks an existing wall for removal.
+ * metres; a `v` edge from (x, z) to (x, z + 1); diagonals cross tile (x, z): `dp` from (x, z)
+ * to (x + 1, z + 1), `dn` from (x, z + 1) to (x + 1, z). `open` marks an existing wall for removal.
  */
 export interface EdgePreview {
-  axis: 'h' | 'v';
+  axis: 'h' | 'v' | 'dp' | 'dn';
   x: number;
   z: number;
   kind: 'wall' | 'door' | 'window' | 'open';

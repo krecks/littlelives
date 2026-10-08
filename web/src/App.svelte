@@ -18,6 +18,7 @@
   import LoadGame from './ui/screens/LoadGame.svelte';
   import MainMenu from './ui/screens/MainMenu.svelte';
   import MenuBackdrop from './ui/screens/MenuBackdrop.svelte';
+  import PlayHousehold from './ui/screens/PlayHousehold.svelte';
   import SettingsPanel from './ui/screens/SettingsPanel.svelte';
   import Toasts from './ui/Toasts.svelte';
 
@@ -88,8 +89,8 @@
 
   /**
    * Prepare the next game in the background so starting it is instant: the latest save
-   * while on the main menu, the chosen house while picking a home. Both build hidden behind
-   * the menus' town.
+   * while on the main menu, the chosen house while picking a home, the chosen household while
+   * picking one to play. All build hidden behind the menus' town.
    */
   $effect(() => {
     if (!app.dataReady) return;
@@ -97,6 +98,7 @@
     const town = app.town;
     const household = app.household;
     const slot = app.homeSlot;
+    const playSlot = app.playSlot;
     const snapshot = $state.snapshot(settings);
     let cancelled = false;
     // Let the screen's own entrance animation finish first.
@@ -107,6 +109,9 @@
         await host.prepare({ kind: 'load', saveId: latest.id }, snapshot).catch(() => {});
       } else if (screen === 'home' && town && household && slot !== null) {
         await host.prepare({ kind: 'new', town, household, slot }, snapshot).catch(() => {});
+      } else if (screen === 'play' && town && playSlot !== null) {
+        const existing = town.households.find((h) => h.slot === playSlot)?.household;
+        if (existing) await host.prepare({ kind: 'new', town, household: existing, slot: playSlot, existing: true }, snapshot).catch(() => {});
       }
     }, 500);
     return () => {
@@ -134,6 +139,8 @@
     <CreateHousehold />
   {:else if app.screen === 'home'}
     <ChooseHome />
+  {:else if app.screen === 'play'}
+    <PlayHousehold />
   {:else}
     <MainMenu />
   {/if}

@@ -75,7 +75,7 @@
     </nav>
 
     <footer>
-      <span>v0.2 · desktop</span>
+      <span>v{__APP_VERSION__} · desktop</span>
       <span class="dot"></span>
       <span>{gpu ? 'WebGPU' : 'WebGL2'}</span>
     </footer>

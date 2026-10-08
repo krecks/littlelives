@@ -4,8 +4,11 @@ import type { HouseholdDraft } from '../game/household';
 import type { StartRequest } from '../game/session';
 import type { NeighbourhoodDraft } from '../game/town';
 
-/** New game: neighbourhood → household → home → game. */
-export type Screen = 'menu' | 'neighbourhood' | 'create' | 'home' | 'game';
+/**
+ * New game: neighbourhood → household → home → game, or neighbourhood → play (take over a
+ * household that already lives there) → game.
+ */
+export type Screen = 'menu' | 'neighbourhood' | 'create' | 'home' | 'play' | 'game';
 export type Overlay = 'settings' | 'load' | 'credits' | null;
 
 class AppState {
@@ -21,12 +24,15 @@ class AppState {
   household = $state.raw<HouseholdDraft | null>(null);
   /** House picked on the home screen (prepared in the background). */
   homeSlot = $state<number | null>(null);
+  /** Home of the neighbour household picked to play (prepared in the background). */
+  playSlot = $state<number | null>(null);
   /** A live 3D scene is rendering behind the menus. */
   liveBackdrop = $state(false);
 
   newGame(): void {
     this.town = null;
     this.household = null;
+    this.playSlot = null;
     this.screen = 'neighbourhood';
   }
 

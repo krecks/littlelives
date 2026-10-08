@@ -280,24 +280,30 @@ export function layoutTown(content: Content, t: Templates, town: NeighbourhoodDr
   return { walls, doors, windows, objects, paths, plots };
 }
 
-/** Builds the simulation's town file. The player household is index 0. */
+/**
+ * Builds the simulation's town file. A new player household moves in as household 0, before the
+ * neighbours. With `existing`, `player` is the neighbour household already living at `playerSlot`:
+ * it stays where it is in the list (with its jobs and history) and only becomes the player's.
+ */
 export function assembleTown(
   content: Content,
   t: Templates,
   town: NeighbourhoodDraft,
   player: HouseholdDraft,
   playerSlot: number,
+  existing = false,
 ): string {
   const { width: pw } = t.plot;
   const { walls, doors, windows, objects, paths, plots } = layoutTown(content, t, town, playerSlot);
   const point = (s: PlotSlot, [x, z]: [number, number]): [number, number] =>
     s.rotated ? [s.x + pw - x, s.z + t.plot.depth - z] : [s.x + x, s.z + z];
 
-  // Player first, then neighbours.
-  const residents: { household: HouseholdDraft; slot: number; player: boolean }[] = [
-    { household: player, slot: playerSlot, player: true },
-    ...town.households.map((h) => ({ ...h, player: false })),
-  ];
+  if (existing && !town.households.some((h) => h.slot === playerSlot)) throw new Error('Nobody lives in that house.');
+  // A new household first, then the neighbours (one of whom may be the player's).
+  const neighbours = town.households.map((h) => ({ ...h, player: existing && h.slot === playerSlot }));
+  const residents: { household: HouseholdDraft; slot: number; player: boolean }[] = existing
+    ? neighbours
+    : [{ household: player, slot: playerSlot, player: true }, ...neighbours];
   const households = residents.map((r) => ({ name: r.household.name.trim(), plot: r.slot, player: r.player }));
   const sims: (SimSpawn & { job?: { career: string; level: number } })[] = [];
   const relationships: { a: number; b: number; preset: string }[] = [];
@@ -307,18 +313,20 @@ export function assembleTown(
     const spawns = (template?.spawns ?? [[pw / 2, 1.5]]).map((p) => point(slot, p));
     relationships.push(...householdBonds(r.household, sims.length));
     for (const spawn of householdSpawns(r.household, index, spawns)) {
-      // Most neighbours already work somewhere; the player's Sims find jobs in game.
-      // Neighbours start somewhere on the ladder (mostly the lower grades) with the skills for it.
+      // Most neighbours already work somewhere (an existing household the player takes over too);
+      // a newly arrived household finds jobs in game. Neighbours start somewhere on the ladder
+      // (mostly the lower grades) with the skills for it.
       const tracks = content.careerCategories.flatMap((c) => c.tracks);
-      const track = !r.player && tracks.length && Math.random() < 0.75 ? pick(tracks) : null;
+      const settled = !r.player || existing;
+      const track = settled && tracks.length && Math.random() < 0.75 ? pick(tracks) : null;
       const level = Math.floor(Math.random() ** 2 * 6);
       sims.push(track ? { ...spawn, job: { career: track.id, level } } : spawn);
     }
   });
 
-  // Neighbours have history with each other; the newly arrived player household doesn't.
-  const playerCount = player.members.length;
-  for (let a = playerCount; a < sims.length; a++) {
+  // Neighbours have history with each other; a newly arrived player household doesn't.
+  const newcomers = existing ? 0 : player.members.length;
+  for (let a = newcomers; a < sims.length; a++) {
     for (let b = a + 1; b < sims.length; b++) {
       if (sims[a].household === sims[b].household) continue;
       const roll = Math.random();
@@ -328,7 +336,7 @@ export function assembleTown(
   }
 
   const meta: TownMeta = { kind: 'town', name: town.name, streets: town.streets, paths, seed: town.seed ?? (Math.random() * 2 ** 31) >>> 0 };
-  // Sims leave town (for work) at both ends of the street.
+  // Residents leave town (for work) at both ends of the street.
   const street = town.streets[0];
   const exits = street ? [[0.5, street.z + street.d / 2], [town.width - 0.5, street.z + street.d / 2]] : [];
   return JSON.stringify({ width: town.width, depth: town.depth, walls, doors, windows, objects, plots, households, sims, relationships, exits, meta });

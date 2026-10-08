@@ -3,6 +3,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 
 // SharedArrayBuffer (zero-copy sim -> render snapshots) requires cross-origin isolation.
 // Production hosting must send the same two headers.
@@ -12,6 +13,8 @@ const crossOriginIsolation = {
 };
 
 /** Where debug reports from the game land (dev server only): `<repo>/debug-reports/<name>/`. */
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
+
 const REPORTS = fileURLToPath(new URL('../debug-reports', import.meta.url));
 
 /**
@@ -67,6 +70,8 @@ function debugReports(): Plugin {
 
 export default defineConfig({
   plugins: [svelte(), debugReports()],
+  // The game's version (one number for web and Rust; `node ../tools/release/version.mjs <x.y.z>` bumps it).
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   server: { headers: crossOriginIsolation },
   preview: { headers: crossOriginIsolation },
   worker: { format: 'es' },

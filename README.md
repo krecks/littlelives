@@ -29,7 +29,7 @@ pnpm dev          # builds the WASM module, then starts Vite on http://localhost
 
 ## Playing
 
-**New game:** create a neighbourhood (town size, neighbour households) → create your household in the 3D household creator (drag to turn a resident, scroll to zoom to the face; gender, who they're attracted to, skin, hair, clothes, traits, perks, starting bonds) → choose a vacant house → move in. Everyone in town lives, works, socialises and falls in and out of love on their own; you control your household. Only the lot your selected resident is on is drawn; the rest of the town keeps simulating in the background.
+**New game:** create a neighbourhood (town size, neighbour households) → either play one of the households who already live there (**Play** on its card or its lot; they keep their home, jobs and friendships) or create your household in the 3D household creator (drag to turn a resident, scroll to zoom to the face; gender, who they're attracted to, skin, hair, clothes, traits, perks, starting bonds) → choose a vacant house → move in. Everyone in town lives, works, socialises and falls in and out of love on their own; you control your household. Only the lot your selected resident is on is drawn; the rest of the town keeps simulating in the background.
 
 - **Jobs (1000 of them):** 25 categories (journalism, detective work, fire & rescue, social media, IT, TV, mechanics, finance, …) × 4 tracks × 10 grades **A–J**. The grade sets pay per hour ($15/h at A up to $300/h at J) and the skill level the job expects. Open the job board from the *Career* tab, filter by category, grade or what your resident can take, and join any position you qualify for — up to two levels short is allowed *on probation*. Promotions need a full performance bar **and** the next grade's skills.
 - **Skills:** Intelligence, Strength, Endurance, Charisma, Creativity, Technology, Handiness, Cooking, Writing, Perception, Dexterity and Business (0–10). Work trains the job's skills; at home, residents practise with things you buy (treadmill, weight bench, chess table, computer desk, easel, mirror, workbench, telescope, piano, gourmet cooking, studying). Traits give starting skills and faster learning in some.
@@ -38,7 +38,7 @@ pnpm dev          # builds the WASM module, then starts Vite on http://localhost
 - **Day and night:** Residents are active by day and sleep through the night (couples share a double bed), get up early for an early shift, eat and wash in the morning, socialise in the evening and use the bathroom before bed. Tiredness builds up faster when they stay up late.
 - **Buy mode (V or B):** time stands still while you shop and build. One catalog for everything on your lot. Furniture and training equipment cost money, and what you buy decides what your residents can do: point at an item to see the needs it fills (and how fast), the skills it trains, the feelings it can give, whether a skill makes it better (a skilled cook gets more out of the stove), any cost per use and how many residents fit. Filter by category, search, sort by price or show only what you can afford. Pick a favourite **style** (Modern, Cozy, Minimal) — looks never change price or quality. Click an owned object to upgrade, move, rotate, restyle or sell it (60% back).
 - **Upgrades:** instead of pricier versions, objects get better by upgrading. Upgrades are bought in Buy mode (click the object → *Upgrade to ★n*) and happen at once; each quality star makes everything the object gives 25% better (a better shower cleans faster, a better treadmill trains faster).
-- **Building (Buy mode → Build: Walls · Doors · Windows · Remove):** draw walls (click a corner, then another), put doors and windows into walls, and tear walls down on your own lot. Windows let light in but not residents. Draw a room's walls first, then add its door; only a resident or furniture can't be shut in.
+- **Building (Buy mode → Build: Walls · Doors · Windows · Remove):** press on a corner and drag to draw a wall, with a live preview and its cost; release to build. Drag at about 45° and the wall runs diagonally, corner to corner across the tiles. Clicking a corner and then another also works. Put doors and windows into walls (straight or diagonal) with a click, and drag along walls with Remove to tear them down on your own lot. Esc or a right-click while drawing cancels. Windows let light in but not residents. A diagonal wall costs 1.414 × a straight one per tile (it is √2 m long) and splits its tile into two halves that can belong to different rooms; nobody can stand on that tile and furniture can't go there (a diagonal door tile can be walked through). Draw a room's walls first, then add its door; only a resident or furniture can't be shut in.
 - **Visits:** neighbours visit friends on their own. Open the town map (**M**) to send your resident to visit anyone; the view follows them.
 
 | Input | Action |
@@ -48,6 +48,7 @@ pnpm dev          # builds the WASM module, then starts Vite on http://localhost
 | Left-click an object | Interaction menu |
 | Left-click the floor | Walk there |
 | Left-drag / right-drag / wheel | Rotate / pan / zoom |
+| Left-drag on the lot (Walls, Remove) | Draw or tear down walls along the drag (at 45°: diagonal); right-click or Esc cancels. The camera then turns with middle-drag or by dragging off the lot |
 | Space, 0–3 | Pause, game speed |
 | W | Walls up → cutaway → down |
 | M | Town map (who's home, visiting) |
@@ -121,6 +122,10 @@ Everything gameplay-related is JSON in `web/public/content/`:
 Add an object to `content/base.json` (footprint, interactions, need effects, model key), add its model key to the manifest, and place it in a lot file under `content/lots/`. `cargo test` validates the shipped content (`crates/sim-core/tests/shipped_content.rs`).
 
 Pack authors: see [docs/content-packs.md](docs/content-packs.md). The look of the three visual styles is described in [docs/design/look.md](docs/design/look.md).
+
+## Versions
+
+One version number covers the whole game: `web/package.json` (shown in the main menu and Credits) and the Rust workspace in `Cargo.toml`. `node tools/release/version.mjs` prints it and fails if the two differ (the deploy workflow checks this); `node tools/release/version.mjs 0.4.0` sets both. Each release is a git tag `vX.Y.Z` with notes in [CHANGELOG.md](CHANGELOG.md).
 
 ## Licence
 

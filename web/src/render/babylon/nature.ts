@@ -307,10 +307,21 @@ export class Landscape {
     return this.lawn.flatMap((l) => l.meshes);
   }
 
-  /** Hides the lawn on tiles that are now indoors or under furniture, and shows it again elsewhere. */
+  /**
+   * Hides the lawn on tiles that are now indoors or under furniture, and shows it again elsewhere.
+   * On a tile split by a diagonal wall, each tuft follows the half it stands in.
+   */
   refreshLawn(world: WorldStructure): void {
     const hidden = new Uint8Array(world.width * world.depth);
     for (let i = 0; i < hidden.length; i++) if (world.rooms[i] !== 0) hidden[i] = 1;
+    // Split tiles: 2 = half 0 indoors, 3 = half 1 indoors, 4 = both (bit 1 marks "per half").
+    const splitAxis = new Map<number, 'dp' | 'dn'>();
+    for (const d of world.diagonals ?? []) {
+      const i = d.z * world.width + d.x;
+      const [a, b] = [d.rooms[0] !== 0, d.rooms[1] !== 0];
+      hidden[i] = a && b ? 1 : a ? 2 : b ? 3 : 0;
+      splitAxis.set(i, d.axis);
+    }
     for (const o of world.objects) {
       for (let z = o.z; z < o.z + o.d; z++) for (let x = o.x; x < o.x + o.w; x++) hidden[z * world.width + x] = 1;
     }
@@ -318,7 +329,17 @@ export class Landscape {
       let changed = false;
       for (let k = 0; k < layer.tiles.length; k++) {
         const t = layer.tiles[k];
-        const hide = t >= 0 ? hidden[t] : 0;
+        let hide = t >= 0 ? hidden[t] : 0;
+        if (hide > 1) {
+          // The tuft's position within its tile decides its half.
+          const fx = layer.base[k * 16 + 12] - (t % world.width);
+          const fz = layer.base[k * 16 + 14] - Math.floor(t / world.width);
+          const axis = splitAxis.get(t) ?? 'dp';
+          const half = axis === 'dp' ? (fz < fx ? 0 : 1) : fx + fz < 1 ? 0 : 1;
+          // Tufts right at the wall would poke through it.
+          const nearWall = (axis === 'dp' ? Math.abs(fx - fz) : Math.abs(fx + fz - 1)) < 0.17;
+          hide = half === hide - 2 || nearWall ? 1 : 0;
+        }
         if (layer.hidden[k] === hide) continue;
         layer.hidden[k] = hide;
         changed = true;

@@ -1,4 +1,11 @@
 //! Grid pathfinding: 8-directional A* with no corner cutting, then string-pulling.
+//!
+//! Diagonal walls: a tile crossed by a diagonal wall or window can't be entered at all (it
+//! blocks movement between its two halves), so residents walk around it on whole tiles. A
+//! diagonal door tile is walked across like a doorway. A diagonal step passes the grid corner
+//! shared by four tiles; it is refused when any diagonal ends at that corner (it would cross a
+//! diagonal wall or clip its end), but allowed past a diagonal that keeps clear of the corner,
+//! so a corridor between two parallel diagonal walls can be walked.
 
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -15,8 +22,11 @@ pub struct NavGrid<'a> {
 }
 
 impl NavGrid<'_> {
+    /// Whether a resident can stand on the tile: on the lot, no furniture, no diagonal wall.
     pub fn tile_free(&self, x: i32, z: i32) -> bool {
-        self.lot.in_bounds(x, z) && !self.blocked[self.lot.tile_index(x, z)]
+        self.lot.in_bounds(x, z)
+            && !self.blocked[self.lot.tile_index(x, z)]
+            && !self.lot.diag_blocks(x, z)
     }
 
     /// Whether a single step from `a` to the neighbouring tile `b` is allowed.
@@ -28,9 +38,20 @@ impl NavGrid<'_> {
         if dx == 0 || dz == 0 {
             return self.lot.edge_walkable(ax, az, bx, bz);
         }
-        // Diagonal: both L-shaped routes must be open, so Sims never clip corners.
-        self.tile_free(ax + dx, az)
-            && self.tile_free(ax, az + dz)
+        // Diagonal: the step passes the grid corner shared by the four tiles. No diagonal wall
+        // may end there, and both L-shaped routes must be open, so residents never clip corners.
+        let (cx, cz) = (ax.max(bx), az.max(bz));
+        let clear = |x: i32, z: i32| !self.lot.diag_touches(x, z, cx, cz);
+        // The tiles beside the step: no furniture; a diagonal wall across them is fine as long
+        // as it keeps clear of the corner (checked above for all four tiles).
+        let beside =
+            |x: i32, z: i32| self.lot.in_bounds(x, z) && !self.blocked[self.lot.tile_index(x, z)];
+        clear(ax, az)
+            && clear(bx, bz)
+            && clear(ax + dx, az)
+            && clear(ax, az + dz)
+            && beside(ax + dx, az)
+            && beside(ax, az + dz)
             && self.lot.edge_walkable(ax, az, ax + dx, az)
             && self.lot.edge_walkable(ax + dx, az, bx, bz)
             && self.lot.edge_walkable(ax, az, ax, az + dz)
@@ -200,6 +221,136 @@ mod tests {
         for w in smooth.windows(2) {
             assert!(nav.line_walkable(w[0], w[1]));
         }
+    }
+
+    fn nav_of(lot: &Lot) -> Vec<bool> {
+        vec![false; lot.width * lot.depth]
+    }
+
+    /// Every step of a path is allowed and no tile on it is crossed by a diagonal wall.
+    fn assert_walkable(nav: &NavGrid, path: &[(i32, i32)]) {
+        for &(x, z) in path {
+            assert!(
+                !nav.lot.diag_blocks(x, z),
+                "path enters diagonal wall tile {x},{z}"
+            );
+        }
+        for w in path.windows(2) {
+            assert!(nav.can_step(w[0].0, w[0].1, w[1].0, w[1].1), "{w:?}");
+        }
+    }
+
+    /// A diagonal wall `/` from (2, 0) to (8, 6) across tiles (2,0)..(7,5), then straight up
+    /// x = 8 to z = 10: the lower-right side is closed off except around the far end.
+    fn lot_with_diagonal(door: bool) -> Lot {
+        let mut diags: Vec<String> = (0..6)
+            .map(|k| format!(r#"{{"x":{},"z":{},"dir":"dp"}}"#, 2 + k, k))
+            .collect();
+        if door {
+            diags[3] = r#"{"x":5,"z":3,"dir":"dp","kind":"door"}"#.into();
+        }
+        let json = format!(
+            r#"{{"width":12,"depth":12,"walls":[[8,6,8,11],[2,0,0,0]],"diagonals":[{}]}}"#,
+            diags.join(",")
+        );
+        let file: LotFile = serde_json::from_str(&json).unwrap();
+        Lot::from_file(&file).unwrap()
+    }
+
+    #[test]
+    fn diagonal_wall_tiles_block_and_steps_cannot_cross_it() {
+        let lot = lot_with_diagonal(false);
+        let blocked = nav_of(&lot);
+        let nav = NavGrid {
+            lot: &lot,
+            blocked: &blocked,
+        };
+        assert!(!nav.tile_free(4, 2), "nobody stands on a diagonal wall");
+        // Orthogonal steps into the wall tile are refused from both halves.
+        assert!(!nav.can_step(4, 1, 4, 2));
+        assert!(!nav.can_step(3, 2, 4, 2));
+        // Diagonal steps across the joint of two diagonal tiles are refused both ways.
+        assert!(
+            !nav.can_step(5, 2, 4, 3),
+            "crosses the wall at corner (5, 3)"
+        );
+        assert!(
+            !nav.can_step(6, 3, 5, 4),
+            "crosses the wall at corner (6, 4)"
+        );
+        assert!(!nav.can_step(5, 4, 6, 3));
+        // Beside the wall (parallel to it) is fine.
+        assert!(nav.can_step(5, 2, 6, 3));
+        // Past a free end (the wall stops at (8, 6) and the h wall at x = 0..2, z = 0).
+        assert!(
+            !nav.can_step(7, 6, 8, 5),
+            "would clip the wall's end at (8, 6)"
+        );
+    }
+
+    #[test]
+    fn routes_around_a_diagonal_wall() {
+        let lot = lot_with_diagonal(false);
+        let blocked = nav_of(&lot);
+        let nav = NavGrid {
+            lot: &lot,
+            blocked: &blocked,
+        };
+        // From the lower-right side (below the wall) to the upper-left side.
+        let path = nav.find_path((6, 1), (2, 4)).expect("path around the end");
+        assert_walkable(&nav, &path);
+        assert!(
+            path.iter().any(|&(x, z)| x >= 8 && z >= 11) || path.iter().any(|&(x, _)| x >= 9),
+            "must go around via x > 8: {path:?}"
+        );
+        let smooth = nav.smooth(&path);
+        for w in smooth.windows(2) {
+            assert!(nav.line_walkable(w[0], w[1]));
+        }
+    }
+
+    #[test]
+    fn diagonal_door_lets_residents_through() {
+        let lot = lot_with_diagonal(true);
+        let blocked = nav_of(&lot);
+        let nav = NavGrid {
+            lot: &lot,
+            blocked: &blocked,
+        };
+        assert!(nav.tile_free(5, 3), "a doorway can be walked");
+        let path = nav.find_path((6, 2), (4, 4)).expect("through the door");
+        assert!(path.contains(&(5, 3)), "{path:?}");
+        assert!(path.len() <= 5, "short way through the door: {path:?}");
+        assert_walkable(&nav, &path);
+        // Not along the wall through the door's ends.
+        assert!(!nav.can_step(4, 2, 5, 3));
+        assert!(!nav.can_step(5, 3, 6, 4));
+    }
+
+    #[test]
+    fn corridor_between_parallel_diagonals_is_walkable() {
+        // Two `/` walls one tile apart: (0,0)..(3,3) and (2,0)..(5,3) (x - z = 0 and 2).
+        let diags: Vec<String> = (0..3)
+            .flat_map(|k| {
+                [
+                    format!(r#"{{"x":{k},"z":{k},"dir":"dp"}}"#),
+                    format!(r#"{{"x":{},"z":{k},"dir":"dp"}}"#, k + 2),
+                ]
+            })
+            .collect();
+        let json = format!(
+            r#"{{"width":8,"depth":8,"diagonals":[{}]}}"#,
+            diags.join(",")
+        );
+        let lot = Lot::from_file(&serde_json::from_str::<LotFile>(&json).unwrap()).unwrap();
+        let blocked = nav_of(&lot);
+        let nav = NavGrid {
+            lot: &lot,
+            blocked: &blocked,
+        };
+        assert!(nav.can_step(1, 0, 2, 1), "along the corridor");
+        assert!(nav.can_step(2, 1, 3, 2));
+        assert!(!nav.can_step(1, 0, 0, 1), "across the left wall");
     }
 
     #[test]

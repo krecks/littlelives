@@ -1,5 +1,6 @@
 <script lang="ts">
   /** Static credits and licences. */
+  const version = __APP_VERSION__;
 </script>
 
 <div class="credits">
@@ -14,11 +15,11 @@
     <dt>Typeface</dt>
     <dd>Inter by Rasmus Andersson (SIL Open Font License)</dd>
     <dt>Art</dt>
-    <dd>Placeholder geometry and icons made for this project; all art is replaceable through the asset manifest</dd>
+    <dd>Models, textures and animations from Poly Haven, ambientCG, Kenney and Quaternius (all CC0), plus geometry and icons made for this project; all art is replaceable through the asset manifest</dd>
     <dt>Licence</dt>
     <dd>Code under the MIT licence; third-party art keeps its own licence (CC0)</dd>
   </dl>
-  <p class="small">Not affiliated with or endorsed by Electronic Arts. "The Sims" is a trademark of Electronic Arts Inc.</p>
+  <p class="small">Version {version}</p>
 </div>
 
 <style>

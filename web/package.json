@@ -2,7 +2,7 @@
   "name": "littlelives",
   "private": true,
   "license": "MIT",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "wasm": "cd .. && cargo build -p sim-wasm --target wasm32-unknown-unknown --release && wasm-bindgen target/wasm32-unknown-unknown/release/sim_wasm.wasm --target web --out-dir web/src/core/wasm-pkg",

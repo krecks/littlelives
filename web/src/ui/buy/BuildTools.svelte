@@ -7,10 +7,10 @@
   /** The Build section of the catalog: walls, doors, windows and removing them, on the home lot. */
   const prices = $derived(game.catalog?.build);
   const tools: { id: BuildTool; label: string; icon: string; hint: string; unit: string }[] = [
-    { id: 'wall', label: 'Walls', icon: 'icon.ui.wall', hint: 'Click a corner, then another corner to draw a straight wall. Drawing over a door or window fills it in.', unit: '/m' },
-    { id: 'door', label: 'Doors', icon: 'icon.ui.door', hint: 'Click a wall to put a door in it.', unit: '' },
-    { id: 'window', label: 'Windows', icon: 'icon.ui.window', hint: 'Click a wall to put a window in it.', unit: '' },
-    { id: 'remove', label: 'Remove', icon: 'icon.ui.eraser', hint: 'Click a corner, then another to tear down walls, doors and windows.', unit: '/m' },
+    { id: 'wall', label: 'Walls', icon: 'icon.ui.wall', hint: 'Drag from a corner to draw a wall; drag at 45° for a diagonal one. Or click a corner, then another. Esc or right-click cancels.', unit: '/m' },
+    { id: 'door', label: 'Doors', icon: 'icon.ui.door', hint: 'Click a wall, straight or diagonal, to put a door in it.', unit: '' },
+    { id: 'window', label: 'Windows', icon: 'icon.ui.window', hint: 'Click a wall, straight or diagonal, to put a window in it.', unit: '' },
+    { id: 'remove', label: 'Remove', icon: 'icon.ui.eraser', hint: 'Drag along walls (straight or at 45°) to tear down walls, doors and windows. Esc or right-click cancels.', unit: '/m' },
   ];
   const price = (id: BuildTool) => (prices ? (prices[id] ?? 0) : 0);
   const tool = $derived(tools.find((t) => t.id === game.buildTool) ?? tools[0]);
@@ -36,6 +36,9 @@
         <span class="muted">Hover your lot to see the cost.</span>
       {/if}
     </p>
+    {#if game.buildTool === 'wall' && prices}
+      <p class="muted">A diagonal wall costs <span class="tabular">{money(prices.diagonalWall ?? Math.round(prices.wall * 1.414))}</span> per tile. Furniture can't stand on tiles a diagonal crosses.</p>
+    {/if}
     <p class="muted">Draw the walls first, then add a door. Residents and furniture can't be shut in.</p>
   </div>
 </div>

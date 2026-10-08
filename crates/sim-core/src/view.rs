@@ -389,7 +389,43 @@ struct StructureView<'a> {
     walls: Vec<EdgeView>,
     /// Doors and windows (also listed in `walls`).
     openings: Vec<OpeningView>,
+    /// Diagonal walls (with or without a door or window), one per tile at most.
+    diagonals: Vec<DiagonalView>,
     meta: &'a serde_json::Value,
+}
+
+/// A diagonal wall across tile `(x, z)`: `dp` (`/`) from `(x, z)` to `(x + 1, z + 1)`, `dn`
+/// (`\`) from `(x, z + 1)` to `(x + 1, z)`. `rooms` are the rooms of the tile's two halves:
+/// half 0 touches the tile's `-z` side, half 1 its `+z` side.
+#[derive(Serialize)]
+struct DiagonalView {
+    x: usize,
+    z: usize,
+    axis: &'static str,
+    kind: &'static str,
+    rooms: [u16; 2],
+}
+
+fn diagonals(lot: &crate::lot::Lot) -> Vec<DiagonalView> {
+    let mut out = Vec::new();
+    for (i, d) in lot.diagonals().iter().enumerate() {
+        let Some(d) = d else { continue };
+        out.push(DiagonalView {
+            x: i % lot.width,
+            z: i / lot.width,
+            axis: match d.dir {
+                crate::lot::DiagDir::Dp => "dp",
+                crate::lot::DiagDir::Dn => "dn",
+            },
+            kind: match d.edge {
+                Edge::Door => "door",
+                Edge::Window => "window",
+                _ => "wall",
+            },
+            rooms: lot.half_rooms()[i],
+        });
+    }
+    out
 }
 
 /// A wall edge: `h` runs from `(x, z)` to `(x + 1, z)`, `v` from `(x, z)` to `(x, z + 1)`.
@@ -490,7 +526,7 @@ struct PlotView<'a> {
     house: Option<[i32; 4]>,
 }
 
-/// Bounding box of all wall/door edges inside a plot.
+/// Bounding box of all wall/door edges (and diagonal walls) inside a plot.
 fn house_bounds(world: &World, x0: i32, z0: i32, x1: i32, z1: i32) -> Option<[i32; 4]> {
     let lot = &world.lot;
     let mut b: Option<[i32; 4]> = None;
@@ -511,6 +547,9 @@ fn house_bounds(world: &World, x0: i32, z0: i32, x1: i32, z1: i32) -> Option<[i3
         for x in x0..=x1.min(lot.width as i32) {
             if lot.v_edge(x as usize, z as usize) != Edge::Open {
                 add(x, z, x, z + 1);
+            }
+            if x < x1 && lot.diag(x, z).is_some() {
+                add(x, z, x + 1, z + 1);
             }
         }
     }
@@ -580,6 +619,7 @@ pub fn structure_json(world: &World) -> String {
         })
         .collect();
     let (walls, openings) = wall_edges(&world.lot);
+    let diagonals = diagonals(&world.lot);
     serde_json::to_string(&StructureView {
         version: world.structure_version(),
         width: world.lot.width,
@@ -592,6 +632,7 @@ pub fn structure_json(world: &World) -> String {
         rooms: world.lot.rooms(),
         walls,
         openings,
+        diagonals,
         meta: &world.meta,
     })
     .expect("structure serializes")
@@ -688,11 +729,14 @@ struct ObjectRulesView {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct BuildView {
     wall: i64,
     door: i64,
     window: i64,
     remove: i64,
+    /// A diagonal wall across one tile (`wall × 1.414`, rounded).
+    diagonal_wall: i64,
 }
 
 /// Every career with all its levels, expanded from the content (sent to the UI once).
@@ -768,6 +812,7 @@ pub fn catalog_json(content: &Content) -> String {
             door: content.build.door,
             window: content.build.window,
             remove: content.build.remove,
+            diagonal_wall: content.build.diagonal_wall(),
         },
     })
     .expect("catalog serializes")

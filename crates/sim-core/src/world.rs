@@ -581,7 +581,8 @@ impl World {
         self.place(def, x, z, rot, 0, 0, value)
     }
 
-    /// Checks that object `def` fits at `x, z, rot`: inside the lot, on free tiles, facing a tile on the lot.
+    /// Checks that object `def` fits at `x, z, rot`: inside the lot, on free tiles without a
+    /// diagonal wall, facing a tile on the lot.
     pub(crate) fn check_fit(
         &self,
         def: usize,
@@ -605,6 +606,12 @@ impl World {
             if !self.lot.in_bounds(tx, tz) || self.blocked[self.lot.tile_index(tx, tz)] {
                 return Err(Error::new(format!(
                     "'{name}' at {x},{z} overlaps or leaves the lot"
+                )));
+            }
+            // Furniture never stands on a tile split by a diagonal wall (it would overlap it).
+            if self.lot.diag(tx, tz).is_some() {
+                return Err(Error::new(format!(
+                    "'{name}' at {x},{z} overlaps a diagonal wall"
                 )));
             }
         }

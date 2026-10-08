@@ -6,7 +6,8 @@
 //!
 //! Version history: 1 = single household; 2 = town (households, plots), relationships,
 //! feelings, gender and attraction; 3 = jobs, funds, visits, exits; 4 = skills, object
-//! quality/style/value, household style. Older files load. Saves written before feelings
+//! quality/style/value, household style; 5 = diagonal walls (`lot.diagonals`, absent in
+//! older files, which load without any). Older files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
 use std::collections::{BTreeMap, HashMap};
@@ -15,13 +16,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::content::{Content, Pose};
 use crate::life::{Job, Visit};
-use crate::lot::{Edge, Lot, SimSpawn};
+use crate::lot::{DiagDir, Diagonal, Edge, Lot, SimSpawn};
 use crate::rng::Rng;
 use crate::social::{self, Relationship};
 use crate::world::{Household, Plot, Task, TaskKind, World};
 use crate::{Error, MINUTES_PER_TICK, clock::MAX_SPEED};
 
-pub const SAVE_VERSION: u32 = 4;
+pub const SAVE_VERSION: u32 = 5;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -54,6 +55,11 @@ pub struct LotSave {
     /// One character per edge: `0` open, `1` wall, `2` door, `3` window.
     pub h_edges: String,
     pub v_edges: String,
+    /// One character per tile (row-major): `0` none; `/` diagonals `1` wall, `2` door,
+    /// `3` window; `\` diagonals `4` wall, `5` door, `6` window. Empty when the lot has no
+    /// diagonal walls (and in saves from before they existed).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub diagonals: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -296,6 +302,7 @@ impl World {
                 depth: self.lot.depth,
                 h_edges: encode(h),
                 v_edges: encode(v),
+                diagonals: encode_diagonals(self.lot.diagonals()),
             },
             objects,
             sims,
@@ -351,6 +358,7 @@ impl World {
             save.lot.depth,
             decode(&save.lot.h_edges)?,
             decode(&save.lot.v_edges)?,
+            decode_diagonals(&save.lot.diagonals)?,
         )?;
         let mut world = World::empty(content, lot, Rng::new(save.rng));
         world.tick = save.tick;
@@ -620,6 +628,49 @@ fn encode(edges: &[Edge]) -> String {
         .collect()
 }
 
+fn encode_diagonals(diags: &[Option<Diagonal>]) -> String {
+    if diags.iter().all(Option::is_none) {
+        return String::new();
+    }
+    diags
+        .iter()
+        .map(|d| {
+            let Some(d) = d else { return '0' };
+            let base = match d.dir {
+                DiagDir::Dp => 0,
+                DiagDir::Dn => 3,
+            };
+            let kind = match d.edge {
+                Edge::Door => 2,
+                Edge::Window => 3,
+                _ => 1,
+            };
+            char::from(b'0' + base + kind)
+        })
+        .collect()
+}
+
+fn decode_diagonals(s: &str) -> Result<Vec<Option<Diagonal>>, Error> {
+    s.chars()
+        .map(|c| {
+            let n = c
+                .to_digit(10)
+                .filter(|&n| n <= 6)
+                .ok_or_else(|| Error::new("corrupt diagonal walls in save"))?;
+            if n == 0 {
+                return Ok(None);
+            }
+            let dir = if n <= 3 { DiagDir::Dp } else { DiagDir::Dn };
+            let edge = match (n - 1) % 3 {
+                0 => Edge::Wall,
+                1 => Edge::Door,
+                _ => Edge::Window,
+            };
+            Ok(Some(Diagonal { dir, edge }))
+        })
+        .collect()
+}
+
 fn decode(s: &str) -> Result<Vec<Edge>, Error> {
     s.chars()
         .map(|c| match c {
@@ -776,6 +827,58 @@ mod tests {
         let w = World::from_save_json(CONTENT, v1).unwrap();
         assert_eq!(w.sims[0].gender, "female", "defaults to the first gender");
         assert_eq!(w.sims[0].attracted_to.len(), 2);
+    }
+
+    #[test]
+    fn diagonal_walls_survive_saving() {
+        let lot = LOT.replacen(
+            r#""doors":"#,
+            r#""diagonals":[{"x":2,"z":8,"dir":"dp"},{"x":3,"z":9,"dir":"dp","kind":"window"},
+                {"x":4,"z":8,"dir":"dn","kind":"door"}],"doors":"#,
+            1,
+        );
+        let w = World::from_json(CONTENT, &lot, 3).unwrap();
+        let json = w.save_json();
+        let saved: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(saved["version"], super::SAVE_VERSION);
+        let diags = saved["lot"]["diagonals"].as_str().unwrap();
+        assert_eq!(diags.len(), 12 * 12);
+        let loaded = World::from_save_json(CONTENT, &json).unwrap();
+        use crate::lot::{DiagDir, Diagonal, Edge};
+        assert_eq!(
+            loaded.lot.diag(3, 9),
+            Some(Diagonal {
+                dir: DiagDir::Dp,
+                edge: Edge::Window
+            })
+        );
+        assert_eq!(
+            loaded.lot.diag(4, 8),
+            Some(Diagonal {
+                dir: DiagDir::Dn,
+                edge: Edge::Door
+            })
+        );
+        assert_eq!(loaded.lot.half_rooms(), w.lot.half_rooms());
+        assert_eq!(loaded.save_json(), json);
+    }
+
+    #[test]
+    fn saves_without_diagonals_still_load() {
+        // A version 4 save (before diagonal walls): no `diagonals` in the lot.
+        let w = World::from_json(CONTENT, LOT, 3).unwrap();
+        let mut saved: serde_json::Value = serde_json::from_str(&w.save_json()).unwrap();
+        assert!(
+            saved["lot"].get("diagonals").is_none(),
+            "lots without diagonals don't write them"
+        );
+        saved["version"] = 4.into();
+        let loaded = World::from_save_json(CONTENT, &saved.to_string()).unwrap();
+        assert!(loaded.lot.diagonals().iter().all(Option::is_none));
+        assert_eq!(loaded.lot.rooms(), w.lot.rooms());
+        // A corrupt or wrongly sized diagonal string is an error, not a silent change.
+        saved["lot"]["diagonals"] = "01".into();
+        assert!(World::from_save_json(CONTENT, &saved.to_string()).is_err());
     }
 
     #[test]

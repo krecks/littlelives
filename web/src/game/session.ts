@@ -30,7 +30,14 @@ const STATS_INTERVAL_MS = 500;
 const THUMBNAIL = { width: 320, height: 200 };
 
 export type StartRequest =
-  | { kind: 'new'; town: NeighbourhoodDraft; household: HouseholdDraft; slot: number }
+  | {
+      kind: 'new';
+      town: NeighbourhoodDraft;
+      household: HouseholdDraft;
+      slot: number;
+      /** `household` already lives in `town` at `slot`: the player takes it over instead of moving a new one in. */
+      existing?: boolean;
+    }
   | { kind: 'load'; saveId: string };
 
 /** How long a story-feed entry stays visible. */
@@ -84,7 +91,7 @@ export async function startSession(
   let household: string;
   if (request.kind === 'new') {
     const templates = await loadTemplates();
-    const lot = assembleTown(content, templates, request.town, request.household, request.slot);
+    const lot = assembleTown(content, templates, request.town, request.household, request.slot, request.existing);
     source = { lot, seed: Number(params.get('seed')) || (Math.random() * 2 ** 31) >>> 0 };
     household = request.household.name.trim();
   } else {
@@ -267,6 +274,7 @@ export async function startSession(
       const ui = plainState(game, ['catalog']);
       const report: DebugReport = {
         note,
+        version: __APP_VERSION__,
         createdAt: new Date().toISOString(),
         url: location.href,
         userAgent: navigator.userAgent,
@@ -434,6 +442,17 @@ export async function startSession(
       renderer.setHoverTile(null);
       buildBuy.clearPreviews();
     },
+    // Wall and Remove tools: press, drag, release (see `BuildBuyInput.press`).
+    press(x, y) {
+      if (game.pauseMenu || game.mode === 'live') return false;
+      const g = renderer.pick(x, y).ground;
+      return buildBuy.press(g && inLot(g.x, g.z) ? g : null);
+    },
+    release(x, y, moved) {
+      const g = renderer.pick(x, y).ground;
+      buildBuy.release(g && inLot(g.x, g.z) ? g : null, moved);
+    },
+    cancel: () => buildBuy.cancelDrawing(),
   });
 
   const onKey = (e: KeyboardEvent) => {
@@ -610,7 +629,7 @@ export async function startSession(
       /** Sim-clock minute of the newest snapshot (changes when one arrives). */
       snapshotMinute: () => bridge.latest()[bridge.layout.header.minute],
       renderer,
-      structure: () => ({ walls: world?.walls?.length ?? 0, openings: world?.openings?.map((o) => o.kind) ?? [], funds: game.funds }),
+      structure: () => ({ walls: world?.walls?.length ?? 0, openings: world?.openings?.map((o) => o.kind) ?? [], diagonals: world?.diagonals?.map((d) => `${d.axis}:${d.x}:${d.z}:${d.kind}`) ?? [], funds: game.funds }),
       townFile: () => ('lot' in source ? source.lot : null),
       sims: () =>
         game.sims.map((x) => {

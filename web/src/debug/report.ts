@@ -12,6 +12,8 @@ import type { LogEntry } from './log';
 export interface DebugReport {
   /** What the report is about, typed by the player (may be empty). */
   note: string;
+  /** Game version the report was taken with. */
+  version: string;
   createdAt: string;
   url: string;
   userAgent: string;

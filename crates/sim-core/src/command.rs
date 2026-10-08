@@ -97,7 +97,8 @@ pub enum Command {
     },
 }
 
-/// One wall edge to set. `h` edges run along x at the line `z`; `v` edges run along z at the line `x`.
+/// One wall edge to set. `h` edges run along x at the line `z`; `v` edges run along z at the
+/// line `x`; `dp` (`/`) and `dn` (`\`) are diagonal walls across tile `(x, z)`.
 #[derive(Debug, Clone, Copy, Deserialize)]
 pub struct EdgeEdit {
     pub axis: EdgeAxis,
@@ -111,6 +112,21 @@ pub struct EdgeEdit {
 pub enum EdgeAxis {
     H,
     V,
+    /// Diagonal `/` across tile `(x, z)`: from corner `(x, z)` to `(x + 1, z + 1)`.
+    Dp,
+    /// Diagonal `\` across tile `(x, z)`: from corner `(x, z + 1)` to `(x + 1, z)`.
+    Dn,
+}
+
+impl EdgeAxis {
+    /// The diagonal direction, for `dp` / `dn`.
+    pub fn diagonal(self) -> Option<crate::lot::DiagDir> {
+        match self {
+            EdgeAxis::Dp => Some(crate::lot::DiagDir::Dp),
+            EdgeAxis::Dn => Some(crate::lot::DiagDir::Dn),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]

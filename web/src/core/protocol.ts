@@ -30,9 +30,27 @@ export interface WallEdge {
   z: number;
 }
 
-/** A wall edge to set: a plain wall, a door or window in a wall, or nothing (`open`). */
-export interface EdgeEdit extends WallEdge {
+/**
+ * Diagonal wall directions across tile (x, z): `dp` ("/") from (x, z) to (x + 1, z + 1),
+ * `dn` ("\") from (x, z + 1) to (x + 1, z).
+ */
+export type DiagonalAxis = 'dp' | 'dn';
+
+/** A wall edge (or a diagonal across a tile) to set: a plain wall, a door or window in a wall, or nothing (`open`). */
+export interface EdgeEdit {
+  axis: WallEdge['axis'] | DiagonalAxis;
+  x: number;
+  z: number;
   kind: 'wall' | 'door' | 'window' | 'open';
+}
+
+/** A diagonal wall across tile (x, z). `rooms`: rooms of the tile's halves (0 touches its -z side, 1 its +z side). */
+export interface DiagonalWall {
+  axis: DiagonalAxis;
+  x: number;
+  z: number;
+  kind: 'wall' | 'door' | 'window';
+  rooms: [number, number];
 }
 
 /** A door or window in a wall (its edge is also listed in `WorldStructure.walls`). */
@@ -118,6 +136,8 @@ export interface WorldStructure {
   walls: WallEdge[];
   /** Doors and windows. */
   openings: Opening[];
+  /** Diagonal walls (absent from older structures). */
+  diagonals?: DiagonalWall[];
   /** Presentation data carried by the simulation unchanged (see `game/town.ts`). */
   meta: WorldMeta | null;
   meshes: { walls: MeshArrays; wallsLow: MeshArrays; floors: MeshArrays };
@@ -207,7 +227,7 @@ export interface Catalog {
     upgradeSkillPerLevel: number;
     resale: number;
   };
-  build: { wall: number; door: number; window: number; remove: number };
+  build: { wall: number; door: number; window: number; remove: number; diagonalWall?: number };
 }
 
 export interface CareerEntry {
