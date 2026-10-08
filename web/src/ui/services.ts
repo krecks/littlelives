@@ -1,10 +1,10 @@
 /** Non-reactive handles the UI needs. Set once by the game layer before the HUD mounts. */
 
 import type { AssetRegistry } from '../assets/registry';
-import type { EdgeEdit } from '../core/protocol';
+import type { EdgeEdit, FacePaint } from '../core/protocol';
 import type { BuildTool, GameMode } from './state.svelte';
 import type { Content } from '../content/content';
-import type { SimPreviews, WallMode } from '../render/types';
+import type { ItemPreviews, SimPreviews, WallMode } from '../render/types';
 
 export interface GameControls {
   setSpeed(speed: number): void;
@@ -34,20 +34,24 @@ export interface GameControls {
   restyle(objectId: number, style: number): void;
   setHouseholdStyle(style: number): void;
   upgrade(objectId: number): void;
-  /** Buy mode: pick a build tool (walls, doors, remove), or null for the furniture catalog. */
-  setBuildTool(tool: BuildTool | null): void;
+  /** Build mode: pick a tool (walls, rooms, doors, windows, remove); switches to Build mode. */
+  setBuildTool(tool: BuildTool): void;
   build(edits: EdgeEdit[]): void;
+  /** Build mode: cover wall faces (paint, wallpaper, brick...). */
+  paint(faces: FacePaint[]): void;
   /** Saves a debug report (screenshot, game state, log) and returns where it went. */
   debugReport(note: string): Promise<string>;
 }
 
 /**
- * `content`, `assets` and `previews` (3D Sim previews and portraits) are set once data has
- * loaded; `controls` while a game is running.
+ * `content`, `assets`, `previews` (3D Sim previews and portraits) and `items` (furniture pictures)
+ * are set once data has loaded; `controls` while a game is running.
  */
 export const services = {} as {
   content: Content;
   assets: AssetRegistry;
   previews: SimPreviews;
+  /** Catalog pictures of furniture. */
+  items: ItemPreviews;
   controls: GameControls;
 };

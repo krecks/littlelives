@@ -95,6 +95,11 @@ pub enum Command {
         sim: u32,
         edits: Vec<EdgeEdit>,
     },
+    /// Build mode: cover wall faces on the Sim's home plot (paint, wallpaper, brick...).
+    Paint {
+        sim: u32,
+        faces: Vec<FacePaint>,
+    },
 }
 
 /// One wall edge to set. `h` edges run along x at the line `z`; `v` edges run along z at the
@@ -105,6 +110,41 @@ pub struct EdgeEdit {
     pub x: i32,
     pub z: i32,
     pub kind: EdgeKind,
+    /// New walls: the covering of both faces (0 = the automatic look).
+    #[serde(default)]
+    pub cover: Option<u8>,
+    /// Walls: 0 full height, 1 half wall. Changing it on a standing wall rebuilds it.
+    #[serde(default)]
+    pub form: Option<u8>,
+    /// Doors and windows: their style. Changing it on a standing door or window replaces it.
+    #[serde(default)]
+    pub style: Option<u8>,
+}
+
+impl EdgeEdit {
+    /// An edit with the default look (full-height, automatic covering, first style).
+    pub fn new(axis: EdgeAxis, x: i32, z: i32, kind: EdgeKind) -> Self {
+        Self {
+            axis,
+            x,
+            z,
+            kind,
+            cover: None,
+            form: None,
+            style: None,
+        }
+    }
+}
+
+/// One wall face to cover: face 0 looks towards `-z` (`h`), `-x` (`v`) or the tile's half 0
+/// (diagonals), face 1 the other way. `covering`: 0 the automatic look, else a wall covering + 1.
+#[derive(Debug, Clone, Copy, Deserialize)]
+pub struct FacePaint {
+    pub axis: EdgeAxis,
+    pub x: i32,
+    pub z: i32,
+    pub side: u8,
+    pub covering: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]

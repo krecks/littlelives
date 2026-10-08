@@ -9,6 +9,8 @@
   import TopBar from './TopBar.svelte';
   import TownPanel from './TownPanel.svelte';
   import BuyPanel from './BuyPanel.svelte';
+  import BuildPanel from './BuildPanel.svelte';
+  import BuyFx from './buy/BuyFx.svelte';
   import { game } from './state.svelte';
 </script>
 
@@ -19,6 +21,8 @@
     <NeedsPanel />
   {/if}
   <BuyPanel />
+  <BuildPanel />
+  <BuyFx />
   <PerfOverlay />
   <EventFeed />
   <PieMenu />

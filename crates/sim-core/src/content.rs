@@ -455,20 +455,57 @@ impl ObjectRules {
     }
 }
 
-/// Prices for build mode.
-#[derive(Debug, Clone, Copy)]
+/// Prices for build mode, and the looks walls, doors and windows come in.
+#[derive(Debug, Clone)]
 pub struct BuildRules {
     pub wall: i64,
     pub door: i64,
     pub window: i64,
     /// Removing a wall, door or window.
     pub remove: i64,
+    /// Wall coverings (`wallCoverings`): paint, wallpaper, brick... A wall face's covering is an
+    /// index into this list + 1; 0 is the automatic look (siding outside, wallpaper inside).
+    pub coverings: Vec<BuildStyle>,
+    /// Door styles (`doorStyles`); a door's style is an index into this list (0 when empty).
+    pub doors: Vec<BuildStyle>,
+    /// Window styles (`windowStyles`), like doors.
+    pub windows: Vec<BuildStyle>,
+}
+
+/// A look for walls, doors or windows. The simulation only needs its id (saves) and price; the
+/// renderer reads the rest of the content entry (finish, colour, glazing...).
+#[derive(Debug, Clone)]
+pub struct BuildStyle {
+    pub id: String,
+    pub price: i64,
 }
 
 impl BuildRules {
     /// A diagonal wall spans a tile corner to corner (√2 m): `wall × 1.414`, rounded.
     pub fn diagonal_wall(&self) -> i64 {
         (self.wall as f64 * 1.414).round() as i64
+    }
+
+    /// Price of a door in `style` (the plain door price without styles).
+    pub fn door_price(&self, style: u8) -> i64 {
+        self.doors
+            .get(style as usize)
+            .map_or(self.door, |s| s.price)
+    }
+
+    /// Price of a window in `style`.
+    pub fn window_price(&self, style: u8) -> i64 {
+        self.windows
+            .get(style as usize)
+            .map_or(self.window, |s| s.price)
+    }
+
+    /// Price of covering one wall face (0, the automatic look, is free).
+    pub fn covering_price(&self, covering: u8) -> i64 {
+        covering
+            .checked_sub(1)
+            .and_then(|i| self.coverings.get(i as usize))
+            .map_or(0, |c| c.price)
     }
 }
 
@@ -565,6 +602,12 @@ struct ContentFile {
     object_rules: ObjectRulesRaw,
     #[serde(default)]
     build: BuildRaw,
+    #[serde(default)]
+    wall_coverings: Vec<BuildStyleRaw>,
+    #[serde(default)]
+    door_styles: Vec<BuildStyleRaw>,
+    #[serde(default)]
+    window_styles: Vec<BuildStyleRaw>,
     #[serde(default)]
     styles: Vec<StyleRaw>,
     /// Extra tags that no interaction or social uses (yet), so traits and emotions can refer to them.
@@ -710,6 +753,13 @@ struct BuildRaw {
     door: Option<i64>,
     window: Option<i64>,
     remove: Option<i64>,
+}
+
+#[derive(Deserialize)]
+struct BuildStyleRaw {
+    id: String,
+    #[serde(default)]
+    price: i64,
 }
 
 #[derive(Deserialize)]
@@ -1452,6 +1502,9 @@ impl Content {
             door: raw.build.door.unwrap_or(150),
             window: raw.build.window.unwrap_or(120),
             remove: raw.build.remove.unwrap_or(10),
+            coverings: build_styles(&raw.wall_coverings, "wall covering")?,
+            doors: build_styles(&raw.door_styles, "door style")?,
+            windows: build_styles(&raw.window_styles, "window style")?,
         };
         let styles = raw
             .styles
@@ -1685,6 +1738,31 @@ fn lookup(index: &HashMap<&str, usize>, key: &str, ctx: &str, kind: &str) -> Res
         .get(key)
         .copied()
         .ok_or_else(|| Error::new(format!("{ctx}: unknown {kind} '{key}'")))
+}
+
+/// Build looks from content: ids must be unique, prices not negative, and (stored as a byte) at
+/// most 250 of each.
+fn build_styles(raw: &[BuildStyleRaw], what: &str) -> Result<Vec<BuildStyle>, Error> {
+    if raw.len() > 250 {
+        return Err(Error::new(format!("too many {what}s (at most 250)")));
+    }
+    let mut out: Vec<BuildStyle> = Vec::with_capacity(raw.len());
+    for r in raw {
+        if out.iter().any(|s| s.id == r.id) {
+            return Err(Error::new(format!("duplicate {what} '{}'", r.id)));
+        }
+        if r.price < 0 {
+            return Err(Error::new(format!(
+                "{what} '{}' has a negative price",
+                r.id
+            )));
+        }
+        out.push(BuildStyle {
+            id: r.id.clone(),
+            price: r.price,
+        });
+    }
+    Ok(out)
 }
 
 #[cfg(test)]

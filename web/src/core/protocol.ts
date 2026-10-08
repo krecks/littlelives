@@ -21,13 +21,18 @@ export type Command =
   | { type: 'restyle'; sim: number; object: number; style: number }
   | { type: 'setStyle'; sim: number; style: number }
   | { type: 'upgrade'; sim: number; object: number }
-  | { type: 'build'; sim: number; edits: EdgeEdit[] };
+  | { type: 'build'; sim: number; edits: EdgeEdit[] }
+  | { type: 'paint'; sim: number; faces: FacePaint[] };
 
 /** One wall edge: `h` runs from (x, z) to (x + 1, z); `v` from (x, z) to (x, z + 1). */
 export interface WallEdge {
   axis: 'h' | 'v';
   x: number;
   z: number;
+  /** Covering of each face (0: automatic, else `wallCoverings` index + 1); face 0 looks towards -z (h) or -x (v). Absent: both automatic. */
+  faces?: [number, number];
+  /** 1: half wall. */
+  form?: number;
 }
 
 /**
@@ -42,6 +47,21 @@ export interface EdgeEdit {
   x: number;
   z: number;
   kind: 'wall' | 'door' | 'window' | 'open';
+  /** New walls: covering of both faces. */
+  cover?: number;
+  /** Walls: 0 full height, 1 half wall. */
+  form?: number;
+  /** Doors and windows: style index. */
+  style?: number;
+}
+
+/** One wall face to cover (`side` 0 looks towards -z / -x / the tile's half 0). */
+export interface FacePaint {
+  axis: EdgeEdit['axis'];
+  x: number;
+  z: number;
+  side: 0 | 1;
+  covering: number;
 }
 
 /** A diagonal wall across tile (x, z). `rooms`: rooms of the tile's halves (0 touches its -z side, 1 its +z side). */
@@ -51,11 +71,17 @@ export interface DiagonalWall {
   z: number;
   kind: 'wall' | 'door' | 'window';
   rooms: [number, number];
+  /** Covering of each face (face 0 towards half 0), half wall (`form` 1), door or window style. */
+  faces?: [number, number];
+  form?: number;
+  style?: number;
 }
 
 /** A door or window in a wall (its edge is also listed in `WorldStructure.walls`). */
 export interface Opening extends WallEdge {
   kind: 'door' | 'window';
+  /** Door or window style index. */
+  style?: number;
 }
 
 export interface MeshArrays {

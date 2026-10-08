@@ -13,13 +13,16 @@ import { recentLog } from '../debug/log';
 import { deliverReport, gpuInfo, takePendingPose, type DebugReport } from '../debug/report';
 import { plainState } from '../debug/snapshot.svelte';
 import { createSimPreviews } from '../render/preview';
+import { createItemPreviews } from '../render/preview/items';
 import type { Renderer } from '../render/types';
 import { settings as liveSettings, type Settings } from '../settings/settings.svelte';
 import { services, type GameControls } from '../ui/services';
 import { game, nextWallMode, toast } from '../ui/state.svelte';
 import { saveDebugReport } from '../ui/debugReport';
 import { BubbleLayer } from './bubbles';
-import { BuildBuyInput } from './buildmode';
+import { BuildBuyInput, editFeedback } from './buildmode';
+import { styledModel } from '../ui/buy/catalog';
+import { play } from '../ui/sfx';
 import type { HouseholdDraft } from './household';
 import { PointerInput } from './input';
 import { assembleTown, loadTemplates, type NeighbourhoodDraft } from './town';
@@ -44,6 +47,8 @@ export type StartRequest =
 const FEED_MS = 12_000;
 /** Frames drawn before a prepared session counts as ready (shaders compiled, textures up). */
 const WARM_FRAMES = 3;
+/** After this long in the game, the catalog's pictures are drawn in idle moments (Buy mode then opens with them). */
+const PREFETCH_PICTURES_MS = 4000;
 
 export interface GameSession {
   /** Saves into `slotId` (a new slot when omitted). Returns the slot id. */
@@ -72,6 +77,7 @@ export function loadGameData(): Promise<{ content: Content; assets: AssetRegistr
     services.content = content;
     services.assets = assets;
     services.previews = createSimPreviews({ assets, emotions: content.emotions.map((e) => e.id), backend: () => liveSettings.renderer });
+    services.items = createItemPreviews(assets);
     return { content, assets };
   });
   return shared;
@@ -113,6 +119,8 @@ export async function startSession(
   const ready = new Promise<void>((resolve) => (markReady = resolve));
 
   let world: WorldStructure | null = null;
+  /** The lot the last world structure showed (edit feedback compares worlds of the same lot). */
+  let worldView: number | null = null;
   let lastSpeed = 1;
   let focused = false;
   let viewPlot: number | null = null;
@@ -126,12 +134,13 @@ export async function startSession(
   /** Buy mode pauses the game; the speed to restore when leaving it. */
   let speedBeforeBuy: number | null = null;
   let autosaveTimer: ReturnType<typeof setInterval> | undefined;
+  let prefetchTimer: ReturnType<typeof setTimeout> | undefined;
   let autosaveMinutes = -1;
 
   const controls: GameControls = {
     setSpeed(speed) {
       // Time stands still in Buy mode.
-      if (game.mode === 'buy') return;
+      if (game.mode !== 'live') return;
       if (speed > 0) lastSpeed = speed;
       bridge.send({ type: 'setSpeed', speed });
     },
@@ -185,15 +194,18 @@ export async function startSession(
     },
     setMode(mode) {
       if (game.mode === mode) return;
+      const fromLive = game.mode === 'live';
       buildBuy.cancel();
       game.mode = mode;
-      if (mode === 'live') game.buildTool = null;
+      play(mode === 'live' ? 'close' : fromLive ? 'open' : 'tab');
       game.menu = null;
       game.socialMenu = null;
-      // Buy mode pauses the game (and closes Live-only panels); leaving it restores the speed.
-      if (mode === 'buy') {
-        speedBeforeBuy = game.speed;
-        bridge.send({ type: 'setSpeed', speed: 0 });
+      // Buy and Build mode pause the game (and close Live-only panels); back in Live the speed returns.
+      if (mode !== 'live') {
+        if (fromLive) {
+          speedBeforeBuy = game.speed;
+          bridge.send({ type: 'setSpeed', speed: 0 });
+        }
         game.townOpen = false;
         game.jobBoardOpen = false;
       } else if (speedBeforeBuy !== null) {
@@ -210,21 +222,23 @@ export async function startSession(
       buildBuy.modeChanged();
     },
     startPlacing(def) {
-      dropBuildTool();
+      controls.setMode('buy');
       game.buySelection = null;
       game.placing = { def, rot: game.placing?.rot ?? 0, objectId: null };
     },
     startMoving(objectId) {
       const obj = game.objects.find((o) => o.id === objectId);
       if (!obj) return;
-      dropBuildTool();
+      controls.setMode('buy');
       game.buySelection = null;
       game.placing = { def: obj.def, rot: obj.rot, objectId };
     },
     rotatePlacing() {
       if (game.mode !== 'buy') return;
-      if (game.placing) game.placing = { ...game.placing, rot: (game.placing.rot + 1) % 4 };
-      else if (game.buySelection !== null) {
+      if (game.placing) {
+        game.placing = { ...game.placing, rot: (game.placing.rot + 1) % 4 };
+        play('rotate');
+      } else if (game.buySelection !== null) {
         const obj = game.objects.find((o) => o.id === game.buySelection);
         if (obj) bridge.send({ type: 'moveObject', sim: game.selected, object: obj.id, x: obj.x, z: obj.z, rot: (obj.rot + 1) % 4 });
       }
@@ -252,16 +266,18 @@ export async function startSession(
       game.menu = null;
     },
     setBuildTool(tool) {
-      if (tool !== null && game.mode !== 'buy') controls.setMode('buy');
-      // Building and furniture placement are exclusive: picking one drops the other.
-      game.placing = null;
-      game.buySelection = null;
+      controls.setMode('build');
       game.buildTool = tool;
+      // Painting needs the walls standing to see them.
+      if (tool === 'paint' && game.wallMode === 'down') controls.setWallMode('cutaway');
       game.buildStart = null;
       buildBuy.clearPreviews();
     },
     build(edits) {
       bridge.send({ type: 'build', sim: game.selected, edits });
+    },
+    paint(faces) {
+      bridge.send({ type: 'paint', sim: game.selected, faces });
     },
     async debugReport(note) {
       const scale = Math.min(window.devicePixelRatio || 1, 2);
@@ -293,18 +309,13 @@ export async function startSession(
   services.controls = controls;
   // `?debug`: drive the game from the console / test harness.
   if (params.has('debug')) Object.assign(window, { __controls: controls });
-  /** Leaves the build tools for the furniture catalog. */
-  function dropBuildTool() {
-    if (game.buildTool === null) return;
-    game.buildTool = null;
-    game.buildStart = null;
-    buildBuy.clearPreviews();
-  }
   game.sharedMemory = bridge.sharedMemory;
   game.household = household;
 
   bridge.onError((message) => {
-    if (!disposed) toast(message);
+    if (disposed) return;
+    toast(message);
+    if (game.mode !== 'live') play('error');
   });
   bridge.onUi((ui) => {
     if (disposed) return;
@@ -334,7 +345,11 @@ export async function startSession(
   });
   bridge.onWorld((w) => {
     if (disposed) return;
+    // Buy mode: show what the simulation just accepted (furniture popping in, dust, money).
+    const feedback = game.mode !== 'live' && world && worldView === viewPlot ? editFeedback(world, w) : null;
+    if (feedback?.sound) play(feedback.sound);
     world = w;
+    worldView = viewPlot;
     buildBuy.setStructure(w);
     game.objects = w.objects;
     if (game.buySelection !== null && !w.objects.some((o) => o.id === game.buySelection)) game.buySelection = null;
@@ -355,6 +370,7 @@ export async function startSession(
     const plot = viewPlot === null ? null : w.plots[viewPlot];
     const build = renderer.setWorld(w, plot ? { x: plot.x, z: plot.z, w: plot.w, d: plot.d } : null);
     building = build.catch(() => {});
+    if (feedback?.effects.length) void build.then(() => feedback.effects.forEach((fx) => renderer.buildEffect(fx)), () => {});
     build
       .then(() => renderer.framesRendered(WARM_FRAMES))
       .then(markReady)
@@ -460,9 +476,8 @@ export async function startSession(
     if (e.key === 'Escape') {
       if (game.townOpen) return void (game.townOpen = false);
       if (game.jobBoardOpen) return void (game.jobBoardOpen = false);
-      // Step back: drop what's in hand, then leave the build tools, then Buy mode.
+      // Step back: drop what's in hand, then leave Buy or Build mode.
       if (buildBuy.cancel()) return;
-      if (game.mode === 'buy' && game.buildTool !== null) return controls.setBuildTool(null);
       if (game.mode !== 'live') return controls.setMode('live');
       if (game.menu || game.socialMenu) return controls.closeMenu();
       game.pauseMenu = !game.pauseMenu;
@@ -500,12 +515,10 @@ export async function startSession(
       case 'Backspace':
         if (game.mode === 'buy' && game.buySelection !== null) controls.sell(game.buySelection);
         return;
-      // B and V both toggle Buy mode; B opens it on the build tools, V on the catalog.
+      // B toggles Build mode, V Buy mode.
       case 'b':
       case 'B':
-        if (game.mode === 'buy') return controls.setMode('live');
-        controls.setMode('buy');
-        return controls.setBuildTool('wall');
+        return controls.setMode(game.mode === 'build' ? 'live' : 'build');
       case 'v':
       case 'V':
         return controls.setMode(game.mode === 'buy' ? 'live' : 'buy');
@@ -545,6 +558,10 @@ export async function startSession(
       pointer = attachPointer();
       window.addEventListener('keydown', onKey);
       bridge.send({ type: 'setSpeed', speed: resumeSpeed ?? 1 });
+      prefetchTimer = setTimeout(() => {
+        if (disposed) return;
+        services.items.prefetch(content.shop.map((def) => ({ model: styledModel(content, assets, def, game.householdStyle), footprint: def.footprint ?? [1, 1] })));
+      }, PREFETCH_PICTURES_MS);
     },
     async save(name, slotId) {
       const [data, thumbnail] = await Promise.all([bridge.requestSave(), renderer.captureThumbnail(THUMBNAIL.width, THUMBNAIL.height)]);
@@ -577,6 +594,7 @@ export async function startSession(
       if (s.autosaveMinutes !== autosaveMinutes) {
         autosaveMinutes = s.autosaveMinutes;
         clearInterval(autosaveTimer);
+      clearTimeout(prefetchTimer);
         if (autosaveMinutes > 0) {
           autosaveTimer = setInterval(() => {
             if (game.pauseMenu) return;
@@ -601,6 +619,7 @@ export async function startSession(
       window.removeEventListener('keydown', onKey);
       pointer?.dispose();
       bubbles.dispose();
+      buildBuy.dispose();
       await building;
       renderer.clear();
       bridge.dispose();

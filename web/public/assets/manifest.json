@@ -6422,6 +6422,54 @@
       "type": "icon",
       "url": "icons/eraser.svg"
     },
+    "icon.ui.room": {
+      "type": "icon",
+      "url": "icons/room.svg"
+    },
+    "icon.ui.search": {
+      "type": "icon",
+      "url": "icons/magnifier.svg"
+    },
+    "icon.category.kitchen": {
+      "type": "icon",
+      "url": "icons/chef.svg"
+    },
+    "icon.category.bathroom": {
+      "type": "icon",
+      "url": "icons/bath.svg"
+    },
+    "icon.category.bedroom": {
+      "type": "icon",
+      "url": "icons/bed.svg"
+    },
+    "icon.category.living": {
+      "type": "icon",
+      "url": "icons/sofa.svg"
+    },
+    "icon.category.office": {
+      "type": "icon",
+      "url": "icons/laptop.svg"
+    },
+    "icon.category.fitness": {
+      "type": "icon",
+      "url": "icons/dumbbell.svg"
+    },
+    "icon.category.hobbies": {
+      "type": "icon",
+      "url": "icons/palette.svg"
+    },
+    "icon.category.decor": {
+      "type": "icon",
+      "url": "icons/sparkle.svg"
+    },
+    "icon.category.outdoor": {
+      "type": "icon",
+      "url": "icons/sprout.svg"
+    },
+    "icon.category.wellness": {
+      "type": "icon",
+      "url": "icons/flower.svg"
+    },
     "icon.ui.upgrade": {
       "type": "icon",
       "url": "icons/upgrade.svg"

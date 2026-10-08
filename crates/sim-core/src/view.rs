@@ -404,6 +404,35 @@ struct DiagonalView {
     axis: &'static str,
     kind: &'static str,
     rooms: [u16; 2],
+    #[serde(flatten)]
+    look: LookView,
+}
+
+/// A wall's look, when it isn't the default: face coverings (0 = automatic, else wall covering
+/// + 1; face 0 towards `-z` / `-x` / half 0), `form` 1 for a half wall, door or window `style`.
+#[derive(Serialize, Default)]
+struct LookView {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    faces: Option<[u8; 2]>,
+    #[serde(skip_serializing_if = "is_zero")]
+    form: u8,
+    #[serde(skip_serializing_if = "is_zero")]
+    style: u8,
+}
+
+fn is_zero(n: &u8) -> bool {
+    *n == 0
+}
+
+impl LookView {
+    fn of(lot: &crate::lot::Lot, at: crate::lot::EdgeRef) -> Self {
+        let l = lot.look(at);
+        Self {
+            faces: (l.sides != [0, 0]).then_some(l.sides),
+            form: l.form,
+            style: l.style,
+        }
+    }
 }
 
 fn diagonals(lot: &crate::lot::Lot) -> Vec<DiagonalView> {
@@ -423,6 +452,10 @@ fn diagonals(lot: &crate::lot::Lot) -> Vec<DiagonalView> {
                 _ => "wall",
             },
             rooms: lot.half_rooms()[i],
+            look: LookView::of(
+                lot,
+                crate::lot::EdgeRef::Diag((i % lot.width) as u16, (i / lot.width) as u16),
+            ),
         });
     }
     out
@@ -434,6 +467,11 @@ struct EdgeView {
     axis: &'static str,
     x: usize,
     z: usize,
+    /// Coverings and form (the style is on the opening).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    faces: Option<[u8; 2]>,
+    #[serde(skip_serializing_if = "is_zero")]
+    form: u8,
 }
 
 #[derive(Serialize)]
@@ -442,6 +480,8 @@ struct OpeningView {
     x: usize,
     z: usize,
     kind: &'static str,
+    #[serde(skip_serializing_if = "is_zero")]
+    style: u8,
 }
 
 /// Wall edges and openings (doors, windows) of the whole lot, in grid order.
@@ -452,13 +492,31 @@ fn wall_edges(lot: &crate::lot::Lot) -> (Vec<EdgeView>, Vec<OpeningView>) {
         if !e.is_wall() {
             return;
         }
-        walls.push(EdgeView { axis, x, z });
+        let at = if axis == "h" {
+            crate::lot::EdgeRef::H(x as u16, z as u16)
+        } else {
+            crate::lot::EdgeRef::V(x as u16, z as u16)
+        };
+        let look = LookView::of(lot, at);
+        walls.push(EdgeView {
+            axis,
+            x,
+            z,
+            faces: look.faces,
+            form: look.form,
+        });
         let kind = match e {
             Edge::Door => "door",
             Edge::Window => "window",
             _ => return,
         };
-        openings.push(OpeningView { axis, x, z, kind });
+        openings.push(OpeningView {
+            axis,
+            x,
+            z,
+            kind,
+            style: look.style,
+        });
     };
     for z in 0..=lot.depth {
         for x in 0..lot.width {

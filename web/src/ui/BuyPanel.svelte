@@ -1,27 +1,21 @@
 <script lang="ts">
   import type { ObjectDef } from '../content/content';
   import Icon from './Icon.svelte';
-  import BuildTools from './buy/BuildTools.svelte';
   import ItemCard from './buy/ItemCard.svelte';
   import ItemDetail from './buy/ItemDetail.svelte';
-  import { summarize } from './buy/catalog';
+  import { collectionOf, loversOf, styledModel, styleOptions, summarize } from './buy/catalog';
   import { services } from './services';
-  import { game, type BuildTool } from './state.svelte';
+  import { play } from './sfx';
+  import { game } from './state.svelte';
 
   /**
-   * Buy mode: one catalog for everything the household can buy — build tools (walls, doors,
-   * windows, removal) and furniture by category — plus the owned object picked on the lot.
+   * Buy mode: the furniture catalog by category, plus the owned object picked on the lot.
+   * (Walls, rooms, doors and windows are Build mode's: see `BuildPanel`.)
    */
   const content = services.content;
   const ALL = '';
   const OTHER = '·other';
 
-  const buildTabs: { id: BuildTool; label: string; icon: string }[] = [
-    { id: 'wall', label: 'Walls', icon: 'icon.ui.wall' },
-    { id: 'door', label: 'Doors', icon: 'icon.ui.door' },
-    { id: 'window', label: 'Windows', icon: 'icon.ui.window' },
-    { id: 'remove', label: 'Remove', icon: 'icon.ui.eraser' },
-  ];
   /** Content categories, plus "Other" for items whose category isn't listed. */
   const categories = (() => {
     const known = new Set(content.buyCategories.map((c) => c.id));
@@ -29,6 +23,8 @@
     if (content.shop.some((o) => !known.has(o.category ?? ''))) list.push({ id: OTHER, label: 'Other' });
     return list;
   })();
+  /** Each category's backdrop hue for its pictures (golden-angle steps from a warm start). */
+  const hue = (id: string) => Math.round((Math.max(0, categories.findIndex((c) => c.id === id)) * 137.5 + 28) % 360);
   const known = new Set(content.buyCategories.map((c) => c.id));
   const categoryOf = (def: ObjectDef) => (known.has(def.category ?? '') ? def.category! : OTHER);
   const categoryLabel = (id: string) => categories.find((c) => c.id === id)?.label ?? '';
@@ -45,13 +41,46 @@
   let query = $state('');
   let sort = $state<Sort>('default');
   let affordableOnly = $state(false);
+  let lovedOnly = $state(false);
+  /** The item last pointed at; it stays in the detail pane while the pointer is on the panel (so it can be turned). */
   let hovered = $state<string | null>(null);
+  /**
+   * The pointer came (back) to the panel. While something is in hand the catalog folds away, from
+   * the moment it's picked, so the lot behind it is free to click; pointing at the panel opens it.
+   */
+  let over = $state(false);
+
+  /** The household's residents, and who of them loves each item (by their traits). */
+  const residents = $derived(game.roster.filter((s) => game.households[s.household]?.player));
+  const lovers = $derived.by(() => {
+    const map = new Map<string, string[]>();
+    for (const def of content.shop) {
+      const names = loversOf(content, def, residents);
+      if (names.length) map.set(def.id, names);
+    }
+    return map;
+  });
+  /** How many styles each item comes in (most have one design: 0). */
+  const styleCounts = new Map(content.shop.map((d) => [d.id, styleOptions(content, services.assets, d).length]));
+  const styledItems = [...styleCounts.values()].filter((n) => n > 0).length;
+  /** How many of each item stand on the home lot. */
+  const owned = $derived.by(() => {
+    const plot = game.households.find((h) => h.player)?.plot;
+    const home = plot == null ? null : game.plots[plot];
+    const map = new Map<string, number>();
+    if (!home) return map;
+    for (const o of game.objects) {
+      if (o.x >= home.x && o.z >= home.z && o.x < home.x + home.w && o.z < home.z + home.d) map.set(o.def, (map.get(o.def) ?? 0) + 1);
+    }
+    return map;
+  });
 
   const terms = $derived(query.trim().toLowerCase().split(/\s+/).filter(Boolean));
-  /** Items passing the search and "affordable only" filters, across all categories. */
+  /** Items passing the search, "Affordable" and "For us" filters, across all categories. */
   const matching = $derived(
     content.shop.filter((def) => {
       if (affordableOnly && (def.price ?? 0) > game.funds) return false;
+      if (lovedOnly && !lovers.has(def.id)) return false;
       if (!terms.length) return true;
       const text = summarize(content, def).haystack;
       return terms.every((t) => text.includes(t));
@@ -70,9 +99,9 @@
     return list;
   });
 
-  const building = $derived(game.buildTool !== null);
+  const folded = $derived(!!game.placing && !over);
   const selected = $derived(game.buySelection === null ? null : (game.objects.find((o) => o.id === game.buySelection) ?? null));
-  /** Hovered card, else what's in hand, else the owned object picked on the lot. */
+  /** The card pointed at, else what's in hand, else the owned object picked on the lot. */
   const detail = $derived.by(() => {
     const hover = hovered && content.object(hovered);
     if (hover) return { def: hover, owned: null };
@@ -83,8 +112,9 @@
   });
 
   function pickCategory(id: string) {
+    if (category !== id) play('tab');
     category = id;
-    if (building) services.controls.setBuildTool(null);
+    hovered = null;
   }
 
   function onSearchKey(e: KeyboardEvent) {
@@ -100,88 +130,112 @@
 </script>
 
 {#if game.mode === 'buy'}
-  <section class="buy glass" aria-label="Buy mode">
+  <section class="buy glass" aria-label="Buy mode" onpointerenter={() => (over = true)} onpointerleave={() => ((over = false), (hovered = null))}>
     <header class="tabs">
-      <div class="group build" role="radiogroup" aria-label="Build">
-        <span class="eyebrow">Build</span>
-        {#each buildTabs as t (t.id)}
-          <button role="radio" aria-checked={game.buildTool === t.id} class:active={game.buildTool === t.id} onclick={() => services.controls.setBuildTool(t.id)}>
-            <Icon name={t.icon} size={14} />{t.label}
-          </button>
-        {/each}
-      </div>
       <div class="group shop" role="tablist" aria-label="Furniture">
-        <span class="eyebrow">Buy</span>
-        <button role="tab" aria-selected={!building && category === ALL} class:active={!building && category === ALL} onclick={() => pickCategory(ALL)}>
-          All <small class="tabular">{matching.length}</small>
+        <button role="tab" aria-selected={category === ALL} class:active={category === ALL} onclick={() => pickCategory(ALL)}>
+          <Icon name="icon.ui.buy" size={14} />All <small class="tabular">{matching.length}</small>
         </button>
         {#each categories as c (c.id)}
           {@const n = counts.get(c.id) ?? 0}
-          <button role="tab" aria-selected={!building && category === c.id} class:active={!building && category === c.id} class:empty={n === 0} onclick={() => pickCategory(c.id)}>
-            {c.label} <small class="tabular">{n}</small>
+          <button
+            role="tab"
+            aria-selected={category === c.id}
+            class:active={category === c.id}
+            class:empty={n === 0}
+            style="--hue:{hue(c.id)}"
+            title={c.label}
+            onclick={() => pickCategory(c.id)}
+          >
+            <span class="cat-icon"><Icon name={c.icon ?? 'icon.ui.buy'} size={14} /></span><span class="label">{c.label}</span>
+            <small class="tabular">{n}</small>
           </button>
         {/each}
       </div>
     </header>
 
-    {#if building}
-      <BuildTools />
-    {:else}
-      <div class="filters">
-        <label class="search">
-          <span aria-hidden="true">⌕</span>
-          <input type="search" placeholder="Search {content.shop.length} items — name, need, skill…" bind:value={query} onkeydown={onSearchKey} />
-        </label>
-        <select class="sort" bind:value={sort} aria-label="Sort">
-          {#each sorts as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
-        </select>
-        <button class="chip" class:active={affordableOnly} aria-pressed={affordableOnly} onclick={() => (affordableOnly = !affordableOnly)}>Affordable only</button>
-        {#if content.styles.length > 1}
-          <div class="styles" title="Your favourite look for new purchases. Looks never change price or quality.">
-            <span class="eyebrow">Style</span>
-            {#each content.styles as s, i (s.id)}
-              <button class="chip" class:active={game.householdStyle === i} onclick={() => services.controls.setHouseholdStyle(i)}>{s.label}</button>
-            {/each}
-          </div>
-        {/if}
-      </div>
-
-      <div class="body">
-        <ul class="items">
-          {#each items as def (def.id)}
-            <li>
-              <ItemCard
-                {def}
-                affordable={game.funds >= (def.price ?? 0)}
-                active={game.placing?.def === def.id && game.placing.objectId === null}
-                category={category === ALL && terms.length ? categoryLabel(categoryOf(def)) : null}
-                onpick={() => services.controls.startPlacing(def.id)}
-                onhover={(on) => (hovered = on ? def.id : hovered === def.id ? null : hovered)}
-              />
-            </li>
-          {:else}
-            <li class="none muted">
-              {#if terms.length || affordableOnly}Nothing matches.
-                <button class="link" onclick={() => ((query = ''), (affordableOnly = false))}>Clear filters</button>
-              {:else}Nothing here yet.{/if}
-            </li>
-          {/each}
-        </ul>
-        <aside class="side">
-          {#if detail}
-            <ItemDetail def={detail.def} owned={detail.owned} />
-          {:else}
-            <p class="muted tip">Point at an item to see what it's worth to your household — the needs it fills, the skills it trains and how it can make your residents feel.</p>
+    <div class="drawer" class:folded>
+      <div class="drawer-inner">
+        <div class="filters">
+          <label class="search">
+            <Icon name="icon.ui.search" size={13} />
+            <input type="search" placeholder="Search {content.shop.length} items — name, need, skill, personality…" bind:value={query} onkeydown={onSearchKey} />
+          </label>
+          <select class="sort" bind:value={sort} aria-label="Sort">
+            {#each sorts as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
+          </select>
+          <button class="chip" class:active={affordableOnly} aria-pressed={affordableOnly} onclick={() => (affordableOnly = !affordableOnly)}>Affordable</button>
+          {#if lovers.size}
+            <button
+              class="chip love"
+              class:active={lovedOnly}
+              aria-pressed={lovedOnly}
+              title="Things your household's personalities draw them to"
+              onclick={() => (lovedOnly = !lovedOnly)}>♥ For us <small class="tabular">{lovers.size}</small></button
+            >
           {/if}
-        </aside>
+          {#if content.styles.length > 1 && styledItems > 0}
+            <div
+              class="styles"
+              title="{styledItems} pieces of furniture come in several designs (marked on their cards); the rest have one. New purchases come in the style you pick. Styles never change price or quality."
+            >
+              <span class="eyebrow">Style</span>
+              {#each content.styles as st, i (st.id)}
+                <button class="chip" class:active={game.householdStyle === i} onclick={() => (play('tab'), services.controls.setHouseholdStyle(i))}>{st.label}</button>
+              {/each}
+              <span class="styled-count"><Icon name="icon.skill.creativity" size={11} />{styledItems} items</span>
+            </div>
+          {/if}
+        </div>
+
+        <div class="body">
+          {#key category}
+            <ul class="items">
+              {#each items as def, i (def.id)}
+                <li style="--i:{Math.min(i, 16)}">
+                  <ItemCard
+                    {def}
+                    model={styledModel(content, services.assets, def, game.householdStyle)}
+                    affordable={game.funds >= (def.price ?? 0)}
+                    active={game.placing?.def === def.id && game.placing.objectId === null}
+                    category={category === ALL && terms.length ? categoryLabel(categoryOf(def)) : null}
+                    owned={owned.get(def.id) ?? 0}
+                    lovers={lovers.get(def.id) ?? []}
+                    collection={collectionOf(content, def)}
+                    styles={styleCounts.get(def.id) ?? 0}
+                    tint={hue(categoryOf(def))}
+                    onpick={() => ((over = false), services.controls.startPlacing(def.id))}
+                    onpoint={() => (hovered = def.id)}
+                  />
+                </li>
+              {:else}
+                <li class="none muted">
+                  {#if terms.length || affordableOnly || lovedOnly}
+                    <span class="big">🔍</span>Nothing matches.
+                    <button class="link" onclick={() => ((query = ''), (affordableOnly = false), (lovedOnly = false))}>Clear filters</button>
+                  {:else}Nothing here yet.{/if}
+                </li>
+              {/each}
+            </ul>
+          {/key}
+          <aside class="side">
+            {#if detail}
+              <ItemDetail def={detail.def} owned={detail.owned} />
+            {:else}
+              <div class="tip">
+                <span class="tip-icon"><Icon name="icon.ui.buy" size={22} /></span>
+                <p><b>Make it home.</b> Point at an item to turn it around and see what it's worth to your household — the needs it fills, the skills it trains and how it can make your residents feel.</p>
+                {#if lovers.size}<p class="muted">Items marked <span class="heart">♥</span> suit someone's personality.</p>{/if}
+              </div>
+            {/if}
+          </aside>
+        </div>
       </div>
-    {/if}
+    </div>
 
     <footer class="muted">
       {#if game.placing}
-        Click on your lot to place · <kbd>R</kbd> rotate · <kbd>Esc</kbd> put back
-      {:else if building}
-        <kbd>Esc</kbd> back to the catalog · <kbd>L</kbd> Live mode
+        Click on your lot to place · <kbd>R</kbd> rotate · <kbd>Esc</kbd> put back{#if folded}<span class="peek">&nbsp;· point here for the catalog</span>{/if}
       {:else if selected}
         Upgrade, restyle or move it · <kbd>R</kbd> rotate · <kbd>Delete</kbd> sell · <kbd>Esc</kbd> deselect
       {:else}
@@ -193,8 +247,6 @@
 
 <style>
   .buy {
-    --build: #c9772b;
-    --build-soft: rgba(201, 119, 43, 0.14);
     position: absolute;
     left: 50%;
     bottom: var(--edge);
@@ -228,9 +280,6 @@
     flex: 1 1 0;
     min-width: 280px;
   }
-  .group .eyebrow {
-    padding: 0 8px 0 7px;
-  }
   .group button {
     display: inline-flex;
     align-items: center;
@@ -260,14 +309,23 @@
     color: var(--text);
     box-shadow: var(--shadow-sm);
   }
-  .group.build {
-    background: var(--build-soft);
+  .cat-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 7px;
+    background: hsl(var(--hue) 55% 90%);
+    color: hsl(var(--hue) 45% 38%);
+    transition: transform 260ms var(--ease);
   }
-  .group.build .eyebrow {
-    color: var(--build);
+  .group button:hover .cat-icon {
+    transform: rotate(-8deg) scale(1.08);
   }
-  .group.build button.active {
-    color: var(--build);
+  .group button.active .cat-icon {
+    background: hsl(var(--hue) 60% 52%);
+    color: #fff;
+    transform: scale(1.06);
   }
   .filters {
     display: flex;
@@ -335,37 +393,86 @@
     background: var(--accent-soft);
     color: var(--accent);
   }
+  .styled-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding-left: 2px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .chip.love {
+    color: #c2405f;
+  }
+  .chip.love.active {
+    background: rgba(224, 96, 126, 0.16);
+  }
+  .chip small {
+    font-size: 10px;
+    opacity: 0.75;
+  }
+  /* While something is in hand, the catalog folds away unless the pointer comes back to it. */
+  .drawer {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition:
+      grid-template-rows var(--slow) var(--ease),
+      opacity var(--slow) var(--ease);
+  }
+  .drawer.folded {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  .drawer-inner {
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
   .body {
     display: flex;
     gap: 10px;
     min-height: 0;
-    height: clamp(150px, 26vh, 380px);
+    height: clamp(190px, 31vh, 420px);
   }
   .items {
     flex: 1;
     min-width: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
-    grid-auto-rows: 62px;
-    gap: 6px;
+    grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+    grid-auto-rows: 134px;
+    gap: 8px;
     overflow-y: auto;
     overscroll-behavior: contain;
     margin: 0;
-    padding: 2px 4px 4px 2px;
+    padding: 4px 6px 6px 3px;
     list-style: none;
   }
   .items li {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 62px;
+    animation: deal 420ms var(--ease) backwards;
+    animation-delay: calc(var(--i) * 20ms);
+  }
+  @keyframes deal {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.94);
+    }
   }
   .items li.none {
     grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     padding: 12px 4px;
-    content-visibility: visible;
+  }
+  .big {
+    font-size: 18px;
   }
   .side {
     flex: none;
-    width: 300px;
+    width: 310px;
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: 10px 12px;
@@ -373,8 +480,34 @@
     background: var(--surface);
   }
   .tip {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .tip p {
     margin: 0;
-    line-height: 1.4;
+  }
+  .tip-icon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .heart {
+    color: #e0607e;
+  }
+  .peek {
+    color: var(--accent);
+  }
+  @container (max-width: 1020px) {
+    .group.shop .label {
+      display: none;
+    }
   }
   @container (max-width: 760px) {
     .body {

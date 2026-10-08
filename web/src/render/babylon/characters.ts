@@ -520,6 +520,8 @@ export class Characters {
   readonly heads = new Float32Array(MAX_CHARACTERS * 3);
   readonly visible = new Uint8Array(MAX_CHARACTERS);
   private lastNow = 0;
+  /** Seconds of animation played: stands still while the game is paused (Sims hold their pose). */
+  private clock = 0;
   /** Sit / lie pelvis offsets per body (computed once from the clips). */
   private readonly sitPelvis = new Map<string, SeatFit>();
   /** `?debug`: force a clip on every Sim (`__characters.force = 'sit'`). */
@@ -976,6 +978,11 @@ export class Characters {
     const gameSpeed = curr[layout.header.speed] | 0;
     const gameRate = GAME_RATE[gameSpeed] ?? 1;
     const animRate = this.debugRate ?? Math.min(gameRate, 2.5);
+    // Paused (the pause button, Buy and Build mode, menus): everyone freezes mid-motion, walk
+    // cycles, breathing, blinks and glances included.
+    if (gameSpeed === 0 && this.debugRate === null) dt = 0;
+    this.clock += dt;
+    const time = this.clock;
     const count = Math.min(curr[layout.header.simCount], MAX_CHARACTERS);
     const H = layout.headerLen;
     const S = layout.simStride;
@@ -1065,7 +1072,6 @@ export class Characters {
       this.visible[i] = 1;
 
       // Activity → clip.
-      const time = now * 0.001;
       this.choose(rig, i, pose, moving, social, role, outcome, partnerRig, time, dt * animRate, useObj, tag);
       rig.lastPose = pose;
 
@@ -1154,7 +1160,7 @@ export class Characters {
       shadows[m + 14] = rig.z;
       shadows[m + 15] = 1;
     }
-    if (this.ghosts.length) this.poseGhosts(count, dt, now * 0.001);
+    if (this.ghosts.length) this.poseGhosts(count, dt, time);
     this.writeRing(now * 0.001);
     for (let i = count + this.ghosts.length; i < MAX_CHARACTERS; i++) {
       if (!this.visible[i]) continue;

@@ -13,9 +13,18 @@ export interface MenuState {
   items: { label: string; index: number; disabled?: boolean; cost?: number }[];
 }
 
-/** Buy mode covers furniture and building (walls, doors, windows). */
-export type GameMode = 'live' | 'buy';
-export type BuildTool = 'wall' | 'door' | 'window' | 'remove';
+/** Live: play. Buy: furnish (place, move, upgrade, sell). Build: walls, rooms, doors and windows. */
+export type GameMode = 'live' | 'buy' | 'build';
+export type BuildTool = 'wall' | 'room' | 'paint' | 'door' | 'window' | 'remove';
+
+/** What Build mode puts up: wall covering (0: automatic, else wall covering + 1) and form, door and window style. */
+export interface BuildLook {
+  cover: number;
+  /** 0 full height, 1 half wall. */
+  form: number;
+  door: number;
+  window: number;
+}
 
 /** An object being placed in buy mode: a new purchase, or an owned object being moved. */
 export interface Placing {
@@ -76,11 +85,22 @@ class GameState {
   placing = $state.raw<Placing | null>(null);
   /** Owned object picked in buy mode. */
   buySelection = $state<number | null>(null);
-  /** Buy mode's build tool; null while the furniture catalog is in use. */
-  buildTool = $state<BuildTool | null>(null);
+  /** Build mode's tool (kept between visits). */
+  buildTool = $state<BuildTool>('wall');
+  /** The looks Build mode's tools use (kept between visits). */
+  buildLook = $state<BuildLook>({ cover: 0, form: 0, door: 0, window: 0 });
+  /** Paint tool: wall faces under the preview, and whether Shift (a whole room) is held. */
+  paintFaces = $state(0);
   /** Wall being drawn: its first corner, and the cost of the preview. */
   buildStart = $state.raw<{ x: number; z: number } | null>(null);
   buildCost = $state(0);
+  /** Wall edges the build preview changes, and whether it can be built (for the cursor tag). */
+  buildEdges = $state(0);
+  buildValid = $state(true);
+  /** The Room tool's rectangle in tiles while one is drawn. */
+  buildRoom = $state.raw<[number, number] | null>(null);
+  /** Whether the object in hand fits where the pointer is. */
+  placeValid = $state(true);
   jobBoardOpen = $state(false);
   /** Plot currently shown. */
   viewPlot = $state<number | null>(null);
@@ -114,7 +134,7 @@ class GameState {
     this.mode = 'live';
     this.placing = null;
     this.buySelection = null;
-    this.buildTool = null;
+    this.buildTool = 'wall';
     this.buildStart = null;
     this.jobBoardOpen = false;
     this.objects = [];

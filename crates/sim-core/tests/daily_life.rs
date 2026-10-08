@@ -297,7 +297,7 @@ fn upgrades_are_instant_purchases_that_make_objects_better() {
 fn building_walls_costs_money_and_never_shuts_things_in() {
     use sim_core::command::{EdgeAxis, EdgeEdit, EdgeKind};
     let mut w = world();
-    let edge = |axis, x, z, kind| EdgeEdit { axis, x, z, kind };
+    let edge = |axis, x, z, kind| EdgeEdit::new(axis, x, z, kind);
     // A corner room around the shower (x 9..12, z 0..3), closed by the lot edge on two sides.
     let mut room = vec![
         edge(EdgeAxis::V, 9, 0, EdgeKind::Wall),
@@ -312,16 +312,8 @@ fn building_walls_costs_money_and_never_shuts_things_in() {
     assert_eq!(w.households[0].funds, 1000 - 5 * 10 - 50);
     assert!(w.structure_version() > version);
     assert!(
-        w.build(
-            0,
-            &[EdgeEdit {
-                axis: EdgeAxis::H,
-                x: 3,
-                z: 11,
-                kind: EdgeKind::Wall
-            }]
-        )
-        .is_err(),
+        w.build(0, &[EdgeEdit::new(EdgeAxis::H, 3, 11, EdgeKind::Wall)])
+            .is_err(),
         "off the plot"
     );
 }
@@ -330,7 +322,7 @@ fn building_walls_costs_money_and_never_shuts_things_in() {
 fn empty_rooms_can_be_closed_before_their_door_goes_in() {
     use sim_core::command::{EdgeAxis, EdgeEdit, EdgeKind};
     let mut w = world();
-    let edge = |axis, x, z, kind| EdgeEdit { axis, x, z, kind };
+    let edge = |axis, x, z, kind| EdgeEdit::new(axis, x, z, kind);
     // An empty corner room (x 0..3, z 7..10), closed by the lot edge on two sides.
     let mut room: Vec<_> = (0..3)
         .map(|x| edge(EdgeAxis::H, x, 7, EdgeKind::Wall))
@@ -355,7 +347,7 @@ fn windows_go_into_walls_cost_money_and_never_let_sims_through() {
     use sim_core::command::{EdgeAxis, EdgeEdit, EdgeKind};
     use sim_core::lot::Edge;
     let mut w = world();
-    let edge = |axis, x, z, kind| EdgeEdit { axis, x, z, kind };
+    let edge = |axis, x, z, kind| EdgeEdit::new(axis, x, z, kind);
     // A window needs a wall to go into.
     let err = w
         .build(0, &[edge(EdgeAxis::H, 4, 4, EdgeKind::Window)])

@@ -27,7 +27,7 @@ fn world() -> World {
 }
 
 fn edit(axis: EdgeAxis, x: i32, z: i32, kind: EdgeKind) -> EdgeEdit {
-    EdgeEdit { axis, x, z, kind }
+    EdgeEdit::new(axis, x, z, kind)
 }
 
 /// A diamond room with corners (1,7), (3,5), (5,7), (3,9): eight diagonal tiles.

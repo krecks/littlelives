@@ -2,6 +2,33 @@
 
 All notable changes to Littlelives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
+## 0.4.0 — 2026-10-08
+
+**Play it in your browser:** https://krecks.github.io/littlelives/
+
+### New
+- **Live · Buy · Build:** Build is its own mode (B) next to Buy (V); both pause the game.
+- **Buy catalog:**
+  - Every item shows a 3D picture of its model, drawn on demand and kept between visits.
+  - The detail pane shows the item large; move the pointer across it to turn it around.
+  - Category tabs with icons; tiles show what you already own, personality collections and "♥" for items your residents' traits love ("For us" filter).
+  - Style chips restyle the pictures; the 14 items that come in several styles are marked, and the detail pane has a style picker (restyling what you own is free).
+- **Placing and building feel:** the item in hand glides, turns and floats; placed furniture springs into place with sparkles; upgrades, sales and walls get their own effects; a tag next to the pointer shows what a click does and costs; money floats up when it changes hands. The catalog folds away while something is in hand.
+- **Room tool:** drag out a rectangle to build its four walls.
+- **Wall looks:** walls can be full or half height and carry a covering on each side (paint colours, wallpaper, siding, brick, wood panelling, stone, tiles).
+  - **Paint tool:** cover the side of a wall you point at, drag along walls, or Shift-click a whole room (outdoors: the house's outside).
+- **Door and window styles:** painted, oak, half-glazed and French doors; classic, cottage, picture, floor-length, high-light and transom windows. Pick another style and click to replace one.
+- **Content packs** can add wall coverings, door and window styles (`wallCoverings`, `doorStyles`, `windowStyles`) and category icons.
+- **Sound effects** for buying, building and painting (synthesised; *Settings → Sound effects*).
+
+### Changed
+- Tearing down walls, doors and windows is free.
+- Saves are version 6 (wall looks, stored by id); older saves load with plain walls.
+
+### Fixed
+- Residents kept walking, breathing and blinking in place while the game was paused (pause, Buy and Build mode, menus).
+- The pointer couldn't reach the lot right after picking an item (the catalog was in the way).
+
 ## 0.3.0 — 2026-10-08
 
 **Play it in your browser:** https://krecks.github.io/littlelives/

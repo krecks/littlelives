@@ -5,7 +5,9 @@
   import { money } from '../format';
   import { services } from '../services';
   import { game } from '../state.svelte';
-  import { duration, percent, summarize } from './catalog';
+  import { collectionOf, duration, loversOf, percent, styledModel, styleOptions, summarize } from './catalog';
+  import Thumb from './Thumb.svelte';
+  import Turntable from './Turntable.svelte';
 
   /** Everything an item is worth to the household; with `owned`, also upgrade/move/restyle/sell. */
   let { def, owned = null }: { def: ObjectDef; owned?: ObjectPlacement | null } = $props();
@@ -16,6 +18,18 @@
   const price = $derived(def.price ?? 0);
   const short = $derived(owned ? 0 : Math.max(0, price - game.funds));
   const category = $derived(content.buyCategories.find((c) => c.id === def.category)?.label);
+  const collection = $derived(collectionOf(content, def));
+  const model = $derived(styledModel(content, services.assets, def, owned ? owned.style : game.householdStyle));
+  const glyph = $derived(info.boosts[0]?.need.icon ?? 'icon.ui.buy');
+  const residents = $derived(game.roster.filter((s) => game.households[s.household]?.player));
+  const lovers = $derived(loversOf(content, def, residents));
+  /** The designs it comes in; picking one restyles it (owned) or sets the style for new purchases. */
+  const styles = $derived(styleOptions(content, services.assets, def));
+  const currentStyle = $derived(owned ? owned.style : game.householdStyle);
+  function pickStyle(i: number) {
+    if (owned) services.controls.restyle(owned.id, i);
+    else services.controls.setHouseholdStyle(i);
+  }
   const sim = $derived(game.selectedSim);
   const skillLabel = (id: string) => content.skill(id)?.label ?? id;
   const skillIcon = (id: string) => content.skill(id)?.icon ?? '';
@@ -45,6 +59,9 @@
 </script>
 
 <div class="detail">
+  {#if !(def.icon && services.assets.has(def.icon, 'icon'))}
+    <Turntable {model} footprint={def.footprint ?? [1, 1]} {glyph} compact={!!owned} />
+  {/if}
   <div class="head">
     <div>
       <b class="name">{def.name}</b>
@@ -58,8 +75,28 @@
   </div>
   {#if short > 0}<p class="warn">Can't afford — {money(short)} short</p>{/if}
   {#if def.description}<p class="desc">{def.description}</p>{/if}
+  {#if lovers.length || collection}
+    <div class="chips">
+      {#if lovers.length}
+        <span class="chip love">♥ {lovers.length === 1 ? lovers[0] : `${lovers.slice(0, -1).join(', ')} & ${lovers[lovers.length - 1]}`} will love it</span>
+      {/if}
+      {#if collection}<span class="chip coll" title={collection.description}><Icon name={collection.icon} size={12} />{collection.label} collection</span>{/if}
+    </div>
+  {/if}
   {#if addedBills > 0 && (!owned || (upgradable && rules && quality < rules.maxQuality))}
     <p class="desc tabular">{owned ? 'Each upgrade adds' : 'Adds'} about {money(addedBills)}/wk to your bills</p>
+  {/if}
+
+  {#if styles.length}
+    <h4>Comes in {styles.length} styles <small>{owned ? 'restyle it for free' : 'same price and quality'}</small></h4>
+    <div class="looks" role="radiogroup" aria-label="Style">
+      {#each styles as i (i)}
+        <button role="radio" aria-checked={currentStyle === i} class:active={currentStyle === i} title={content.styles[i].label} onclick={() => pickStyle(i)}>
+          <span class="look"><Thumb model={styledModel(content, services.assets, def, i)} footprint={def.footprint ?? [1, 1]} {glyph} size={14} /></span>
+          <span>{content.styles[i].label}</span>
+        </button>
+      {/each}
+    </div>
   {/if}
 
   {#if upgradable && rules}
@@ -83,13 +120,6 @@
 
   {#if owned}
     <div class="owned">
-      {#if content.styles.length > 1}
-        <div class="chips">
-          {#each content.styles as s, i (s.id)}
-            <button class="chip pick" class:active={owned.style === i} onclick={() => services.controls.restyle(owned.id, i)}>{s.label}</button>
-          {/each}
-        </div>
-      {/if}
       <div class="row">
         <button class="btn ghost small" onclick={() => services.controls.startMoving(owned.id)}>Move</button>
         <button class="btn ghost small" title="Rotate (R)" onclick={() => services.controls.rotatePlacing()}>Rotate</button>
@@ -298,16 +328,45 @@
     background: rgba(193, 123, 224, 0.16);
     color: #8a44ad;
   }
+  .chip.love {
+    background: rgba(224, 96, 126, 0.14);
+    color: #c2405f;
+  }
+  .chip.coll {
+    color: var(--text-muted);
+  }
   .chip.feel.locked {
     opacity: 0.6;
   }
-  .chip.pick {
-    height: 24px;
-    color: var(--text-muted);
+  .looks {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+    gap: 6px;
   }
-  .chip.pick.active {
-    background: var(--accent-soft);
+  .looks button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 4px 5px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-muted);
+    font-size: 11px;
+    font-weight: 650;
+    color: var(--text-muted);
+    transition: box-shadow var(--fast) var(--ease), transform 200ms var(--ease);
+  }
+  .looks button:hover {
+    transform: translateY(-1px);
+  }
+  .looks button.active {
     color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent);
+    background: var(--surface);
+  }
+  .look {
+    width: 100%;
+    height: 52px;
   }
   .actions li {
     display: flex;

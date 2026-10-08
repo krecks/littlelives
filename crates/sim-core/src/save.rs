@@ -7,7 +7,8 @@
 //! Version history: 1 = single household; 2 = town (households, plots), relationships,
 //! feelings, gender and attraction; 3 = jobs, funds, visits, exits; 4 = skills, object
 //! quality/style/value, household style; 5 = diagonal walls (`lot.diagonals`, absent in
-//! older files, which load without any). Older files load. Saves written before feelings
+//! older files, which load without any); 6 = wall looks (`lot.looks`: coverings, half walls,
+//! door and window styles, by content id; absent: plain walls). Older files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
 use std::collections::{BTreeMap, HashMap};
@@ -16,13 +17,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::content::{Content, Pose};
 use crate::life::{Job, Visit};
-use crate::lot::{DiagDir, Diagonal, Edge, Lot, SimSpawn};
+use crate::lot::{DiagDir, Diagonal, Edge, EdgeLook, EdgeRef, Lot, SimSpawn};
 use crate::rng::Rng;
 use crate::social::{self, Relationship};
 use crate::world::{Household, Plot, Task, TaskKind, World};
 use crate::{Error, MINUTES_PER_TICK, clock::MAX_SPEED};
 
-pub const SAVE_VERSION: u32 = 5;
+pub const SAVE_VERSION: u32 = 6;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -60,6 +61,30 @@ pub struct LotSave {
     /// diagonal walls (and in saves from before they existed).
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub diagonals: String,
+    /// Walls that don't look plain (absent in older saves).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub looks: Vec<LookSave>,
+}
+
+/// A wall's look, by content id so it survives content changes (unknown ids load as the
+/// default look). `at`: `h`, `v` or `d` (the diagonal across tile `x, z`).
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LookSave {
+    pub at: String,
+    pub x: u16,
+    pub z: u16,
+    /// Wall covering id of each face; empty for the automatic look.
+    #[serde(default)]
+    pub faces: [String; 2],
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub form: u8,
+    /// Door or window style id (empty for none).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub style: String,
+}
+
+fn is_zero(n: &u8) -> bool {
+    *n == 0
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -303,6 +328,7 @@ impl World {
                 h_edges: encode(h),
                 v_edges: encode(v),
                 diagonals: encode_diagonals(self.lot.diagonals()),
+                looks: encode_looks(&self.lot, &self.content),
             },
             objects,
             sims,
@@ -353,13 +379,14 @@ impl World {
                 save.version
             )));
         }
-        let lot = Lot::from_edges(
+        let mut lot = Lot::from_edges(
             save.lot.width,
             save.lot.depth,
             decode(&save.lot.h_edges)?,
             decode(&save.lot.v_edges)?,
             decode_diagonals(&save.lot.diagonals)?,
         )?;
+        decode_looks(&mut lot, &content, &save.lot.looks);
         let mut world = World::empty(content, lot, Rng::new(save.rng));
         world.tick = save.tick;
         world.speed = save.speed.min(MAX_SPEED);
@@ -626,6 +653,94 @@ fn encode(edges: &[Edge]) -> String {
             Edge::Window => '3',
         })
         .collect()
+}
+
+/// The kind of wall standing at `at` (open where there's none).
+fn edge_at(lot: &Lot, at: EdgeRef) -> Edge {
+    match at {
+        EdgeRef::H(x, z) => lot.h_edge(x as usize, z as usize),
+        EdgeRef::V(x, z) => lot.v_edge(x as usize, z as usize),
+        EdgeRef::Diag(x, z) => lot.diag(x as i32, z as i32).map_or(Edge::Open, |d| d.edge),
+    }
+}
+
+fn encode_looks(lot: &Lot, content: &Content) -> Vec<LookSave> {
+    let b = &content.build;
+    let covering = |c: u8| {
+        c.checked_sub(1)
+            .and_then(|i| b.coverings.get(i as usize))
+            .map_or(String::new(), |s| s.id.clone())
+    };
+    lot.looks()
+        .filter_map(|(at, look)| {
+            let edge = edge_at(lot, at);
+            if edge == Edge::Open {
+                return None;
+            }
+            let styles = match edge {
+                Edge::Door => &b.doors,
+                Edge::Window => &b.windows,
+                _ => &Vec::new(),
+            };
+            let (tag, x, z) = match at {
+                EdgeRef::H(x, z) => ("h", x, z),
+                EdgeRef::V(x, z) => ("v", x, z),
+                EdgeRef::Diag(x, z) => ("d", x, z),
+            };
+            Some(LookSave {
+                at: tag.into(),
+                x,
+                z,
+                faces: look.sides.map(covering),
+                form: look.form,
+                style: styles
+                    .get(look.style as usize)
+                    .map_or(String::new(), |s| s.id.clone()),
+            })
+        })
+        .collect()
+}
+
+/// Puts saved looks back on the walls they belong to; unknown ids, and looks of walls that
+/// aren't there, are dropped.
+fn decode_looks(lot: &mut Lot, content: &Content, looks: &[LookSave]) {
+    let b = &content.build;
+    let index =
+        |list: &[crate::content::BuildStyle], id: &str| list.iter().position(|s| s.id == id);
+    for l in looks {
+        let at = match l.at.as_str() {
+            "h" if (l.x as usize) < lot.width && (l.z as usize) <= lot.depth => {
+                EdgeRef::H(l.x, l.z)
+            }
+            "v" if (l.x as usize) <= lot.width && (l.z as usize) < lot.depth => {
+                EdgeRef::V(l.x, l.z)
+            }
+            "d" if lot.in_bounds(l.x as i32, l.z as i32) => EdgeRef::Diag(l.x, l.z),
+            _ => continue,
+        };
+        let edge = edge_at(lot, at);
+        if edge == Edge::Open {
+            continue;
+        }
+        let styles: &[crate::content::BuildStyle] = match edge {
+            Edge::Door => &b.doors,
+            Edge::Window => &b.windows,
+            _ => &[],
+        };
+        let side = |id: &str| index(&b.coverings, id).map_or(0, |i| i as u8 + 1);
+        lot.set_look(
+            at,
+            EdgeLook {
+                sides: [side(&l.faces[0]), side(&l.faces[1])],
+                form: if edge == Edge::Wall {
+                    l.form.min(crate::lot::FORM_HALF)
+                } else {
+                    0
+                },
+                style: index(styles, &l.style).map_or(0, |i| i as u8),
+            },
+        );
+    }
 }
 
 fn encode_diagonals(diags: &[Option<Diagonal>]) -> String {

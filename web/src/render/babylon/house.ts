@@ -17,11 +17,18 @@
  * Every wall vertex carries cutaway data (`geometry.ts`); the vertex shader lowers walls
  * between the camera and the rooms behind them, so the cutaway costs no CPU.
  *
+ * Walls have looks chosen in Build mode (`WallEdge.faces` / `form`, `Opening.style`, the same on
+ * diagonals; see `setLooks`): each face can be covered (paint, wallpaper, siding, brick, wood,
+ * stone, tiles: a finish tinted per covering, else the automatic look above), a wall can be half
+ * height (posts follow the tallest wall they join), and doors and windows come in styles (leaf
+ * and paint; opening heights, glazing bars and shutters).
+ *
  * Everything is generated in a few milliseconds per structure and merged into one mesh per
  * material (about 15 draw calls for a whole house).
  */
 
 import { Color3, type Material, type Mesh, type PBRMaterial, type Scene } from '@babylonjs/core';
+import type { DoorStyleDef, WallCoveringDef, WindowStyleDef } from '../../content/content';
 import type { DiagonalWall, Opening, WorldStructure } from '../../core/protocol';
 import type { ViewRect } from '../types';
 import { Cut, facing, Geo, LOOK, type V3 } from './geometry';
@@ -38,6 +45,8 @@ const PLINTH = 0.32;
 const SILL = 0.9;
 const HEAD = 2.1;
 const WIN_INSET = 0.12;
+/** Height of a half wall (`form` 1). */
+export const HALF_WALL_HEIGHT = 1.05;
 const PITCH = Math.tan((34 * Math.PI) / 180);
 const OVERHANG = 0.4;
 const ROOF_THICKNESS = 0.14;
@@ -58,7 +67,42 @@ export const HOUSE_MATERIALS = {
   floorTile: 'material.floor.tile',
   floorCarpet: 'material.floor.carpet',
   door: 'material.door',
+  plaster: 'material.wall',
+  panelling: 'material.finish.wood',
 } as const;
+
+/** The surface of each wall-covering finish. */
+const FINISH_MATERIALS: Record<WallCoveringDef['finish'], string> = {
+  plaster: HOUSE_MATERIALS.plaster,
+  wallpaper: HOUSE_MATERIALS.interior,
+  siding: HOUSE_MATERIALS.siding,
+  brick: HOUSE_MATERIALS.brick,
+  wood: HOUSE_MATERIALS.panelling,
+  stone: HOUSE_MATERIALS.stone,
+  tile: HOUSE_MATERIALS.floorTile,
+};
+
+/** Build-mode looks from content: wall coverings, door and window styles (indices as in the structure). */
+export interface HouseLooks {
+  coverings: readonly WallCoveringDef[];
+  doors: readonly DoorStyleDef[];
+  windows: readonly WindowStyleDef[];
+}
+
+/** A window's opening and dressing (the classic window without styles in content). */
+type WindowSpec = Pick<WindowStyleDef, 'panes' | 'sill' | 'head' | 'inset' | 'shutters'>;
+const CLASSIC_WINDOW: WindowSpec = { panes: 'cross', sill: SILL, head: HEAD, inset: WIN_INSET, shutters: 'house' };
+const PANEL_DOOR: Pick<DoorStyleDef, 'leaf' | 'color'> = { leaf: 'panel' };
+/** Door leaf size (m): width and thickness; it stands from 0.01 m to just under the head. */
+const LEAF_W = 0.8;
+const LEAF_T = 0.045;
+
+/** A wall's look as the structure sends it (absent fields: the default). */
+interface Look {
+  faces?: [number, number];
+  form?: number;
+  style?: number;
+}
 
 // Colour schemes (sRGB) chosen per house from its position, so a house always looks the same.
 const SIDING = ['#ECE6D8', '#C9D8C4', '#BCD0E0', '#EADBA8', '#D9C6B2', '#F4F2EC', '#A9BBA8', '#E6C9B8'];
@@ -189,9 +233,19 @@ export function houseScheme(x: number, z: number): HouseScheme {
 
 export class HouseBuilder {
   private readonly lib: MaterialLibrary;
+  private looks: HouseLooks = { coverings: [], doors: [], windows: [] };
 
   constructor(private readonly scene: Scene) {
     this.lib = MaterialLibrary.for(scene);
+  }
+
+  /** The content's wall coverings, door and window styles (structures refer to them by index). */
+  setLooks(looks: HouseLooks): void {
+    this.looks = looks;
+  }
+
+  private windowSpec(style: number | undefined): WindowSpec {
+    return this.looks.windows[style ?? 0] ?? CLASSIC_WINDOW;
   }
 
   /** Materials (cached by the library) so the renderer can update window glow etc. */
@@ -254,6 +308,18 @@ export class HouseBuilder {
         : e.x >= view.x && e.x <= view.x + view.w && e.z >= view.z && e.z < view.z + view.d);
     for (const e of world.walls) if (edgeInView(e)) edges.set(e.axis, e.x, e.z, 'wall');
     for (const o of world.openings) if (edgeInView(o)) edges.set(o.axis, o.x, o.z, o.kind);
+    // Looks: face coverings and form from the wall list, the style from the opening.
+    const looks = new Map<string, Look>();
+    for (const e of world.walls) if (e.faces || e.form) looks.set(`${e.axis}:${e.x}:${e.z}`, { faces: e.faces, form: e.form });
+    for (const o of world.openings) if (o.style) looks.set(`${o.axis}:${o.x}:${o.z}`, { ...looks.get(`${o.axis}:${o.x}:${o.z}`), style: o.style });
+    const lookOf = (axis: 'h' | 'v', x: number, z: number): Look => looks.get(`${axis}:${x}:${z}`) ?? {};
+    /** The covering of one face of the wall on an edge; undefined where there's no wall. */
+    const faceAt = (axis: 'h' | 'v', x: number, z: number, side: 0 | 1): number | undefined => (edges.get(axis, x, z) ? (lookOf(axis, x, z).faces?.[side] ?? 0) : undefined);
+    /** How tall the wall on an edge stands (0 where there's none). */
+    const heightOf = (axis: 'h' | 'v', x: number, z: number): number => {
+      const kind = edges.get(axis, x, z);
+      return !kind ? 0 : kind === 'wall' && lookOf(axis, x, z).form ? HALF_WALL_HEIGHT : WALL_HEIGHT;
+    };
 
     // ---- rooms: kind (from the objects in them), colours, lights --------------------
     const shown = world.objects.filter((o) => inView(o.x, o.z));
@@ -338,6 +404,16 @@ export class HouseBuilder {
     const trim = new Geo().color(TRIM);
     const glass = new Geo();
     const ao = new Geo().color('#000000');
+    // Covered faces: one bucket per finish (tinted per covering), and natural-wood door leaves.
+    const covered = new Map<WallCoveringDef['finish'], Geo>((Object.keys(FINISH_MATERIALS) as WallCoveringDef['finish'][]).map((f) => [f, new Geo()]));
+    const doorWood = new Geo();
+    /** Every bucket a wall segment writes to (they share its cutaway data). */
+    const wallGeos = [ext, int, wainscot, stone, trim, ao, doorWood, ...covered.values()];
+    /** The bucket for a covering (0: none, the automatic look), tinted. */
+    const coverGeo = (cover: number | undefined): Geo | null => {
+      const c = cover ? this.looks.coverings[cover - 1] : undefined;
+      return c ? covered.get(c.finish)!.color(c.color) : null;
+    };
 
     const H = WALL_HEIGHT;
     /** Looking along which directions this edge hides the room behind it. */
@@ -350,8 +426,9 @@ export class HouseBuilder {
      * One wall face (a rectangle on the plane of a wall side) from `a0` to `a1` along the
      * wall, `y0` to `y1` high. `n` is the outward normal; `r` the room that face looks into.
      */
-    const face = (axis: 'h' | 'v', plane: number, a0: number, a1: number, y0: number, y1: number, n: V3, r: number) => {
+    const face = (axis: 'h' | 'v', plane: number, a0: number, a1: number, y0: number, y1: number, n: V3, r: number, cover = 0) => {
       const P = (a: number, y: number): V3 => (axis === 'h' ? [a, y, plane] : [plane, y, a]);
+      const own = coverGeo(cover);
       if (r === 0) {
         // Exterior: stone plinth below, siding/brick above, frieze board under the eaves.
         const Q = (a: number, y: number, d: number): V3 => (axis === 'h' ? [a, y, plane + n[2] * d] : [plane + n[0] * d, y, a]);
@@ -362,7 +439,7 @@ export class HouseBuilder {
           stone.poly([Q(a0, y0, out), Q(a1, y0, out), Q(a1, PLINTH, out), Q(a0, PLINTH, out)], n);
         }
         const yb = Math.max(y0, PLINTH);
-        if (y1 > yb) ext.poly([P(a0, yb), P(a1, yb), P(a1, y1), P(a0, y1)], n);
+        if (y1 > yb) (own ?? ext).poly([P(a0, yb), P(a1, yb), P(a1, y1), P(a0, y1)], n);
         if (y1 >= H - 0.01) {
           const k = trim.kind;
           trim.kind = Cut.Hide;
@@ -372,12 +449,15 @@ export class HouseBuilder {
         if (y0 < 0.01) ao.poly([Q(a0, 0.012, 0), Q(a1, 0.012, 0), Q(a1, 0.012, 0.45), Q(a0, 0.012, 0.45)], [0, 1, 0], undefined, [0.32, 0.32, 0, 0]);
         return;
       }
-      const tint = roomWall(r);
-      const bath = kinds.get(r) === 'bath';
-      // Bathrooms are tiled up to 1.25 m (only the part of this face below that).
-      const split = bath ? Math.min(Math.max(1.25, y0), y1) : y0;
-      if (split > y0) wainscot.color('#F4F4F2').poly([P(a0, y0), P(a1, y0), P(a1, split), P(a0, split)], n);
-      if (y1 > split) int.color(tint).poly([P(a0, split), P(a1, split), P(a1, y1), P(a0, y1)], n);
+      if (own) own.poly([P(a0, y0), P(a1, y0), P(a1, y1), P(a0, y1)], n);
+      else {
+        const tint = roomWall(r);
+        const bath = kinds.get(r) === 'bath';
+        // Bathrooms are tiled up to 1.25 m (only the part of this face below that).
+        const split = bath ? Math.min(Math.max(1.25, y0), y1) : y0;
+        if (split > y0) wainscot.color('#F4F4F2').poly([P(a0, y0), P(a1, y0), P(a1, split), P(a0, split)], n);
+        if (y1 > split) int.color(tint).poly([P(a0, split), P(a1, split), P(a1, y1), P(a0, y1)], n);
+      }
       if (y0 < 0.01) {
         trim.box(...span(axis, plane, n, a0, a1, 0, 0.1, 0.014));
         const Q = (a: number, d: number): V3 => (axis === 'h' ? [a, 0.013, plane + n[2] * d] : [plane + n[0] * d, 0.013, a]);
@@ -391,35 +471,37 @@ export class HouseBuilder {
      */
     const segment = (axis: 'h' | 'v', x: number, z: number, y0: number, y1: number, kind: number, s0?: number, s1?: number, cap = true) => {
       const mask = edgeMask(axis, x, z);
-      for (const g of [ext, int, wainscot, stone, trim, ao]) g.cutting(kind, mask);
+      for (const g of wallGeos) g.cutting(kind, mask);
       const a0 = s0 ?? (axis === 'h' ? x : z) + T;
       const a1 = s1 ?? (axis === 'h' ? x : z) + 1 - T;
+      const [c0, c1] = lookOf(axis, x, z).faces ?? [0, 0];
       if (axis === 'h') {
-        face('h', z - T, a0, a1, y0, y1, [0, 0, -1], roomP(x + 0.5, z - 0.25));
-        face('h', z + T, a0, a1, y0, y1, [0, 0, 1], roomP(x + 0.5, z + 0.25));
+        face('h', z - T, a0, a1, y0, y1, [0, 0, -1], roomP(x + 0.5, z - 0.25), c0);
+        face('h', z + T, a0, a1, y0, y1, [0, 0, 1], roomP(x + 0.5, z + 0.25), c1);
         if (cap) trim.box(a0, y1 - 0.001, z - T, a1, y1, z + T, 'ny nx px nz pz');
       } else {
-        face('v', x - T, a0, a1, y0, y1, [-1, 0, 0], roomP(x - 0.25, z + 0.5));
-        face('v', x + T, a0, a1, y0, y1, [1, 0, 0], roomP(x + 0.25, z + 0.5));
+        face('v', x - T, a0, a1, y0, y1, [-1, 0, 0], roomP(x - 0.25, z + 0.5), c0);
+        face('v', x + T, a0, a1, y0, y1, [1, 0, 0], roomP(x + 0.25, z + 0.5), c1);
         if (cap) trim.box(x - T, y1 - 0.001, a0, x + T, y1, a1, 'ny nx px nz pz');
       }
     };
 
     /** A wall with a window: solid below the sill and above the head, piers either side. */
-    const windowWall = (axis: 'h' | 'v', x: number, z: number) => {
+    const windowWall = (axis: 'h' | 'v', x: number, z: number, win: WindowSpec) => {
+      const { sill, head } = win;
       const base = axis === 'h' ? x : z;
-      const g0 = base + WIN_INSET;
-      const g1 = base + 1 - WIN_INSET;
-      segment(axis, x, z, 0, SILL, Cut.Clamp);
-      segment(axis, x, z, HEAD, H, Cut.Hide);
-      segment(axis, x, z, SILL, HEAD, Cut.Hide, undefined, g0, false);
-      segment(axis, x, z, SILL, HEAD, Cut.Hide, g1, undefined, false);
+      const g0 = base + win.inset;
+      const g1 = base + 1 - win.inset;
+      segment(axis, x, z, 0, sill, Cut.Clamp);
+      segment(axis, x, z, head, H, Cut.Hide);
+      segment(axis, x, z, sill, head, Cut.Hide, undefined, g0, false);
+      segment(axis, x, z, sill, head, Cut.Hide, g1, undefined, false);
       // Reveals: the jambs and the head's underside, in trim.
       const P = (a: number, y: number, d: number): V3 => (axis === 'h' ? [a, y, z + d] : [x + d, y, a]);
       const na: V3 = axis === 'h' ? [1, 0, 0] : [0, 0, 1];
-      trim.poly([P(g0, SILL, -T), P(g0, SILL, T), P(g0, HEAD, T), P(g0, HEAD, -T)], na);
-      trim.poly([P(g1, SILL, -T), P(g1, HEAD, -T), P(g1, HEAD, T), P(g1, SILL, T)], [-na[0], 0, -na[2]]);
-      trim.poly([P(g0, HEAD, -T), P(g0, HEAD, T), P(g1, HEAD, T), P(g1, HEAD, -T)], [0, -1, 0]);
+      trim.poly([P(g0, sill, -T), P(g0, sill, T), P(g0, head, T), P(g0, head, -T)], na);
+      trim.poly([P(g1, sill, -T), P(g1, head, -T), P(g1, head, T), P(g1, sill, T)], [-na[0], 0, -na[2]]);
+      trim.poly([P(g0, head, -T), P(g0, head, T), P(g1, head, T), P(g1, head, -T)], [0, -1, 0]);
     };
 
     /**
@@ -441,13 +523,14 @@ export class HouseBuilder {
     for (const axis of ['h', 'v'] as const) {
       for (const [x, z, kind] of edges.all(axis)) {
         if (kind === 'wall') {
-          segment(axis, x, z, 0, H, Cut.Clamp);
+          segment(axis, x, z, 0, heightOf(axis, x, z), Cut.Clamp);
         } else if (kind === 'window') {
-          windowWall(axis, x, z);
-          this.window(axis, x, z, edgeMask(axis, x, z), roomP, scheme, trim, glass, [plainEnd(axis, x, z, 0), plainEnd(axis, x, z, 1)]);
+          const win = this.windowSpec(lookOf(axis, x, z).style);
+          windowWall(axis, x, z, win);
+          this.window(axis, x, z, edgeMask(axis, x, z), roomP, scheme, trim, glass, [plainEnd(axis, x, z, 0), plainEnd(axis, x, z, 1)], win);
         } else {
           segment(axis, x, z, DOOR_HEIGHT, H, Cut.Hide);
-          this.doorway(axis, x, z, edgeMask(axis, x, z), trim, roomP, scheme);
+          this.doorway(axis, x, z, edgeMask(axis, x, z), trim, roomP, scheme, { wood: doorWood, glass }, lookOf(axis, x, z).style);
         }
       }
     }
@@ -468,8 +551,10 @@ export class HouseBuilder {
         if (hr) maskH &= edgeMask('h', x, z);
         if (vd) maskV &= edgeMask('v', x, z - 1);
         if (vu) maskV &= edgeMask('v', x, z);
-        for (const g of [ext, int, wainscot, stone, trim, ao]) g.cutting(Cut.Clamp, maskH, maskV);
-        trim.box(x - T, H - 0.001, z - T, x + T, H, z + T, 'ny nx px nz pz');
+        for (const g of wallGeos) g.cutting(Cut.Clamp, maskH, maskV);
+        // As tall as the tallest wall it joins (a run of half walls has half posts).
+        const top = Math.max(heightOf('h', x - 1, z), heightOf('h', x, z), heightOf('v', x, z - 1), heightOf('v', x, z));
+        trim.box(x - T, top - 0.001, z - T, x + T, top, z + T, 'ny nx px nz pz');
         // Faces towards a door are jambs. Faces towards a wall sit inside it while it stands and
         // close its end when that wall is cut but the post is not.
         // `ra`, `rb`: the rooms of the two quadrants on that side of the corner.
@@ -487,8 +572,17 @@ export class HouseBuilder {
             );
             return;
           }
-          // Free end or outer corner: exterior if either quadrant on that side is outdoors.
-          face(axis, plane, a0, a1, 0, H, n, ra === 0 || rb === 0 ? 0 : ra);
+          // Free end or outer corner: exterior if either quadrant on that side is outdoors. It
+          // continues the faces of the walls in its plane (or closes the end of the one it ends).
+          const cover =
+            dir === 'px'
+              ? (faceAt('v', x, z - 1, 1) ?? faceAt('v', x, z, 1) ?? faceAt('h', x - 1, z, 0))
+              : dir === 'nx'
+                ? (faceAt('v', x, z - 1, 0) ?? faceAt('v', x, z, 0) ?? faceAt('h', x, z, 0))
+                : dir === 'pz'
+                  ? (faceAt('h', x - 1, z, 1) ?? faceAt('h', x, z, 1) ?? faceAt('v', x, z - 1, 0))
+                  : (faceAt('h', x - 1, z, 0) ?? faceAt('h', x, z, 0) ?? faceAt('v', x, z, 0));
+          face(axis, plane, a0, a1, 0, top, n, ra === 0 || rb === 0 ? 0 : ra, cover ?? 0);
         };
         const q = (dx: number, dz: number) => roomP(x + dx * 0.25, z + dz * 0.25);
         side('px', hr, [1, 0, 0], q(1, -1), q(1, 1));
@@ -516,8 +610,9 @@ export class HouseBuilder {
      * `face` for walls of any direction: a rectangle on the plane `dOff` across frame `f`, facing
      * side `sign`, `a0..a1` along it, into room `r` (exterior cladding outdoors, wallpaper inside).
      */
-    const faceG = (f: WallFrame, a0: number, a1: number, y0: number, y1: number, dOff: number, sign: number, r: number) => {
+    const faceG = (f: WallFrame, a0: number, a1: number, y0: number, y1: number, dOff: number, sign: number, r: number, cover = 0) => {
       const out = (o: number): [number, number] => (sign > 0 ? [dOff, dOff + o] : [dOff - o, dOff]);
+      const own = coverGeo(cover);
       // Contact shadow on the floor along the face (fading out `o0..o1` from it).
       const ground = (y: number, o0: number, o1: number, alphas: number[]) => {
         ao.poly([f.at(a0, y, dOff + sign * o0), f.at(a1, y, dOff + sign * o0), f.at(a1, y, dOff + sign * o1), f.at(a0, y, dOff + sign * o1)], [0, 1, 0], undefined, alphas);
@@ -530,7 +625,7 @@ export class HouseBuilder {
           f.face(stone, a0, a1, y0, PLINTH, dOff + sign * ledge, sign);
         }
         const yb = Math.max(y0, PLINTH);
-        if (y1 > yb) f.face(ext, a0, a1, yb, y1, dOff, sign);
+        if (y1 > yb) f.face(own ?? ext, a0, a1, yb, y1, dOff, sign);
         if (y1 >= H - 0.01) {
           const k = trim.kind;
           trim.kind = Cut.Hide;
@@ -540,11 +635,14 @@ export class HouseBuilder {
         if (y0 < 0.01) ground(0.012, 0, 0.45, [0.32, 0.32, 0, 0]);
         return;
       }
-      const tint = roomWall(r);
-      const bath = kinds.get(r) === 'bath';
-      const split = bath ? Math.min(Math.max(1.25, y0), y1) : y0;
-      if (split > y0) f.face(wainscot.color('#F4F4F2'), a0, a1, y0, split, dOff, sign);
-      if (y1 > split) f.face(int.color(tint), a0, a1, split, y1, dOff, sign);
+      if (own) f.face(own, a0, a1, y0, y1, dOff, sign);
+      else {
+        const tint = roomWall(r);
+        const bath = kinds.get(r) === 'bath';
+        const split = bath ? Math.min(Math.max(1.25, y0), y1) : y0;
+        if (split > y0) f.face(wainscot.color('#F4F4F2'), a0, a1, y0, split, dOff, sign);
+        if (y1 > split) f.face(int.color(tint), a0, a1, split, y1, dOff, sign);
+      }
       if (y0 < 0.01) {
         f.box(trim, a0, a1, 0, 0.1, ...out(0.014), sign > 0 ? 'nd' : 'pd');
         ground(0.013, 0.014, 0.34, [0.3, 0.3, 0, 0]);
@@ -553,9 +651,9 @@ export class HouseBuilder {
     /** Both faces, the cap and the cutaway data of part `a0..a1` of a diagonal wall. */
     const diagSegment = (f: WallFrame, d: DiagonalWall, y0: number, y1: number, kind: number, a0: number, a1: number, cap = true) => {
       const mask = diagMask(d);
-      for (const g of [ext, int, wainscot, stone, trim, ao]) g.cutting(kind, mask);
-      faceG(f, a0, a1, y0, y1, -T, -1, d.rooms[0]);
-      faceG(f, a0, a1, y0, y1, T, 1, d.rooms[1]);
+      for (const g of wallGeos) g.cutting(kind, mask);
+      faceG(f, a0, a1, y0, y1, -T, -1, d.rooms[0], d.faces?.[0]);
+      faceG(f, a0, a1, y0, y1, T, 1, d.rooms[1], d.faces?.[1]);
       if (cap) trim.poly([f.at(a0, y1, -T), f.at(a1, y1, -T), f.at(a1, y1, T), f.at(a0, y1, T)], [0, 1, 0]);
     };
     /** Whether a diagonal run continues as a plain wall past one end (room for a shutter). */
@@ -574,39 +672,39 @@ export class HouseBuilder {
       const [a0, a1] = [T, L - T];
       const mask = diagMask(d);
       if (d.kind === 'wall') {
-        diagSegment(f, d, 0, H, Cut.Clamp, a0, a1);
+        diagSegment(f, d, 0, d.form ? HALF_WALL_HEIGHT : H, Cut.Clamp, a0, a1);
       } else if (d.kind === 'window') {
         // The same glazing as a straight window, centred, with wider piers either side.
-        const [g0, g1] = [L / 2 - (0.5 - WIN_INSET), L / 2 + (0.5 - WIN_INSET)];
-        diagSegment(f, d, 0, SILL, Cut.Clamp, a0, a1);
-        diagSegment(f, d, HEAD, H, Cut.Hide, a0, a1);
-        diagSegment(f, d, SILL, HEAD, Cut.Hide, a0, g0, false);
-        diagSegment(f, d, SILL, HEAD, Cut.Hide, g1, a1, false);
-        trim.poly([f.at(g0, SILL, -T), f.at(g0, SILL, T), f.at(g0, HEAD, T), f.at(g0, HEAD, -T)], [f.ux, 0, f.uz]);
-        trim.poly([f.at(g1, SILL, -T), f.at(g1, HEAD, -T), f.at(g1, HEAD, T), f.at(g1, SILL, T)], [-f.ux, 0, -f.uz]);
-        trim.poly([f.at(g0, HEAD, -T), f.at(g0, HEAD, T), f.at(g1, HEAD, T), f.at(g1, HEAD, -T)], [0, -1, 0]);
-        // Muntins between the panes, then per face: a pane, frame, sill and (outside) shutters.
+        const win = this.windowSpec(d.style);
+        const { sill, head } = win;
+        const [g0, g1] = [L / 2 - (0.5 - win.inset), L / 2 + (0.5 - win.inset)];
+        diagSegment(f, d, 0, sill, Cut.Clamp, a0, a1);
+        diagSegment(f, d, head, H, Cut.Hide, a0, a1);
+        diagSegment(f, d, sill, head, Cut.Hide, a0, g0, false);
+        diagSegment(f, d, sill, head, Cut.Hide, g1, a1, false);
+        trim.poly([f.at(g0, sill, -T), f.at(g0, sill, T), f.at(g0, head, T), f.at(g0, head, -T)], [f.ux, 0, f.uz]);
+        trim.poly([f.at(g1, sill, -T), f.at(g1, head, -T), f.at(g1, head, T), f.at(g1, sill, T)], [-f.ux, 0, -f.uz]);
+        trim.poly([f.at(g0, head, -T), f.at(g0, head, T), f.at(g1, head, T), f.at(g1, head, -T)], [0, -1, 0]);
+        // Glazing bars between the panes, then per face: a pane, frame, sill and (outside) shutters.
         const recess = 0.03;
-        const mid = (g0 + g1) / 2;
         trim.cutting(Cut.Hide, mask).color(TRIM);
-        f.box(trim, mid - 0.016, mid + 0.016, SILL, HEAD, -T + recess, T - recess);
-        f.box(trim, g0, g1, (SILL + HEAD) / 2 + 0.1, (SILL + HEAD) / 2 + 0.13, -T + recess, T - recess);
+        muntins(win, g0, g1, (a0, a1, y0, y1) => f.box(trim, a0, a1, y0, y1, -T + recess, T - recess));
         for (const sign of [-1, 1]) {
           const plane = sign * T;
           const outside = d.rooms[sign > 0 ? 1 : 0] === 0;
           const out = (o: number): [number, number] => (sign > 0 ? [plane, plane + o] : [plane - o, plane]);
           glass.cutting(Cut.Hide, mask);
-          f.face(glass, g0, g1, SILL, HEAD, plane - sign * recess, sign);
+          f.face(glass, g0, g1, sill, head, plane - sign * recess, sign);
           trim.cutting(Cut.Hide, mask).color(TRIM);
           const fr = 0.07;
-          f.box(trim, g0 - fr, g0, SILL, HEAD, ...out(0.035));
-          f.box(trim, g1, g1 + fr, SILL, HEAD, ...out(0.035));
-          f.box(trim, g0 - fr, g1 + fr, HEAD, HEAD + fr, ...out(0.035));
-          f.box(trim, g0 - fr - 0.04, g1 + fr + 0.04, SILL - 0.05, SILL, ...out(outside ? 0.07 : 0.05));
-          if (outside && scheme.shutters) {
+          f.box(trim, g0 - fr, g0, sill, head, ...out(0.035));
+          f.box(trim, g1, g1 + fr, sill, head, ...out(0.035));
+          f.box(trim, g0 - fr, g1 + fr, head, head + fr, ...out(0.035));
+          f.box(trim, g0 - fr - 0.04, g1 + fr + 0.04, sill - 0.05, sill, ...out(outside ? 0.07 : 0.05));
+          if (outside && (win.shutters === 'house' ? scheme.shutters : win.shutters)) {
             trim.color(scheme.accent);
-            if (g0 - fr - 0.36 >= a0 || plainDiagEnd(d, 0)) f.box(trim, g0 - fr - 0.36, g0 - fr - 0.02, SILL - 0.02, HEAD + 0.04, ...out(0.03));
-            if (g1 + fr + 0.36 <= a1 || plainDiagEnd(d, 1)) f.box(trim, g1 + fr + 0.02, g1 + fr + 0.36, SILL - 0.02, HEAD + 0.04, ...out(0.03));
+            if (g0 - fr - 0.36 >= a0 || plainDiagEnd(d, 0)) f.box(trim, g0 - fr - 0.36, g0 - fr - 0.02, sill - 0.02, head + 0.04, ...out(0.03));
+            if (g1 + fr + 0.36 <= a1 || plainDiagEnd(d, 1)) f.box(trim, g1 + fr + 0.02, g1 + fr + 0.36, sill - 0.02, head + 0.04, ...out(0.03));
             trim.color(TRIM);
           }
         }
@@ -630,14 +728,21 @@ export class HouseBuilder {
           trim.cutting(Cut.Hide, mask);
           f.box(trim, o0 - 0.1, o1 + 0.1, DOOR_HEIGHT, DOOR_HEIGHT + 0.12, ...out(0.024));
         }
-        // The leaf, open 90° towards the indoor side (accent colour on a front door).
+        // The leaf, open 90° towards the indoor side (accent colour on a painted front door).
         const out0 = d.rooms[0] === 0;
         const front = out0 !== (d.rooms[1] === 0);
         const into = out0 ? 1 : -1;
-        const [l0, l1] = [into * (T + 0.01), into * (T + 0.01 + 0.8)];
-        trim.color(front ? scheme.accent : '#EDEAE2').cutting(Cut.Hide, mask);
-        f.box(trim, o0 + 0.02, o0 + 0.065, 0.01, DOOR_HEIGHT - 0.03, Math.min(l0, l1), Math.max(l0, l1));
-        trim.color(TRIM);
+        const at = (l: number) => into * (T + 0.01 + l);
+        const hinge = o0 + 0.02;
+        this.leaf(d.style, front, scheme, mask, { trim, wood: doorWood, glass }, {
+          box: (g, s0, s1, y0, y1, l0, l1) => f.box(g, hinge + s0, hinge + s1, y0, y1, Math.min(at(l0), at(l1)), Math.max(at(l0), at(l1))),
+          pane: (y0, y1, l0, l1) => {
+            const a = hinge + LEAF_T / 2;
+            const pts: V3[] = [f.at(a, y0, at(l0)), f.at(a, y0, at(l1)), f.at(a, y1, at(l1)), f.at(a, y1, at(l0))];
+            glass.poly(pts, [f.ux, 0, f.uz]);
+            glass.poly([...pts].reverse(), [-f.ux, 0, -f.uz]);
+          },
+        });
       }
     }
 
@@ -647,9 +752,15 @@ export class HouseBuilder {
       for (let x = bounds.x; x <= bounds.x + bounds.w; x++) {
         const diags = diagonalsAt(x, z).filter(({ d }) => inView(d.x, d.z));
         if (!diags.length) continue;
-        const walls: { dir: P2; kind: EdgeKind; mask: number; group: 0 | 1 }[] = diags.map(({ d, dir }) => ({ dir, kind: d.kind === 'door' ? 'wall' : d.kind, mask: diagMask(d), group: d.axis === 'dp' ? 0 : 1 }));
+        const walls: { dir: P2; kind: EdgeKind; mask: number; group: 0 | 1; height: number }[] = diags.map(({ d, dir }) => ({
+          dir,
+          kind: d.kind === 'door' ? 'wall' : d.kind,
+          mask: diagMask(d),
+          group: d.axis === 'dp' ? 0 : 1,
+          height: d.kind === 'wall' && d.form ? HALF_WALL_HEIGHT : H,
+        }));
         const axisWall = (kind: EdgeKind | undefined, dir: P2, axis: 'h' | 'v', ex: number, ez: number) => {
-          if (kind) walls.push({ dir, kind, mask: edgeMask(axis, ex, ez), group: axis === 'h' ? 0 : 1 });
+          if (kind) walls.push({ dir, kind, mask: edgeMask(axis, ex, ez), group: axis === 'h' ? 0 : 1, height: heightOf(axis, ex, ez) });
         };
         axisWall(edges.get('h', x - 1, z), [-1, 0], 'h', x - 1, z);
         axisWall(edges.get('h', x, z), [1, 0], 'h', x, z);
@@ -662,17 +773,18 @@ export class HouseBuilder {
           if (w.group === 0) maskA &= w.mask;
           else maskB &= w.mask;
         }
-        for (const g of [ext, int, wainscot, stone, trim, ao]) g.cutting(Cut.Clamp, maskA, maskB);
+        for (const g of wallGeos) g.cutting(Cut.Clamp, maskA, maskB);
         const outline: P2[] = [];
         for (const p of postOutline([x, z], walls.map((w) => w.dir), T)) {
           const last = outline[outline.length - 1];
           if (!last || Math.hypot(p[0] - last[0], p[1] - last[1]) > 1e-5) outline.push(p);
         }
         while (outline.length > 1 && Math.hypot(outline[0][0] - outline[outline.length - 1][0], outline[0][1] - outline[outline.length - 1][1]) < 1e-5) outline.pop();
+        const top = Math.max(...walls.map((w) => w.height));
         for (let k = 0; k < outline.length; k++) {
           const p0 = outline[k];
           const p1 = outline[(k + 1) % outline.length];
-          trim.poly([[x, H, z], [p0[0], H, p0[1]], [p1[0], H, p1[1]]], [0, 1, 0]);
+          trim.poly([[x, top, z], [p0[0], top, p0[1]], [p1[0], top, p1[1]]], [0, 1, 0]);
           // Frames run along +x (or +z) so textures line up with the walls they continue.
           const flip = p1[0] < p0[0] - 1e-9 || (Math.abs(p1[0] - p0[0]) <= 1e-9 && p1[1] < p0[1]);
           const f = flip ? new WallFrame(p1[0], p1[1], p0[0], p0[1]) : new WallFrame(p0[0], p0[1], p1[0], p1[1]);
@@ -696,7 +808,7 @@ export class HouseBuilder {
             const rb = roomP(x + ux * (T + 0.15) + uz * 0.2, z + uz * (T + 0.15) - ux * 0.2);
             r = ra === 0 || rb === 0 ? 0 : ra;
           } else r = roomP(mx + (ox / ol) * 0.2, mz + (oz / ol) * 0.2);
-          faceG(f, 0, f.length, 0, H, 0, sign, r);
+          faceG(f, 0, f.length, 0, top, 0, sign, r);
         }
       }
     }
@@ -866,6 +978,8 @@ export class HouseBuilder {
     add(wainscot, 'wallsTiled', M.floorTile);
     add(stone, 'plinth', M.stone);
     add(trim, 'trim', M.trim, { cast: true });
+    for (const [finish, geo] of covered) add(geo, `walls-${finish}`, FINISH_MATERIALS[finish], { cast: true });
+    add(doorWood, 'doorLeaves', M.door, { cast: true });
     add(glass, 'windows', M.clearGlass);
     // Glass is see-through: draw it after the other blended surfaces (contact shadows) so
     // what lies behind it is complete when it is blended over.
@@ -1071,6 +1185,8 @@ export class HouseBuilder {
     trim: Geo,
     roomP: (px: number, pz: number) => number,
     scheme: HouseScheme,
+    geos: { wood: Geo; glass: Geo },
+    style: number | undefined,
   ): void {
     // Casings on both faces: two side boards (clamped to stubs when cut) and a head (hidden).
     for (const n of axis === 'h' ? ([[0, 0, -1], [0, 0, 1]] as V3[]) : ([[-1, 0, 0], [1, 0, 0]] as V3[])) {
@@ -1089,21 +1205,64 @@ export class HouseBuilder {
     const outdoorB = axis === 'h' ? roomP(x + 0.5, z + 0.25) === 0 : roomP(x + 0.25, z + 0.5) === 0;
     const front = outdoorA !== outdoorB;
     const into = outdoorA ? 1 : -1; // swing towards the indoor side
-    const leaf = 0.8;
-    const thick = 0.045;
-    // Painted leaf: the house accent colour for front doors, off-white inside.
-    trim.color(front ? scheme.accent : '#EDEAE2').cutting(Cut.Hide, mask);
-    if (axis === 'h') {
-      const hx = x + T + 0.02;
-      const z0 = z + into * (T + 0.01);
-      const z1 = z0 + into * leaf;
-      trim.box(hx, 0.01, Math.min(z0, z1), hx + thick, DOOR_HEIGHT - 0.03, Math.max(z0, z1));
-    } else {
-      const hz = z + T + 0.02;
-      const x0 = x + into * (T + 0.01);
-      const x1 = x0 + into * leaf;
-      trim.box(Math.min(x0, x1), 0.01, hz, Math.max(x0, x1), DOOR_HEIGHT - 0.03, hz + thick);
+    // Leaf space: `s` across its thickness from the hinge jamb, `l` from the hinge outwards.
+    const hinge = (axis === 'h' ? x : z) + T + 0.02;
+    const at = (l: number) => (axis === 'h' ? z : x) + into * (T + 0.01 + l);
+    const { glass } = geos;
+    this.leaf(style, front, scheme, mask, { trim, ...geos }, {
+      box: (g, s0, s1, y0, y1, l0, l1) => {
+        const [p0, p1] = [Math.min(at(l0), at(l1)), Math.max(at(l0), at(l1))];
+        if (axis === 'h') g.box(hinge + s0, y0, p0, hinge + s1, y1, p1);
+        else g.box(p0, y0, hinge + s0, p1, y1, hinge + s1);
+      },
+      pane: (y0, y1, l0, l1) => {
+        const c = hinge + LEAF_T / 2;
+        const P = (l: number, y: number): V3 => (axis === 'h' ? [c, y, at(l)] : [at(l), y, c]);
+        const pts: V3[] = [P(l0, y0), P(l1, y0), P(l1, y1), P(l0, y1)];
+        const n: V3 = axis === 'h' ? [1, 0, 0] : [0, 0, 1];
+        glass.poly(pts, n);
+        glass.poly([...pts].reverse(), [-n[0], 0, -n[2]]);
+      },
+    });
+  }
+
+  /**
+   * A door leaf, open against its jamb, in a style: `panel` (painted: the style's colour, else the
+   * house accent on front doors and off-white inside), `oak` (natural wood), `halfGlass` (solid
+   * below, glazed above) or `glass` (a glazed frame). `put.box` draws in leaf space (`s` across
+   * its thickness, `y` up, `l` from the hinge outwards); `put.pane` a glass pane through it.
+   */
+  private leaf(
+    style: number | undefined,
+    front: boolean,
+    scheme: HouseScheme,
+    mask: number,
+    geos: { trim: Geo; wood: Geo; glass: Geo },
+    put: { box: (g: Geo, s0: number, s1: number, y0: number, y1: number, l0: number, l1: number) => void; pane: (y0: number, y1: number, l0: number, l1: number) => void },
+  ): void {
+    const def = this.looks.doors[style ?? 0] ?? PANEL_DOOR;
+    const { trim, wood, glass } = geos;
+    for (const g of [trim, wood, glass]) g.cutting(Cut.Hide, mask);
+    const paint = def.color ?? (front ? scheme.accent : '#EDEAE2');
+    const top = DOOR_HEIGHT - 0.03;
+    const box = (g: Geo, y0: number, y1: number, l0: number, l1: number) => put.box(g, 0, LEAF_T, y0, y1, l0, l1);
+    if (def.leaf === 'oak') box(wood.color('#FFFFFF'), 0.01, top, 0, LEAF_W);
+    else if (def.leaf === 'panel') box(trim.color(paint), 0.01, top, 0, LEAF_W);
+    else {
+      // A frame of stiles and rails around glass (half-glazed: a solid panel below).
+      const glassFrom = def.leaf === 'halfGlass' ? 1.05 : 0.22;
+      const stile = def.leaf === 'halfGlass' ? 0.1 : 0.08;
+      trim.color(paint);
+      box(trim, 0.01, glassFrom, 0, LEAF_W);
+      box(trim, glassFrom, top, 0, stile);
+      box(trim, glassFrom, top, LEAF_W - stile, LEAF_W);
+      box(trim, top - 0.1, top, stile, LEAF_W - stile);
+      if (def.leaf === 'glass') box(trim, 1.08, 1.12, stile, LEAF_W - stile);
+      put.pane(glassFrom, top - 0.1, stile, LEAF_W - stile);
     }
+    // A brass handle on both faces.
+    trim.color('#B39A62');
+    put.box(trim, -0.035, LEAF_T + 0.035, 1.0, 1.05, LEAF_W - 0.12, LEAF_W - 0.07);
     trim.color(TRIM);
   }
 
@@ -1117,20 +1276,18 @@ export class HouseBuilder {
     trim: Geo,
     glass: Geo,
     shutters: [boolean, boolean],
+    win: WindowSpec,
   ): void {
     // Frames, sill and shutters on both faces around the opening (see `windowWall`); a pane
-    // with muntins set a little into the opening from each side.
-    const a0 = (axis === 'h' ? x : z) + WIN_INSET;
-    const a1 = (axis === 'h' ? x : z) + 1 - WIN_INSET;
+    // with glazing bars set a little into the opening from each side.
+    const { sill, head } = win;
+    const a0 = (axis === 'h' ? x : z) + win.inset;
+    const a1 = (axis === 'h' ? x : z) + 1 - win.inset;
     const recess = 0.03;
-    // Muntins: one cross of glazing bars through the opening, between the two panes (bars on
-    // each pane would show twice through the clear glass).
-    const mid = (a0 + a1) / 2;
     const n0: V3 = axis === 'h' ? [0, 0, 1] : [1, 0, 0];
     const back = (axis === 'h' ? z : x) - T + recess;
     trim.cutting(Cut.Hide, mask).color(TRIM);
-    trim.box(...span(axis, back, n0, mid - 0.016, mid + 0.016, SILL, HEAD, 2 * (T - recess)));
-    trim.box(...span(axis, back, n0, a0, a1, (SILL + HEAD) / 2 + 0.1, (SILL + HEAD) / 2 + 0.13, 2 * (T - recess)));
+    muntins(win, a0, a1, (b0, b1, y0, y1) => trim.box(...span(axis, back, n0, b0, b1, y0, y1, 2 * (T - recess))));
     for (const sign of [-1, 1]) {
       const n: V3 = axis === 'h' ? [0, 0, sign] : [sign, 0, 0];
       const plane = axis === 'h' ? z + sign * T : x + sign * T;
@@ -1139,18 +1296,18 @@ export class HouseBuilder {
       const P = (a: number, y: number, d: number): V3 => (axis === 'h' ? [a, y, plane + n[2] * d] : [plane + n[0] * d, y, a]);
       // One clear pane per face, facing out of it (back faces are culled, so each side sees
       // through exactly one pane).
-      glass.cutting(Cut.Hide, mask).poly([P(a0, SILL, -recess), P(a1, SILL, -recess), P(a1, HEAD, -recess), P(a0, HEAD, -recess)], n);
+      glass.cutting(Cut.Hide, mask).poly([P(a0, sill, -recess), P(a1, sill, -recess), P(a1, head, -recess), P(a0, head, -recess)], n);
       trim.cutting(Cut.Hide, mask).color(TRIM);
       const f = 0.07;
       const out = 0.035;
-      trim.box(...span(axis, plane, n, a0 - f, a0, SILL, HEAD, out));
-      trim.box(...span(axis, plane, n, a1, a1 + f, SILL, HEAD, out));
-      trim.box(...span(axis, plane, n, a0 - f, a1 + f, HEAD, HEAD + f, out));
-      trim.box(...span(axis, plane, n, a0 - f - 0.04, a1 + f + 0.04, SILL - 0.05, SILL, outside ? 0.07 : 0.05));
-      if (outside && scheme.shutters) {
+      trim.box(...span(axis, plane, n, a0 - f, a0, sill, head, out));
+      trim.box(...span(axis, plane, n, a1, a1 + f, sill, head, out));
+      trim.box(...span(axis, plane, n, a0 - f, a1 + f, head, head + f, out));
+      trim.box(...span(axis, plane, n, a0 - f - 0.04, a1 + f + 0.04, sill - 0.05, sill, outside ? 0.07 : 0.05));
+      if (outside && (win.shutters === 'house' ? scheme.shutters : win.shutters)) {
         trim.color(scheme.accent);
-        if (shutters[0]) trim.box(...span(axis, plane, n, a0 - f - 0.36, a0 - f - 0.02, SILL - 0.02, HEAD + 0.04, 0.03));
-        if (shutters[1]) trim.box(...span(axis, plane, n, a1 + f + 0.02, a1 + f + 0.36, SILL - 0.02, HEAD + 0.04, 0.03));
+        if (shutters[0]) trim.box(...span(axis, plane, n, a0 - f - 0.36, a0 - f - 0.02, sill - 0.02, head + 0.04, 0.03));
+        if (shutters[1]) trim.box(...span(axis, plane, n, a1 + f + 0.02, a1 + f + 0.36, sill - 0.02, head + 0.04, 0.03));
         trim.color(TRIM);
       }
     }
@@ -1188,6 +1345,30 @@ export class HouseBuilder {
  * protruding `out` metres from the face at `plane` along normal `n`.
  */
 /** A hex colour scaled in brightness (sRGB), for panel details. */
+/**
+ * Glazing bars of a window between `g0` and `g1` along its wall: `bar(a0, a1, y0, y1)` puts one
+ * through the opening (between the two panes, so it shows once through the clear glass).
+ */
+function muntins(win: WindowSpec, g0: number, g1: number, bar: (a0: number, a1: number, y0: number, y1: number) => void): void {
+  const { sill, head } = win;
+  const w = 0.016;
+  const vertical = (a: number) => bar(a - w, a + w, sill, head);
+  const across = (y: number) => bar(g0, g1, y, y + 0.03);
+  const mid = (g0 + g1) / 2;
+  if (win.panes === 'cross') {
+    vertical(mid);
+    across((sill + head) / 2 + 0.1);
+  } else if (win.panes === 'bar') vertical(mid);
+  else if (win.panes === 'grid') {
+    vertical(g0 + (g1 - g0) / 3);
+    vertical(g0 + (2 * (g1 - g0)) / 3);
+    across((sill + head) / 2 - 0.015);
+  } else if (win.panes === 'transom') {
+    across(head - 0.42);
+    vertical(mid);
+  }
+}
+
 function shade(hex: string, k: number): string {
   const v = parseInt(hex.slice(1), 16);
   const c = [(v >> 16) & 255, (v >> 8) & 255, v & 255].map((x) => Math.max(0, Math.min(255, Math.round(x * k))));

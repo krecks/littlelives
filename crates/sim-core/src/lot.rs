@@ -14,7 +14,7 @@
 //! window (it blocks the whole tile; see `NavGrid`), while a diagonal *door* tile is walked
 //! across like a doorway. Objects never stand on a tile with a diagonal.
 
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 
 use serde::Deserialize;
 
@@ -67,6 +67,32 @@ impl Diagonal {
             DiagDir::Dn => (cx, cz) == (x, z + 1) || (cx, cz) == (x + 1, z),
         }
     }
+}
+
+/// A wall's place on the lot: an `h` or `v` grid edge (as in [`Lot::h_edge`] / [`Lot::v_edge`]),
+/// or the diagonal across tile `(x, z)`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum EdgeRef {
+    H(u16, u16),
+    V(u16, u16),
+    Diag(u16, u16),
+}
+
+/// Half-height wall (see [`EdgeLook::form`]).
+pub const FORM_HALF: u8 = 1;
+
+/// How a wall looks. Presentation only: walking, rooms and light never depend on it (a half
+/// wall blocks and separates like a full one), but it is saved and costs money to change.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct EdgeLook {
+    /// Covering of each face: 0 the automatic look, else an index into the wall coverings + 1.
+    /// Face 0 looks towards `-z` (`h` edges), `-x` (`v` edges) or the tile's half 0
+    /// (diagonals); face 1 the other way.
+    pub sides: [u8; 2],
+    /// 0 = full height, [`FORM_HALF`] = half wall (no doors or windows in it).
+    pub form: u8,
+    /// Door or window style: an index into the content's door / window styles.
+    pub style: u8,
 }
 
 /// A side of a tile.
@@ -260,6 +286,8 @@ pub struct Lot {
     rooms: Vec<u16>,
     /// Room id of each half of each tile (equal for tiles without a diagonal).
     halves: Vec<[u16; 2]>,
+    /// Looks of the walls that aren't plain (absent: the default look).
+    looks: BTreeMap<EdgeRef, EdgeLook>,
 }
 
 impl Lot {
@@ -272,6 +300,7 @@ impl Lot {
             diags: vec![None; width * depth],
             rooms: vec![OUTDOORS; width * depth],
             halves: vec![[OUTDOORS; 2]; width * depth],
+            looks: BTreeMap::new(),
         }
     }
 
@@ -362,6 +391,7 @@ impl Lot {
             diags,
             rooms: vec![OUTDOORS; width * depth],
             halves: vec![[OUTDOORS; 2]; width * depth],
+            looks: BTreeMap::new(),
         };
         lot.compute_rooms();
         Ok(lot)
@@ -440,6 +470,25 @@ impl Lot {
 
     pub fn set_v(&mut self, x: usize, z: usize, e: Edge) {
         self.v_edges[z * (self.width + 1) + x] = e;
+    }
+
+    /// How the wall at `e` looks (the default look where there's no wall).
+    pub fn look(&self, e: EdgeRef) -> EdgeLook {
+        self.looks.get(&e).copied().unwrap_or_default()
+    }
+
+    /// Sets the look of the wall at `e` (the default look is not stored).
+    pub fn set_look(&mut self, e: EdgeRef, look: EdgeLook) {
+        if look == EdgeLook::default() {
+            self.looks.remove(&e);
+        } else {
+            self.looks.insert(e, look);
+        }
+    }
+
+    /// Every wall that doesn't have the default look, in a stable order (for saving and views).
+    pub fn looks(&self) -> impl Iterator<Item = (EdgeRef, EdgeLook)> + '_ {
+        self.looks.iter().map(|(e, l)| (*e, *l))
     }
 
     pub fn in_bounds(&self, x: i32, z: i32) -> bool {

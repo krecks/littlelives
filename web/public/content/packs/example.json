@@ -2,7 +2,7 @@
   "$comment": "Example content pack: shows every pack feature. See docs/content-packs.md. Check with: cargo run -q -p sim-core --example check_pack -- web/public/content/packs/example.json",
   "tags": ["spa"],
   "buyCategories": [
-    { "id": "wellness", "label": "Wellness" }
+    { "id": "wellness", "label": "Wellness", "icon": "icon.category.wellness" }
   ],
   "feelings": [
     {

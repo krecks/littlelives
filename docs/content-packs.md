@@ -82,7 +82,7 @@ fields) load unchanged: both mergers rename the keys first (`LEGACY_KEYS` in `pa
 | `id` | Unique object id (camelCase). |
 | `name` | Shown in the catalog. |
 | `model` | Asset key of the 3D model (`model.<id>`). Art is registered separately in the asset manifest; a missing key logs a warning and falls back to a placeholder. |
-| `icon` | Optional catalog icon key; missing icons show a neutral placeholder. |
+| `icon` | Optional catalog icon key. Without one (or if the key is missing) the catalog shows a picture of the 3D model. |
 | `footprint` | `[width, depth]` in tiles, default `[1, 1]`. The resident uses it from the tile in front of the footprint's centre (local +z), which must be free. |
 | `price` | Buy-mode price in dollars. Without a price the object isn't sold (scenery). |
 | `category` | Buy-mode category id (see [Buy categories](#buy-categories)). |
@@ -256,6 +256,26 @@ seated, else `wash` (≤ 10 minutes) or `shower`; `screen` → `type` (seated tr
 `rest`/`lounge` or lying → `relax`; seated → `sit`; else `idle`. A result missing from
 `animations` means no animation (-1).
 
+## Wall coverings, door and window styles
+
+Build mode's looks are top-level arrays, appended like objects, so a pack can add its own:
+
+```json
+"wallCoverings": [{ "id": "mypack.tealPaint", "label": "Teal paint", "finish": "plaster", "color": "#5E9C96", "price": 0 }],
+"doorStyles": [{ "id": "mypack.barn", "label": "Barn door", "leaf": "oak", "price": 240 }],
+"windowStyles": [{ "id": "mypack.slim", "label": "Slim", "panes": "bar", "sill": 0.6, "head": 2.3, "inset": 0.3, "shutters": false, "price": 110 }]
+```
+
+| Field | Meaning |
+|---|---|
+| `price` | Covering: per wall face covered. Door / window: per door or window (replacing one with another style costs the new style's price). |
+| `finish` | Covering texture: `plaster`, `wallpaper`, `siding`, `brick`, `wood`, `stone` or `tile`; `color` tints it (wood is a neutral grain: give it its colour). |
+| `leaf`, `color` | Door: `panel` (painted; without `color`, front doors take the house's accent colour), `oak`, `halfGlass` or `glass` (`color` paints the frame). |
+| `panes`, `sill`, `head`, `inset`, `shutters` | Window: glazing bars (`cross`, `grid`, `bar`, `transom`, `none`), opening bottom and top (m, walls are 2.8 m), wall left either side of the glazing (m, of the 1 m edge), shutters outside (`true`, `false`, or `"house"`: if the house's style has them). |
+
+Saves store looks by id; a look whose id no longer exists loads as the default (the house's own
+look for walls, the first style for doors and windows). Ids must be unique within each list.
+
 ## Ids you can refer to
 
 - **Needs:** `hunger`, `energy`, `bladder`, `hygiene`, `fun`, `comfort`, `social`.
@@ -266,7 +286,8 @@ seated, else `wash` (≤ 10 minutes) or `shower`; `screen` → `type` (seated tr
   (likes `rest`, `lounge`, `spa`). Icons are `icon.emotion.<id>`.
 - **Buy categories:** `kitchen`, `bathroom`, `bedroom`, `living`, `office`, `fitness`,
   `hobbies`, `decor`, `outdoor`, `wellness` (example pack). Add a category with
-  `"buyCategories": [{ "id": "...", "label": "..." }]` only if none fits.
+  `"buyCategories": [{ "id": "...", "label": "...", "icon": "icon.category.<id>" }]` only if
+  none fits (`icon` is optional: the catalog tab's icon, an `icon` asset key).
 - **Traits** (for `traitPatches`): `foodie`, `bookworm`, `couchPotato`, `neat`, `slob`,
   `energetic`, `lazy`, `cheerful`, `gloomy`, `natureLover`, `outgoing`, `loner`,
   `romantic`, `hotHeaded`, `kind`.

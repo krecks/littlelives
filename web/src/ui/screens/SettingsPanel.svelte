@@ -138,6 +138,10 @@
         <div><b>Reduce motion</b><span>Turns off interface animations.</span></div>
         <Toggle label="Reduce motion" bind:checked={settings.reducedMotion} />
       </div>
+      <div class="row">
+        <div><b>Sound effects</b><span>Little sounds when you buy, build and place things.</span></div>
+        <Toggle label="Sound effects" bind:checked={settings.sound} />
+      </div>
     {:else}
       <label class="row">
         <div><b>Camera sensitivity · {settings.cameraSensitivity.toFixed(1)}×</b><span>Rotate, pan and zoom speed.</span></div>

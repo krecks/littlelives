@@ -2627,7 +2627,7 @@
     "wall": 40,
     "door": 150,
     "window": 120,
-    "remove": 10
+    "remove": 0
   },
   "styles": [
     {
@@ -2643,42 +2643,95 @@
       "label": "Minimal"
     }
   ],
+  "wallCoverings": [
+    {"id": "paint.white", "label": "White paint", "finish": "plaster", "color": "#F4F1EA", "price": 0},
+    {"id": "paint.cream", "label": "Cream paint", "finish": "plaster", "color": "#EFE2C8", "price": 0},
+    {"id": "paint.butter", "label": "Butter paint", "finish": "plaster", "color": "#F0DDA0", "price": 0},
+    {"id": "paint.sage", "label": "Sage paint", "finish": "plaster", "color": "#C5D3BC", "price": 0},
+    {"id": "paint.sky", "label": "Sky-blue paint", "finish": "plaster", "color": "#C6D7E6", "price": 0},
+    {"id": "paint.blush", "label": "Blush paint", "finish": "plaster", "color": "#ECCFC6", "price": 0},
+    {"id": "paint.terracotta", "label": "Terracotta paint", "finish": "plaster", "color": "#CF9373", "price": 0},
+    {"id": "paint.navy", "label": "Navy paint", "finish": "plaster", "color": "#46546E", "price": 0},
+    {"id": "paint.charcoal", "label": "Charcoal paint", "finish": "plaster", "color": "#5A5E64", "price": 0},
+    {"id": "wallpaper.linen", "label": "Linen wallpaper", "finish": "wallpaper", "color": "#EFE6D6", "price": 5},
+    {"id": "wallpaper.mint", "label": "Mint wallpaper", "finish": "wallpaper", "color": "#D2E6D8", "price": 5},
+    {"id": "wallpaper.lilac", "label": "Lilac wallpaper", "finish": "wallpaper", "color": "#DDD5EA", "price": 5},
+    {"id": "wallpaper.rose", "label": "Rose wallpaper", "finish": "wallpaper", "color": "#F0D3D3", "price": 5},
+    {"id": "siding.white", "label": "White siding", "finish": "siding", "color": "#F4F2EC", "price": 8},
+    {"id": "siding.blue", "label": "Blue siding", "finish": "siding", "color": "#BCD0E0", "price": 8},
+    {"id": "siding.green", "label": "Green siding", "finish": "siding", "color": "#C9D8C4", "price": 8},
+    {"id": "siding.yellow", "label": "Yellow siding", "finish": "siding", "color": "#EADBA8", "price": 8},
+    {"id": "brick.red", "label": "Red brick", "finish": "brick", "color": "#FFFFFF", "price": 12},
+    {"id": "brick.smoked", "label": "Smoked brick", "finish": "brick", "color": "#9C8E88", "price": 12},
+    {"id": "wood.oak", "label": "Oak panelling", "finish": "wood", "color": "#C99A68", "price": 15},
+    {"id": "wood.walnut", "label": "Walnut panelling", "finish": "wood", "color": "#7E5A42", "price": 15},
+    {"id": "stone", "label": "Fieldstone", "finish": "stone", "color": "#FFFFFF", "price": 18},
+    {"id": "tile.white", "label": "White tiles", "finish": "tile", "color": "#FFFFFF", "price": 10},
+    {"id": "tile.blue", "label": "Blue tiles", "finish": "tile", "color": "#BFD6E6", "price": 10},
+    {"id": "tile.green", "label": "Green tiles", "finish": "tile", "color": "#C3DCC8", "price": 10}
+  ],
+  "doorStyles": [
+    {"id": "panel", "label": "Painted panel", "leaf": "panel", "price": 150},
+    {"id": "panel.white", "label": "White panel", "leaf": "panel", "color": "#F2F0EA", "price": 150},
+    {"id": "panel.red", "label": "Red panel", "leaf": "panel", "color": "#9C3A32", "price": 160},
+    {"id": "panel.blue", "label": "Blue panel", "leaf": "panel", "color": "#3F5A7A", "price": 160},
+    {"id": "oak", "label": "Natural oak", "leaf": "oak", "price": 190},
+    {"id": "halfGlass", "label": "Half-glazed", "leaf": "halfGlass", "color": "#F2F0EA", "price": 220},
+    {"id": "glass", "label": "French glass", "leaf": "glass", "color": "#3C3F44", "price": 260}
+  ],
+  "windowStyles": [
+    {"id": "classic", "label": "Classic", "panes": "cross", "sill": 0.9, "head": 2.1, "inset": 0.12, "shutters": "house", "price": 120},
+    {"id": "cottage", "label": "Cottage", "panes": "grid", "sill": 1.0, "head": 1.95, "inset": 0.14, "shutters": true, "price": 130},
+    {"id": "picture", "label": "Picture", "panes": "none", "sill": 0.7, "head": 2.2, "inset": 0.06, "shutters": false, "price": 150},
+    {"id": "tall", "label": "Floor-length", "panes": "bar", "sill": 0.25, "head": 2.3, "inset": 0.12, "shutters": false, "price": 190},
+    {"id": "high", "label": "High light", "panes": "none", "sill": 1.55, "head": 2.2, "inset": 0.08, "shutters": false, "price": 90},
+    {"id": "transom", "label": "Transom", "panes": "transom", "sill": 0.6, "head": 2.3, "inset": 0.1, "shutters": false, "price": 170}
+  ],
   "buyCategories": [
     {
       "id": "kitchen",
-      "label": "Kitchen"
+      "label": "Kitchen",
+      "icon": "icon.category.kitchen"
     },
     {
       "id": "bathroom",
-      "label": "Bathroom"
+      "label": "Bathroom",
+      "icon": "icon.category.bathroom"
     },
     {
       "id": "bedroom",
-      "label": "Bedroom"
+      "label": "Bedroom",
+      "icon": "icon.category.bedroom"
     },
     {
       "id": "living",
-      "label": "Living"
+      "label": "Living",
+      "icon": "icon.category.living"
     },
     {
       "id": "office",
-      "label": "Office"
+      "label": "Office",
+      "icon": "icon.category.office"
     },
     {
       "id": "fitness",
-      "label": "Fitness"
+      "label": "Fitness",
+      "icon": "icon.category.fitness"
     },
     {
       "id": "hobbies",
-      "label": "Hobbies"
+      "label": "Hobbies",
+      "icon": "icon.category.hobbies"
     },
     {
       "id": "decor",
-      "label": "Decor"
+      "label": "Decor",
+      "icon": "icon.category.decor"
     },
     {
       "id": "outdoor",
-      "label": "Outdoor"
+      "label": "Outdoor",
+      "icon": "icon.category.outdoor"
     }
   ],
   "include": [

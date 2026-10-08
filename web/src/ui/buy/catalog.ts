@@ -5,7 +5,8 @@
  * hundreds of items).
  */
 
-import type { Content, NeedDef, ObjectDef } from '../../content/content';
+import type { AssetRegistry } from '../../assets/registry';
+import type { Content, NeedDef, ObjectDef, TraitDef } from '../../content/content';
 
 export interface NeedBoost {
   need: NeedDef;
@@ -58,21 +59,84 @@ interface FeelingDef {
   emotion?: string;
 }
 
-let feelingSource: string | null = null;
-let feelingMap = new Map<string, FeelingDef>();
+interface RawContent {
+  feelings?: FeelingDef[];
+  traits?: { id: string; effects?: { tagPreference?: Record<string, number> } }[];
+}
 
-/** Feeling definitions from the raw content (the `Content` class doesn't index them). */
-export function feelingDef(content: Content, id: string): FeelingDef | undefined {
-  if (feelingSource !== content.json) {
-    feelingSource = content.json;
-    try {
-      const list = (JSON.parse(content.json) as { feelings?: FeelingDef[] }).feelings ?? [];
-      feelingMap = new Map(list.map((m) => [m.id, m]));
-    } catch {
-      feelingMap = new Map();
-    }
+let rawSource: string | null = null;
+let feelingMap = new Map<string, FeelingDef>();
+let likesMap = new Map<string, Record<string, number>>();
+
+/** Indexes what the `Content` class doesn't: feelings, and trait tag preferences (packs patched in). */
+function raw(content: Content): void {
+  if (rawSource === content.json) return;
+  rawSource = content.json;
+  try {
+    const file = JSON.parse(content.json) as RawContent;
+    feelingMap = new Map((file.feelings ?? []).map((m) => [m.id, m]));
+    likesMap = new Map((file.traits ?? []).map((t) => [t.id, t.effects?.tagPreference ?? {}]));
+  } catch {
+    feelingMap = new Map();
+    likesMap = new Map();
   }
+}
+
+/** Feeling definitions from the raw content. */
+export function feelingDef(content: Content, id: string): FeelingDef | undefined {
+  raw(content);
   return feelingMap.get(id);
+}
+
+/** How much a resident with these traits is drawn to an item (best interaction; 1 = neutral). */
+export function appeal(content: Content, def: ObjectDef, traits: readonly string[]): number {
+  raw(content);
+  let best = 1;
+  for (const it of def.interactions) {
+    let pull = 1;
+    for (const t of traits) {
+      const prefs = likesMap.get(t);
+      if (!prefs) continue;
+      for (const tag of it.tags ?? []) pull = Math.max(pull, prefs[tag] ?? 1);
+    }
+    best = Math.max(best, pull);
+  }
+  return best;
+}
+
+/** From this pull on, a resident "loves" an item (their traits make it at least twice as tempting). */
+export const LOVES = 2;
+
+/**
+ * First names of the residents who love an item: it comes from one of their personalities'
+ * collections, or their traits make it far more tempting than usual.
+ */
+export function loversOf(content: Content, def: ObjectDef, residents: readonly { name: string; traits: readonly string[] }[]): string[] {
+  const collection = collectionOf(content, def)?.id;
+  return residents
+    .filter((r) => (collection !== undefined && r.traits.includes(collection)) || appeal(content, def, r.traits) >= LOVES)
+    .map((r) => r.name.split(' ')[0]);
+}
+
+/** The personality collection an item comes from (`bookworm.readingNook` → Bookworm), if any. */
+export function collectionOf(content: Content, def: ObjectDef): TraitDef | null {
+  const dot = def.id.indexOf('.');
+  return dot > 0 ? (content.trait(def.id.slice(0, dot)) ?? null) : null;
+}
+
+/**
+ * The styles an item comes in (indices into content styles): only furniture with its own model
+ * per style (`model.sofa@cozy`, ...) has any; the rest has one design. Empty when it has none.
+ */
+export function styleOptions(content: Content, assets: AssetRegistry, def: ObjectDef): number[] {
+  const options = content.styles.flatMap((s, i) => (assets.has(`${def.model}@${s.id}`, 'model') ? [i] : []));
+  return options.length > 1 ? options : [];
+}
+
+/** Model key of an item in a style (`model.sofa@cozy`), falling back to the plain model. */
+export function styledModel(content: Content, assets: AssetRegistry, def: ObjectDef, style: number): string {
+  const id = content.styles[style]?.id;
+  return id && assets.has(`${def.model}@${id}`, 'model') ? `${def.model}@${id}` : def.model;
 }
 
 const cache = new WeakMap<ObjectDef, ItemSummary>();
@@ -114,6 +178,7 @@ export function summarize(content: Content, def: ObjectDef): ItemSummary {
 
   const skillLabel = (id: string) => content.skill(id)?.label ?? id;
   const category = content.buyCategories.find((c) => c.id === def.category)?.label ?? '';
+  const collection = collectionOf(content, def)?.label ?? '';
   const summary: ItemSummary = {
     boosts: [...best.values()].sort((a, b) => b.perUse - a.perUse),
     drains: [...worst.values()].sort((a, b) => a.perUse - b.perUse),
@@ -129,6 +194,7 @@ export function summarize(content: Content, def: ObjectDef): ItemSummary {
     def.name,
     def.description ?? '',
     category,
+    collection,
     ...summary.boosts.map((b) => b.need.label),
     ...summary.trains.map((t) => skillLabel(t.skill)),
     ...summary.betterWith.map(skillLabel),

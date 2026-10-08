@@ -55,9 +55,11 @@ import type { MeshArrays, ObjectPlacement, WorldStructure } from '../../core/pro
 import type { QualitySettings } from '../quality';
 import { stylePreset, type StylePreset, type VisualStyle } from '../styles';
 import type {
+  BuildEffect,
   CameraPose,
   EdgePreview,
   LiveRenderOptions,
+  PaintPreviewFace,
   LotHighlight,
   PickResult,
   PlacementGhost,
@@ -69,7 +71,7 @@ import type {
   WallMode,
 } from '../types';
 import { createLighting, lightingAt } from './environment';
-import { HouseBuilder, WALL_HEIGHT, WALL_STUB } from './house';
+import { HALF_WALL_HEIGHT, HouseBuilder, WALL_HEIGHT, WALL_STUB } from './house';
 import { Street } from './street';
 import { MaterialLibrary } from './materials';
 import { buildModel, type ModelTemplate } from './models';
@@ -77,6 +79,7 @@ import { Characters, MAX_CHARACTERS } from './characters';
 import { installNature, Landscape, natureDecor, Sky } from './nature';
 import { LAYER_ALL, LAYER_TOWN, LAYER_WORLD } from './layers';
 import { NightGrade } from './nightGrade';
+import { BuildEffects, type PopTarget } from './buildFx';
 import { TownOverview } from './overview';
 import { TiltShift } from './tiltShift';
 
@@ -100,6 +103,8 @@ interface PlacedObject {
   maxX: number;
   maxZ: number;
   height: number;
+  /** Its instance in the template's matrix buffer (for the placement pop). */
+  pop: PopTarget;
 }
 
 const MAX_SIMS = MAX_CHARACTERS;
@@ -239,11 +244,20 @@ export class BabylonRenderer implements Renderer {
   private readonly ghostColor = new Float32Array(4);
   private ghostMaterial!: StandardMaterial;
   private ghostValid = true;
+  /** The ghost glides to its tile and turns smoothly; it floats a little, as if held. */
+  private ghostShown = false;
+  private readonly ghostGoal = new Vector3();
+  private ghostYawGoal = 0;
+  private ghostAge = 0;
+  private ghostSpawn = 0;
+  private fx!: BuildEffects;
   private previewMeshes!: Record<EdgePreview['kind'], Mesh>;
   private previewBuffers!: Record<EdgePreview['kind'], Float32Array>;
   private previewValid = true;
   private grid!: Mesh;
   private gridOn = false;
+  private paintPreview!: Mesh;
+  private paintBuffer = new Float32Array(64 * 16);
 
   // Scratch objects for allocation-free updates.
   private readonly mRot = new Matrix();
@@ -293,6 +307,8 @@ export class BabylonRenderer implements Renderer {
     // (lighting changes) goes stale once they refreeze, so record again.
     this.lib.onRefrozen = () => this.resetSnapshot();
     this.house = new HouseBuilder(scene);
+    const c = this.deps.content;
+    this.house.setLooks({ coverings: c.wallCoverings, doors: c.doorStyles, windows: c.windowStyles });
     this.street = new Street(scene, this.deps.assets, this.house);
     // Wind sway and tint variation for foliage materials (hooks them as the models load).
     installNature(scene);
@@ -333,6 +349,7 @@ export class BabylonRenderer implements Renderer {
     this.roofs = [];
     this.walls = this.wallsLow = null;
     this.placed = [];
+    this.fx.clearPops();
     this.view = view;
 
     const { width, depth } = world;
@@ -393,6 +410,8 @@ export class BabylonRenderer implements Renderer {
     this.updateCutaway();
     this.followCamera();
     this.skyDome.drift(this.engine.getDeltaTime());
+    this.fx.update(this.engine.getDeltaTime());
+    if (this.ghostShown) this.updateGhost(this.engine.getDeltaTime());
     if (this.roofs.length && this.roofVisible() !== this.roofShown) {
       this.roofShown = !this.roofShown;
       for (const roof of this.roofs) roof.setEnabled(this.roofShown);
@@ -503,20 +522,55 @@ export class BabylonRenderer implements Renderer {
 
   setPlacementGhost(ghost: PlacementGhost | null): void {
     if (!ghost) {
+      this.ghostShown = false;
       if (this.ghostRoot.position.y !== HIDDEN_Y) {
         this.ghostRoot.position.y = HIDDEN_Y;
         this.ghostRoot.computeWorldMatrix(true);
       }
       return;
     }
+    const fresh = !this.ghostShown || ghost.model !== this.ghostKey;
     if (ghost.model !== this.ghostKey) this.loadGhost(ghost.model);
-    // Rotate about the footprint centre, like placed objects.
-    this.ghostRoot.position.set(ghost.x + ghost.w / 2, 0.005, ghost.z + ghost.d / 2);
-    this.ghostRoot.rotation.y = (ghost.rot * Math.PI) / 2;
+    // Rotate about the footprint centre, like placed objects. The turn takes the short way round.
+    this.ghostGoal.set(ghost.x + ghost.w / 2, 0, ghost.z + ghost.d / 2);
+    const yaw = (ghost.rot * Math.PI) / 2;
+    const turn = Math.atan2(Math.sin(yaw - this.ghostYawGoal), Math.cos(yaw - this.ghostYawGoal));
+    this.ghostYawGoal += turn;
+    if (!this.ghostShown) {
+      this.ghostRoot.position.copyFrom(this.ghostGoal);
+      this.ghostRoot.rotation.y = this.ghostYawGoal = yaw;
+    }
+    if (fresh) this.ghostSpawn = 0;
+    this.ghostShown = true;
     if (ghost.valid !== this.ghostValid) {
       this.ghostValid = ghost.valid;
       this.setGhostTint();
     }
+  }
+
+  private updateGhost(dtMs: number): void {
+    const dt = Math.min(dtMs, 50) / 1000;
+    this.ghostAge += dt;
+    this.ghostSpawn += dt;
+    const root = this.ghostRoot;
+    const glide = 1 - Math.exp(-dt * 22);
+    root.position.x += (this.ghostGoal.x - root.position.x) * glide;
+    root.position.z += (this.ghostGoal.z - root.position.z) * glide;
+    root.rotation.y += (this.ghostYawGoal - root.rotation.y) * (1 - Math.exp(-dt * 16));
+    // Held a hand's breadth above the floor, bobbing gently; picked up with a springy pop.
+    root.position.y = 0.07 + 0.035 * Math.sin(this.ghostAge * 3.4);
+    const t = this.ghostSpawn;
+    const s = t > 0.6 ? 1 : 1 - Math.exp(-8 * t) * Math.cos(14 * t);
+    root.scaling.set(s, s, s);
+    // Where it can't go, it pulses.
+    this.ghostMaterial.alpha = this.ghostValid ? 0.5 : 0.36 + 0.14 * Math.sin(this.ghostAge * 9);
+  }
+
+  buildEffect(fx: BuildEffect): void {
+    if (this.townMode) return;
+    this.fx.play(fx);
+    const placed = fx.objectId === undefined ? undefined : this.placed.find((p) => p.id === fx.objectId);
+    if (placed) this.fx.pop(placed.pop);
   }
 
   setEdgePreview(edges: readonly EdgePreview[], valid: boolean): void {
@@ -533,7 +587,7 @@ export class BabylonRenderer implements Renderer {
       // Unit slab (1 x 1 x 1 centred box) scaled to the edge: walls full height, doors a
       // door-sized slab, windows a glassy pane between sill and head, removals a red sleeve
       // just around the existing wall.
-      const h = e.kind === 'door' ? 2.1 : e.kind === 'window' ? 1.2 : e.kind === 'open' ? WALL_HEIGHT + 0.06 : WALL_HEIGHT;
+      const h = e.kind === 'door' ? 2.1 : e.kind === 'window' ? 1.2 : e.kind === 'open' ? WALL_HEIGHT + 0.06 : e.form ? HALF_WALL_HEIGHT : WALL_HEIGHT;
       const y0 = e.kind === 'window' ? 0.9 : 0;
       const t = e.kind === 'open' ? 0.22 : e.kind === 'window' ? 0.2 : 0.16;
       const o = n * 16;
@@ -577,6 +631,55 @@ export class BabylonRenderer implements Renderer {
         const mat = this.previewMeshes[kind].material as StandardMaterial;
         mat.emissiveColor.copyFrom(tint ?? Color3.FromHexString(colors[kind]));
       }
+      this.resetSnapshot();
+    }
+  }
+
+  setPaintPreview(faces: readonly PaintPreviewFace[], color: string | null): void {
+    const mesh = this.paintPreview;
+    const n = color ? faces.length : 0;
+    if (n * 16 > this.paintBuffer.length) {
+      this.paintBuffer = new Float32Array(Math.max(n, this.paintBuffer.length / 8) * 32);
+      mesh.thinInstanceSetBuffer('matrix', this.paintBuffer, 16, false);
+    }
+    const buf = this.paintBuffer;
+    // A thin film just off each face (walls are 0.14 m thick), as tall as the wall.
+    const off = 0.078;
+    const t = 0.012;
+    faces.slice(0, n).forEach((f, i) => {
+      const o = i * 16;
+      const h = f.half ? HALF_WALL_HEIGHT : WALL_HEIGHT;
+      const s = f.side ? 1 : -1;
+      buf.fill(0, o, o + 16);
+      let cx: number;
+      let cz: number;
+      if (f.axis === 'h' || f.axis === 'v') {
+        buf[o] = f.axis === 'h' ? 1 : t;
+        buf[o + 10] = f.axis === 'h' ? t : 1;
+        cx = f.axis === 'h' ? f.x + 0.5 : f.x + s * off;
+        cz = f.axis === 'h' ? f.z + s * off : f.z + 0.5;
+      } else {
+        // As in `setEdgePreview`: a √2-long film turned ±45°, offset towards half 1 (`s` > 0).
+        const c = Math.SQRT1_2;
+        const sn = f.axis === 'dp' ? -c : c;
+        buf[o] = Math.SQRT2 * c;
+        buf[o + 2] = -Math.SQRT2 * sn;
+        buf[o + 8] = t * sn;
+        buf[o + 10] = t * c;
+        cx = f.x + 0.5 + s * off * sn;
+        cz = f.z + 0.5 + s * off * c;
+      }
+      buf[o + 5] = h;
+      buf[o + 12] = cx;
+      buf[o + 13] = h / 2;
+      buf[o + 14] = cz;
+      buf[o + 15] = 1;
+    });
+    mesh.thinInstanceCount = n;
+    mesh.thinInstanceBufferUpdated('matrix');
+    if (color) (mesh.material as StandardMaterial).emissiveColor.copyFrom(Color3.FromHexString(color));
+    if (mesh.isEnabled(false) !== n > 0) {
+      mesh.setEnabled(n > 0);
       this.resetSnapshot();
     }
   }
@@ -676,6 +779,7 @@ export class BabylonRenderer implements Renderer {
     this.simShadowMatrices.fill(0);
     this.setPlacementGhost(null);
     this.setEdgePreview([], true);
+    this.setPaintPreview([], null);
     this.setBuildGrid(null);
     this.cameraPlaced = false;
     this.framedView = '';
@@ -1086,6 +1190,7 @@ export class BabylonRenderer implements Renderer {
     ghostMat.specularColor = Color3.Black();
     ghostMat.emissiveColor = new Color3(0.25, 0.25, 0.25);
     ghostMat.backFaceCulling = false;
+    this.fx = new BuildEffects(this.scene);
 
     const preview = (kind: EdgePreview['kind'], color: string, alpha: number) => {
       const mat = new StandardMaterial(`preview-${kind}`, this.scene);
@@ -1107,6 +1212,18 @@ export class BabylonRenderer implements Renderer {
     const [door, doorBuf] = preview('door', '#B07A4A', 0.6);
     const [pane, paneBuf] = preview('window', '#7FE0F2', 0.55);
     const [open, openBuf] = preview('open', '#E5484D', 0.5);
+    // Paint tool: one film per face, tinted with the covering.
+    const paint = MeshBuilder.CreateBox('preview-paint', { size: 1 }, this.scene);
+    const paintMat = new StandardMaterial('preview-paint', this.scene);
+    paintMat.disableLighting = true;
+    paintMat.alpha = 0.6;
+    paint.material = paintMat;
+    paint.isPickable = false;
+    paint.alwaysSelectAsActiveMesh = true;
+    paint.thinInstanceSetBuffer('matrix', this.paintBuffer, 16, false);
+    paint.thinInstanceCount = 0;
+    paint.setEnabled(false);
+    this.paintPreview = paint;
     this.previewMeshes = { wall, door, window: pane, open };
     this.previewBuffers = { wall: wallBuf, door: doorBuf, window: paneBuf, open: openBuf };
 
@@ -1447,7 +1564,7 @@ export class BabylonRenderer implements Renderer {
         Matrix.TranslationToRef(o.x + o.w / 2, 0, o.z + o.d / 2, this.mPos);
         this.mRot.multiplyToRef(this.mPos, this.mOut);
         this.mOut.copyToArray(matrices, i * 16);
-        this.placed.push({ id: o.id, minX: o.x, minZ: o.z, maxX: o.x + o.w, maxZ: o.z + o.d, height: template.height });
+        this.placed.push({ id: o.id, minX: o.x, minZ: o.z, maxX: o.x + o.w, maxZ: o.z + o.d, height: template.height, pop: { meshes: template.meshes, matrices, index: i } });
       });
       for (const mesh of template.meshes) {
         mesh.thinInstanceSetBuffer('matrix', matrices, 16, true);

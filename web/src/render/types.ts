@@ -69,6 +69,18 @@ export interface LiveRenderOptions {
 }
 
 /** Translucent preview of an object being placed in buy mode. */
+/** Buy-mode feedback played in the world (see `render/babylon/buildFx.ts`). */
+export interface BuildEffect {
+  kind: 'place' | 'upgrade' | 'sell' | 'build' | 'remove';
+  /** Tile rectangle it covers. */
+  x: number;
+  z: number;
+  w: number;
+  d: number;
+  /** A placed object to spring into place (new or moved furniture). */
+  objectId?: number;
+}
+
 export interface PlacementGhost {
   /** Asset key of the model (style variant already resolved by the caller, or a base key). */
   model: string;
@@ -92,6 +104,17 @@ export interface EdgePreview {
   x: number;
   z: number;
   kind: 'wall' | 'door' | 'window' | 'open';
+  /** Walls: 1 previews a half wall. */
+  form?: number;
+}
+
+/** A wall face the Paint tool would cover (`side` 0 looks towards -z / -x / half 0). */
+export interface PaintPreviewFace {
+  axis: 'h' | 'v' | 'dp' | 'dn';
+  x: number;
+  z: number;
+  side: 0 | 1;
+  half: boolean;
 }
 
 /** A camera shot of the town overview (menus). */
@@ -153,8 +176,12 @@ export interface Renderer {
   setPlacementGhost(ghost: PlacementGhost | null): void;
   /** Build mode: wall/door/removal preview segments; `valid` tints them. Cheap; call on every pointer move. */
   setEdgePreview(edges: readonly EdgePreview[], valid: boolean): void;
+  /** Build mode's Paint tool: a film of `color` over the faces it would cover (null: none). */
+  setPaintPreview(faces: readonly PaintPreviewFace[], color: string | null): void;
   /** Build/buy mode: subtle tile grid over a tile rectangle (null hides it). */
   setBuildGrid(rect: ViewRect | null): void;
+  /** Build/buy mode: plays a placement, upgrade, sale or construction effect (after `setWorld` showed the change). */
+  buildEffect(fx: BuildEffect): void;
   stats(): RenderStats;
   configure(options: LiveRenderOptions): void;
   /** Small JPEG data URL of the current view, or null if capture isn't possible. */
@@ -245,6 +272,22 @@ export interface Wardrobe {
  * head-and-shoulders portraits. One small engine serves both; it exists only while a stage is
  * attached or portraits are being rendered.
  */
+/** Catalog pictures of furniture models (see `render/preview/items.ts`). */
+export interface ItemPreviews {
+  /**
+   * Picture of a model (asset key, style variant resolved), cached for the page and between
+   * visits. `now` requests (on screen) come first, `idle` ones are drawn ahead of time; aborting
+   * withdraws a request. Null when 3D is unavailable (or aborted).
+   */
+  thumbnail(model: string, footprint: [number, number], priority?: 'now' | 'idle', signal?: AbortSignal): Promise<string | null>;
+  /** Draws pictures ahead of time, in idle moments (opening the catalog is then instant). */
+  prefetch(models: readonly { model: string; footprint: [number, number] }[]): void;
+  /** The cached picture, if it has been drawn. */
+  cachedThumbnail(model: string): string | null;
+  /** The model seen from `frames` angles, turning once around (the catalog's drag-to-turn preview). */
+  turntable(model: string, footprint: [number, number], frames: number): Promise<string[] | null>;
+}
+
 export interface SimPreviews {
   /** Attaches the stage to `host`; null when 3D characters are unavailable. */
   stage(host: HTMLElement): Promise<SimStage | null>;

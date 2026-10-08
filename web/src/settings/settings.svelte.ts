@@ -26,6 +26,8 @@ export interface Settings {
   clock24h: boolean;
   showFps: boolean;
   reducedMotion: boolean;
+  /** Interface sounds (buying, building, picking things up). */
+  sound: boolean;
 }
 
 export const RESTART_KEYS: readonly (keyof Settings)[] = ['quality', 'renderer', 'ambientOcclusion'];
@@ -48,6 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
   clock24h: true,
   showFps: false,
   reducedMotion: false,
+  sound: true,
 };
 
 function load(): Settings {

@@ -70,6 +70,40 @@ export interface StyleDef {
 export interface BuyCategory {
   id: string;
   label: string;
+  /** Icon asset key for the catalog tab. */
+  icon?: string;
+}
+
+/** A wall covering (Build mode's paint): a finish (texture) tinted with a colour. Price per face. */
+export interface WallCoveringDef {
+  id: string;
+  label: string;
+  finish: 'plaster' | 'wallpaper' | 'siding' | 'brick' | 'wood' | 'stone' | 'tile';
+  color: string;
+  price?: number;
+}
+
+/** A door style: the leaf (`panel` painted, `oak` natural wood, `halfGlass`, `glass`) and its paint. */
+export interface DoorStyleDef {
+  id: string;
+  label: string;
+  leaf: 'panel' | 'oak' | 'halfGlass' | 'glass';
+  /** Paint (or frame) colour; without one, front doors take the house's accent colour. */
+  color?: string;
+  price?: number;
+}
+
+/** A window style: opening heights (m), glazing bars and shutters outside (`house`: if the house's style has them). */
+export interface WindowStyleDef {
+  id: string;
+  label: string;
+  panes: 'cross' | 'grid' | 'bar' | 'transom' | 'none';
+  sill: number;
+  head: number;
+  /** Wall left either side of the glazing (m). */
+  inset: number;
+  shutters: boolean | 'house';
+  price?: number;
 }
 
 export interface CareerCategory {
@@ -154,6 +188,9 @@ interface ContentFile {
   skills?: SkillDef[];
   styles?: StyleDef[];
   buyCategories?: BuyCategory[];
+  wallCoverings?: WallCoveringDef[];
+  doorStyles?: DoorStyleDef[];
+  windowStyles?: WindowStyleDef[];
   economy?: Partial<Economy>;
   /** Animation tags interactions can use as `anim` (the snapshot layout's `actions`). */
   animations?: string[];
@@ -174,6 +211,10 @@ export class Content {
   readonly skills: readonly SkillDef[];
   readonly styles: readonly StyleDef[];
   readonly buyCategories: readonly BuyCategory[];
+  /** Build mode looks; a wall face's covering is an index into `wallCoverings` + 1 (0: automatic). */
+  readonly wallCoverings: readonly WallCoveringDef[];
+  readonly doorStyles: readonly DoorStyleDef[];
+  readonly windowStyles: readonly WindowStyleDef[];
   readonly economy: Economy;
   /** Animation tags, in the order the snapshot's `sim.action` indexes them. */
   readonly animations: readonly string[];
@@ -201,6 +242,9 @@ export class Content {
     this.skills = file.skills ?? [];
     this.styles = file.styles ?? [];
     this.buyCategories = file.buyCategories ?? [];
+    this.wallCoverings = file.wallCoverings ?? [];
+    this.doorStyles = file.doorStyles ?? [];
+    this.windowStyles = file.windowStyles ?? [];
     this.economy = { startingFunds: 0, currency: '$', ...file.economy };
     this.animations = [...new Set(file.animations ?? [])];
     this.shop = file.objects.filter((o) => o.price !== undefined);

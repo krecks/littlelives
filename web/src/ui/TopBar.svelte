@@ -13,7 +13,8 @@
   ];
   const modes = [
     { id: 'live', icon: 'icon.ui.live', label: 'Live', key: 'L' },
-    { id: 'buy', icon: 'icon.ui.buy', label: 'Buy', key: 'V / B' },
+    { id: 'buy', icon: 'icon.ui.buy', label: 'Buy', key: 'V' },
+    { id: 'build', icon: 'icon.ui.build', label: 'Build', key: 'B' },
   ] as const;
   const rent = services.content.economy.rent;
   const fundsTitle = $derived(
@@ -41,9 +42,9 @@
       <span class="day">{WEEKDAYS[game.weekday]} · Day {game.day}</span>
       <span class="clock tabular">{clock(game.minute, settings.clock24h)}</span>
     </div>
-    {#if game.mode === 'buy'}
+    {#if game.mode !== 'live'}
       <span class="paused" title="Time stands still while you shop and build. Back to Live (L) to resume.">
-        <Icon name="icon.ui.pause" size={14} />Paused · Buy mode
+        <Icon name="icon.ui.pause" size={14} />Paused · {game.mode === 'build' ? 'Build' : 'Buy'} mode
       </span>
     {:else}
       <div class="segmented">

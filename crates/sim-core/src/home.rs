@@ -9,8 +9,8 @@
 use std::collections::VecDeque;
 
 use crate::Error;
-use crate::command::{EdgeAxis, EdgeEdit, EdgeKind};
-use crate::lot::{Diagonal, Edge, OUTDOORS};
+use crate::command::{EdgeAxis, EdgeEdit, EdgeKind, FacePaint};
+use crate::lot::{Diagonal, Edge, EdgeLook, EdgeRef, FORM_HALF, OUTDOORS};
 use crate::path::NavGrid;
 use crate::social::EventKind;
 use crate::world::{ObjectInstance, Task, TaskKind, World, end_activity};
@@ -24,6 +24,16 @@ fn edge_kind(kind: EdgeKind) -> Edge {
         EdgeKind::Door => Edge::Door,
         EdgeKind::Window => Edge::Window,
         EdgeKind::Open => Edge::Open,
+    }
+}
+
+/// Where an edit's wall is (after the bounds checks: coordinates are on the lot).
+fn edge_ref(axis: EdgeAxis, x: i32, z: i32) -> EdgeRef {
+    let (x, z) = (x as u16, z as u16);
+    match axis {
+        EdgeAxis::H => EdgeRef::H(x, z),
+        EdgeAxis::V => EdgeRef::V(x, z),
+        EdgeAxis::Dp | EdgeAxis::Dn => EdgeRef::Diag(x, z),
     }
 }
 
@@ -369,18 +379,21 @@ impl World {
     /// [`BuildRules::diagonal_wall`](crate::content::BuildRules::diagonal_wall). A tile holds at
     /// most one diagonal; it can't go across furniture or a resident, and furniture never
     /// stands on a tile with a diagonal. Doors and windows go into diagonal walls too.
+    ///
+    /// Looks: a new wall takes the edit's `form` (full or half height) and `cover` (both faces);
+    /// a new door or window its `style`. On a standing wall, a different `form` rebuilds it (the
+    /// wall price); on a standing door or window, a different `style` replaces it (its price).
+    /// Doors and windows only go into full-height walls. Faces are re-covered with [`World::paint`].
     pub fn build(&mut self, sim: u32, edits: &[EdgeEdit]) -> Result<(), Error> {
         let (h, plot) = self.home_of(sim)?;
-        let p = self.plots[plot as usize].clone();
-        let (lw, ld) = (self.lot.width as i32, self.lot.depth as i32);
-        let edge_at = |lot: &crate::lot::Lot, e: &EdgeEdit| match e.axis {
-            EdgeAxis::H => lot.h_edge(e.x as usize, e.z as usize),
-            EdgeAxis::V => lot.v_edge(e.x as usize, e.z as usize),
+        let edge_at = |lot: &crate::lot::Lot, axis: EdgeAxis, x: i32, z: i32| match axis {
+            EdgeAxis::H => lot.h_edge(x as usize, z as usize),
+            EdgeAxis::V => lot.v_edge(x as usize, z as usize),
             // What stands across the tile in this direction (a diagonal the other way is
             // reported separately).
             EdgeAxis::Dp | EdgeAxis::Dn => lot
-                .diag(e.x, e.z)
-                .filter(|d| Some(d.dir) == e.axis.diagonal())
+                .diag(x, z)
+                .filter(|d| Some(d.dir) == axis.diagonal())
                 .map_or(Edge::Open, |d| d.edge),
         };
         // Tiles on either side of an edge (the tile itself, twice, for a diagonal).
@@ -410,31 +423,15 @@ impl World {
                         || (o.x == e.x - dx && o.z == e.z - dz))
             })
         };
-        let rules = self.content.build;
+        let rules = &self.content.build;
         let mut cost = 0;
+        // The look each changed wall ends up with (applied once everything checks out).
+        let mut looks: Vec<(EdgeRef, EdgeLook)> = Vec::new();
         for e in edits {
-            let on_plot = match e.axis {
-                EdgeAxis::H => {
-                    e.x >= p.x
-                        && e.x < p.x + p.w
-                        && e.z >= p.z
-                        && e.z <= p.z + p.d
-                        && e.x < lw
-                        && e.z <= ld
-                }
-                EdgeAxis::V => {
-                    e.x >= p.x
-                        && e.x <= p.x + p.w
-                        && e.z >= p.z
-                        && e.z < p.z + p.d
-                        && e.x <= lw
-                        && e.z < ld
-                }
-                EdgeAxis::Dp | EdgeAxis::Dn => p.contains(e.x, e.z) && self.lot.in_bounds(e.x, e.z),
-            };
-            if !on_plot || e.x < 0 || e.z < 0 {
+            if !self.edge_on_plot(plot, e.axis, e.x, e.z) {
                 return Err(Error::new("you can only build on your own lot"));
             }
+            check_look(rules, e)?;
             let target = edge_kind(e.kind);
             let diagonal = e.axis.diagonal();
             let (a, b) = sides(e);
@@ -459,7 +456,7 @@ impl World {
                     return Err(Error::new("someone is standing there"));
                 }
             }
-            let current = edge_at(&self.lot, e);
+            let current = edge_at(&self.lot, e.axis, e.x, e.z);
             if matches!(target, Edge::Door | Edge::Window)
                 && !current.is_wall()
                 && !walled_beside(e)
@@ -473,14 +470,47 @@ impl World {
                     "a {what} has to go into a wall — build one there first"
                 )));
             }
+            // The wall's look now (a diagonal running the other way isn't this wall).
+            let at = edge_ref(e.axis, e.x, e.z);
+            let old = if current == Edge::Open {
+                EdgeLook::default()
+            } else {
+                self.lot.look(at)
+            };
+            let look = next_look(current, target, old, e);
+            if matches!(target, Edge::Door | Edge::Window)
+                && look.form == 0
+                && old.form == FORM_HALF
+                && current == Edge::Wall
+            {
+                return Err(Error::new("doors and windows need a full-height wall"));
+            }
+            let wall_price = if diagonal.is_some() {
+                rules.diagonal_wall()
+            } else {
+                rules.wall
+            };
             if current != target {
                 cost += match target {
-                    Edge::Wall if diagonal.is_some() => rules.diagonal_wall(),
-                    Edge::Wall => rules.wall,
-                    Edge::Door => rules.door,
-                    Edge::Window => rules.window,
+                    Edge::Wall => {
+                        wall_price
+                            + 2 * rules.covering_price(look.sides[0])
+                                * i64::from(current == Edge::Open)
+                    }
+                    Edge::Door => rules.door_price(look.style),
+                    Edge::Window => rules.window_price(look.style),
                     Edge::Open => rules.remove,
                 };
+            } else if target != Edge::Open && look != old {
+                // Rebuilt in another form, or replaced by another style.
+                cost += match target {
+                    Edge::Door => rules.door_price(look.style),
+                    Edge::Window => rules.window_price(look.style),
+                    _ => wall_price,
+                };
+            }
+            if current != target || look != old {
+                looks.push((at, look));
             }
         }
         if self.households[h].funds < cost {
@@ -504,6 +534,9 @@ impl World {
                 }
             }
         }
+        for (at, look) in looks {
+            self.lot.set_look(at, look);
+        }
         if !self.keeps_reach(plot, &before, None) {
             self.lot = saved;
             return Err(Error::new(
@@ -514,6 +547,79 @@ impl World {
         self.households[h].funds -= cost;
         self.structure_version += 1;
         Ok(())
+    }
+
+    /// Covers wall faces on the home plot (paint, wallpaper, brick...), paying each covering's
+    /// price per face that changes. Every face must belong to a wall (with or without a door or
+    /// window); a face listed twice counts once.
+    pub fn paint(&mut self, sim: u32, faces: &[FacePaint]) -> Result<(), Error> {
+        let (h, plot) = self.home_of(sim)?;
+        let rules = &self.content.build;
+        let mut changes: Vec<(EdgeRef, usize, u8)> = Vec::new();
+        let mut cost = 0;
+        for f in faces {
+            if !self.edge_on_plot(plot, f.axis, f.x, f.z) {
+                return Err(Error::new("you can only paint walls on your own lot"));
+            }
+            if f.side > 1 {
+                return Err(Error::new("a wall has two faces (0 and 1)"));
+            }
+            if f.covering as usize > rules.coverings.len() {
+                return Err(Error::new(format!("unknown wall covering {}", f.covering)));
+            }
+            let standing = match f.axis {
+                EdgeAxis::H => self.lot.h_edge(f.x as usize, f.z as usize).is_wall(),
+                EdgeAxis::V => self.lot.v_edge(f.x as usize, f.z as usize).is_wall(),
+                EdgeAxis::Dp | EdgeAxis::Dn => self
+                    .lot
+                    .diag(f.x, f.z)
+                    .is_some_and(|d| Some(d.dir) == f.axis.diagonal()),
+            };
+            if !standing {
+                return Err(Error::new("there's no wall there to paint"));
+            }
+            let at = edge_ref(f.axis, f.x, f.z);
+            let side = f.side as usize;
+            if changes.iter().any(|&(e, s, _)| e == at && s == side) {
+                continue;
+            }
+            if self.lot.look(at).sides[side] != f.covering {
+                cost += rules.covering_price(f.covering);
+                changes.push((at, side, f.covering));
+            }
+        }
+        if self.households[h].funds < cost {
+            return Err(Error::new("not enough money to paint that"));
+        }
+        if changes.is_empty() {
+            return Ok(());
+        }
+        for (at, side, covering) in changes {
+            let mut look = self.lot.look(at);
+            look.sides[side] = covering;
+            self.lot.set_look(at, look);
+        }
+        self.households[h].funds -= cost;
+        self.structure_version += 1;
+        Ok(())
+    }
+
+    /// Whether a wall edge (or the diagonal across a tile) lies on plot `plot` and on the lot.
+    fn edge_on_plot(&self, plot: u32, axis: EdgeAxis, x: i32, z: i32) -> bool {
+        let p = &self.plots[plot as usize];
+        let (lw, ld) = (self.lot.width as i32, self.lot.depth as i32);
+        if x < 0 || z < 0 {
+            return false;
+        }
+        match axis {
+            EdgeAxis::H => {
+                x >= p.x && x < p.x + p.w && z >= p.z && z <= p.z + p.d && x < lw && z <= ld
+            }
+            EdgeAxis::V => {
+                x >= p.x && x <= p.x + p.w && z >= p.z && z < p.z + p.d && x <= lw && z < ld
+            }
+            EdgeAxis::Dp | EdgeAxis::Dn => p.contains(x, z) && self.lot.in_bounds(x, z),
+        }
     }
 
     /// Removes an object. Sims using it stop, and later object ids shift down by one.
@@ -553,5 +659,65 @@ impl World {
         }
         self.structure_version += 1;
         obj
+    }
+}
+
+/// Whether an edit's look exists in the content (form, covering, door or window style).
+fn check_look(rules: &crate::content::BuildRules, e: &EdgeEdit) -> Result<(), Error> {
+    if e.form.is_some_and(|f| f > FORM_HALF) {
+        return Err(Error::new("a wall is full height (0) or a half wall (1)"));
+    }
+    if e.cover.is_some_and(|c| c as usize > rules.coverings.len()) {
+        return Err(Error::new("unknown wall covering"));
+    }
+    let styles = match e.kind {
+        EdgeKind::Door => rules.doors.len(),
+        EdgeKind::Window => rules.windows.len(),
+        _ => return Ok(()),
+    };
+    if e.style.is_some_and(|s| s as usize >= styles.max(1)) {
+        return Err(Error::new("unknown door or window style"));
+    }
+    if e.form == Some(FORM_HALF) {
+        return Err(Error::new("doors and windows need a full-height wall"));
+    }
+    Ok(())
+}
+
+/// The look a wall has after an edit: new walls take the edit's form and covering, new doors
+/// and windows its style; standing ones keep their faces and change only what the edit names.
+fn next_look(current: Edge, target: Edge, old: EdgeLook, e: &EdgeEdit) -> EdgeLook {
+    match target {
+        Edge::Open => EdgeLook::default(),
+        _ if current == Edge::Open => {
+            let cover = e.cover.unwrap_or(0);
+            EdgeLook {
+                sides: [cover, cover],
+                form: if target == Edge::Wall {
+                    e.form.unwrap_or(0)
+                } else {
+                    0
+                },
+                style: if target == Edge::Wall {
+                    0
+                } else {
+                    e.style.unwrap_or(0)
+                },
+            }
+        }
+        Edge::Wall => EdgeLook {
+            form: e
+                .form
+                .unwrap_or(if current == Edge::Wall { old.form } else { 0 }),
+            style: 0,
+            ..old
+        },
+        _ => EdgeLook {
+            form: 0,
+            style: e
+                .style
+                .unwrap_or(if current == target { old.style } else { 0 }),
+            ..old
+        },
     }
 }

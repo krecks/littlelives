@@ -1013,6 +1013,7 @@ impl World {
                 self.upgrade(sim, object)?;
             }
             Command::Build { sim, edits } => self.build(sim, &edits)?,
+            Command::Paint { sim, faces } => self.paint(sim, &faces)?,
             Command::Cancel { sim, index } => {
                 let World {
                     sims,
