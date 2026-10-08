@@ -2,6 +2,8 @@
 
 A life-simulation game that runs in the browser. The game logic is written in Rust and compiled to WebAssembly; rendering runs on the GPU through WebGPU, with a WebGL2 fallback. The interface is Svelte 5 with plain CSS. Desktop only.
 
+**▶ Play it in your browser: https://krecks.github.io/littlelives/** (desktop Chrome, Edge, Brave or Safari; other browsers use the WebGL2 fallback).
+
 See [PLAN.md](PLAN.md) for the research, architecture, milestones and known issues.
 
 ## Run it
@@ -23,7 +25,7 @@ pnpm dev          # builds the WASM module, then starts Vite on http://localhost
 | `pnpm check` | Type-check TypeScript and Svelte |
 | `pnpm test:sim` | Run the Rust simulation tests |
 
-**Hosting:** the server must send `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. The dev and preview servers already do. Without these headers the game still runs, but snapshots are copied instead of shared.
+**Hosting:** every push to `main` builds the game and publishes it on GitHub Pages (`.github/workflows/pages.yml`). For the fastest snapshot path a server can send `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. The dev and preview servers already do. Without these headers the game still runs, but snapshots are copied instead of shared.
 
 ## Playing
 
@@ -123,7 +125,3 @@ Pack authors: see [docs/content-packs.md](docs/content-packs.md). The look of th
 ## Licence
 
 The code is released under the [MIT licence](LICENSE). Third-party art keeps its own licence: everything listed in [`web/public/assets/CREDITS.md`](web/public/assets/CREDITS.md) is CC0.
-
----
-
-Not affiliated with or endorsed by Electronic Arts. "The Sims" is a trademark of Electronic Arts Inc.
