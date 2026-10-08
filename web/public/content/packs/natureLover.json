@@ -50,7 +50,7 @@
         {
           "id": "tendVeggies",
           "label": "Tend the vegetables",
-          "anim": "garden",
+          "anim": "tend",
           "minutes": 30,
           "pose": "stand",
           "autonomous": true,
@@ -83,7 +83,7 @@
         {
           "id": "potSeedlings",
           "label": "Pot seedlings",
-          "anim": "garden",
+          "anim": "tinker",
           "minutes": 60,
           "pose": "stand",
           "autonomous": true,
@@ -94,7 +94,7 @@
         {
           "id": "tieBouquet",
           "label": "Tie a garden bouquet",
-          "anim": "garden",
+          "anim": "tinker",
           "minutes": 30,
           "pose": "stand",
           "autonomous": true,
@@ -202,7 +202,7 @@
         {
           "id": "mist",
           "label": "Mist the terrarium",
-          "anim": "garden",
+          "anim": "water",
           "minutes": 15,
           "pose": "stand",
           "autonomous": true,
@@ -236,7 +236,7 @@
         {
           "id": "orchids",
           "label": "Cultivate orchids",
-          "anim": "garden",
+          "anim": "water",
           "minutes": 60,
           "pose": "stand",
           "autonomous": true,

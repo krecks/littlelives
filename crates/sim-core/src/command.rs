@@ -100,6 +100,15 @@ pub enum Command {
         sim: u32,
         faces: Vec<FacePaint>,
     },
+    /// Build mode: cover floor tiles indoors on the Sim's home plot (wood, tile, carpet...).
+    PaintFloor {
+        sim: u32,
+        tiles: Vec<FloorPaint>,
+    },
+    /// Build and buy mode: take back the household's last edit (see `World::undo`).
+    Undo {
+        sim: u32,
+    },
 }
 
 /// One wall edge to set. `h` edges run along x at the line `z`; `v` edges run along z at the
@@ -147,6 +156,14 @@ pub struct FacePaint {
     pub covering: u8,
 }
 
+/// One floor tile to cover. `covering`: 0 the automatic look, else a floor covering + 1.
+#[derive(Debug, Clone, Copy, Deserialize)]
+pub struct FloorPaint {
+    pub x: i32,
+    pub z: i32,
+    pub covering: u8,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EdgeAxis {
@@ -182,6 +199,22 @@ pub enum EdgeKind {
 }
 
 impl Command {
+    /// The Sim whose home a build or buy edit changes (edits can be undone), if this is one.
+    pub fn home_edit(&self) -> Option<u32> {
+        match *self {
+            Command::Buy { sim, .. }
+            | Command::Sell { sim, .. }
+            | Command::MoveObject { sim, .. }
+            | Command::Restyle { sim, .. }
+            | Command::SetStyle { sim, .. }
+            | Command::Upgrade { sim, .. }
+            | Command::Build { sim, .. }
+            | Command::Paint { sim, .. }
+            | Command::PaintFloor { sim, .. } => Some(sim),
+            _ => None,
+        }
+    }
+
     pub fn from_json(json: &str) -> Result<Self, crate::Error> {
         serde_json::from_str(json).map_err(|e| crate::Error::new(format!("invalid command: {e}")))
     }

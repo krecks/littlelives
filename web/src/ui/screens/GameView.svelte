@@ -6,16 +6,26 @@
   import { app } from '../app.svelte';
   import Hud from '../Hud.svelte';
   import { game } from '../state.svelte';
+  import LoadingScreen from './LoadingScreen.svelte';
   import PauseMenu from './PauseMenu.svelte';
 
   /** The game screen: the canvas lives in the host (behind every screen); this adds the HUD. */
   let session = $state.raw<GameSession | null>(null);
   let error = $state('');
+  /** The game is loaded (usually already, prepared behind the menus); until then, a loading screen. */
+  let ready = $state(false);
 
   onMount(() => {
     let left = false;
+    const snapshot = $state.snapshot(settings);
     host
-      .start(app.request!, $state.snapshot(settings))
+      .prepare(app.request!, snapshot)
+      .then(() => {
+        if (!left) ready = true;
+      })
+      .catch(() => {});
+    host
+      .start(app.request!, snapshot)
       .then((s) => {
         if (!left) session = s;
       })
@@ -46,19 +56,16 @@
 {#if session}
   <div class="scaled hud-root"><Hud /></div>
   {#if game.pauseMenu}<PauseMenu {session} />{/if}
-{:else}
+{:else if error}
   <div class="splash">
     <div class="glass box">
-      {#if error}
-        <b>Couldn't start the game</b>
-        <span class="error">{error}</span>
-        <button class="btn" onclick={() => app.toMenu()}>Back to menu</button>
-      {:else}
-        <div class="spinner"></div>
-        <span>Moving in…</span>
-      {/if}
+      <b>Couldn't start the game</b>
+      <span class="error">{error}</span>
+      <button class="btn" onclick={() => app.toMenu()}>Back to menu</button>
     </div>
   </div>
+{:else if !ready}
+  <LoadingScreen progress={app.loading ?? { label: 'Moving in', value: 0 }} />
 {/if}
 
 <style>
@@ -67,7 +74,7 @@
     inset: 0;
     pointer-events: none;
   }
-  /* While the camera flies in from the menus: a small pill, the scene stays visible. */
+  /* An error starting the game: a small card over the scene. */
   .splash {
     position: absolute;
     inset: auto 0 48px 0;
@@ -101,18 +108,5 @@
   .error {
     color: var(--bad);
     font-weight: 500;
-  }
-  .spinner {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: 3px solid var(--accent-soft);
-    border-top-color: var(--accent);
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
   }
 </style>

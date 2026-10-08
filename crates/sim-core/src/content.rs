@@ -472,6 +472,9 @@ pub struct BuildRules {
     pub doors: Vec<BuildStyle>,
     /// Window styles (`windowStyles`), like doors.
     pub windows: Vec<BuildStyle>,
+    /// Floor coverings (`floorCoverings`): wood, tile, carpet... A tile's covering is an index
+    /// into this list + 1; 0 is the automatic look (by what the room is used for).
+    pub floors: Vec<BuildStyle>,
 }
 
 /// A look for walls, doors or windows. The simulation only needs its id (saves) and price; the
@@ -507,6 +510,14 @@ impl BuildRules {
         covering
             .checked_sub(1)
             .and_then(|i| self.coverings.get(i as usize))
+            .map_or(0, |c| c.price)
+    }
+
+    /// Price of covering one floor tile (0, the automatic look, is free).
+    pub fn floor_price(&self, covering: u8) -> i64 {
+        covering
+            .checked_sub(1)
+            .and_then(|i| self.floors.get(i as usize))
             .map_or(0, |c| c.price)
     }
 }
@@ -610,6 +621,8 @@ struct ContentFile {
     door_styles: Vec<BuildStyleRaw>,
     #[serde(default)]
     window_styles: Vec<BuildStyleRaw>,
+    #[serde(default)]
+    floor_coverings: Vec<BuildStyleRaw>,
     #[serde(default)]
     styles: Vec<StyleRaw>,
     /// Extra tags that no interaction or social uses (yet), so traits and emotions can refer to them.
@@ -1510,6 +1523,7 @@ impl Content {
             coverings: build_styles(&raw.wall_coverings, "wall covering")?,
             doors: build_styles(&raw.door_styles, "door style")?,
             windows: build_styles(&raw.window_styles, "window style")?,
+            floors: build_styles(&raw.floor_coverings, "floor covering")?,
         };
         let styles = raw
             .styles

@@ -6,10 +6,12 @@
    */
   import { app } from '../app.svelte';
 
+  /** `always`: shown even over the live scene (loading screens). */
+  let { always = false }: { always?: boolean } = $props();
   const live = $derived((app as { liveBackdrop?: boolean }).liveBackdrop ?? false);
 </script>
 
-{#if !live}
+{#if always || !live}
   <div class="backdrop" aria-hidden="true">
     <div class="sky"></div>
     <div class="sun"></div>

@@ -28,7 +28,7 @@
  */
 
 import { Color3, type Material, type Mesh, type PBRMaterial, type Scene } from '@babylonjs/core';
-import type { DoorStyleDef, WallCoveringDef, WindowStyleDef } from '../../content/content';
+import type { DoorStyleDef, FloorCoveringDef, WallCoveringDef, WindowStyleDef } from '../../content/content';
 import type { DiagonalWall, Opening, WorldStructure } from '../../core/protocol';
 import type { ViewRect } from '../types';
 import { Cut, facing, Geo, LOOK, type V3 } from './geometry';
@@ -85,6 +85,7 @@ const FINISH_MATERIALS: Record<WallCoveringDef['finish'], string> = {
 /** Build-mode looks from content: wall coverings, door and window styles (indices as in the structure). */
 export interface HouseLooks {
   coverings: readonly WallCoveringDef[];
+  floors: readonly FloorCoveringDef[];
   doors: readonly DoorStyleDef[];
   windows: readonly WindowStyleDef[];
 }
@@ -233,7 +234,7 @@ export function houseScheme(x: number, z: number): HouseScheme {
 
 export class HouseBuilder {
   private readonly lib: MaterialLibrary;
-  private looks: HouseLooks = { coverings: [], doors: [], windows: [] };
+  private looks: HouseLooks = { coverings: [], floors: [], doors: [], windows: [] };
 
   constructor(private readonly scene: Scene) {
     this.lib = MaterialLibrary.for(scene);
@@ -813,18 +814,25 @@ export class HouseBuilder {
       }
     }
 
-    // ---- floors per room kind --------------------------------------------------------
+    // ---- floors: the covering laid in Build mode, else by room kind -----------------
     const wood = new Geo();
     const tile = new Geo();
     const carpet = new Geo();
+    const stoneFloor = new Geo();
     const carpetTint = pick(CARPET, sx, sz, 21);
+    const laid = new Map<number, number>();
+    for (const [x, z, c] of world.floors ?? []) laid.set(z * W + x, c);
+    const FINISH = { wood, tile, carpet, stone: stoneFloor };
     for (let z = bounds.z; z < bounds.z + bounds.d; z++) {
       for (let x = bounds.x; x < bounds.x + bounds.w; x++) {
         const r = room(x, z);
         if (r === 0) continue;
+        const covering = laid.get(z * W + x);
+        const def = covering ? this.looks.floors[covering - 1] : undefined;
         const floorOf = (r: number) => {
+          if (def) return FINISH[def.finish].color(def.color);
           const kind = kinds.get(r) ?? 'living';
-          return kind === 'bath' || kind === 'kitchen' ? tile.color(kind === 'bath' ? '#F4F4F2' : '#E6DCCB') : kind === 'bedroom' ? carpet.color(carpetTint) : wood;
+          return kind === 'bath' || kind === 'kitchen' ? tile.color(kind === 'bath' ? '#F4F4F2' : '#E6DCCB') : kind === 'bedroom' ? carpet.color(carpetTint) : wood.color('#FFFFFF');
         };
         const d = diagonal(x, z);
         if (d) {
@@ -909,6 +917,11 @@ export class HouseBuilder {
     }
 
     // ---- garden: foundation shrubs and a few lot trees --------------------------------
+    // The player's own lot gets no automatic border: they plant their garden themselves, and
+    // building a room there shouldn't make flowers appear around it.
+    const homeId = world.households?.find((h) => h.player)?.plot;
+    const home = homeId == null ? null : world.plots?.[homeId];
+    const onHome = (x: number, z: number) => !!home && x >= home.x && z >= home.z && x < home.x + home.w && z < home.z + home.d;
     const paths = [...(world.meta?.paths ?? []), ...(world.meta?.streets ?? [])];
     const paved = (x: number, z: number) => paths.some((r) => x >= r.x - 0.6 && x < r.x + r.w + 0.6 && z >= r.z - 0.6 && z < r.z + r.d + 0.6);
     // Garden spots: outdoors, off furniture and paths, and not on a tile split by a diagonal.
@@ -926,7 +939,7 @@ export class HouseBuilder {
           // Only along a house's outside: a free-standing wall (drawn in build mode) stays bare.
           const indoor = axis === 'h' ? roomP(x + 0.5, z - side * 0.25) : roomP(x - side * 0.25, z + 0.5);
           if (indoor === 0) continue;
-          if (!free(px, pz) || hash(x * 3 + side, z, 31) < 0.3) continue;
+          if (!free(px, pz) || onHome(px, pz) || hash(x * 3 + side, z, 31) < 0.3) continue;
           shrubs.push([px, pz, 0.55 + hash(x, z, 32 + side) * 0.3, hash(x, z, 33) * 6.28]);
         }
       }
@@ -941,7 +954,7 @@ export class HouseBuilder {
       // Out in the triangle's far corner (as far from the wall as shrubs along straight walls).
       const px = d.x + 0.5 + f.nx * sign * 0.62;
       const pz = d.z + 0.5 + f.nz * sign * 0.62;
-      if (paved(px, pz) || hash(d.x * 3 + 7, d.z, 31) < 0.3) continue;
+      if (paved(px, pz) || onHome(px, pz) || hash(d.x * 3 + 7, d.z, 31) < 0.3) continue;
       shrubs.push([px, pz, 0.5 + hash(d.x, d.z, 34) * 0.2, hash(d.x, d.z, 33) * 6.28]);
     }
     const trees: [number, number, number, number][] = [];
@@ -989,6 +1002,7 @@ export class HouseBuilder {
     add(wood, 'floors', M.floorWood, { cut: false });
     add(tile, 'floorsTiled', M.floorTile, { cut: false });
     add(carpet, 'floorsCarpet', M.floorCarpet, { cut: false });
+    add(stoneFloor, 'floorsStone', M.stone, { cut: false });
     add(roof, 'roof', M.roof, { cut: false, cast: true, roof: true });
     add(roofTrim, 'roofTrim', M.trim, { cut: false, cast: true, roof: true });
     add(gables, 'gables', scheme.brick ? M.brick : M.siding, { cut: false, cast: true, roof: true });

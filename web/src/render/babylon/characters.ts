@@ -90,7 +90,7 @@ const SEATS: Record<string, { h: number; fwd: number }> = {
   'gloomy.soakingTub': { h: 0.25, fwd: 0 },
   'romantic.heartTub': { h: 0.35, fwd: 0 },
   'hotHeaded.coldPlunge': { h: 0.35, fwd: 0 },
-  'hotHeaded.coolDownCushion': { h: 0.2, fwd: 0 },
+  'hotHeaded.coolDownCushion': { h: 0.4, fwd: 0 },
 };
 const DEFAULT_SEAT = { h: 0.45, fwd: 0 };
 /** Mattress / bench top height (m) for lying. */
@@ -108,6 +108,11 @@ const BLANKET_BEDS = new Set(['bed', 'lazy.snoozecloudBed']);
 /** Lying: height of the back above the feet line, and how far the feet reach past the slot centre (body scale 1). */
 const LIE_BACK = 0.1;
 const LIE_CENTRE = 0.86;
+/** Standing surface heights (m) of exercise equipment Sims stand on. */
+const TRAMPOLINE_MAT = 0.5;
+const VIBE_PLATE = 0.12;
+/** Getting into bed: where the hips sit down, forward of the slot centre (body scale 1). */
+const LIE_ENTRY = 0.55;
 /** States that play another state's clip. */
 const CLIP_OF: Record<string, string> = { lie: 'idle' };
 
@@ -121,7 +126,7 @@ const USE: Record<string, readonly string[]> = {
   tv: ['foldArms'],
   bookshelf: ['interact', 'phone', 'phone'],
   plant: ['water'],
-  flowerbed: ['harvest'],
+  flowerbed: ['kneel'],
   treadmill: ['jog'],
   easel: ['interact'],
   mirror: ['talk'],
@@ -145,18 +150,21 @@ const HANDS = {
  * Animation per action tag (`layout.actions`, from the content's `animations`):
  * - `stand`: clip sequence while standing at the object (looped; looping clips play ~4 s per step);
  *   a function picks one by object def;
- * - `sit`: seated clip (default `sit`); `upper`: upper-body layer while seated (`eat` plays now and then);
+ * - `sit`: seated clip (default `sit`), or a function of the object def;
+ * - `upper`: upper-body layer while seated (`eat` plays now and then);
  * - `hands`: finger pose.
+ * Procedural layers on top (reclining, instruments, gazes, ...) are in `activityPose`.
  */
 interface ActionAnim {
   stand?: readonly string[] | ((def: string) => readonly string[]);
-  sit?: string;
+  sit?: string | ((def: string) => string);
   upper?: string;
   hands?: number;
 }
 const ACTIONS: Record<string, ActionAnim> = {
   eat: { stand: ['eat', 'idle'], upper: 'eat', hands: HANDS.hold },
-  drink: { stand: ['eat', 'idle'], upper: 'eat', hands: HANDS.hold },
+  // Sips: the same hand-to-mouth clip, spaced out.
+  drink: { stand: ['eat', 'idle', 'idle'], upper: 'eat', hands: HANDS.hold },
   cook: {
     stand: ['spell', 'interact', 'spell', 'pickUp'],
     sit: 'sitHands',
@@ -175,10 +183,21 @@ const ACTIONS: Record<string, ActionAnim> = {
   read: { stand: ['lantern'], upper: 'lantern', hands: HANDS.hold },
   watch: { stand: ['foldArms', 'idle'], hands: HANDS.open },
   play: { stand: ['spell'], sit: 'sitHands', hands: HANDS.keys },
-  music: { stand: ['spell'], sit: 'sitHands', hands: HANDS.keys },
+  // Keys and drums on the desk-hands clip; a cello is held upright between the knees.
+  music: { stand: ['spell'], sit: (def) => (def.includes('cello') ? 'sit' : 'sitHands'), hands: HANDS.keys },
   paint: { stand: ['spell', 'interact', 'spell'], hands: HANDS.hold },
   exercise: {
-    stand: (def) => (def.includes('Bag') || def.includes('smash') ? ['punchJab', 'punchCross'] : def.includes('boulder') ? ['rail'] : ['jog']),
+    stand: (def) =>
+      def.includes('Bag') || def.includes('smash')
+        ? ['punchJab', 'punchCross']
+        : def.includes('fitnessGame')
+          ? ['dance', 'punchJab', 'punchCross']
+          : def.includes('streetball')
+            ? ['pickUp', 'interact']
+            : // Climbing, bouncing, vibrating and stretching: the idle with `activityPose` on top.
+              def.includes('boulder') || def.includes('trampoline') || def.includes('vibe') || def.includes('sunrise')
+              ? ['idle']
+              : ['jog'],
     sit: 'sitHands',
     hands: HANDS.grip,
   },
@@ -186,8 +205,17 @@ const ACTIONS: Record<string, ActionAnim> = {
   lift: { stand: ['pickUp'], hands: HANDS.grip },
   dance: { stand: ['dance'], hands: HANDS.relaxed },
   talk: { stand: ['talk'], hands: HANDS.relaxed },
-  sing: { stand: ['talk'], hands: HANDS.relaxed },
-  clean: { stand: ['push', 'interact', 'push'], hands: HANDS.hold },
+  // The phone clip's hand at the mouth reads as a microphone.
+  sing: { stand: ['talk'], upper: 'phone', hands: HANDS.hold },
+  clean: {
+    stand: (def) => (def.includes('Mop') || def.includes('Vacuum') ? ['push'] : def.includes('laundry') ? ['spell', 'interact', 'pickUp'] : ['interact', 'spell']),
+    hands: HANDS.hold,
+  },
+  // Gardening, by task (older content and packs: `garden`).
+  water: { stand: ['water'], hands: HANDS.hold },
+  tend: { stand: ['kneel'], hands: HANDS.relaxed },
+  harvest: { stand: ['harvest', 'plant'], hands: HANDS.hold },
+  prune: { stand: ['interact', 'spell', 'interact'], hands: HANDS.grip },
   garden: {
     stand: (def) => (def === 'plant' || def.includes('Terrarium') || def.includes('bonsai') ? ['water'] : ['harvest', 'plant']),
     hands: HANDS.hold,
@@ -201,6 +229,9 @@ const ACTIONS: Record<string, ActionAnim> = {
     stand: (def) => (def === 'telescope' ? ['rail'] : ['idle', 'foldArms']),
     hands: HANDS.relaxed,
   },
+  // Down to low flowers / up into a tree's crown (`activityPose` turns the head).
+  smell: { stand: ['crouch'], hands: HANDS.relaxed },
+  admire: { stand: ['idle', 'foldArms'], hands: HANDS.relaxed },
   phone: { stand: ['phone'], upper: 'phone', hands: HANDS.hold },
   listen: { stand: ['idle', 'foldArms'], hands: HANDS.open },
   meditate: { stand: ['idle'], hands: HANDS.open },
@@ -212,7 +243,8 @@ const CLIP_FALLBACK: Record<string, string> = {
   push: 'interact',
   plant: 'harvest',
   lantern: 'phone',
-  chop: 'interact',
+  kneel: 'harvest',
+  crouch: 'harvest',
 };
 /** Looping clips in a use sequence play this long (s) per step. */
 const LOOP_STEP = 4;
@@ -403,6 +435,8 @@ interface SimRig {
   useSeq: readonly string[] | null;
   /** Current action tag ('' = none / unknown) and whether it came from the snapshot. */
   tag: string;
+  /** Def of the object in use ('' = none), for activity layers that depend on it. */
+  useDef: string;
   tagKnown: boolean;
   cur: Player;
   prev: Player;
@@ -430,6 +464,14 @@ interface SimRig {
   /** Bed while lying (for the blanket) and how far the blanket is pulled up (0..1). */
   bed: PlacedObject | null;
   bedH: number;
+  /**
+   * Getting out of bed: sim-core puts the Sim on the tile in front at once; the lying body
+   * (fading out) and the blanket stay where it lay (`lieX`, `lieZ`: its slot, kept while lying)
+   * and the Sim stands up from the foot of the bed.
+   */
+  fromBed: boolean;
+  lieX: number;
+  lieZ: number;
   cover: number;
   /** Current (smoothed) facial expression. */
   face: Face;
@@ -755,6 +797,7 @@ export class Characters {
         useKey: '',
         useSeq: null,
         tag: '',
+        useDef: '',
         tagKnown: false,
         cur: player(),
         prev: player(),
@@ -774,6 +817,9 @@ export class Characters {
         emotion: 0,
         bed: null,
         bedH: 0,
+        fromBed: false,
+        lieX: 0,
+        lieZ: 0,
         cover: 0,
         face: { ...NEUTRAL },
         blinkAt: -1,
@@ -1213,7 +1259,9 @@ export class Characters {
     let upper = '';
     let rate = 1;
     let hands: number = act?.hands ?? HANDS.relaxed;
-    rig.approach += (0 - rig.approach) * Math.min(1, step * 4);
+    // Step towards a partner (hugs, kisses, fights): eased towards `reach` at `reachRate`.
+    let reach = 0;
+    let reachRate = 4;
 
     if (this.force) {
       key = this.force;
@@ -1222,14 +1270,29 @@ export class Characters {
       const bed = (obj && BEDS[obj.def]) || DEFAULT_BED;
       rig.bed = obj;
       rig.bedH = bed.h;
-      // On the back, head towards the head of the bed (local -z), centred on the slot: the
-      // relaxed standing idle rotated flat, slowed down, with breathing on top.
-      key = 'lie';
-      rootY = bed.h + LIE_BACK * rig.scale;
-      rootFwd = LIE_CENTRE * rig.scale;
-      pitch = -Math.PI / 2;
-      rate = 0.3;
-      fade = 0.45;
+      rig.useDef = obj?.def ?? '';
+      if ((rig.lastPose === Pose.Stand && rig.cur.key !== 'sitDown') || (rig.cur.key === 'sitDown' && rig.cur.time < rig.cur.clip!.duration - 0.35)) {
+        // Getting in: sit down on the edge first; the crossfade to lying then leans the Sim back
+        // (the root pitch blends with the clips).
+        const sp = this.sitPelvis.get(rig.body.name)!;
+        key = 'sitDown';
+        rootY = bed.h - sp.y * rig.scale;
+        rootFwd = LIE_ENTRY * rig.scale - sp.z * rig.scale;
+        fade = 0.35;
+        if (rig.cur.key !== 'sitDown') rig.actTime = 0;
+      } else {
+        // On the back, head towards the head of the bed (local -z), centred on the slot: the
+        // relaxed standing idle rotated flat, slowed down, with breathing on top.
+        key = 'lie';
+        rootY = bed.h + LIE_BACK * rig.scale;
+        rootFwd = LIE_CENTRE * rig.scale;
+        pitch = -Math.PI / 2;
+        rate = 0.3;
+        fade = rig.cur.key === 'sitDown' ? 0.9 : 0.45;
+        // (Where it lies, for getting up: by then the Sim has already moved off the bed.)
+        rig.lieX = rig.x;
+        rig.lieZ = rig.z;
+      }
       hands = tag === 'lift' ? HANDS.grip : HANDS.open;
     } else if (pose === Pose.Sit) {
       const obj = (known ? useObj : null) ?? this.objectAt(rig.x, rig.z);
@@ -1238,8 +1301,9 @@ export class Characters {
       rootY = seat.h - sp.y * rig.scale;
       rootFwd = seat.fwd - sp.z * rig.scale;
       fade = 0.35;
+      rig.useDef = obj?.def ?? '';
       if (social) key = speaking(pair, role, time) ? 'sitTalk' : 'sit';
-      else if (act?.sit) key = act.sit;
+      else if (act?.sit) key = typeof act.sit === 'function' ? act.sit(rig.useDef) : act.sit;
       else if (!known && obj && SIT_HANDS.has(obj.def)) key = 'sitHands';
       else key = 'sit';
       if (rig.lastPose === Pose.Stand && rig.cur.key !== 'sitDown') {
@@ -1283,19 +1347,28 @@ export class Characters {
           key = me ? 'talk' : 'no';
           rate = 1.25;
           break;
-        case Anim.Fight:
+        case Anim.Fight: {
+          // The attacker steps in with each punch, the defender gives ground as it lands
+          // (eased like the hug's approach).
+          const beat = (time * 1.1) % 1;
+          const lunge = Math.sin(beat * Math.PI);
+          reach = role === 1 ? 0.04 + 0.1 * lunge : -0.03 - 0.09 * lunge;
+          reachRate = 8;
           key = role === 1 ? (Math.floor(time * 1.1) % 2 ? 'punchCross' : 'punchJab') : 'hit';
           repeat = true;
           hands = HANDS.grip;
           break;
+        }
         case Anim.Hug:
+          // Arms around each other: `procedural`.
           key = 'idle';
-          upper = 'rail';
-          rig.approach += (0.3 - rig.approach) * Math.min(1, step * 6);
+          reach = 0.33;
+          reachRate = 6;
           break;
         case Anim.Kiss:
           key = 'idle';
-          rig.approach += (0.32 - rig.approach) * Math.min(1, step * 6);
+          reach = 0.22;
+          reachRate = 6;
           break;
         default:
           key = me ? 'talk' : 'idle';
@@ -1304,6 +1377,7 @@ export class Characters {
     } else {
       // Standing object use: the action's clip sequence (or, without action data, the object in front).
       const obj = known ? useObj : this.objectInFront(rig);
+      rig.useDef = obj?.def ?? '';
       const seq = known
         ? act?.stand
           ? typeof act.stand === 'function'
@@ -1324,6 +1398,18 @@ export class Characters {
         }
         key = seq[rig.seq % seq.length];
         repeat = true;
+        if (tag === 'exercise' && obj && (rig.useDef.includes('trampoline') || rig.useDef.includes('vibe'))) {
+          // Up on the equipment (Sims use it from the tile in front): forward to its centre.
+          rootFwd = Math.hypot(obj.cx - rig.x, obj.cz - rig.z);
+          if (rig.useDef.includes('trampoline')) {
+            // Bouncing on the mat: the feet leave it for a little under half of each bounce.
+            const b = Math.sin(((rig.actTime * 1.6) % 1) * Math.PI);
+            rootY = TRAMPOLINE_MAT + Math.max(0, b * 0.75 - 0.3) * 0.55;
+          } else {
+            // On the vibration plate: a fine buzz.
+            rootY = VIBE_PLATE + Math.sin(rig.actTime * 90) * 0.004;
+          }
+        }
       } else {
         rig.useKey = '';
         rig.useSeq = null;
@@ -1334,6 +1420,7 @@ export class Characters {
         if (!tag || tag === 'idle') hands = HANDS.rest;
       }
     }
+    rig.approach += (reach - rig.approach) * Math.min(1, step * reachRate);
     const dir = rig.dir;
     if (dir?.clip) {
       key = dir.clip;
@@ -1343,11 +1430,24 @@ export class Characters {
       upper = '';
     }
     if (dir?.hands !== undefined) hands = dir.hands;
-    if (!moving && pose !== Pose.Sit && rig.lastPose === Pose.Sit && rig.cur.key !== 'standUp' && !this.force) {
-      // Rising from a seat.
+    if (!moving && pose === Pose.Stand && (rig.lastPose === Pose.Sit || rig.lastPose === Pose.Lie) && rig.cur.key !== 'standUp' && !this.force) {
+      // Rising from a seat (or sitting up out of bed: the crossfade from lying leans the Sim up).
       key = 'standUp';
+      rig.fromBed = rig.lastPose === Pose.Lie && !!rig.bed;
+      if (rig.fromBed) fade = 0.9;
     } else if (rig.cur.key === 'standUp' && !moving && pose === Pose.Stand && rig.cur.time < rig.cur.clip!.duration - 0.25) {
       key = 'standUp';
+    }
+    if (key !== 'standUp') rig.fromBed = false;
+    const fx = Math.sin(rig.yaw);
+    const fz = Math.cos(rig.yaw);
+    if (rig.fromBed && rig.bed) {
+      // Sitting on the foot of the bed, then stepping forward onto the Sim's tile while rising.
+      const bed = rig.bed;
+      const half = (Math.abs(fx) * (bed.maxX - bed.minX) + Math.abs(fz) * (bed.maxZ - bed.minZ)) / 2;
+      const edge = (bed.cx - rig.x) * fx + (bed.cz - rig.z) * fz + half - 0.22 * rig.scale;
+      const t = rig.cur.key === 'standUp' ? rig.cur.time / rig.cur.clip!.duration : 0;
+      rootFwd = edge * (1 - smooth(clamp((t - 0.3) / 0.6, 0, 1)));
     }
     rig.hands += (hands - rig.hands) * Math.min(1, step * 5 + 0.02);
 
@@ -1373,6 +1473,8 @@ export class Characters {
       cur.rootFwd = rootFwd;
       cur.rootPitch = pitch;
     }
+
+    if (rig.fromBed && rig.prev.key === 'lie') rig.prev.rootFwd = (rig.lieX - rig.x) * fx + (rig.lieZ - rig.z) * fz + LIE_CENTRE * rig.scale;
 
     // Upper-body layer.
     if (upper) {
@@ -1497,9 +1599,14 @@ export class Characters {
     }
     switch (social) {
       case Anim.Laugh: {
-        const shake = Math.sin(time * 15 + i) * 0.035;
-        addRotation(add, B.spine_02, 1, 0, 0, -0.12 + shake);
-        addRotation(add, B.Head, 1, 0, 0, -0.18 + shake);
+        // Natural laughter: body bounces, head tilts, shoulders shake.
+        const bounce = Math.sin(time * 8 + rig.seed * 5) * 0.04;
+        addRotation(add, B.spine_02, 1, 0, 0, -0.15 + bounce);
+        addRotation(add, B.spine_01, 1, 0, 0, -0.08 + bounce * 0.5);
+        addRotation(add, B.Head, 1, 0, 0, -0.2 + bounce * 0.7);
+        // Shoulder shake.
+        addRotation(add, B.upperarm_l, 1, 0, 0, Math.sin(time * 10 + rig.seed * 3) * 0.05);
+        addRotation(add, B.upperarm_r, 1, 0, 0, -Math.sin(time * 10 + rig.seed * 3) * 0.05);
         break;
       }
       case Anim.Flirt:
@@ -1511,14 +1618,44 @@ export class Characters {
         addRotation(add, B.Head, 0, 0, 1, role === 1 ? 0.22 : -0.22);
         addRotation(add, B.Head, 1, 0, 0, 0.1);
         break;
-      case Anim.Hug:
+      case Anim.Hug: {
         addRotation(add, B.spine_02, 1, 0, 0, 0.1);
         addRotation(add, B.Head, 0, 1, 0, role === 1 ? 0.5 : -0.5);
+        // Arms around the other: raised forward (one Sim over the shoulders, the other a little
+        // lower, around the back), elbows wrapping in; a slow squeeze.
+        // (Model space: +z forward, the left arm on -x; x rotations raise / bend both sides alike.)
+        // (Spread first, then raise: the other order would only roll the raised arm.)
+        const squeeze = Math.sin(time * 1.5 + role) * 0.05;
+        const raise = role === 1 ? 1.3 : 1.05;
+        addRotation(add, B.upperarm_l, 0, 0, 1, -0.35);
+        addRotation(add, B.upperarm_r, 0, 0, 1, 0.35);
+        addRotation(add, B.upperarm_l, 1, 0, 0, -raise);
+        addRotation(add, B.upperarm_r, 1, 0, 0, -raise);
+        addRotation(add, B.lowerarm_l, 0, 1, 0, 0.95 + squeeze);
+        addRotation(add, B.lowerarm_r, 0, 1, 0, -0.95 - squeeze);
         break;
+      }
       case Anim.Argue:
         addRotation(add, B.spine_03, 1, 0, 0, 0.08);
         break;
+      case Anim.Fight: {
+        const isAttacker = role === 1;
+        if (isAttacker) {
+          // Attacker: body leans forward into punches.
+          addRotation(add, B.spine_02, 1, 0, 0, 0.15);
+          addRotation(add, B.spine_01, 1, 0, 0, 0.1);
+        } else {
+          // Defender: flinch back, forearms up to guard the face.
+          addRotation(add, B.spine_02, 1, 0, 0, -0.12);
+          addRotation(add, B.upperarm_l, 1, 0, 0, -0.45);
+          addRotation(add, B.upperarm_r, 1, 0, 0, -0.45);
+          addRotation(add, B.lowerarm_l, 1, 0, 0, -1.5);
+          addRotation(add, B.lowerarm_r, 1, 0, 0, -1.5);
+        }
+        break;
+      }
     }
+    if (!social && !this.force && !dir?.clip) this.activityPose(rig, pose, time);
     // Sleeping: slow breathing, hands resting on the belly, head turned a little to one side.
     if (pose === Pose.Lie && rig.cur.key === 'lie' && rig.tag === 'lift') {
       // Bench press: arms push the bar up and lower it to the chest.
@@ -1532,16 +1669,192 @@ export class Characters {
         addRotation(add, la, 1, 0, 0, -1.4 + press * 1.3);
       }
     } else if (pose === Pose.Lie && rig.cur.key === 'lie') {
-      const br = Math.sin(time * 1.4 + rig.seed * 6) * 0.025;
-      addRotation(add, B.spine_02, 1, 0, 0, br);
-      addRotation(add, B.upperarm_l, 0, 0, 1, 0.3);
-      addRotation(add, B.upperarm_r, 0, 0, 1, -0.3);
-      addRotation(add, B.lowerarm_l, 1, 0, 0, 0.35);
-      addRotation(add, B.lowerarm_r, 1, 0, 0, 0.35);
-      addRotation(add, B.Head, 0, 1, 0, (rig.seed - 0.5) * 0.7);
+      const asleep = rig.tag === 'sleep' || rig.tag === 'nap';
+      const breathe = Math.sin(time * 1.2 + rig.seed * 6) * 0.035;
+      // Chest and belly expansion (breathing).
+      addRotation(add, B.spine_02, 1, 0, 0, breathe);
+      addRotation(add, B.spine_01, 1, 0, 0, breathe * 0.6);
+      // Arms: rest at sides with slight bend, occasional shift.
+      const armShift = Math.sin(time * 0.3 + rig.seed * 10) * 0.04;
+      addRotation(add, B.upperarm_l, 0, 0, 1, 0.35 + armShift);
+      addRotation(add, B.upperarm_r, 0, 0, 1, -0.35 - armShift);
+      addRotation(add, B.lowerarm_l, 1, 0, 0, 0.4 + Math.sin(time * 0.5 + rig.seed * 3) * 0.05);
+      addRotation(add, B.lowerarm_r, 1, 0, 0, 0.4 + Math.sin(time * 0.5 + rig.seed * 3 + 1) * 0.05);
+      // Head turns slowly to one side (asleep = deeper, less movement).
+      const headTurn = (rig.seed - 0.5) * 0.7 * (asleep ? 1 : 1.5);
+      addRotation(add, B.Head, 0, 1, 0, headTurn + Math.sin(time * 0.2 + rig.seed * 8) * 0.02);
+      // Subtle leg adjustment for more natural lying.
+      if (!asleep) {
+        const legShift = Math.sin(time * 0.25 + rig.seed * 7) * 0.03;
+        addRotation(add, B.thigh_l, 1, 0, 0, legShift);
+        addRotation(add, B.thigh_r, 1, 0, 0, -legShift);
+      }
     }
     dir?.pose?.(add, B, time);
     this.animateFace(rig, i, social, role, partner, pose, moving, time, dt);
+  }
+
+  /**
+   * Procedural layers for activities the clips only approximate: reclining, instruments,
+   * meditation, gazes at plants and trees, and exercise equipment. Model space: +z is forward,
+   * the left limbs are on -x; a negative x rotation raises an arm forward (or bends an elbow /
+   * knee forward), on both sides alike.
+   */
+  private activityPose(rig: SimRig, pose: number, time: number): void {
+    const B = this.set!.bone;
+    const add = this.add;
+    const def = rig.useDef;
+    const key = rig.cur.key;
+    const seed = rig.seed * 6;
+    if (pose === Pose.Sit && key !== 'sitDown') {
+      switch (rig.tag) {
+        case 'relax':
+        case 'nap':
+        case 'watch':
+          // Sinking back into the seat, legs stretched out a little, arms on the armrests.
+          addRotation(add, B.spine_01, 1, 0, 0, -0.14);
+          addRotation(add, B.Head, 1, 0, 0, 0.1);
+          addRotation(add, B.calf_l, 1, 0, 0, -0.35);
+          addRotation(add, B.calf_r, 1, 0, 0, -0.3);
+          addRotation(add, B.upperarm_l, 0, 0, 1, -0.18);
+          addRotation(add, B.upperarm_r, 0, 0, 1, 0.18);
+          break;
+        case 'bath': {
+          // Leaning back against the end of the tub, arms along the rim.
+          addRotation(add, B.spine_01, 1, 0, 0, -0.3);
+          addRotation(add, B.Head, 1, 0, 0, 0.2);
+          addRotation(add, B.upperarm_l, 0, 0, 1, -0.95);
+          addRotation(add, B.upperarm_r, 0, 0, 1, 0.95);
+          addRotation(add, B.lowerarm_l, 1, 0, 0, -0.15);
+          addRotation(add, B.lowerarm_r, 1, 0, 0, -0.15);
+          break;
+        }
+        case 'toilet':
+          // Leaning forward, forearms on the thighs.
+          addRotation(add, B.spine_01, 1, 0, 0, 0.3);
+          addRotation(add, B.Head, 1, 0, 0, -0.15);
+          addRotation(add, B.upperarm_l, 1, 0, 0, -0.35);
+          addRotation(add, B.upperarm_r, 1, 0, 0, -0.35);
+          addRotation(add, B.lowerarm_l, 1, 0, 0, -0.8);
+          addRotation(add, B.lowerarm_r, 1, 0, 0, -0.8);
+          break;
+        case 'meditate': {
+          // Cross-legged and upright, hands resting on the knees, slow deep breaths.
+          const breath = Math.sin(time * 0.8 + seed) * 0.025;
+          addRotation(add, B.spine_01, 1, 0, 0, 0.18 + breath);
+          addRotation(add, B.spine_02, 1, 0, 0, -breath);
+          addRotation(add, B.Head, 1, 0, 0, 0.06);
+          addRotation(add, B.thigh_l, 0, 1, 0, -0.75);
+          addRotation(add, B.thigh_r, 0, 1, 0, 0.75);
+          addRotation(add, B.calf_l, 0, 0, 1, 1.25);
+          addRotation(add, B.calf_r, 0, 0, 1, -1.25);
+          addRotation(add, B.upperarm_l, 0, 0, 1, -0.4);
+          addRotation(add, B.upperarm_r, 0, 0, 1, 0.4);
+          addRotation(add, B.upperarm_l, 1, 0, 0, -0.3);
+          addRotation(add, B.upperarm_r, 1, 0, 0, -0.3);
+          addRotation(add, B.lowerarm_l, 1, 0, 0, -0.1);
+          addRotation(add, B.lowerarm_r, 1, 0, 0, -0.1);
+          break;
+        }
+        case 'read':
+          addRotation(add, B.Head, 1, 0, 0, 0.18);
+          break;
+        case 'music':
+          if (def.includes('cello')) {
+            // Knees apart around the body of the cello, the left hand up on its neck, the right
+            // drawing the bow back and forth.
+            const bow = Math.sin(time * 2.2 + seed);
+            addRotation(add, B.thigh_l, 0, 1, 0, -0.35);
+            addRotation(add, B.thigh_r, 0, 1, 0, 0.35);
+            addRotation(add, B.upperarm_l, 1, 0, 0, -0.95);
+            addRotation(add, B.upperarm_l, 0, 0, 1, -0.25);
+            addRotation(add, B.lowerarm_l, 1, 0, 0, -1.3);
+            addRotation(add, B.lowerarm_l, 0, 1, 0, 0.6);
+            addRotation(add, B.upperarm_r, 1, 0, 0, -0.55);
+            addRotation(add, B.upperarm_r, 0, 0, 1, 0.45 + bow * 0.12);
+            addRotation(add, B.lowerarm_r, 1, 0, 0, -0.9);
+            addRotation(add, B.lowerarm_r, 0, 1, 0, -0.7 - bow * 0.45);
+            addRotation(add, B.Head, 0, 0, 1, 0.12);
+          } else if (def.includes('drum')) {
+            // Sticks: the forearms strike in turn.
+            const l = Math.max(0, Math.sin(time * 9 + seed));
+            const r = Math.max(0, Math.sin(time * 9 + seed + Math.PI));
+            addRotation(add, B.lowerarm_l, 1, 0, 0, -0.55 * l);
+            addRotation(add, B.lowerarm_r, 1, 0, 0, -0.55 * r);
+            addRotation(add, B.Head, 1, 0, 0, Math.sin(time * 4.5) * 0.05);
+          } else {
+            // Keys: swaying with the music.
+            addRotation(add, B.spine_02, 0, 0, 1, Math.sin(time * 1.1 + seed) * 0.04);
+          }
+          break;
+      }
+      return;
+    }
+    if (pose !== Pose.Stand) return;
+    switch (rig.tag) {
+      case 'smell':
+        // Nose down to the flowers.
+        addRotation(add, B.spine_03, 1, 0, 0, 0.12);
+        addRotation(add, B.Head, 1, 0, 0, 0.3);
+        break;
+      case 'admire':
+        // Looking up into the crown.
+        addRotation(add, B.spine_03, 1, 0, 0, -0.08);
+        addRotation(add, B.neck_01, 1, 0, 0, -0.25);
+        addRotation(add, B.Head, 1, 0, 0, -0.4 + Math.sin(time * 0.4 + seed) * 0.05);
+        break;
+      case 'talk':
+      case 'look':
+      case 'listen':
+        // Talking to a plant, looking at a bird bath: eyes down to the object.
+        if (def && def !== 'telescope' && key !== 'rail') addRotation(add, B.Head, 1, 0, 0, 0.2);
+        break;
+      case 'exercise':
+        if (def.includes('boulder')) {
+          // Climbing in place: the hands reach for holds overhead in turn, a knee comes up.
+          const c = time * 1.4 + seed;
+          const l = 0.5 + 0.5 * Math.sin(c);
+          const r = 1 - l;
+          addRotation(add, B.upperarm_l, 1, 0, 0, -2.2 - 0.5 * l);
+          addRotation(add, B.upperarm_r, 1, 0, 0, -2.2 - 0.5 * r);
+          addRotation(add, B.lowerarm_l, 1, 0, 0, -0.9 * r);
+          addRotation(add, B.lowerarm_r, 1, 0, 0, -0.9 * l);
+          addRotation(add, B.thigh_l, 1, 0, 0, -0.7 * r);
+          addRotation(add, B.calf_l, 1, 0, 0, 1.0 * r);
+          addRotation(add, B.thigh_r, 1, 0, 0, -0.7 * l);
+          addRotation(add, B.calf_r, 1, 0, 0, 1.0 * l);
+        } else if (def.includes('trampoline')) {
+          // Arms swing up in the air, knees give on landing.
+          const b = Math.sin(((rig.actTime * 1.6) % 1) * Math.PI);
+          addRotation(add, B.upperarm_l, 0, 0, 1, -1.3 * b);
+          addRotation(add, B.upperarm_r, 0, 0, 1, 1.3 * b);
+          const land = Math.max(0, 0.45 - b);
+          addRotation(add, B.thigh_l, 1, 0, 0, -0.8 * land);
+          addRotation(add, B.thigh_r, 1, 0, 0, -0.8 * land);
+          addRotation(add, B.calf_l, 1, 0, 0, 1.6 * land);
+          addRotation(add, B.calf_r, 1, 0, 0, 1.6 * land);
+          addRotation(add, B.foot_l, 1, 0, 0, -0.8 * land);
+          addRotation(add, B.foot_r, 1, 0, 0, -0.8 * land);
+        } else if (def.includes('vibe')) {
+          // Knees soft on the vibrating plate, a little buzz through the body.
+          const buzz = Math.sin(time * 70) * 0.012;
+          addRotation(add, B.thigh_l, 1, 0, 0, -0.3);
+          addRotation(add, B.thigh_r, 1, 0, 0, -0.3);
+          addRotation(add, B.calf_l, 1, 0, 0, 0.6);
+          addRotation(add, B.calf_r, 1, 0, 0, 0.6);
+          addRotation(add, B.foot_l, 1, 0, 0, -0.3);
+          addRotation(add, B.foot_r, 1, 0, 0, -0.3);
+          addRotation(add, B.Head, 1, 0, 0, buzz);
+        } else if (def.includes('sunrise')) {
+          // A slow morning stretch: arms up overhead and down again.
+          const up = smooth(0.5 - 0.5 * Math.cos(time * 0.9 + seed));
+          addRotation(add, B.upperarm_l, 1, 0, 0, -2.7 * up);
+          addRotation(add, B.upperarm_r, 1, 0, 0, -2.7 * up);
+          addRotation(add, B.spine_02, 1, 0, 0, -0.12 * up);
+          addRotation(add, B.Head, 1, 0, 0, -0.2 * up);
+        }
+        break;
+    }
   }
 
   /**
@@ -1852,11 +2165,14 @@ export class Characters {
     const s = rig.scale;
     const fx = Math.sin(rig.yaw);
     const fz = Math.cos(rig.yaw);
+    // Getting up: the Sim is already off the bed; the quilt stays on its slot as it slides off.
+    const x = rig.fromBed ? rig.lieX : rig.x;
+    const z = rig.fromBed ? rig.lieZ : rig.z;
     // Bed extent across the Sim (slot width) and the distance to its foot end.
     const across = Math.abs(fz) * (bed.maxX - bed.minX) + Math.abs(fx) * (bed.maxZ - bed.minZ);
     const slot = across >= 1.8 ? 0.86 : Math.min(across - 0.08, 1.0);
-    const tx = fx > 1e-3 ? (bed.maxX - rig.x) / fx : fx < -1e-3 ? (bed.minX - rig.x) / fx : Infinity;
-    const tz = fz > 1e-3 ? (bed.maxZ - rig.z) / fz : fz < -1e-3 ? (bed.minZ - rig.z) / fz : Infinity;
+    const tx = fx > 1e-3 ? (bed.maxX - x) / fx : fx < -1e-3 ? (bed.minX - x) / fx : Infinity;
+    const tz = fz > 1e-3 ? (bed.maxZ - z) / fz : fz < -1e-3 ? (bed.minZ - z) / fz : Infinity;
     const foot = Math.min(tx, tz) - 0.05;
     // The quilt past the toes reaches the bed's foot end (local units, at the Sim's scale).
     blanket.ext[i] = clamp(foot / s - blanket.footZ, -0.22, 1.2);
@@ -1880,9 +2196,9 @@ export class Characters {
     m[o + 9] = 0;
     m[o + 10] = fz * zs;
     m[o + 11] = 0;
-    m[o + 12] = rig.x + fx * z0;
+    m[o + 12] = x + fx * z0;
     m[o + 13] = rig.bedH + lift;
-    m[o + 14] = rig.z + fz * z0;
+    m[o + 14] = z + fz * z0;
     m[o + 15] = 1;
   }
 

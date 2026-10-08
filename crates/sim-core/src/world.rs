@@ -22,7 +22,7 @@ const MIN_AUTONOMY_SCORE: f32 = 0.01;
 const SOCIAL_RANGE: f32 = 45.0;
 pub const TICKS_PER_DAY: u64 = (24.0 * 60.0 / MINUTES_PER_TICK) as u64;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ObjectInstance {
     /// Equal to the object's index in `World::objects`.
     pub id: u32,
@@ -173,7 +173,7 @@ pub struct Task {
     pub directed: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Phase {
     Routing {
         waypoints: Vec<[f32; 2]>,
@@ -193,7 +193,7 @@ pub enum Phase {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Activity {
     pub task: Task,
     pub phase: Phase,
@@ -201,7 +201,7 @@ pub struct Activity {
     pub tags: TagMask,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Sim {
     /// Equal to the Sim's index in `World::sims`.
     pub id: u32,
@@ -437,6 +437,8 @@ pub struct World {
     pub exits: Vec<[f32; 2]>,
     /// Opaque presentation data from the lot/town file, saved unchanged.
     pub meta: serde_json::Value,
+    /// Build and buy edits that can be taken back, oldest first (see `World::undo`).
+    pub(crate) undo: Vec<crate::home::HomeSnapshot>,
 }
 
 /// Read-only context for one Sim's update.
@@ -556,6 +558,7 @@ impl World {
             briefs: Vec::new(),
             exits: Vec::new(),
             meta: serde_json::Value::Null,
+            undo: Vec::new(),
         }
     }
 
@@ -816,6 +819,8 @@ impl World {
     }
 
     pub fn tick_once(&mut self) {
+        // Time moves on: edits can no longer be taken back.
+        self.undo.clear();
         self.tick += 1;
         let tick = self.tick;
 
@@ -881,7 +886,24 @@ impl World {
         }
     }
 
+    /// Applies a player command. Build and buy edits can be undone (`Command::Undo`) until time
+    /// moves on or the player gives the household another kind of order.
     pub fn apply(&mut self, cmd: Command) -> Result<(), Error> {
+        if let Command::Undo { sim } = cmd {
+            return self.undo(sim);
+        }
+        let snapshot = cmd.home_edit().and_then(|sim| self.home_snapshot(sim));
+        let keeps_history = matches!(cmd, Command::SetSpeed { .. } | Command::SetAutonomy { .. });
+        self.apply_command(cmd)?;
+        match snapshot {
+            Some(s) => self.remember(s),
+            None if !keeps_history => self.undo.clear(),
+            None => {}
+        }
+        Ok(())
+    }
+
+    fn apply_command(&mut self, cmd: Command) -> Result<(), Error> {
         match cmd {
             Command::SetSpeed { speed } => {
                 if speed > MAX_SPEED {
@@ -1014,6 +1036,8 @@ impl World {
             }
             Command::Build { sim, edits } => self.build(sim, &edits)?,
             Command::Paint { sim, faces } => self.paint(sim, &faces)?,
+            Command::PaintFloor { sim, tiles } => self.paint_floor(sim, &tiles)?,
+            Command::Undo { sim } => self.undo(sim)?,
             Command::Cancel { sim, index } => {
                 let World {
                     sims,

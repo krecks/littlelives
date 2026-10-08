@@ -10,6 +10,11 @@ import type { NeighbourhoodDraft } from '../game/town';
  */
 export type Screen = 'menu' | 'neighbourhood' | 'create' | 'home' | 'play' | 'game';
 export type Overlay = 'settings' | 'load' | 'credits' | null;
+/** A loading step and the overall progress, 0..1. */
+export interface Progress {
+  label: string;
+  value: number;
+}
 
 class AppState {
   screen = $state<Screen>('menu');
@@ -28,6 +33,14 @@ class AppState {
   playSlot = $state<number | null>(null);
   /** A live 3D scene is rendering behind the menus. */
   liveBackdrop = $state(false);
+  /**
+   * Start-up: everything the menus and "Continue" need is loaded first (game data, renderer,
+   * the menu's town, the latest save) behind a loading screen; the menu shows after.
+   */
+  booting = $state(true);
+  boot = $state.raw<Progress>({ label: 'Loading', value: 0 });
+  /** The game being prepared (null when none is): what it is loading and how far along. */
+  loading = $state.raw<Progress | null>(null);
 
   newGame(): void {
     this.town = null;

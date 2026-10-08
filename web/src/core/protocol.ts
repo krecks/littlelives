@@ -22,7 +22,16 @@ export type Command =
   | { type: 'setStyle'; sim: number; style: number }
   | { type: 'upgrade'; sim: number; object: number }
   | { type: 'build'; sim: number; edits: EdgeEdit[] }
-  | { type: 'paint'; sim: number; faces: FacePaint[] };
+  | { type: 'paint'; sim: number; faces: FacePaint[] }
+  | { type: 'paintFloor'; sim: number; tiles: FloorPaint[] }
+  | { type: 'undo'; sim: number };
+
+/** A floor tile to cover: `covering` 0 for the automatic floor, else a floor covering + 1. */
+export interface FloorPaint {
+  x: number;
+  z: number;
+  covering: number;
+}
 
 /** One wall edge: `h` runs from (x, z) to (x + 1, z); `v` from (x, z) to (x, z + 1). */
 export interface WallEdge {
@@ -164,6 +173,8 @@ export interface WorldStructure {
   openings: Opening[];
   /** Diagonal walls (absent from older structures). */
   diagonals?: DiagonalWall[];
+  /** Floor coverings: `[x, z, covering]` per tile that has one (absent: automatic floors). */
+  floors?: [number, number, number][];
   /** Presentation data carried by the simulation unchanged (see `game/town.ts`). */
   meta: WorldMeta | null;
   meshes: { walls: MeshArrays; wallsLow: MeshArrays; floors: MeshArrays };
@@ -282,7 +293,8 @@ export interface UiSnapshot {
   speed: number;
   autonomy: boolean;
   sims: SimView[];
-  households: { id: number; funds: number; rent: number | null; bills: number | null; style: number }[];
+  /** `undo`: build and buy edits the household can take back (absent from older workers). */
+  households: { id: number; funds: number; rent: number | null; bills: number | null; style: number; undo?: number }[];
   relationships: RelationshipView[];
   /** Recent social events, oldest first; ids increase monotonically. */
   events: SocialEvent[];

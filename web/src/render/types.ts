@@ -178,6 +178,8 @@ export interface Renderer {
   setEdgePreview(edges: readonly EdgePreview[], valid: boolean): void;
   /** Build mode's Paint tool: a film of `color` over the faces it would cover (null: none). */
   setPaintPreview(faces: readonly PaintPreviewFace[], color: string | null): void;
+  /** Build mode's Floor tool: a film of `color` over the floor tiles it would cover (null: none). */
+  setFloorPreview(tiles: readonly { x: number; z: number }[], color: string | null): void;
   /** Build/buy mode: subtle tile grid over a tile rectangle (null hides it). */
   setBuildGrid(rect: ViewRect | null): void;
   /** Build/buy mode: plays a placement, upgrade, sale or construction effect (after `setWorld` showed the change). */

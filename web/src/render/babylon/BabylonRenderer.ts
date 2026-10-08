@@ -258,6 +258,8 @@ export class BabylonRenderer implements Renderer {
   private gridOn = false;
   private paintPreview!: Mesh;
   private paintBuffer = new Float32Array(64 * 16);
+  private floorPreview!: Mesh;
+  private floorBuffer = new Float32Array(64 * 16);
 
   // Scratch objects for allocation-free updates.
   private readonly mOut = new Matrix();
@@ -306,7 +308,7 @@ export class BabylonRenderer implements Renderer {
     this.lib.onRefrozen = () => this.resetSnapshot();
     this.house = new HouseBuilder(scene);
     const c = this.deps.content;
-    this.house.setLooks({ coverings: c.wallCoverings, doors: c.doorStyles, windows: c.windowStyles });
+    this.house.setLooks({ coverings: c.wallCoverings, floors: c.floorCoverings, doors: c.doorStyles, windows: c.windowStyles });
     this.street = new Street(scene, this.deps.assets, this.house);
     // Wind sway and tint variation for foliage materials (hooks them as the models load).
     installNature(scene);
@@ -373,7 +375,7 @@ export class BabylonRenderer implements Renderer {
     this.retireTemplates(new Set(this.templatesInUse));
     const templates = await this.templateMeshes();
 
-    const notCasting = new Set(['floors', 'floorsTiled', 'floorsCarpet', 'streets', 'paths', 'contactShadows', 'objectShadows', 'windows', 'windowsInner', 'plinth', 'wallsTiled']);
+    const notCasting = new Set(['floors', 'floorsTiled', 'floorsCarpet', 'floorsStone', 'streets', 'paths', 'contactShadows', 'objectShadows', 'windows', 'windowsInner', 'plinth', 'wallsTiled']);
     this.baseCasters = [
       ...new Set([
         ...this.worldMeshes.filter((m) => !notCasting.has(m.name) && !m.name.startsWith('silhouette') && !houseCasters.includes(m)),
@@ -682,6 +684,35 @@ export class BabylonRenderer implements Renderer {
     }
   }
 
+  setFloorPreview(tiles: readonly { x: number; z: number }[], color: string | null): void {
+    const mesh = this.floorPreview;
+    const n = color ? tiles.length : 0;
+    if (n * 16 > this.floorBuffer.length) {
+      this.floorBuffer = new Float32Array(Math.max(n, this.floorBuffer.length / 8) * 32);
+      mesh.thinInstanceSetBuffer('matrix', this.floorBuffer, 16, false);
+    }
+    const buf = this.floorBuffer;
+    // A film just above the floor (floors lie at 0.01 m), a hair inside each tile so tiles read.
+    tiles.slice(0, n).forEach((t, i) => {
+      const o = i * 16;
+      buf.fill(0, o, o + 16);
+      buf[o] = 0.96;
+      buf[o + 5] = 1;
+      buf[o + 10] = 0.96;
+      buf[o + 12] = t.x + 0.5;
+      buf[o + 13] = 0.03;
+      buf[o + 14] = t.z + 0.5;
+      buf[o + 15] = 1;
+    });
+    mesh.thinInstanceCount = n;
+    mesh.thinInstanceBufferUpdated('matrix');
+    if (color) (mesh.material as StandardMaterial).emissiveColor.copyFrom(Color3.FromHexString(color));
+    if (mesh.isEnabled(false) !== n > 0) {
+      mesh.setEnabled(n > 0);
+      this.resetSnapshot();
+    }
+  }
+
   /** Build tools: whether a left-drag turns the camera (off while a wall is being drawn). */
   setLeftDragCamera(on: boolean): void {
     const pointers = this.camera.inputs.attached.pointers as ArcRotateCameraPointersInput | undefined;
@@ -778,6 +809,7 @@ export class BabylonRenderer implements Renderer {
     this.setPlacementGhost(null);
     this.setEdgePreview([], true);
     this.setPaintPreview([], null);
+    this.setFloorPreview([], null);
     this.setBuildGrid(null);
     this.cameraPlaced = false;
     this.framedView = '';
@@ -1222,6 +1254,18 @@ export class BabylonRenderer implements Renderer {
     paint.thinInstanceCount = 0;
     paint.setEnabled(false);
     this.paintPreview = paint;
+    // Floor tool: one film per tile, tinted with the covering.
+    const floor = MeshBuilder.CreateGround('preview-floor', { width: 1, height: 1 }, this.scene);
+    const floorMat = new StandardMaterial('preview-floor', this.scene);
+    floorMat.disableLighting = true;
+    floorMat.alpha = 0.6;
+    floor.material = floorMat;
+    floor.isPickable = false;
+    floor.alwaysSelectAsActiveMesh = true;
+    floor.thinInstanceSetBuffer('matrix', this.floorBuffer, 16, false);
+    floor.thinInstanceCount = 0;
+    floor.setEnabled(false);
+    this.floorPreview = floor;
     this.previewMeshes = { wall, door, window: pane, open };
     this.previewBuffers = { wall: wallBuf, door: doorBuf, window: paneBuf, open: openBuf };
 

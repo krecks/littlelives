@@ -16,6 +16,7 @@
   import Credits from './ui/screens/Credits.svelte';
   import GameView from './ui/screens/GameView.svelte';
   import LoadGame from './ui/screens/LoadGame.svelte';
+  import LoadingScreen from './ui/screens/LoadingScreen.svelte';
   import MainMenu from './ui/screens/MainMenu.svelte';
   import MenuBackdrop from './ui/screens/MenuBackdrop.svelte';
   import PlayHousehold from './ui/screens/PlayHousehold.svelte';
@@ -26,11 +27,59 @@
 
   onMount(() => {
     host.mount(gameLayer);
-    loadGameData()
-      .then(() => (app.dataReady = true))
-      .then(openDebugReport)
-      .catch((err: unknown) => (app.fatal = err instanceof Error ? err.message : String(err)));
+    void boot();
   });
+
+  /** Longest wait for one start-up step (a stuck step must not keep the menu away). */
+  const STEP_LIMIT_MS = 45_000;
+  const within = (p: Promise<unknown>) => Promise.race([p, new Promise((resolve) => setTimeout(resolve, STEP_LIMIT_MS))]);
+
+  /**
+   * Start-up behind the loading screen: game data, the renderer, the menu's town (its shaders
+   * compiled) and the latest save, prepared so "Continue" is instant. Then the menu.
+   */
+  async function boot() {
+    const step = (label: string, value: number) => (app.boot = { label, value });
+    try {
+      step('Loading game data', 0.05);
+      await loadGameData();
+      app.dataReady = true;
+    } catch (err) {
+      app.fatal = err instanceof Error ? err.message : String(err);
+      return;
+    }
+    try {
+      const snapshot = $state.snapshot(settings);
+      step('Starting the renderer', 0.15);
+      await within(host.rendererNow(snapshot));
+      step('Building the neighbourhood', 0.3);
+      await within(
+        menuScene.showcaseDraft().then((draft) => {
+          menuScene.highlight({});
+          menuScene.shoot({ kind: 'menu' }, 2.4);
+          return menuScene.show(draft);
+        }),
+      );
+      const latest = await latestSave().catch(() => undefined);
+      if (latest && !new URLSearchParams(location.search).has('debugReport')) {
+        // The save's own steps fill the rest of the bar.
+        const stop = $effect.root(() => {
+          $effect(() => {
+            const p = app.loading;
+            if (p) step(p.label, 0.55 + 0.45 * p.value);
+          });
+        });
+        step('Preparing your saved game', 0.55);
+        await within(host.prepare({ kind: 'load', saveId: latest.id }, snapshot)).catch(() => {});
+        stop();
+      }
+    } catch (err) {
+      console.warn('[boot]', err);
+    }
+    step('Ready', 1);
+    app.booting = false;
+    await openDebugReport();
+  }
 
   // Global interface preferences.
   $effect(() => {
@@ -59,7 +108,7 @@
    * home screens show and frame their town themselves.
    */
   $effect(() => {
-    if (!app.dataReady || app.fatal) return;
+    if (!app.dataReady || app.fatal || app.booting) return;
     const screen = app.screen;
     const town = app.town;
     let cancelled = false;
@@ -93,7 +142,7 @@
    * picking one to play. All build hidden behind the menus' town.
    */
   $effect(() => {
-    if (!app.dataReady) return;
+    if (!app.dataReady || app.booting) return;
     const screen = app.screen;
     const town = app.town;
     const household = app.household;
@@ -127,8 +176,8 @@
 {#if app.fatal}
   <MenuBackdrop />
   <div class="center"><div class="glass box"><b>Couldn't load game data</b><span>{app.fatal}</span></div></div>
-{:else if !app.dataReady}
-  <MenuBackdrop />
+{:else if app.booting}
+  <LoadingScreen progress={app.boot} />
 {:else if app.screen === 'game'}
   {#key app.sessionKey}<GameView />{/key}
 {:else}

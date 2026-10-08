@@ -15,11 +15,13 @@ export interface MenuState {
 
 /** Live: play. Buy: furnish (place, move, upgrade, sell). Build: walls, rooms, doors and windows. */
 export type GameMode = 'live' | 'buy' | 'build';
-export type BuildTool = 'wall' | 'room' | 'paint' | 'door' | 'window' | 'remove';
+export type BuildTool = 'wall' | 'room' | 'paint' | 'floor' | 'door' | 'window' | 'remove';
 
 /** What Build mode puts up: wall covering (0: automatic, else wall covering + 1) and form, door and window style. */
 export interface BuildLook {
   cover: number;
+  /** Floor covering (0: automatic, by room; else a floor covering + 1). */
+  floor: number;
   /** 0 full height, 1 half wall. */
   form: number;
   door: number;
@@ -88,9 +90,15 @@ class GameState {
   /** Build mode's tool (kept between visits). */
   buildTool = $state<BuildTool>('wall');
   /** The looks Build mode's tools use (kept between visits). */
-  buildLook = $state<BuildLook>({ cover: 0, form: 0, door: 0, window: 0 });
+  buildLook = $state<BuildLook>({ cover: 0, floor: 1, form: 0, door: 0, window: 0 });
   /** Paint tool: wall faces under the preview, and whether Shift (a whole room) is held. */
   paintFaces = $state(0);
+  /** Floor tool: tiles under the preview. */
+  floorTiles = $state(0);
+  /** Build and buy edits that can be taken back (until time moves on). */
+  undoSteps = $state(0);
+  /** Remove tool: the preview walls up doors and windows (rather than tearing walls down). */
+  buildWallUp = $state(false);
   /** Wall being drawn: its first corner, and the cost of the preview. */
   buildStart = $state.raw<{ x: number; z: number } | null>(null);
   buildCost = $state(0);
@@ -138,6 +146,7 @@ class GameState {
     this.buySelection = null;
     this.buildTool = 'wall';
     this.buildStart = null;
+    this.undoSteps = 0;
     this.jobBoardOpen = false;
     this.objects = [];
     this.catalog = null;

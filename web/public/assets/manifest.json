@@ -8159,6 +8159,14 @@
       "type": "icon",
       "url": "icons/room.svg"
     },
+    "icon.ui.floor": {
+      "type": "icon",
+      "url": "icons/floor.svg"
+    },
+    "icon.ui.undo": {
+      "type": "icon",
+      "url": "icons/undo.svg"
+    },
     "icon.ui.search": {
       "type": "icon",
       "url": "icons/magnifier.svg"

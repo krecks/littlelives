@@ -6,18 +6,19 @@
   import { game, type BuildTool } from '../state.svelte';
   import LookPicker from './LookPicker.svelte';
 
-  /** Build mode's tools: walls, rooms, paint, doors, windows and removing them, on the home lot. */
+  /** Build mode's tools: walls, rooms, paint, floors, doors, windows and removing them, on the home lot. */
   const content = services.content;
   const prices = $derived(game.catalog?.build);
   const tools: { id: BuildTool; label: string; icon: string; unit: string; steps: string[] }[] = [
     { id: 'wall', label: 'Wall', icon: 'icon.ui.wall', unit: '/m', steps: ['Press on a corner', 'Drag along the grid — at 45° for a diagonal', 'Let go to build'] },
     { id: 'room', label: 'Room', icon: 'icon.ui.room', unit: '/m', steps: ['Press on a corner', 'Drag out a rectangle', 'Let go, then add a door'] },
     { id: 'paint', label: 'Paint', icon: 'icon.skill.creativity', unit: '', steps: ['Pick a covering', 'Click the side of a wall — or drag along walls', 'Shift-click: a whole room'] },
+    { id: 'floor', label: 'Floor', icon: 'icon.ui.floor', unit: '', steps: ['Pick a floor', 'Click a tile — or drag over several', 'Shift-click: a whole room'] },
     { id: 'door', label: 'Door', icon: 'icon.ui.door', unit: '', steps: ['Point at a wall, straight or diagonal', 'Click to fit a door'] },
     { id: 'window', label: 'Window', icon: 'icon.ui.window', unit: '', steps: ['Point at a wall, straight or diagonal', 'Click to fit a window'] },
-    { id: 'remove', label: 'Remove', icon: 'icon.ui.eraser', unit: '/m', steps: ['Press on a wall', 'Drag along it', 'Let go to tear down walls, doors and windows'] },
+    { id: 'remove', label: 'Remove', icon: 'icon.ui.eraser', unit: '/m', steps: ['Click a door or window to wall it up', 'Or drag along walls', 'Let go to tear them down'] },
   ];
-  /** What the tool costs with the look picked (per metre for walls, per face for paint). */
+  /** What the tool costs with the look picked (per metre for walls, per face for paint, per tile for floors). */
   const price = (id: BuildTool): string => {
     if (!prices) return '';
     const look = game.buildLook;
@@ -28,11 +29,15 @@
           ? look.cover
             ? (content.wallCoverings[look.cover - 1]?.price ?? 0)
             : 0
-          : id === 'door'
-            ? (content.doorStyles[look.door]?.price ?? prices.door)
-            : id === 'window'
-              ? (content.windowStyles[look.window]?.price ?? prices.window)
-              : prices.remove;
+          : id === 'floor'
+            ? look.floor
+              ? (content.floorCoverings[look.floor - 1]?.price ?? 0)
+              : 0
+            : id === 'door'
+              ? (content.doorStyles[look.door]?.price ?? prices.door)
+              : id === 'window'
+                ? (content.windowStyles[look.window]?.price ?? prices.window)
+                : prices.remove;
     return p ? money(p) : 'Free';
   };
   const tool = $derived(tools.find((t) => t.id === game.buildTool) ?? tools[0]);
@@ -67,6 +72,10 @@
         <span class="muted">{game.paintFaces} {game.paintFaces === 1 ? 'face' : 'faces'}</span>
         {#key game.buildCost}<b class="tabular" class:short>{game.buildCost ? money(game.buildCost) : 'Free'}</b>{/key}
         {#if short}<span class="short">— {money(game.buildCost - game.funds)} short</span>{/if}
+      {:else if game.buildTool === 'floor' && game.floorTiles > 0}
+        <span class="muted">{game.floorTiles} {game.floorTiles === 1 ? 'tile' : 'tiles'}</span>
+        {#key game.buildCost}<b class="tabular" class:short>{game.buildCost ? money(game.buildCost) : 'Free'}</b>{/key}
+        {#if short}<span class="short">— {money(game.buildCost - game.funds)} short</span>{/if}
       {:else if game.buildCost > 0}
         <span class="muted">This edit</span>
         {#key game.buildCost}<b class="tabular" class:short>{money(game.buildCost)}</b>{/key}
@@ -82,6 +91,10 @@
         An empty room can be closed off; residents and furniture can't be shut in.
       {:else if game.buildTool === 'paint'}
         Each side of a wall has its own covering.
+      {:else if game.buildTool === 'floor'}
+        Floors go inside rooms; every tile can have its own.
+      {:else if game.buildTool === 'remove'}
+        Doors and windows are walled up again; residents and furniture can't be shut in.
       {:else if game.buildTool === 'door' || game.buildTool === 'window'}
         Doors and windows go into full-height walls; pick another style to replace one.
       {:else}

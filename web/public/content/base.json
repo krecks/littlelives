@@ -1689,6 +1689,12 @@
     "talk",
     "clean",
     "garden",
+    "water",
+    "tend",
+    "harvest",
+    "prune",
+    "smell",
+    "admire",
     "music",
     "tinker",
     "look",
@@ -2022,7 +2028,7 @@
         {
           "id": "water",
           "label": "Water the plant",
-          "anim": "garden",
+          "anim": "water",
           "minutes": 5,
           "autonomous": false,
           "effects": {
@@ -2084,7 +2090,7 @@
         {
           "id": "tend",
           "label": "Tend the flowers",
-          "anim": "garden",
+          "anim": "tend",
           "minutes": 20,
           "effects": {
             "fun": 0.12,
@@ -2107,7 +2113,7 @@
         {
           "id": "smell",
           "label": "Smell the flowers",
-          "anim": "look",
+          "anim": "smell",
           "minutes": 5,
           "effects": {
             "fun": 0.06,
@@ -2183,7 +2189,7 @@
         {
           "id": "trim",
           "label": "Trim the shrub",
-          "anim": "garden",
+          "anim": "prune",
           "minutes": 25,
           "effects": {
             "fun": 0.08,
@@ -2747,6 +2753,21 @@
     {"id": "tile.white", "label": "White tiles", "finish": "tile", "color": "#FFFFFF", "price": 10},
     {"id": "tile.blue", "label": "Blue tiles", "finish": "tile", "color": "#BFD6E6", "price": 10},
     {"id": "tile.green", "label": "Green tiles", "finish": "tile", "color": "#C3DCC8", "price": 10}
+  ],
+  "floorCoverings": [
+    {"id": "wood.oak", "label": "Oak boards", "finish": "wood", "color": "#FFFFFF", "price": 6},
+    {"id": "wood.honey", "label": "Honey pine", "finish": "wood", "color": "#F2D6A8", "price": 6},
+    {"id": "wood.walnut", "label": "Walnut boards", "finish": "wood", "color": "#9C7458", "price": 8},
+    {"id": "wood.whitewashed", "label": "Whitewashed wood", "finish": "wood", "color": "#F4EFE6", "price": 8},
+    {"id": "tile.white", "label": "White tiles", "finish": "tile", "color": "#F4F4F2", "price": 5},
+    {"id": "tile.sand", "label": "Sand tiles", "finish": "tile", "color": "#E6DCCB", "price": 5},
+    {"id": "tile.terracotta", "label": "Terracotta tiles", "finish": "tile", "color": "#D9967A", "price": 7},
+    {"id": "tile.slate", "label": "Slate tiles", "finish": "tile", "color": "#8E959B", "price": 7},
+    {"id": "carpet.oatmeal", "label": "Oatmeal carpet", "finish": "carpet", "color": "#E3D8C6", "price": 4},
+    {"id": "carpet.sage", "label": "Sage carpet", "finish": "carpet", "color": "#B7C4A8", "price": 4},
+    {"id": "carpet.blue", "label": "Blue carpet", "finish": "carpet", "color": "#A9B9D3", "price": 4},
+    {"id": "carpet.rose", "label": "Rose carpet", "finish": "carpet", "color": "#DDB4B4", "price": 4},
+    {"id": "stone.flag", "label": "Flagstone", "finish": "stone", "color": "#FFFFFF", "price": 10}
   ],
   "doorStyles": [
     {"id": "panel", "label": "Painted panel", "leaf": "panel", "price": 150},

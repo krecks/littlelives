@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { DoorStyleDef, WallCoveringDef, WindowStyleDef } from '../../content/content';
+  import type { DoorStyleDef, FloorCoveringDef, WallCoveringDef, WindowStyleDef } from '../../content/content';
   import { money } from '../format';
   import { services } from '../services';
   import { play } from '../sfx';
@@ -7,13 +7,14 @@
 
   /**
    * Build mode's looks for the tool in hand: form and covering for walls and rooms, covering for
-   * Paint, style for doors and windows. Swatches and little drawings are made from the content
+   * Paint, floor covering for Floor, style for doors and windows. Swatches and little drawings are made from the content
    * (finish, colour, leaf, glazing), so packs that add looks show up here as they are.
    */
   let { tool }: { tool: BuildTool } = $props();
 
   const content = services.content;
   const coverings = content.wallCoverings;
+  const floors = content.floorCoverings;
   const doors = content.doorStyles;
   const windows = content.windowStyles;
   const prices = $derived(game.catalog?.build);
@@ -34,10 +35,20 @@
     return `rgb(${c.join(',')})`;
   }
   const swatch = (c: WallCoveringDef) => `--c:${multiply(BASE[c.finish], c.color)}`;
+  /** Rough colour of each floor finish's texture. */
+  const FLOOR_BASE: Record<FloorCoveringDef['finish'], string> = {
+    wood: '#C9A27C',
+    tile: '#F2F2F0',
+    carpet: '#E4DDD2',
+    stone: '#A39C90',
+  };
+  const floorSwatch = (c: FloorCoveringDef) => `--c:${multiply(FLOOR_BASE[c.finish], c.color)}`;
 
   const look = $derived(game.buildLook);
   const coverLabel = $derived(look.cover ? (coverings[look.cover - 1]?.label ?? '') : 'House default');
   const coverPrice = $derived(look.cover ? (coverings[look.cover - 1]?.price ?? 0) : 0);
+  const floorLabel = $derived(look.floor ? (floors[look.floor - 1]?.label ?? '') : 'Room default');
+  const floorPrice = $derived(look.floor ? (floors[look.floor - 1]?.price ?? 0) : 0);
 
   function set(patch: Partial<typeof game.buildLook>) {
     play('tab');
@@ -84,6 +95,28 @@
         ><b>{coverLabel}</b>{#if coverPrice}<small class="tabular"> {money(coverPrice)} a face</small>{/if}{#if tool === 'paint'}<small> · Shift: the whole room</small>{/if}</span
       >
     {/if}
+  </div>
+{:else if tool === 'floor' && floors.length}
+  <div class="row">
+    <div class="swatches" role="radiogroup" aria-label="Floor covering">
+      <button role="radio" aria-checked={look.floor === 0} class="swatch auto" class:active={look.floor === 0} title="Room default: wood, tiles in kitchens and bathrooms, carpet in bedrooms" onclick={() => set({ floor: 0 })}>
+        <span>A</span>
+      </button>
+      {#each floors as c, i (c.id)}
+        <button
+          role="radio"
+          aria-checked={look.floor === i + 1}
+          class="swatch {c.finish}"
+          class:active={look.floor === i + 1}
+          style={floorSwatch(c)}
+          title="{c.label}{c.price ? ` · ${money(c.price)} a tile` : ' · free'}"
+          onclick={() => set({ floor: i + 1 })}
+        ></button>
+      {/each}
+    </div>
+    <span class="chosen"
+      ><b>{floorLabel}</b>{#if floorPrice}<small class="tabular"> {money(floorPrice)} a tile</small>{/if}<small> · Shift: the whole room</small></span
+    >
   </div>
 {:else if tool === 'door' && doors.length}
   <div class="row cards" role="radiogroup" aria-label="Door style">
@@ -244,6 +277,11 @@
     background:
       radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.35) 0 3px, transparent 4px) 0 0 / 9px 9px,
       radial-gradient(circle at 70% 70%, rgba(0, 0, 0, 0.2) 0 3px, transparent 4px) 0 0 / 11px 11px,
+      var(--c);
+  }
+  .swatch.carpet {
+    background:
+      radial-gradient(rgba(0, 0, 0, 0.08) 0.8px, transparent 1.2px) 0 0 / 3px 3px,
       var(--c);
   }
   .swatch.tile {

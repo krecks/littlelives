@@ -271,7 +271,7 @@ pub struct SimSpawn {
 
 pub const OUTDOORS: u16 = 0;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Lot {
     pub width: usize,
     pub depth: usize,
@@ -288,6 +288,9 @@ pub struct Lot {
     halves: Vec<[u16; 2]>,
     /// Looks of the walls that aren't plain (absent: the default look).
     looks: BTreeMap<EdgeRef, EdgeLook>,
+    /// Floor covering per tile `(x, z)` (a floor covering + 1; absent: the automatic look). Kept
+    /// when the room around it is torn down, so rebuilding it brings the floor back.
+    floors: BTreeMap<(u16, u16), u8>,
 }
 
 impl Lot {
@@ -301,6 +304,7 @@ impl Lot {
             rooms: vec![OUTDOORS; width * depth],
             halves: vec![[OUTDOORS; 2]; width * depth],
             looks: BTreeMap::new(),
+            floors: BTreeMap::new(),
         }
     }
 
@@ -392,6 +396,7 @@ impl Lot {
             rooms: vec![OUTDOORS; width * depth],
             halves: vec![[OUTDOORS; 2]; width * depth],
             looks: BTreeMap::new(),
+            floors: BTreeMap::new(),
         };
         lot.compute_rooms();
         Ok(lot)
@@ -489,6 +494,25 @@ impl Lot {
     /// Every wall that doesn't have the default look, in a stable order (for saving and views).
     pub fn looks(&self) -> impl Iterator<Item = (EdgeRef, EdgeLook)> + '_ {
         self.looks.iter().map(|(e, l)| (*e, *l))
+    }
+
+    /// Floor covering of tile `(x, z)` (0: the automatic look).
+    pub fn floor(&self, x: u16, z: u16) -> u8 {
+        self.floors.get(&(x, z)).copied().unwrap_or(0)
+    }
+
+    /// Sets the floor covering of tile `(x, z)` (0, the automatic look, is not stored).
+    pub fn set_floor(&mut self, x: u16, z: u16, covering: u8) {
+        if covering == 0 {
+            self.floors.remove(&(x, z));
+        } else {
+            self.floors.insert((x, z), covering);
+        }
+    }
+
+    /// Every tile with a floor covering, as `(x, z, covering)` in a stable order.
+    pub fn floors(&self) -> impl Iterator<Item = (u16, u16, u8)> + '_ {
+        self.floors.iter().map(|(&(x, z), &c)| (x, z, c))
     }
 
     pub fn in_bounds(&self, x: i32, z: i32) -> bool {

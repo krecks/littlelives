@@ -46,6 +46,14 @@
       <span class="paused" title="Time stands still while you shop and build. Back to Live (L) to resume.">
         <Icon name="icon.ui.pause" size={14} />Paused · {game.mode === 'build' ? 'Build' : 'Buy'} mode
       </span>
+      <button
+        class="undo"
+        disabled={game.undoSteps === 0}
+        title={game.undoSteps ? 'Undo the last change (Ctrl+Z / ⌘Z)' : 'Nothing to undo. Changes can be undone until time moves on.'}
+        onclick={() => services.controls.undo()}
+      >
+        <Icon name="icon.ui.undo" size={16} /><span>Undo</span>
+      </button>
     {:else}
       <div class="segmented">
         {#each speeds as s (s.value)}
@@ -187,6 +195,34 @@
   .tool:disabled {
     opacity: 0.4;
     cursor: default;
+  }
+  .undo {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 650;
+    white-space: nowrap;
+    transition:
+      transform var(--fast) var(--ease),
+      opacity var(--fast) var(--ease);
+  }
+  .undo:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+  .undo:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+  .undo:disabled {
+    opacity: 0.45;
+    cursor: default;
+    box-shadow: none;
   }
   .paused {
     display: inline-flex;

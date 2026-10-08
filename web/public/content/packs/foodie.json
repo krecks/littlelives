@@ -14,7 +14,7 @@
         {
           "id": "tendHerbs",
           "label": "Tend the herbs",
-          "anim": "garden",
+          "anim": "tend",
           "minutes": 20,
           "pose": "stand",
           "autonomous": true,

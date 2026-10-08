@@ -89,6 +89,15 @@ export interface WallCoveringDef {
   price?: number;
 }
 
+/** A floor covering (Build mode's Floor tool): a finish (texture) tinted with a colour. Price per tile. */
+export interface FloorCoveringDef {
+  id: string;
+  label: string;
+  finish: 'wood' | 'tile' | 'carpet' | 'stone';
+  color: string;
+  price?: number;
+}
+
 /** A door style: the leaf (`panel` painted, `oak` natural wood, `halfGlass`, `glass`) and its paint. */
 export interface DoorStyleDef {
   id: string;
@@ -195,6 +204,7 @@ interface ContentFile {
   styles?: StyleDef[];
   buyCategories?: BuyCategory[];
   wallCoverings?: WallCoveringDef[];
+  floorCoverings?: FloorCoveringDef[];
   doorStyles?: DoorStyleDef[];
   windowStyles?: WindowStyleDef[];
   economy?: Partial<Economy>;
@@ -219,6 +229,8 @@ export class Content {
   readonly buyCategories: readonly BuyCategory[];
   /** Build mode looks; a wall face's covering is an index into `wallCoverings` + 1 (0: automatic). */
   readonly wallCoverings: readonly WallCoveringDef[];
+  /** A floor tile's covering is an index into `floorCoverings` + 1 (0: automatic, by room). */
+  readonly floorCoverings: readonly FloorCoveringDef[];
   readonly doorStyles: readonly DoorStyleDef[];
   readonly windowStyles: readonly WindowStyleDef[];
   readonly economy: Economy;
@@ -249,6 +261,7 @@ export class Content {
     this.styles = file.styles ?? [];
     this.buyCategories = file.buyCategories ?? [];
     this.wallCoverings = file.wallCoverings ?? [];
+    this.floorCoverings = file.floorCoverings ?? [];
     this.doorStyles = file.doorStyles ?? [];
     this.windowStyles = file.windowStyles ?? [];
     this.economy = { startingFunds: 0, currency: '$', ...file.economy };

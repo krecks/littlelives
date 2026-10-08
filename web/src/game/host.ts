@@ -37,6 +37,8 @@ interface Entry {
   /** Resolves once the session's scene is built and drawn. */
   session: Promise<GameSession>;
   live: boolean;
+  /** The session's scene is built and drawn (its progress reports end). */
+  ready: boolean;
 }
 
 class GameHost {
@@ -115,16 +117,21 @@ class GameHost {
     if (this.current?.key === key) return this.current.session;
     this.release();
     const previous = this.teardown;
-    const entry = { key, live: false } as Entry;
+    const entry = { key, live: false, ready: false } as Entry;
+    app.loading = { label: 'Getting ready', value: 0 };
     entry.started = (async () => {
       const renderer = await this.rendererFor(settings);
       // One session at a time on the shared renderer: a replaced one must finish clearing it first.
       await previous;
       if (this.current !== entry) throw new Error('Replaced by another game.');
-      return startSession(renderer, this.canvas, this.overlay, request, settings);
+      return startSession(renderer, this.canvas, this.overlay, request, settings, (label, value) => {
+        if (this.current === entry && !entry.ready) app.loading = { label, value };
+      });
     })();
     entry.session = entry.started.then(async (s) => {
       await s.ready;
+      entry.ready = true;
+      if (this.current === entry) app.loading = null;
       // Warmed up: stop drawing unless it's shown (as the game, or the menus' town is).
       if (this.current === entry) this.syncActive(await this.renderer);
       return s;
@@ -132,7 +139,9 @@ class GameHost {
     const session = entry.session;
     this.current = entry;
     session.catch(() => {
-      if (this.current?.session === session) this.current = null;
+      if (this.current?.session !== session) return;
+      this.current = null;
+      app.loading = null;
     });
     return session;
   }
@@ -172,6 +181,7 @@ class GameHost {
   release(): void {
     const current = this.current;
     this.current = null;
+    app.loading = null;
     if (!this.town) app.liveBackdrop = false;
     if (!current) return;
     const renderer = this.renderer;

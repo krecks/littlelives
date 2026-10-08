@@ -37,6 +37,8 @@ struct FundsView {
     /// Weekly bills, which grow with what the household owns.
     bills: Option<i64>,
     style: u8,
+    /// Build and buy edits that can be undone.
+    undo: usize,
 }
 
 #[derive(Serialize)]
@@ -364,6 +366,7 @@ pub fn ui_state_json(world: &World) -> String {
                     rent: costs.map(|c| c.0),
                     bills: costs.map(|c| c.1),
                     style: h.style,
+                    undo: world.undo_steps(i),
                 }
             })
             .collect(),
@@ -391,6 +394,8 @@ struct StructureView<'a> {
     openings: Vec<OpeningView>,
     /// Diagonal walls (with or without a door or window), one per tile at most.
     diagonals: Vec<DiagonalView>,
+    /// Floor coverings: `[x, z, covering]` per tile that has one (a floor covering + 1).
+    floors: Vec<[u16; 3]>,
     meta: &'a serde_json::Value,
 }
 
@@ -691,6 +696,11 @@ pub fn structure_json(world: &World) -> String {
         walls,
         openings,
         diagonals,
+        floors: world
+            .lot
+            .floors()
+            .map(|(x, z, c)| [x, z, u16::from(c)])
+            .collect(),
         meta: &world.meta,
     })
     .expect("structure serializes")

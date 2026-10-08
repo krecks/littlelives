@@ -31,6 +31,8 @@ export interface GameControls {
   rotatePlacing(): void;
   cancelPlacing(): void;
   sell(objectId: number): void;
+  /** Buy and Build mode: takes back the last edit (Ctrl/⌘+Z). */
+  undo(): void;
   restyle(objectId: number, style: number): void;
   setHouseholdStyle(style: number): void;
   upgrade(objectId: number): void;

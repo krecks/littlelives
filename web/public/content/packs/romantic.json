@@ -179,7 +179,7 @@
         {
           "id": "tendRoses",
           "label": "Tend the climbing roses",
-          "anim": "garden",
+          "anim": "prune",
           "minutes": 30,
           "pose": "stand",
           "autonomous": true,

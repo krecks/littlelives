@@ -2,6 +2,31 @@
 
 All notable changes to Littlelives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
+## 0.6.0 — 2026-10-08
+
+**Play it in your browser:** https://krecks.github.io/littlelives/
+
+Floors, undo, and residents who look like they mean it.
+
+### New
+- **Floors** in Build mode: a new Floor tool next to Paint. Click a tile, drag over several, or Shift-click a whole room. Thirteen coverings: oak, honey pine, walnut and whitewashed boards; white, sand, terracotta and slate tiles; oatmeal, sage, blue and rose carpet; and flagstone. "A" gives the room its own floor back.
+- **Undo** in Build and Buy mode: the Undo button in the top bar, or Ctrl+Z / ⌘Z. It takes back purchases, sales, moves, upgrades, walls, doors, windows, paint and floors, money included (a sold item comes back where it stood). Up to 30 steps, for as long as time stands still.
+- **Loading screens:** the game loads everything first (the town, your latest save) behind a progress bar, so the menu is ready to use and "Continue" starts at once. Starting a game that still has to load shows its progress full-screen.
+
+### Changed
+- **Animations:**
+  - Getting into bed: residents sit on the edge, lean back and lie down; getting up, they sit up, sit on the foot of the bed and stand.
+  - Gardening by task: watering with a can, kneeling to weed and tend, bending to harvest, reaching in to prune, crouching to smell the flowers, looking up into blossoming trees.
+  - Hugs with arms around each other; fights where the attacker steps in and the defender guards and gives ground.
+  - Reclining on sofas and recliners, leaning back in the bath, leaning forward on the toilet, sitting cross-legged to meditate.
+  - Bowing the cello and drumming; bouncing on the trampoline, standing on the vibration plate, climbing the bouldering wall, stretching at the sunrise lamp.
+  - Mopping with the steam mop, a microphone for karaoke, livelier laughter and breathing in bed.
+- **Remove tool:** clicking a door or window walls it up again (the wall stays); dragging along walls still tears them down.
+- Your own lot no longer gets an automatic border of shrubs and flowers along the house (building a room doesn't plant flowers around it): plant your garden from the Garden catalog. Other lots keep theirs.
+- Selling, moving or undoing no longer makes the other furniture pop up.
+- Content packs: `floorCoverings` (like `wallCoverings`) and the animation tags `water`, `tend`, `harvest`, `prune`, `smell` and `admire` (see `docs/content-packs.md`).
+- Saves are now version 7 (floor coverings); older saves load as before.
+
 ## 0.5.0 — 2026-10-08
 
 **Play it in your browser:** https://krecks.github.io/littlelives/

@@ -118,7 +118,7 @@
         {
           "id": "shape",
           "label": "Wire and shape the bonsai",
-          "anim": "garden",
+          "anim": "prune",
           "minutes": 60,
           "effects": { "fun": 0.3 },
           "tags": ["training", "garden", "nature"],
@@ -128,7 +128,7 @@
         {
           "id": "tend",
           "label": "Mist and feed",
-          "anim": "garden",
+          "anim": "water",
           "minutes": 15,
           "effects": { "fun": 0.12, "comfort": 0.05 },
           "tags": ["chores", "garden", "nature"],

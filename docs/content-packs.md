@@ -227,6 +227,8 @@ is `talk` during conversations.
 | `read` | books, magazines, recipes |
 | `watch` | TV and movie screens |
 | `look` | looking at something: stargazing, birdwatching, gazing out of a window, photos |
+| `admire` | looking up at a tree's crown or blossom |
+| `smell` | bending down to low flowers, watching fish in a pond |
 | `listen` | listening to records or a story |
 | `play` | games: chess, puzzles, consoles, arcade |
 | `music` | playing an instrument: piano, cello, drums |
@@ -237,7 +239,11 @@ is `talk` during conversations.
 | `exercise` | general workouts: climbing, cycling, stretching, punching bag |
 | `run` | treadmill |
 | `lift` | weights |
-| `garden` | plants, flowers, vegetables, bonsai, bird feeder refills |
+| `water` | watering plants and flowers, misting, feeding |
+| `tend` | kneeling work on beds: weeding, tending vegetables (also patting the gnome) |
+| `harvest` | picking: vegetables, fruit, herbs, flowers |
+| `prune` | trimming hedges and shrubs, shaping a bonsai, cutting lavender |
+| `garden` | other garden work (bird feeder refills, feeding fish); prefer one of the four above |
 | `clean` | mopping, laundry, tidying |
 | `talk` | conversations (automatic); talking to a mirror |
 | `phone` | calls and video calls, radio chats |
@@ -258,25 +264,26 @@ seated, else `wash` (≤ 10 minutes) or `shower`; `screen` → `type` (seated tr
 `rest`/`lounge` or lying → `relax`; seated → `sit`; else `idle`. A result missing from
 `animations` means no animation (-1).
 
-## Wall coverings, door and window styles
+## Wall and floor coverings, door and window styles
 
 Build mode's looks are top-level arrays, appended like objects, so a pack can add its own:
 
 ```json
 "wallCoverings": [{ "id": "mypack.tealPaint", "label": "Teal paint", "finish": "plaster", "color": "#5E9C96", "price": 0 }],
+"floorCoverings": [{ "id": "mypack.cherry", "label": "Cherry boards", "finish": "wood", "color": "#B9785A", "price": 8 }],
 "doorStyles": [{ "id": "mypack.barn", "label": "Barn door", "leaf": "oak", "price": 240 }],
 "windowStyles": [{ "id": "mypack.slim", "label": "Slim", "panes": "bar", "sill": 0.6, "head": 2.3, "inset": 0.3, "shutters": false, "price": 110 }]
 ```
 
 | Field | Meaning |
 |---|---|
-| `price` | Covering: per wall face covered. Door / window: per door or window (replacing one with another style costs the new style's price). |
-| `finish` | Covering texture: `plaster`, `wallpaper`, `siding`, `brick`, `wood`, `stone` or `tile`; `color` tints it (wood is a neutral grain: give it its colour). |
+| `price` | Wall covering: per wall face covered. Floor covering: per floor tile. Door / window: per door or window (replacing one with another style costs the new style's price). |
+| `finish` | Wall covering texture: `plaster`, `wallpaper`, `siding`, `brick`, `wood`, `stone` or `tile`; floor covering: `wood`, `tile`, `carpet` or `stone`. `color` tints it (wood is a neutral grain: give it its colour). |
 | `leaf`, `color` | Door: `panel` (painted; without `color`, front doors take the house's accent colour), `oak`, `halfGlass` or `glass` (`color` paints the frame). |
 | `panes`, `sill`, `head`, `inset`, `shutters` | Window: glazing bars (`cross`, `grid`, `bar`, `transom`, `none`), opening bottom and top (m, walls are 2.8 m), wall left either side of the glazing (m, of the 1 m edge), shutters outside (`true`, `false`, or `"house"`: if the house's style has them). |
 
 Saves store looks by id; a look whose id no longer exists loads as the default (the house's own
-look for walls, the first style for doors and windows). Ids must be unique within each list.
+look for walls, the room's own floor, the first style for doors and windows). Ids must be unique within each list.
 
 ## Ids you can refer to
 

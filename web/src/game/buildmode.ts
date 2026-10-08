@@ -14,12 +14,15 @@
  * and form, door and window style); drawing a wall in another form over a standing one rebuilds
  * it, and a door or window of another style replaces the one there. The Paint tool covers the
  * wall face on the pointer's side: click, or drag along walls; with Shift, every face of the
- * room (or, outdoors, the outside of the house) at once.
+ * room (or, outdoors, the outside of the house) at once. The Floor tool covers the floor of the
+ * tile under the pointer: click, or drag out a rectangle of tiles; with Shift, the whole room.
+ * Remove on doors and windows alone walls
+ * them up again (the wall stays); a run that takes in walls tears everything on it down.
  */
 
 import type { AssetRegistry } from '../assets/registry';
 import type { Content, ObjectDef } from '../content/content';
-import type { Command, EdgeEdit, FacePaint, PlotInfo, WorldStructure } from '../core/protocol';
+import type { Command, EdgeEdit, FacePaint, FloorPaint, ObjectPlacement, PlotInfo, WorldStructure } from '../core/protocol';
 import type { BuildEffect, Renderer, ViewRect } from '../render/types';
 import { styledModel } from '../ui/buy/catalog';
 import type { Sound } from '../ui/sfx';
@@ -29,6 +32,8 @@ import { game } from '../ui/state.svelte';
 interface BuildPreview {
   /** Paint tool: the wall faces a click would cover, in the covering's colour (null: hidden). */
   setPaintPreview(faces: readonly PaintFace[], color: string | null): void;
+  /** Floor tool: the tiles a release would cover, in the covering's colour (null: hidden). */
+  setFloorPreview(tiles: readonly { x: number; z: number }[], color: string | null): void;
   setPlacementGhost(ghost: { model: string; x: number; z: number; rot: number; w: number; d: number; valid: boolean } | null): void;
   setEdgePreview(edges: EdgeEdit[], valid: boolean): void;
   setBuildGrid(rect: ViewRect | null): void;
@@ -61,11 +66,14 @@ export class BuildBuyInput {
   private width = 0;
   /** Paint tool: faces collected by the drag in progress. */
   private painting: PaintFace[] | null = null;
+  /** Floor coverings laid (`x:z` → covering), and the Floor tool's drag start tile. */
+  private floors = new Map<string, number>();
+  private floorStart: Point | null = null;
   private shift = false;
   private readonly onKey = (e: KeyboardEvent) => {
     if (this.shift === e.shiftKey) return;
     this.shift = e.shiftKey;
-    if (this.lastHover && game.mode === 'build' && game.buildTool === 'paint') this.hoverBuild(this.lastHover);
+    if (this.lastHover && game.mode === 'build' && (game.buildTool === 'paint' || game.buildTool === 'floor')) this.hoverBuild(this.lastHover);
   };
   private lastHover: Point | null = null;
   /** A wall/remove press is held (the gesture belongs to drawing until release). */
@@ -99,6 +107,7 @@ export class BuildBuyInput {
     this.diagonals = new Map();
     this.looks = new Map();
     this.halves = new Map();
+    this.floors = new Map((world.floors ?? []).map(([x, z, c]) => [`${x}:${z}`, c]));
     this.rooms = world.rooms;
     this.width = world.width;
     const look = (key: string, l: Look) => this.looks.set(key, { ...this.looks.get(key), ...l });
@@ -146,7 +155,10 @@ export class BuildBuyInput {
     this.preview.setEdgePreview?.([], true);
     game.buildCost = 0;
     this.preview.setPaintPreview?.([], null);
+    this.preview.setFloorPreview?.([], null);
     game.paintFaces = 0;
+    game.floorTiles = 0;
+    game.buildWallUp = false;
     game.buildEdges = 0;
     game.buildValid = true;
     game.buildRoom = null;
@@ -169,6 +181,11 @@ export class BuildBuyInput {
     return this.building() && game.buildTool === 'paint';
   }
 
+  /** Build mode's Floor tool. */
+  private floorTool(): boolean {
+    return this.building() && game.buildTool === 'floor';
+  }
+
   hover(ground: Point | null): void {
     // While drawing, keep the last preview when the pointer strays off the lot.
     if (!ground && this.pressed) return;
@@ -181,7 +198,7 @@ export class BuildBuyInput {
 
   /** Returns true when the click was used. */
   click(ground: Point | null, objectId: number | null): boolean {
-    if (this.paintTool()) return true;
+    if (this.paintTool() || this.floorTool()) return true;
     if (this.building()) return ground ? this.clickBuild(ground) : true;
     if (game.mode === 'buy') return this.clickBuy(ground, objectId);
     return false;
@@ -343,6 +360,10 @@ export class BuildBuyInput {
       // Before the first click: highlight the edge under the cursor.
       edges = [{ ...this.nearestEdge(ground), kind }];
     } else edges = game.buildTool === 'room' ? this.room(game.buildStart, ground) : this.run(game.buildStart, ground, kind);
+    // Removing only doors and windows walls them up again; a run with walls in it tears it all down.
+    if (kind === 'open' && edges.length && edges.every((e) => this.edgeState(e) === 'door' || this.edgeState(e) === 'window')) {
+      return edges.map((e) => ({ ...e, kind: 'wall' }));
+    }
     return kind === 'wall' ? edges.map((e) => ({ ...e, cover: look.cover, form: look.form })) : edges;
   }
 
@@ -481,8 +502,63 @@ export class BuildBuyInput {
     if (onHome.length) this.send({ type: 'paint', sim: game.selected, faces: onHome.map(({ axis, x, z, side, covering }) => ({ axis, x, z, side, covering })) });
   }
 
+  // ---- Floor ----------------------------------------------------------------------
+
+  private tileOf(ground: Point): Point {
+    return { x: Math.floor(ground.x), z: Math.floor(ground.z) };
+  }
+
+  private onHomeTile(t: Point): boolean {
+    const home = this.home();
+    return !!home && t.x >= home.x && t.z >= home.z && t.x < home.x + home.w && t.z < home.z + home.d;
+  }
+
+  /**
+   * Tiles the Floor tool covers: the rectangle from the drag's start tile to the pointer's, or
+   * the tile under the pointer (Shift: every tile of its room). Only indoor tiles on the home lot.
+   */
+  private floorTiles(ground: Point): FloorPaint[] {
+    const covering = game.buildLook.floor;
+    const at = this.tileOf(ground);
+    const out: FloorPaint[] = [];
+    const add = (x: number, z: number) => {
+      if (this.indoors(x, z) && this.onHomeTile({ x, z })) out.push({ x, z, covering });
+    };
+    if (this.floorStart) {
+      const s = this.floorStart;
+      for (let z = Math.min(s.z, at.z); z <= Math.max(s.z, at.z); z++) for (let x = Math.min(s.x, at.x); x <= Math.max(s.x, at.x); x++) add(x, z);
+    } else if (this.shift && this.indoors(at.x, at.z)) {
+      const room = this.rooms[at.z * this.width + at.x];
+      const home = this.home();
+      if (home) for (let z = home.z; z < home.z + home.d; z++) for (let x = home.x; x < home.x + home.w; x++) if (this.rooms[z * this.width + x] === room) add(x, z);
+    } else add(at.x, at.z);
+    return out;
+  }
+
+  private floorCost(tiles: readonly FloorPaint[]): number {
+    return tiles.reduce((sum, t) => sum + ((this.floors.get(`${t.x}:${t.z}`) ?? 0) !== t.covering && t.covering ? (this.content.floorCoverings[t.covering - 1]?.price ?? 0) : 0), 0);
+  }
+
+  private hoverFloor(ground: Point): void {
+    const tiles = this.floorTiles(ground);
+    const floor = game.buildLook.floor;
+    const color = floor ? (this.content.floorCoverings[floor - 1]?.color ?? '#FFFFFF') : '#FFFFFF';
+    this.preview.setFloorPreview?.(tiles, tiles.length ? color : null);
+    game.buildCost = this.floorCost(tiles);
+    game.floorTiles = tiles.length;
+    game.buildEdges = tiles.length;
+    game.buildValid = tiles.length > 0 && game.funds >= game.buildCost;
+  }
+
+  private commitFloor(ground: Point | null): void {
+    const tiles = ground ? this.floorTiles(ground) : [];
+    this.floorStart = null;
+    if (tiles.length) this.send({ type: 'paintFloor', sim: game.selected, tiles });
+  }
+
   private hoverBuild(ground: Point): void {
     if (this.paintTool()) return this.hoverPaint(ground);
+    if (this.floorTool()) return this.hoverFloor(ground);
     const edges = this.edits(ground);
     game.buildCost = this.cost(edges);
     // Doors and windows need a full-height wall to go into (the simulation re-checks everything).
@@ -491,6 +567,7 @@ export class BuildBuyInput {
     this.preview.setEdgePreview?.(edges, valid);
     game.buildEdges = edges.length;
     game.buildValid = valid;
+    game.buildWallUp = game.buildTool === 'remove' && edges.length > 0 && edges.every((e) => e.kind === 'wall');
     const start = game.buildStart;
     const end = this.corner(ground);
     game.buildRoom = game.buildTool === 'room' && start && start.x !== end.x && start.z !== end.z ? [Math.abs(end.x - start.x), Math.abs(end.z - start.z)] : null;
@@ -523,6 +600,15 @@ export class BuildBuyInput {
    * gesture belongs to drawing; the camera then doesn't turn until the release.
    */
   press(ground: Point | null): boolean {
+    if (this.floorTool() && ground) {
+      // Floor: a drag covers the rectangle of tiles it spans; a click, one tile (Shift: the room).
+      this.pressed = true;
+      this.dropped = false;
+      this.floorStart = this.shift ? null : this.tileOf(ground);
+      this.preview.setLeftDragCamera?.(false);
+      this.hoverFloor(ground);
+      return true;
+    }
     if (this.paintTool() && ground) {
       // Paint: a drag covers every face it passes (on the side it's on); a click, one (Shift: a room).
       this.pressed = true;
@@ -551,6 +637,12 @@ export class BuildBuyInput {
     if (this.dropped) {
       this.dropped = false;
       this.painting = null;
+      this.floorStart = null;
+      return;
+    }
+    if (this.floorTool()) {
+      this.commitFloor(ground ?? this.lastHover);
+      if (ground) this.hoverFloor(ground);
       return;
     }
     if (this.paintTool()) {
@@ -562,6 +654,17 @@ export class BuildBuyInput {
     const start = game.buildStart;
     if (!g || !start || !this.drawing()) return;
     const end = this.corner(g);
+    if (this.fresh && !moved && game.buildTool === 'remove') {
+      // Remove: a click on a door or window walls it up at once.
+      const e = this.nearestEdge(g);
+      const state = this.edgeState(e);
+      if (state === 'door' || state === 'window') {
+        game.buildStart = null;
+        this.send({ type: 'build', sim: game.selected, edits: [{ ...e, kind: 'wall' }] });
+        this.clearPreviews();
+        return this.hoverBuild(g);
+      }
+    }
     // A press without a drag (or back onto the start corner) keeps the start for click-then-click.
     if (this.fresh && (!moved || (end.x === start.x && end.z === start.z))) return this.hoverBuild(g);
     this.commit(g);
@@ -571,6 +674,7 @@ export class BuildBuyInput {
   /** Right-click: stops drawing (a held drag or a click-then-click start). */
   cancelDrawing(): boolean {
     this.painting = null;
+    this.floorStart = null;
     if (!this.pressed && !game.buildStart) return false;
     if (this.pressed) {
       this.dropped = true;
@@ -611,11 +715,32 @@ const MAX_EDIT_EDGES = 40;
 export function editFeedback(prev: WorldStructure, next: WorldStructure): { effects: BuildEffect[]; sound: Sound | null } {
   const effects: BuildEffect[] = [];
   const sounds = new Set<Sound>();
-  const before = new Map(prev.objects.map((o) => [o.id, o]));
-  const after = new Map(next.objects.map((o) => [o.id, o]));
+  // An object's id is its place in the list, and edits reorder it (selling shifts later ids
+  // down, moving re-adds an object at the end, undo puts things back), so match objects by what
+  // they are: first those unchanged (same look, same place), then the same kind of object among
+  // the rest (moved, turned, restyled or upgraded); the same id wins a tie.
+  const before = new Map<number, ObjectPlacement>();
+  const left = new Set(prev.objects);
+  const key = (o: ObjectPlacement) => `${o.def}:${o.x}:${o.z}:${o.rot}:${o.style}:${o.quality}`;
+  const byKey = Map.groupBy(prev.objects, key);
+  for (const o of next.objects) {
+    const same = byKey.get(key(o));
+    if (!same?.length) continue;
+    const old = same.splice(Math.max(0, same.findIndex((p) => p.id === o.id)), 1)[0];
+    before.set(o.id, old);
+    left.delete(old);
+  }
+  for (const o of next.objects) {
+    if (before.has(o.id)) continue;
+    const kind = [...left].filter((p) => p.def === o.def);
+    const old = kind.find((p) => p.id === o.id) ?? kind[0];
+    if (!old) continue;
+    before.set(o.id, old);
+    left.delete(old);
+  }
   const rect = (o: { x: number; z: number; w: number; d: number }) => ({ x: o.x, z: o.z, w: o.w, d: o.d });
   const added = next.objects.filter((o) => !before.has(o.id));
-  const removed = prev.objects.filter((o) => !after.has(o.id));
+  const removed = [...left];
   if (added.length + removed.length <= MAX_EDIT_OBJECTS) {
     for (const o of added) {
       effects.push({ kind: 'place', ...rect(o), objectId: o.id });
@@ -678,6 +803,8 @@ export function editFeedback(prev: WorldStructure, next: WorldStructure): { effe
   }
   if (restyled.length) sounds.add('build');
   if ([...lookNow.faces].some(([k, v]) => lookWas.faces.has(k) && lookWas.faces.get(k) !== v)) sounds.add('paint');
+  const floorKey = (w: WorldStructure) => (w.floors ?? []).map((f) => f.join(':')).join(',');
+  if (floorKey(prev) !== floorKey(next)) sounds.add('paint');
 
   const order: Sound[] = ['upgrade', 'place', 'sell', 'build', 'remove', 'paint', 'rotate'];
   return { effects, sound: order.find((s) => sounds.has(s)) ?? null };

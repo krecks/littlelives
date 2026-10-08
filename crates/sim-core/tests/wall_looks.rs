@@ -261,7 +261,7 @@ fn looks_survive_saving_by_content_id() {
     .unwrap();
     let saved = w.save_json();
     let json: serde_json::Value = serde_json::from_str(&saved).unwrap();
-    assert_eq!(json["version"], 6);
+    assert_eq!(json["version"], sim_core::save::SAVE_VERSION);
     let looks = json["lot"]["looks"].as_array().unwrap();
     assert_eq!(looks.len(), 3);
     let half = looks.iter().find(|l| l["x"] == 1).unwrap();

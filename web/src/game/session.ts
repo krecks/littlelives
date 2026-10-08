@@ -47,6 +47,8 @@ export type StartRequest =
 const FEED_MS = 12_000;
 /** Frames drawn before a prepared session counts as ready (shaders compiled, textures up). */
 const WARM_FRAMES = 3;
+/** Longest wait for the household's portraits before a prepared session counts as ready anyway. */
+const PORTRAIT_WAIT_MS = 8000;
 /** After this long in the game, the catalog's pictures are drawn in idle moments (Buy mode then opens with them). */
 const PREFETCH_PICTURES_MS = 4000;
 
@@ -57,7 +59,7 @@ export interface GameSession {
   /** Pauses for menus; `false` restores the previous speed. */
   setMenuPause(paused: boolean): void;
   readonly household: string;
-  /** Resolves when the world is built and drawn: revealing is then instant. */
+  /** Resolves when the world is built and drawn and the HUD's portraits exist: revealing is then instant. */
   readonly ready: Promise<void>;
   /** Unpauses the game and attaches input. */
   reveal(): void;
@@ -83,14 +85,19 @@ export function loadGameData(): Promise<{ content: Content; assets: AssetRegistr
   return shared;
 }
 
+/** Reports a loading step and the overall progress (0..1) while a session is prepared. */
+export type ProgressReport = (label: string, value: number) => void;
+
 export async function startSession(
   renderer: Renderer,
   canvas: HTMLCanvasElement,
   overlay: HTMLElement,
   request: StartRequest,
   settings: Settings,
+  progress: ProgressReport = () => {},
 ): Promise<GameSession> {
   const params = new URLSearchParams(location.search);
+  progress(request.kind === 'load' ? 'Reading your save' : 'Laying out the neighbourhood', 0.05);
   const { content, assets } = await loadGameData();
 
   let source: GameSource;
@@ -107,7 +114,9 @@ export async function startSession(
     household = record.household;
   }
 
+  progress('Starting the simulation', 0.15);
   const bridge = await SimBridge.start(content.json, source);
+  progress('Building the world', 0.3);
   // Hold the clock until the player actually enters the game.
   bridge.send({ type: 'setSpeed', speed: 0 });
   let resumeSpeed: number | null = null;
@@ -116,6 +125,8 @@ export async function startSession(
   /** The scene build in progress; disposing waits for it so it can't add to the next session's scene. */
   let building: Promise<unknown> = Promise.resolve();
   let markReady: () => void = () => {};
+  /** The player household's portraits (requested with the first world). */
+  let portraits: Promise<unknown> | null = null;
   const ready = new Promise<void>((resolve) => (markReady = resolve));
 
   let world: WorldStructure | null = null;
@@ -252,6 +263,15 @@ export async function startSession(
       game.buySelection = null;
       game.menu = null;
     },
+    undo() {
+      // The step count follows a little later; don't send more undos than there are steps.
+      if (game.mode === 'live' || game.undoSteps <= 0) return;
+      game.undoSteps--;
+      game.buildStart = null;
+      game.buySelection = null;
+      buildBuy.clearPreviews();
+      bridge.send({ type: 'undo', sim: game.selected });
+    },
     restyle(objectId, style) {
       bridge.send({ type: 'restyle', sim: game.selected, object: objectId, style });
     },
@@ -331,6 +351,7 @@ export async function startSession(
     game.rent = mine?.rent ?? null;
     game.bills = mine?.bills ?? null;
     game.householdStyle = mine?.style ?? 0;
+    game.undoSteps = mine?.undo ?? 0;
     game.relationships = ui.relationships;
     // The view follows the selected Sim to whichever lot they're on.
     const selected = ui.sims.find((s) => s.id === game.selected);
@@ -356,9 +377,12 @@ export async function startSession(
     game.roster = w.sims;
     game.households = w.households;
     game.plots = w.plots;
-    // Portraits for the HUD, the household first (drawn once, cached by look).
+    // Portraits for the HUD, the household first (drawn once, cached by look); the game is
+    // ready once the household's are.
     const mineFirst = [...w.sims].sort((a, b) => Number(!!w.households[b.household]?.player) - Number(!!w.households[a.household]?.player));
-    services.previews.prefetch(mineFirst.map((s) => ({ gender: s.gender, appearance: s.appearance, id: s.id })));
+    const looks = mineFirst.map((s) => ({ gender: s.gender, appearance: s.appearance, id: s.id }));
+    portraits ??= Promise.all(looks.filter((_, i) => w.households[mineFirst[i].household]?.player).map((look) => services.previews.portrait(look)));
+    services.previews.prefetch(looks);
     if (!focused) {
       focused = true;
       const first = playerSims()[0];
@@ -372,8 +396,18 @@ export async function startSession(
     building = build.catch(() => {});
     if (feedback?.effects.length) void build.then(() => feedback.effects.forEach((fx) => renderer.buildEffect(fx)), () => {});
     build
-      .then(() => renderer.framesRendered(WARM_FRAMES))
-      .then(markReady)
+      .then(() => {
+        progress('Warming up', 0.75);
+        return renderer.framesRendered(WARM_FRAMES);
+      })
+      .then(() => {
+        progress('Drawing portraits', 0.9);
+        return Promise.race([portraits, new Promise((resolve) => setTimeout(resolve, PORTRAIT_WAIT_MS))]);
+      })
+      .then(() => {
+        progress('Ready', 1);
+        markReady();
+      })
       .catch((err) => toast(`Rendering failed: ${err}`));
   });
 
@@ -484,6 +518,10 @@ export async function startSession(
       return;
     }
     if (game.pauseMenu) return;
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+      e.preventDefault();
+      return controls.undo();
+    }
     switch (e.key) {
       case ' ':
         e.preventDefault();

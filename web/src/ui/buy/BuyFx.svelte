@@ -48,6 +48,13 @@
       const sub = `${label} · ${n} ${n === 1 ? 'face' : 'faces'}`;
       return short ? { text: `${money(cost - game.funds)} short`, sub, bad: true } : { text: cost ? money(cost) : 'Free', sub, bad: false };
     }
+    if (tool === 'floor') {
+      const n = game.floorTiles;
+      const floor = game.buildLook.floor;
+      const label = floor ? (services.content.floorCoverings[floor - 1]?.label ?? '') : 'Room default';
+      const sub = `${label} · ${n} ${n === 1 ? 'tile' : 'tiles'}`;
+      return short ? { text: `${money(cost - game.funds)} short`, sub, bad: true } : { text: cost ? money(cost) : 'Free', sub, bad: false };
+    }
     if (tool === 'door' || tool === 'window') {
       const label = tool === 'door' ? 'Door' : 'Window';
       if (!game.buildValid) return { text: label, sub: short ? `${money(cost - game.funds)} short` : 'Needs a full-height wall', bad: true };
@@ -55,9 +62,13 @@
     }
     const n = game.buildEdges;
     const room = game.buildRoom;
-    const what = tool === 'remove' ? `Tear down ${n} m` : room ? `${room[0]} × ${room[1]} room · ${n} m` : `${n} m of wall`;
+    const wallUp = tool === 'remove' && game.buildWallUp;
+    const what = wallUp ? `Wall up ${n === 1 ? 'the opening' : `${n} openings`}` : tool === 'remove' ? `Tear down ${n} m` : room ? `${room[0]} × ${room[1]} room · ${n} m` : `${n} m of wall`;
     if (!game.buildValid) return { text: what, sub: short ? `${money(cost - game.funds)} short` : "Can't build here", bad: true };
-    if (!game.buildStart) return cost > 0 ? { text: money(cost), sub: tool === 'remove' ? 'Drag to tear down' : tool === 'room' ? 'Drag out a room' : 'Drag to draw', bad: false } : null;
+    if (!game.buildStart) {
+      if (wallUp) return { text: cost > 0 ? money(cost) : 'Free', sub: 'Click to wall it up', bad: false };
+      return cost > 0 ? { text: money(cost), sub: tool === 'remove' ? 'Drag to tear down' : tool === 'room' ? 'Drag out a room' : 'Drag to draw', bad: false } : null;
+    }
     return { text: cost > 0 ? money(cost) : 'Free', sub: what, bad: false };
   });
 

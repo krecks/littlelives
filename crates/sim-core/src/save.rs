@@ -8,7 +8,8 @@
 //! feelings, gender and attraction; 3 = jobs, funds, visits, exits; 4 = skills, object
 //! quality/style/value, household style; 5 = diagonal walls (`lot.diagonals`, absent in
 //! older files, which load without any); 6 = wall looks (`lot.looks`: coverings, half walls,
-//! door and window styles, by content id; absent: plain walls). Older files load. Saves written before feelings
+//! door and window styles, by content id; absent: plain walls); 7 = floor coverings
+//! (`lot.floors`, by content id; absent: automatic floors). Older files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
 use std::collections::{BTreeMap, HashMap};
@@ -23,7 +24,7 @@ use crate::social::{self, Relationship};
 use crate::world::{Household, Plot, Task, TaskKind, World};
 use crate::{Error, MINUTES_PER_TICK, clock::MAX_SPEED};
 
-pub const SAVE_VERSION: u32 = 6;
+pub const SAVE_VERSION: u32 = 7;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -64,6 +65,17 @@ pub struct LotSave {
     /// Walls that don't look plain (absent in older saves).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub looks: Vec<LookSave>,
+    /// Tiles with a floor covering (absent in older saves).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub floors: Vec<FloorSave>,
+}
+
+/// A tile's floor covering, by content id (unknown ids load as the automatic floor).
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FloorSave {
+    pub x: u16,
+    pub z: u16,
+    pub covering: String,
 }
 
 /// A wall's look, by content id so it survives content changes (unknown ids load as the
@@ -329,6 +341,7 @@ impl World {
                 v_edges: encode(v),
                 diagonals: encode_diagonals(self.lot.diagonals()),
                 looks: encode_looks(&self.lot, &self.content),
+                floors: encode_floors(&self.lot, &self.content),
             },
             objects,
             sims,
@@ -387,6 +400,7 @@ impl World {
             decode_diagonals(&save.lot.diagonals)?,
         )?;
         decode_looks(&mut lot, &content, &save.lot.looks);
+        decode_floors(&mut lot, &content, &save.lot.floors);
         let mut world = World::empty(content, lot, Rng::new(save.rng));
         world.tick = save.tick;
         world.speed = save.speed.min(MAX_SPEED);
@@ -740,6 +754,33 @@ fn decode_looks(lot: &mut Lot, content: &Content, looks: &[LookSave]) {
                 style: index(styles, &l.style).map_or(0, |i| i as u8),
             },
         );
+    }
+}
+
+fn encode_floors(lot: &Lot, content: &Content) -> Vec<FloorSave> {
+    let floors = &content.build.floors;
+    lot.floors()
+        .filter_map(|(x, z, c)| {
+            let id = &floors.get(c.checked_sub(1)? as usize)?.id;
+            Some(FloorSave {
+                x,
+                z,
+                covering: id.clone(),
+            })
+        })
+        .collect()
+}
+
+/// Puts saved floor coverings back; unknown ids, and tiles off the lot, are dropped.
+fn decode_floors(lot: &mut Lot, content: &Content, floors: &[FloorSave]) {
+    let list = &content.build.floors;
+    for f in floors {
+        if !lot.in_bounds(i32::from(f.x), i32::from(f.z)) {
+            continue;
+        }
+        if let Some(i) = list.iter().position(|s| s.id == f.covering) {
+            lot.set_floor(f.x, f.z, i as u8 + 1);
+        }
     }
 }
 

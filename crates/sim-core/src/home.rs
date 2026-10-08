@@ -9,7 +9,7 @@
 use std::collections::VecDeque;
 
 use crate::Error;
-use crate::command::{EdgeAxis, EdgeEdit, EdgeKind, FacePaint};
+use crate::command::{EdgeAxis, EdgeEdit, EdgeKind, FacePaint, FloorPaint};
 use crate::lot::{Diagonal, Edge, EdgeLook, EdgeRef, FORM_HALF, OUTDOORS};
 use crate::path::NavGrid;
 use crate::social::EventKind;
@@ -17,6 +17,22 @@ use crate::world::{ObjectInstance, Task, TaskKind, World, end_activity};
 
 /// Tiles around a plot that still count when checking who can reach what (the path from the street).
 const REACH_MARGIN: i32 = 2;
+/// Build and buy edits kept for undo.
+const UNDO_DEPTH: usize = 30;
+
+/// The world as it was before a build or buy edit: everything an edit can change (walls,
+/// objects, money and style, and residents stopped or moved by it). Time stands still while
+/// edits are kept (see `World::apply`), so putting it back restores exactly that moment.
+#[derive(Debug, Clone)]
+pub(crate) struct HomeSnapshot {
+    household: usize,
+    lot: crate::lot::Lot,
+    objects: Vec<ObjectInstance>,
+    object_plot: Vec<Option<u32>>,
+    blocked: Vec<bool>,
+    sims: Vec<crate::world::Sim>,
+    households: Vec<crate::world::Household>,
+}
 
 fn edge_kind(kind: EdgeKind) -> Edge {
     match kind {
@@ -52,6 +68,60 @@ fn task_object_mut(t: &mut Task) -> Option<&mut u32> {
 }
 
 impl World {
+    /// The state a build or buy edit by `sim` may change (None if the Sim has no home).
+    pub(crate) fn home_snapshot(&self, sim: u32) -> Option<HomeSnapshot> {
+        let (household, _) = self.home_of(sim).ok()?;
+        Some(HomeSnapshot {
+            household,
+            lot: self.lot.clone(),
+            objects: self.objects.clone(),
+            object_plot: self.object_plot.clone(),
+            blocked: self.blocked.clone(),
+            sims: self.sims.clone(),
+            households: self.households.clone(),
+        })
+    }
+
+    /// Keeps `before` for undo if the edit changed anything (an edit that changed nothing, like
+    /// drawing a wall where one stands, leaves no step).
+    pub(crate) fn remember(&mut self, before: HomeSnapshot) {
+        let h = before.household;
+        let changed = before.households[h].funds != self.households[h].funds
+            || before.households[h].style != self.households[h].style
+            || before.objects != self.objects
+            || before.lot != self.lot;
+        if !changed {
+            return;
+        }
+        if self.undo.len() >= UNDO_DEPTH {
+            self.undo.remove(0);
+        }
+        self.undo.push(before);
+    }
+
+    /// Build and buy edits the Sim's household can take back.
+    pub fn undo_steps(&self, household: usize) -> usize {
+        self.undo.iter().filter(|s| s.household == household).count()
+    }
+
+    /// Takes back the household's last build or buy edit: walls, furniture, money and residents
+    /// are as they were before it (a sold object comes back where it stood, at its old price).
+    pub fn undo(&mut self, sim: u32) -> Result<(), Error> {
+        let (h, _) = self.home_of(sim)?;
+        if self.undo.last().is_none_or(|s| s.household != h) {
+            return Err(Error::new("nothing to undo"));
+        }
+        let s = self.undo.pop().expect("checked above");
+        self.lot = s.lot;
+        self.objects = s.objects;
+        self.object_plot = s.object_plot;
+        self.blocked = s.blocked;
+        self.sims = s.sims;
+        self.households = s.households;
+        self.structure_version += 1;
+        Ok(())
+    }
+
     /// The Sim's household index and home plot.
     pub(crate) fn home_of(&self, sim: u32) -> Result<(usize, u32), Error> {
         let s = self
@@ -610,6 +680,48 @@ impl World {
             let mut look = self.lot.look(at);
             look.sides[side] = covering;
             self.lot.set_look(at, look);
+        }
+        self.households[h].funds -= cost;
+        self.structure_version += 1;
+        Ok(())
+    }
+
+    /// Covers floor tiles on the home plot (wood, tile, carpet...), paying each covering's price
+    /// per tile that changes. Every tile must be indoors (a tile split by a diagonal wall counts
+    /// when either half is); a tile listed twice counts once.
+    pub fn paint_floor(&mut self, sim: u32, tiles: &[FloorPaint]) -> Result<(), Error> {
+        let (h, plot) = self.home_of(sim)?;
+        let rules = &self.content.build;
+        let p = &self.plots[plot as usize];
+        let mut changes: Vec<(u16, u16, u8)> = Vec::new();
+        let mut cost = 0;
+        for t in tiles {
+            if !p.contains(t.x, t.z) || !self.lot.in_bounds(t.x, t.z) {
+                return Err(Error::new("you can only lay floors on your own lot"));
+            }
+            if t.covering as usize > rules.floors.len() {
+                return Err(Error::new(format!("unknown floor covering {}", t.covering)));
+            }
+            if self.lot.room_at(t.x, t.z) == OUTDOORS {
+                return Err(Error::new("floors go inside rooms"));
+            }
+            let (x, z) = (t.x as u16, t.z as u16);
+            if changes.iter().any(|&(cx, cz, _)| (cx, cz) == (x, z)) {
+                continue;
+            }
+            if self.lot.floor(x, z) != t.covering {
+                cost += rules.floor_price(t.covering);
+                changes.push((x, z, t.covering));
+            }
+        }
+        if self.households[h].funds < cost {
+            return Err(Error::new("not enough money for that floor"));
+        }
+        if changes.is_empty() {
+            return Ok(());
+        }
+        for (x, z, covering) in changes {
+            self.lot.set_floor(x, z, covering);
         }
         self.households[h].funds -= cost;
         self.structure_version += 1;
