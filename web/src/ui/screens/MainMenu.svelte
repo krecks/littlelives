@@ -1,49 +1,70 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { menuScene } from '../../game/menuScene';
   import { listSaves, type SaveMeta } from '../../persistence/saves';
   import { settings } from '../../settings/settings.svelte';
   import { app } from '../app.svelte';
-  import { clock } from '../format';
+  import { clock, timeAgo } from '../format';
   import Icon from '../Icon.svelte';
 
   let saves = $state<SaveMeta[]>([]);
   const latest = $derived(saves[0]);
   const gpu = typeof navigator !== 'undefined' && 'gpu' in navigator;
-  /** True while the live 3D scene renders behind the menu (set by the app when available). */
-  const live = $derived((app as { liveBackdrop?: boolean }).liveBackdrop ?? false);
+  /** The neighbourhood drifting behind the menu. */
+  let townName = $state('');
 
   onMount(() => {
     listSaves()
       .then((s) => (saves = s))
       .catch(() => (saves = []));
+    menuScene
+      .showcaseDraft()
+      .then((d) => (townName = d.name))
+      .catch(() => {});
   });
 </script>
 
-<div class="menu scaled" class:live>
+<div class="menu scaled">
   <div class="scrim" aria-hidden="true"></div>
 
   <section class="panel">
     <header class="brand">
-      <span class="mark" aria-hidden="true"></span>
+      <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+        <defs>
+          <linearGradient id="logo-glow" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ffe7a8" />
+            <stop offset="0.55" stop-color="#ffc23d" />
+            <stop offset="1" stop-color="#f29a12" />
+          </linearGradient>
+        </defs>
+        <path d="M22 4 C23.6 15 28 19.4 40 21 C28 22.6 23.6 27 22 38 C20.4 27 16 22.6 4 21 C16 19.4 20.4 15 22 4 Z" fill="url(#logo-glow)" />
+        <path d="M38 30 C38.6 34 40 35.4 44 36 C40 36.6 38.6 38 38 42 C37.4 38 36 36.6 32 36 C36 35.4 37.4 34 38 30 Z" fill="#ffd77a" />
+      </svg>
       <div>
-        <h1>open-sims</h1>
+        <h1>Littlelives</h1>
         <p>A little life, simulated in your browser.</p>
       </div>
     </header>
 
     <nav>
       {#if latest}
-        <button class="item continue" onclick={() => app.start({ kind: 'load', saveId: latest.id })}>
-          <span class="label">Continue</span>
-          <span class="meta">{latest.household} · Day {latest.day}, {clock(latest.minute, settings.clock24h)}</span>
+        <button class="continue" onclick={() => app.start({ kind: 'load', saveId: latest.id })}>
+          {#if latest.thumbnail}<img class="thumb" src={latest.thumbnail} alt="" />{:else}<span class="thumb blank"></span>{/if}
+          <span class="what">
+            <span class="label">Continue</span>
+            <span class="meta">{latest.household} · Day {latest.day}, {clock(latest.minute, settings.clock24h)}</span>
+            <span class="when">Saved {timeAgo(latest.savedAt)}</span>
+          </span>
           <span class="arrow" aria-hidden="true">→</span>
         </button>
       {/if}
       <button class="item" class:primary={!latest} onclick={() => app.newGame()}>
         <Icon name="icon.ui.plus" size={18} /><span class="label">New game</span>
+        {#if !latest}<span class="arrow" aria-hidden="true">→</span>{/if}
       </button>
       <button class="item" disabled={saves.length === 0} onclick={() => (app.overlay = 'load')}>
         <Icon name="icon.ui.save" size={18} /><span class="label">Load game</span>
+        {#if saves.length}<span class="badge">{saves.length}</span>{/if}
       </button>
       <button class="item" onclick={() => (app.overlay = 'settings')}>
         <Icon name="icon.ui.settings" size={18} /><span class="label">Settings</span>
@@ -56,9 +77,19 @@
     <footer>
       <span>v0.2 · desktop</span>
       <span class="dot"></span>
-      <span>{gpu ? 'WebGPU available' : 'WebGL2 mode'}</span>
+      <span>{gpu ? 'WebGPU' : 'WebGL2'}</span>
     </footer>
   </section>
+
+  {#if townName}
+    <div class="postcard" aria-hidden="true">
+      <span class="sun"></span>
+      <span class="where">
+        <b>{townName}</b>
+        <span>Golden hour</span>
+      </span>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -66,62 +97,62 @@
     position: relative;
     height: 100vh;
     display: flex;
-    align-items: stretch;
-    color: #f4f1ea;
+    align-items: center;
+    color: #f6f2ea;
   }
-  /* Darkens the left side of whatever is behind (live scene or fallback still) for legibility. */
+  /* Darkens the left of the scene behind the panel, and the bottom edge, for contrast. */
   .scrim {
     position: absolute;
     inset: 0;
     pointer-events: none;
     background:
-      linear-gradient(90deg, rgba(8, 11, 16, 0.62) 0%, rgba(8, 11, 16, 0.38) 30%, rgba(8, 11, 16, 0) 58%),
-      linear-gradient(0deg, rgba(8, 11, 16, 0.35) 0%, rgba(8, 11, 16, 0) 30%);
+      linear-gradient(90deg, rgba(8, 11, 18, 0.58) 0%, rgba(8, 11, 18, 0.32) 28%, rgba(8, 11, 18, 0) 52%),
+      linear-gradient(0deg, rgba(8, 11, 18, 0.42) 0%, rgba(8, 11, 18, 0) 26%),
+      linear-gradient(180deg, rgba(8, 11, 18, 0.22) 0%, rgba(8, 11, 18, 0) 18%);
   }
   .panel {
     position: relative;
-    width: min(440px, 38vw);
+    width: min(420px, 36vw);
     min-width: 360px;
-    margin: 4vh 0 4vh 4vw;
-    padding: 44px 36px 28px;
+    margin-left: max(32px, 5vw);
+    padding: 40px 32px 26px;
     display: flex;
     flex-direction: column;
-    gap: 40px;
-    border-radius: 22px;
-    background: rgba(18, 22, 28, 0.42);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(22px) saturate(1.2);
-    -webkit-backdrop-filter: blur(22px) saturate(1.2);
+    gap: 34px;
+    border-radius: 28px;
+    background: linear-gradient(180deg, rgba(22, 27, 38, 0.56), rgba(14, 18, 26, 0.5));
+    border: 1px solid var(--glass-dark-border);
+    box-shadow:
+      0 40px 100px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(26px) saturate(1.3);
+    -webkit-backdrop-filter: blur(26px) saturate(1.3);
     animation: enter 700ms var(--ease) both;
   }
   .brand {
     display: flex;
     align-items: center;
     gap: 16px;
+    padding: 0 6px;
   }
-  .mark {
-    width: 48px;
-    height: 48px;
+  .logo {
+    width: 44px;
+    height: 44px;
     flex: none;
-    border-radius: 14px;
-    background:
-      radial-gradient(circle at 70% 28%, rgba(255, 236, 200, 0.95) 0 14%, transparent 15%),
-      linear-gradient(180deg, #7fa6d6 0%, #e7c6a0 58%, #5d7a43 59%, #3f5a2e 100%);
-    box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.25),
-      0 8px 24px rgba(0, 0, 0, 0.3);
+    filter: drop-shadow(0 0 14px rgba(255, 190, 80, 0.5)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
+    animation: hover 4.5s ease-in-out infinite;
   }
   h1 {
     margin: 0;
-    font-size: 42px;
-    font-weight: 650;
-    letter-spacing: -0.035em;
+    font-size: 44px;
+    font-weight: 750;
+    letter-spacing: -0.04em;
     line-height: 1;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.35);
   }
   p {
     margin: 8px 0 0;
-    color: rgba(244, 241, 234, 0.7);
+    color: rgba(246, 242, 234, 0.78);
     font-size: 15px;
   }
   nav {
@@ -134,16 +165,17 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    height: 52px;
+    height: 54px;
     padding: 0 18px;
-    border-radius: 14px;
+    border-radius: 16px;
     font-size: 17px;
-    font-weight: 550;
+    font-weight: 600;
     text-align: left;
     color: inherit;
     transition:
       background var(--fast) ease,
-      transform var(--fast) var(--ease);
+      transform var(--fast) var(--ease),
+      box-shadow var(--fast) var(--ease);
     animation: enter 600ms var(--ease) both;
   }
   .item:nth-child(2) {
@@ -159,54 +191,112 @@
     animation-delay: 200ms;
   }
   .item:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.12);
     transform: translateX(4px);
   }
+  .item:not(.primary):hover:not(:disabled)::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 14px;
+    bottom: 14px;
+    width: 3px;
+    border-radius: 2px;
+    background: #8fe07a;
+  }
   .item:disabled {
-    opacity: 0.38;
+    opacity: 0.4;
     cursor: default;
   }
   .item.primary {
-    background: rgba(255, 255, 255, 0.92);
-    color: #151a22;
+    height: 60px;
+    margin-bottom: 6px;
+    background: linear-gradient(180deg, #ffffff, #eef1f6);
+    color: #121826;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.3);
   }
   .item.primary:hover:not(:disabled) {
-    background: #ffffff;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.36);
+  }
+  .item .arrow {
+    margin-left: auto;
+    font-size: 20px;
+    transition: transform var(--fast) var(--ease);
+  }
+  .item:hover .arrow {
+    transform: translateX(3px);
+  }
+  .badge {
+    margin-left: auto;
+    min-width: 24px;
+    height: 22px;
+    padding: 0 7px;
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.16);
+    font-size: 12px;
+    font-weight: 700;
   }
   .item.quiet {
+    height: 46px;
     font-size: 15px;
-    font-weight: 500;
-    color: rgba(244, 241, 234, 0.7);
+    font-weight: 550;
+    color: rgba(246, 242, 234, 0.74);
   }
   .continue {
-    height: 76px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
     margin-bottom: 8px;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto;
-    align-content: center;
-    column-gap: 12px;
-    row-gap: 3px;
-    background: rgba(255, 255, 255, 0.92);
-    color: #151a22;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    padding: 10px 18px 10px 10px;
+    border-radius: 18px;
+    text-align: left;
+    background: linear-gradient(180deg, #ffffff, #eef1f6);
+    color: #121826;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.32);
+    transition:
+      transform var(--fast) var(--ease),
+      box-shadow var(--fast) var(--ease);
+    animation: enter 600ms var(--ease) both;
   }
-  .continue:hover:not(:disabled) {
-    background: #ffffff;
+  .continue:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
+  }
+  .thumb {
+    width: 92px;
+    height: 58px;
+    flex: none;
+    border-radius: 12px;
+    object-fit: cover;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  }
+  .thumb.blank {
+    background: linear-gradient(160deg, #9cc1e6, #e7c9a3 60%, #6d9150 61%);
+  }
+  .what {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
   }
   .continue .label {
     font-size: 19px;
-    font-weight: 650;
+    font-weight: 750;
+    letter-spacing: -0.01em;
   }
   .continue .meta {
-    grid-row: 2;
     font-size: 13px;
-    font-weight: 500;
-    color: #5d6472;
+    font-weight: 600;
+    color: #3b4254;
+  }
+  .when {
+    font-size: 12px;
+    color: #5a6274;
   }
   .continue .arrow {
-    grid-row: 1 / span 2;
-    grid-column: 2;
     font-size: 20px;
     transition: transform var(--fast) var(--ease);
   }
@@ -214,11 +304,11 @@
     transform: translateX(3px);
   }
   footer {
-    margin-top: auto;
     display: flex;
     align-items: center;
     gap: 10px;
-    color: rgba(244, 241, 234, 0.55);
+    padding: 0 6px;
+    color: rgba(246, 242, 234, 0.6);
     font-size: 12px;
   }
   .dot {
@@ -227,15 +317,56 @@
     border-radius: 50%;
     background: currentColor;
   }
+  /* "Now showing": the town behind the menu, like a postcard caption. */
+  .postcard {
+    position: absolute;
+    right: max(28px, 3vw);
+    bottom: 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 18px 10px 12px;
+    border-radius: var(--radius-pill);
+    background: rgba(14, 18, 26, 0.4);
+    border: 1px solid var(--glass-dark-border);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    animation: enter 900ms 300ms var(--ease) both;
+  }
+  .sun {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, #fff3cf 0 30%, #ffc56a 31% 55%, rgba(255, 170, 80, 0) 72%);
+  }
+  .where {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+  .where b {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .where span {
+    font-size: 12px;
+    color: rgba(246, 242, 234, 0.72);
+  }
   @keyframes enter {
     from {
       opacity: 0;
       transform: translateY(14px);
     }
   }
+  @keyframes hover {
+    50% {
+      transform: translateY(-4px);
+    }
+  }
   @media (prefers-reduced-motion: reduce) {
     .panel,
-    .item {
+    .item,
+    .logo {
       animation: none;
     }
   }

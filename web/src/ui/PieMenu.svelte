@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { money } from './format';
   import { services } from './services';
   import { game } from './state.svelte';
 
@@ -20,8 +21,16 @@
   <div class="pie" style="left:{cx}px;top:{cy}px" role="menu" aria-label={menu.title}>
     <div class="title">{menu.title}</div>
     {#each menu.items as item, i (item.index)}
-      <button class="item" role="menuitem" style={position(i, menu.items.length)} onclick={() => services.controls.useObject(menu.objectId, item.index)}>
-        {item.label}
+      {@const poor = item.cost !== undefined && item.cost > game.funds}
+      <button
+        class="item"
+        role="menuitem"
+        style={position(i, menu.items.length)}
+        disabled={item.disabled || poor}
+        title={poor ? `Can't afford — costs ${money(item.cost ?? 0)}` : undefined}
+        onclick={() => services.controls.useObject(menu.objectId, item.index)}
+      >
+        {item.label}{#if item.cost !== undefined}<span class="cost tabular" class:short={poor}> · {money(item.cost)}</span>{/if}
       </button>
     {/each}
   </div>
@@ -66,9 +75,21 @@
     transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)));
     transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
   }
-  .item:hover {
+  .item:hover:not(:disabled) {
     background: var(--accent);
     color: var(--text-inverse);
+  }
+  .item:disabled {
+    cursor: not-allowed;
+    color: var(--text-muted);
+  }
+  .cost {
+    font-weight: 550;
+    opacity: 0.8;
+  }
+  .cost.short {
+    color: var(--bad);
+    opacity: 1;
   }
   @keyframes fly {
     from {

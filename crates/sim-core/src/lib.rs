@@ -12,9 +12,11 @@ pub mod command;
 pub mod content;
 pub mod conversation;
 pub mod error;
+pub mod home;
 pub mod life;
 pub mod lot;
 pub mod mesh;
+pub mod pack;
 pub mod path;
 pub mod rng;
 pub mod save;
@@ -26,6 +28,7 @@ pub mod world;
 pub use command::Command;
 pub use content::Content;
 pub use error::Error;
+pub use pack::merge_content;
 pub use world::World;
 
 /// Fixed simulation rate in ticks per real second (at 1× speed).

@@ -3,7 +3,7 @@
 //! An actor walks up to the target (re-routing if the target moves), waits until
 //! the target is free, then both face each other for the interaction's duration.
 //! Success is rolled when the conversation starts (so the UI can show the reaction
-//! halfway through); relationship changes, moodlets and events apply at the end.
+//! halfway through); relationship changes, feelings and events apply at the end.
 
 use crate::MINUTES_PER_TICK;
 use crate::content::{Content, MAX_NEEDS, Pose};
@@ -321,7 +321,7 @@ fn apply_outcome(
 ) {
     let s = &content.socials[social];
     let o = if success { &s.success } else { &s.failure };
-    let defs = &content.moodlets;
+    let defs = &content.feelings;
     let rules = &content.social_rules;
     let before = (*rels.get(a, t), *rels.get(t, a));
 
@@ -331,11 +331,11 @@ fn apply_outcome(
         let (actor, target) = pair_mut(sims, a, t);
         nudge(actor, &o.needs);
         nudge(target, &o.target_needs);
-        if let Some(m) = o.moodlet {
-            social::add_moodlet(&mut actor.moodlets, m, defs, tick);
+        if let Some(m) = o.feeling {
+            social::add_feeling(&mut actor.feelings, m, defs, tick);
         }
-        if let Some(m) = o.target_moodlet {
-            social::add_moodlet(&mut target.moodlets, m, defs, tick);
+        if let Some(m) = o.target_feeling {
+            social::add_feeling(&mut target.feelings, m, defs, tick);
         }
     }
 
@@ -358,7 +358,7 @@ fn apply_outcome(
                             events,
                             sims,
                             defs,
-                            rules.heartbreak_moodlet,
+                            rules.heartbreak_feeling,
                             x,
                             ex,
                             tick,
@@ -379,7 +379,7 @@ fn apply_outcome(
                     events,
                     sims,
                     defs,
-                    rules.heartbreak_moodlet,
+                    rules.heartbreak_feeling,
                     a,
                     t,
                     tick,
@@ -394,11 +394,11 @@ fn apply_outcome(
             } else {
                 (t, a)
             };
-            if let Some(m) = o.winner_moodlet {
-                social::add_moodlet(&mut sims[winner].moodlets, m, defs, tick);
+            if let Some(m) = o.winner_feeling {
+                social::add_feeling(&mut sims[winner].feelings, m, defs, tick);
             }
-            if let Some(m) = o.loser_moodlet {
-                social::add_moodlet(&mut sims[loser].moodlets, m, defs, tick);
+            if let Some(m) = o.loser_feeling {
+                social::add_feeling(&mut sims[loser].feelings, m, defs, tick);
             }
             events.push(tick, EventKind::Fight, winner, loser, None);
         }
@@ -421,8 +421,8 @@ fn apply_outcome(
                 if rels.get(b, x).partners && dist(sims[b].pos, sims[x].pos) <= rules.jealousy_range
                 {
                     rels.adjust(b, x, rules.jealousy_friendship, rules.jealousy_romance);
-                    if let Some(m) = rules.jealousy_moodlet {
-                        social::add_moodlet(&mut sims[b].moodlets, m, defs, tick);
+                    if let Some(m) = rules.jealousy_feeling {
+                        social::add_feeling(&mut sims[b].feelings, m, defs, tick);
                     }
                     events.push(tick, EventKind::Jealous, b, x, Some(y));
                 }
@@ -436,7 +436,7 @@ fn break_up(
     rels: &mut Relationships,
     events: &mut EventLog,
     sims: &mut [Sim],
-    defs: &[social::MoodletDef],
+    defs: &[social::FeelingDef],
     heartbreak: Option<usize>,
     leaver: usize,
     left: usize,
@@ -447,7 +447,7 @@ fn break_up(
     rels.adjust(left, leaver, -20.0, -40.0);
     rels.adjust(leaver, left, -5.0, -20.0);
     if let Some(m) = heartbreak {
-        social::add_moodlet(&mut sims[left].moodlets, m, defs, tick);
+        social::add_feeling(&mut sims[left].feelings, m, defs, tick);
     }
     events.push(tick, EventKind::BrokeUp, leaver, left, None);
 }
@@ -498,22 +498,22 @@ mod tests {
         "genders":[{"id":"female","label":"Female"},{"id":"male","label":"Male"}],
         "emotions":[{"id":"angry","label":"Angry","effects":{"tagPreference":{"mean":4}}},
                     {"id":"happy","label":"Happy"}],
-        "moodlets":[{"id":"goodChat","label":"Good chat","emotion":"happy","mood":0.05,"hours":2},
+        "feelings":[{"id":"goodChat","label":"Good chat","emotion":"happy","mood":0.05,"hours":2},
                     {"id":"jealous","label":"Jealous","emotion":"angry","mood":-0.15,"hours":6},
                     {"id":"heartbroken","label":"Heartbroken","mood":-0.25,"hours":24},
                     {"id":"lost","label":"Lost a fight","mood":-0.1,"hours":4}],
         "socials":[
           {"id":"chat","label":"Chat","minutes":10,"tags":["social","friendly"],"prefer":"liked",
            "acceptance":{"base":1.0},"needs":{"social":0.4},"targetNeeds":{"social":0.4},
-           "success":{"friendship":6,"targetFriendship":6,"moodlet":"goodChat","targetMoodlet":"goodChat"}},
+           "success":{"friendship":6,"targetFriendship":6,"feeling":"goodChat","targetFeeling":"goodChat"}},
           {"id":"flirt","label":"Flirt","minutes":10,"tags":["social","romantic"],"animation":"flirt","prefer":"romance",
            "acceptance":{"base":1.0},"success":{"romance":10,"targetRomance":10}},
           {"id":"askPartner","label":"Ask to be partners","minutes":5,"tags":["social","romantic"],"autonomous":false,
            "requires":{"minRomance":30,"partners":false},"acceptance":{"base":1.0},"success":{"effect":"becomePartners"}},
           {"id":"fight","label":"Fight","minutes":5,"tags":["social","mean"],"animation":"fight","autonomous":false,
-           "acceptance":{"base":1.0},"success":{"friendship":-20,"targetFriendship":-20,"effect":"fight","loserMoodlet":"lost"}}],
+           "acceptance":{"base":1.0},"success":{"friendship":-20,"targetFriendship":-20,"effect":"fight","loserFeeling":"lost"}}],
         "bondPresets":{"roommates":{"friendship":20},"partners":{"friendship":50,"romance":70,"partners":true}},
-        "socialRules":{"defaultBond":"roommates","romanticTags":["romantic"],"jealousyMoodlet":"jealous","heartbreakMoodlet":"heartbroken"}}"#;
+        "socialRules":{"defaultBond":"roommates","romanticTags":["romantic"],"jealousyFeeling":"jealous","heartbreakFeeling":"heartbroken"}}"#;
 
     fn town(sims: &str, relationships: &str) -> World {
         let lot = format!(
@@ -638,9 +638,9 @@ mod tests {
         );
         assert!(
             w.sims[1]
-                .moodlets
+                .feelings
                 .iter()
-                .any(|m| w.content.moodlets[m.def].id == "heartbroken")
+                .any(|m| w.content.feelings[m.def].id == "heartbroken")
         );
     }
 
@@ -668,23 +668,23 @@ mod tests {
             .expect("fight event");
         assert!(
             w.sims[e.b as usize]
-                .moodlets
+                .feelings
                 .iter()
-                .any(|m| w.content.moodlets[m.def].id == "lost")
+                .any(|m| w.content.feelings[m.def].id == "lost")
         );
     }
 
     #[test]
-    fn relationships_drift_daily_and_moodlets_expire() {
+    fn relationships_drift_daily_and_feelings_expire() {
         let mut w = town(
             r#"{"name":"A","x":3.5,"z":3.5},{"name":"B","x":12.5,"z":12.5}"#,
             "",
         );
         w.autonomy = false;
         w.relationships.get_mut(0, 1).friendship = 60.0;
-        crate::social::add_moodlet(&mut w.sims[0].moodlets, 0, &w.content.moodlets, w.tick);
+        crate::social::add_feeling(&mut w.sims[0].feelings, 0, &w.content.feelings, w.tick);
         ticks(&mut w, TICKS_PER_DAY);
         assert!(w.relationships.get(0, 1).friendship < 60.0);
-        assert!(w.sims[0].moodlets.is_empty());
+        assert!(w.sims[0].feelings.is_empty());
     }
 }

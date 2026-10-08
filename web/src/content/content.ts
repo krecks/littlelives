@@ -20,6 +20,20 @@ export interface InteractionDef {
   pose?: 'stand' | 'sit' | 'lie';
   autonomous?: boolean;
   tags?: string[];
+  /** Skill levels gained per hour. */
+  skills?: Record<string, number>;
+  /** Money charged from household funds each time it's used. */
+  cost?: number;
+  /** Skill that makes this interaction better (bigger need gains per level). */
+  skill?: string;
+  /** Feeling granted when finished (if the Sim has at least `feelingMinSkill` in `skill`). */
+  feeling?: string;
+  feelingMinSkill?: number;
+  /**
+   * Animation tag (one of the content's `animations`) the renderer shows while a Sim uses it.
+   * Without one the simulation derives a tag from `tags`, `pose` and `effects`.
+   */
+  anim?: string;
 }
 
 export interface ObjectDef {
@@ -31,6 +45,45 @@ export interface ObjectDef {
   icon?: string;
   footprint?: [number, number];
   interactions: InteractionDef[];
+  /** Buy-mode price; objects without one aren't sold. */
+  price?: number;
+  /** Buy-mode category id. */
+  category?: string;
+  description?: string;
+  /** Sims that can use it at once. */
+  slots?: number;
+}
+
+export interface SkillDef {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+}
+
+/** A look for objects. Visual only: price and effects are the same in every style. */
+export interface StyleDef {
+  id: string;
+  label: string;
+}
+
+export interface BuyCategory {
+  id: string;
+  label: string;
+}
+
+export interface CareerCategory {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+  tracks: { id: string; label: string; titles: string[] }[];
+}
+
+export interface Economy {
+  startingFunds: number;
+  currency: string;
+  rent?: { weekday: number; hour: number; base: number; perTile: number; billsBase?: number; billsRate?: number };
 }
 
 export interface TraitDef {
@@ -69,25 +122,13 @@ export interface SocialDef {
 }
 
 export interface Names {
+  /** Every first name (used for genders without their own list). */
   first: string[];
+  /** First names per gender id. */
+  byGender?: Record<string, string[]>;
   last: string[];
   towns?: string[];
   streets?: string[];
-}
-
-export interface CareerLevel {
-  title: string;
-  pay: number;
-  start: number;
-  hours: number;
-  days: number[];
-}
-
-export interface CareerDef {
-  id: string;
-  label: string;
-  icon: string;
-  levels: CareerLevel[];
 }
 
 export interface CharacterRules {
@@ -106,10 +147,18 @@ interface ContentFile {
   genders: GenderDef[];
   emotions: EmotionDef[];
   socials: SocialDef[];
-  careers: CareerDef[];
+  careerCategories?: CareerCategory[];
   bondPresets: Record<string, unknown>;
   events: Record<string, string>;
   objects: ObjectDef[];
+  skills?: SkillDef[];
+  styles?: StyleDef[];
+  buyCategories?: BuyCategory[];
+  economy?: Partial<Economy>;
+  /** Animation tags interactions can use as `anim` (the snapshot layout's `actions`). */
+  animations?: string[];
+  /** Further content files (relative to this one), merged key by key. */
+  include?: string[];
 }
 
 export class Content {
@@ -121,7 +170,15 @@ export class Content {
   readonly genders: readonly GenderDef[];
   readonly emotions: readonly EmotionDef[];
   readonly socials: readonly SocialDef[];
-  readonly careers: readonly CareerDef[];
+  readonly careerCategories: readonly CareerCategory[];
+  readonly skills: readonly SkillDef[];
+  readonly styles: readonly StyleDef[];
+  readonly buyCategories: readonly BuyCategory[];
+  readonly economy: Economy;
+  /** Animation tags, in the order the snapshot's `sim.action` indexes them. */
+  readonly animations: readonly string[];
+  /** Objects for sale, in content order. */
+  readonly shop: readonly ObjectDef[];
   readonly bondPresets: readonly string[];
   /** Story-feed templates with `{a}`, `{b}`, `{c}` placeholders. */
   readonly eventTexts: Readonly<Record<string, string>>;
@@ -140,14 +197,34 @@ export class Content {
     this.genders = file.genders ?? [];
     this.emotions = file.emotions ?? [];
     this.socials = file.socials ?? [];
-    this.careers = file.careers ?? [];
+    this.careerCategories = file.careerCategories ?? [];
+    this.skills = file.skills ?? [];
+    this.styles = file.styles ?? [];
+    this.buyCategories = file.buyCategories ?? [];
+    this.economy = { startingFunds: 0, currency: '$', ...file.economy };
+    this.animations = [...new Set(file.animations ?? [])];
+    this.shop = file.objects.filter((o) => o.price !== undefined);
     this.bondPresets = Object.keys(file.bondPresets ?? {});
     this.eventTexts = file.events ?? {};
     this.objects = new Map(file.objects.map((o) => [o.id, o]));
   }
 
+  /** Loads a content file and merges the files it includes (content packs); see `mergeContent`. */
   static async load(url: string): Promise<Content> {
-    return new Content(await fetchText(url));
+    const base = new URL(url, location.href);
+    const baseText = await fetchText(base.href);
+    const includes = ((JSON.parse(baseText) as { include?: unknown }).include as string[] | undefined) ?? [];
+    const parts = await Promise.all(includes.map((name) => fetchText(new URL(name, base).href)));
+    const name = base.pathname.split('/').pop() || url;
+    return new Content(JSON.stringify(mergeContent([[name, baseText], ...includes.map((n, i): [string, string] => [n, parts[i]])])));
+  }
+
+  skill(id: string): SkillDef | undefined {
+    return this.skills.find((s) => s.id === id);
+  }
+
+  careerCategory(id: string | null | undefined): CareerCategory | undefined {
+    return id ? this.careerCategories.find((c) => c.id === id) : undefined;
   }
 
   object(id: string): ObjectDef | undefined {
@@ -160,6 +237,12 @@ export class Content {
 
   gender(id: string): GenderDef | undefined {
     return this.genders.find((g) => g.id === id);
+  }
+
+  /** First names that suit a gender (all first names when the content has no list for it). */
+  firstNames(gender: string): readonly string[] {
+    const list = this.names.byGender?.[gender];
+    return list && list.length ? list : this.names.first;
   }
 
   emotion(id: string | null): EmotionDef | undefined {
@@ -200,6 +283,132 @@ export class Content {
     if (this.perkCost(perks) > perkPoints) problems.push(`Perks cost more than ${perkPoints} points`);
     return problems;
   }
+}
+
+type Json = Record<string, unknown>;
+
+const isJsonObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
+const jsonKind = (v: unknown) => (Array.isArray(v) ? 'array' : isJsonObject(v) ? 'object' : 'value');
+/**
+ * Content keys renamed when moodlets became feelings: [old, new]. Kept so content packs written
+ * before the rename still load. Same list as `LEGACY_KEYS` in sim-core's `pack.rs`.
+ */
+const LEGACY_KEYS: [string, string][] = [
+  ['moodlets', 'feelings'],
+  ['moodlet', 'feeling'],
+  ['moodletMinSkill', 'feelingMinSkill'],
+  ['targetMoodlet', 'targetFeeling'],
+  ['winnerMoodlet', 'winnerFeeling'],
+  ['loserMoodlet', 'loserFeeling'],
+  ['jealousyMoodlet', 'jealousyFeeling'],
+  ['heartbreakMoodlet', 'heartbreakFeeling'],
+  ['promotionMoodlet', 'promotionFeeling'],
+  ['missedMoodlet', 'missedFeeling'],
+  ['debtMoodlet', 'debtFeeling'],
+];
+
+/** Renames `LEGACY_KEYS` anywhere in `value`, unless the new key is already there. */
+function upgradeLegacyKeys(value: unknown): void {
+  if (Array.isArray(value)) {
+    value.forEach(upgradeLegacyKeys);
+  } else if (isJsonObject(value)) {
+    for (const [old, key] of LEGACY_KEYS) {
+      if (old in value && !(key in value)) {
+        value[key] = value[old];
+        delete value[old];
+      }
+    }
+    Object.values(value).forEach(upgradeLegacyKeys);
+  }
+}
+
+/** `traitPatches` effect maps whose entries are set per key. */
+const PATCH_MAPS = ['needDecay', 'needGain', 'tagPreference', 'tagAcceptance', 'tagSuccess', 'skillGain'];
+
+/**
+ * Merges content files in order (base first, then its includes). Mirrors
+ * `sim_core::pack::merge_named` exactly; see docs/content-packs.md:
+ * top-level arrays are appended (a repeated `id` is an error), objects are merged
+ * shallowly, other values replaced, `traitPatches` are applied to the merged traits
+ * last, and `include` / `$comment` are dropped. Keys from before the moodlet → feeling rename
+ * are renamed first (`LEGACY_KEYS`).
+ */
+export function mergeContent(files: [name: string, text: string][]): Json {
+  const out: Json = {};
+  const origin = new Map<string, string>();
+  const patches: [string, unknown][] = [];
+  for (const [name, text] of files) {
+    let file: unknown;
+    try {
+      file = JSON.parse(text);
+    } catch (e) {
+      throw new Error(`${name}: invalid JSON: ${(e as Error).message}`);
+    }
+    if (!isJsonObject(file)) throw new Error(`${name}: a content file must be a JSON object`);
+    upgradeLegacyKeys(file);
+    for (const [key, value] of Object.entries(file)) {
+      if (key === 'include' || key === '$comment') continue;
+      if (key === 'traitPatches') {
+        patches.push([name, value]);
+        continue;
+      }
+      const prev = out[key];
+      if (prev !== undefined && jsonKind(prev) !== jsonKind(value)) {
+        throw new Error(`${name}: '${key}' has a different type than in the files before it`);
+      }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (!isJsonObject(item) || typeof item.id !== 'string') continue;
+          const first = origin.get(`${key}\u0000${item.id}`);
+          if (first !== undefined) throw new Error(`duplicate ${key} id '${item.id}' in ${first} and ${name}`);
+          origin.set(`${key}\u0000${item.id}`, name);
+        }
+        out[key] = [...((prev as unknown[] | undefined) ?? []), ...value];
+      } else if (isJsonObject(value)) {
+        out[key] = { ...((prev as Json | undefined) ?? {}), ...value };
+      } else {
+        out[key] = value;
+      }
+    }
+  }
+  const setEntries = (target: Json, key: string, value: unknown, ctx: string) => {
+    if (!isJsonObject(value)) throw new Error(`${ctx}.${key} must be an object`);
+    if (!isJsonObject(target[key])) target[key] = {};
+    Object.assign(target[key] as Json, value);
+  };
+  for (const [name, value] of patches) {
+    if (!isJsonObject(value)) throw new Error(`${name}: traitPatches must be an object`);
+    const traits = Array.isArray(out.traits) ? (out.traits as unknown[]) : [];
+    for (const [id, patch] of Object.entries(value)) {
+      const ctx = `${name}: traitPatches.${id}`;
+      const target = traits.find((t) => isJsonObject(t) && t.id === id);
+      if (!isJsonObject(target)) throw new Error(`${name}: traitPatches: unknown trait '${id}'`);
+      if (!isJsonObject(patch)) throw new Error(`${ctx} must be an object`);
+      for (const [k, v] of Object.entries(patch)) {
+        if (k === 'startingSkills') {
+          setEntries(target, k, v, ctx);
+        } else if (k === 'effects') {
+          if (!isJsonObject(v)) throw new Error(`${ctx}.effects must be an object`);
+          if (!isJsonObject(target.effects)) target.effects = {};
+          const effects = target.effects as Json;
+          for (const [ek, ev] of Object.entries(v)) {
+            if (PATCH_MAPS.includes(ek)) {
+              setEntries(effects, ek, ev, `${ctx}.effects`);
+            } else if (ek === 'mood' || ek === 'walkSpeed') {
+              if (typeof ev !== 'number') throw new Error(`${ctx}.effects.${ek} must be a number`);
+              const old = typeof effects[ek] === 'number' ? (effects[ek] as number) : ek === 'mood' ? 0 : 1;
+              effects[ek] = ek === 'mood' ? old + ev : old * ev;
+            } else {
+              throw new Error(`${ctx}.effects: unknown key '${ek}'`);
+            }
+          }
+        } else {
+          throw new Error(`${ctx}: unknown key '${k}' (use effects or startingSkills)`);
+        }
+      }
+    }
+  }
+  return out;
 }
 
 export async function fetchText(url: string): Promise<string> {

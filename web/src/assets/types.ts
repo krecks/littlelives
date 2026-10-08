@@ -30,6 +30,13 @@ export interface PlaceholderPart {
   rotate?: Vec3;
   /** Tessellation override for round shapes (cylinder/cone sides, sphere segments). */
   segments?: number;
+  /**
+   * Character parts only: the limb that moves this part (walk cycle, sitting, gestures).
+   * Pivots are fixed (hips at 0.9 m, knees at 0.48 m, shoulders at 1.36 m, neck at 1.46 m;
+   * x = ±0.09 for legs, ±0.21 for arms); shins follow their thigh. Parts without a bone move
+   * with the body.
+   */
+  bone?: 'head' | 'armL' | 'armR' | 'legL' | 'legR' | 'shinL' | 'shinR';
 }
 
 export interface ModelEntry {
@@ -94,7 +101,18 @@ export interface PaletteEntry {
   colors: string[];
 }
 
-export type AssetEntry = ModelEntry | MaterialEntry | IconEntry | ImageEntry | SpriteEntry | PaletteEntry;
+/**
+ * Rigged characters (`model.sim`, `model.hair.*`): `url` is a character set (`rig.json`: skeleton,
+ * bodies, hairstyles and animation clips, see `render/babylon/characters`). `part` picks a mesh
+ * part of each body (e.g. `hair.long`); without it the entry is the set itself.
+ */
+export interface CharacterEntry {
+  type: 'character';
+  url: string;
+  part?: string;
+}
+
+export type AssetEntry = ModelEntry | MaterialEntry | IconEntry | ImageEntry | SpriteEntry | PaletteEntry | CharacterEntry;
 export type AssetType = AssetEntry['type'];
 export type EntryOf<T extends AssetType> = Extract<AssetEntry, { type: T }>;
 

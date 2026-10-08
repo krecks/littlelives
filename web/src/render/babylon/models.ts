@@ -6,11 +6,22 @@
  * Placeholder parts are merged per (tint slot, finish) so a model costs one draw call per
  * distinct finish. Boxes get rounded edges so they catch highlights; every part gets
  * metre-scale UVs so textured finishes (fabric, wood, bark) tile at a realistic density.
+ *
+ * glTF entries may also carry (see `ModelExtras`):
+ * - `fit`: scale the model (non-uniformly if needed) into an exact W x H x D box, bottom on the
+ *   floor and centred on the footprint, so files from any source line up with the gameplay
+ *   footprint and seat/bed heights.
+ * - `materials`: restyle the file's materials by name: tint them, or replace them with one of the
+ *   game's finishes (`material.finish.*`, vertex-coloured, box-projected UVs in metres). Replaced
+ *   parts merge with placeholder parts of the same finish, so a flat-coloured kit model costs a few
+ *   draw calls and matches the rest of the furniture. Style variants reuse one file this way.
+ * - `parts`: extra placeholder primitives drawn with the file (books on a shelf, pillows, a lamp).
  */
 
 import {
   Color3,
   ImportMeshAsync,
+  PBRMaterial,
   Matrix,
   Mesh,
   MeshBuilder,
@@ -21,16 +32,20 @@ import {
   type Scene,
 } from '@babylonjs/core';
 import '@babylonjs/loaders/glTF';
-import type { ModelEntry, PlaceholderPart } from '../../assets/types';
-import { DEFAULT_FINISH, MaterialLibrary } from './materials';
+import type { Material } from '@babylonjs/core';
+import type { ModelEntry, PlaceholderPart, Vec3 } from '../../assets/types';
+import { DEFAULT_FINISH, encodeFinish, MaterialLibrary } from './materials';
 
 export type TintSlot = NonNullable<PlaceholderPart['tint']>;
+export type BoneName = NonNullable<PlaceholderPart['bone']>;
 
 export interface ModelTemplate {
   /** Meshes in model space; each receives the same instance matrices. */
   meshes: Mesh[];
   /** Per mesh: which `look` colour tints it, or null for none. */
   tints: (TintSlot | null)[];
+  /** Per mesh: the limb it belongs to (characters), or null for the body. */
+  bones: (BoneName | null)[];
   /** Height of the model's bounding box, for picking. */
   height: number;
 }
@@ -58,39 +73,83 @@ export async function buildModel(
 }
 
 function buildPlaceholder(scene: Scene, name: string, parts: PlaceholderPart[], lod: 0 | 1): ModelTemplate {
-  const lib = MaterialLibrary.for(scene);
-  const groups = new Map<string, { tint: TintSlot | null; finish: string; meshes: Mesh[] }>();
-  let height = 0;
-  parts.forEach((part, index) => {
-    const mesh = partMesh(scene, part, lod, index);
-    height = Math.max(height, part.at[1] + part.size[1] / 2);
-    const tint = part.tint ?? null;
-    const finish = part.material ?? DEFAULT_FINISH;
-    const key = `${tint ?? ''}|${finish}`;
-    const group = groups.get(key) ?? { tint, finish, meshes: [] };
-    group.meshes.push(mesh);
-    groups.set(key, group);
-  });
-  const meshes: Mesh[] = [];
-  const tints: (TintSlot | null)[] = [];
-  for (const { tint, finish, meshes: group } of groups.values()) {
-    const merged = group.length === 1 ? group[0] : Mesh.MergeMeshes(group, true, true);
-    if (!merged) continue;
-    const suffix = finish === DEFAULT_FINISH ? '' : `@${finish.replace('material.finish.', '')}`;
-    merged.name = `${name}${tint ? `:${tint}` : ''}${suffix}`;
-    merged.material = lib.finish(finish);
-    meshes.push(merged);
-    tints.push(tint);
-  }
-  return { meshes, tints, height };
+  const groups = new PartGroups(scene);
+  parts.forEach((part, index) => groups.addPart(part, lod, index));
+  const { meshes, tints, bones } = groups.build(name);
+  return { meshes, tints, bones, height: groups.height };
 }
 
-function partMesh(scene: Scene, p: PlaceholderPart, lod: 0 | 1, index: number): Mesh {
+/**
+ * Meshes grouped per (tint slot, finish, bone) and merged into one draw call each. Untextured
+ * opaque finishes share one material: roughness/metalness go into the vertex alpha.
+ */
+class PartGroups {
+  private readonly lib: MaterialLibrary;
+  private readonly groups = new Map<string, { tint: TintSlot | null; finish: string; bone: BoneName | null; meshes: Mesh[] }>();
+  height = 0;
+
+  constructor(private readonly scene: Scene) {
+    this.lib = MaterialLibrary.for(scene);
+  }
+
+  /** Vertex alpha and group finish for a finish key. */
+  finish(key: string): { alpha: number; group: string } {
+    const info = this.lib.finishInfo(key);
+    return info.plain ? { alpha: encodeFinish(info.roughness, info.metallic), group: PLAIN } : { alpha: 1, group: key };
+  }
+
+  addPart(part: PlaceholderPart, lod: 0 | 1, index: number): void {
+    const { alpha, group } = this.finish(part.material ?? DEFAULT_FINISH);
+    const mesh = partMesh(this.scene, part, lod, index, alpha);
+    this.height = Math.max(this.height, part.at[1] + part.size[1] / 2);
+    this.add(mesh, part.tint ?? null, group, part.bone ?? null);
+  }
+
+  add(mesh: Mesh, tint: TintSlot | null, finish: string, bone: BoneName | null): void {
+    const key = `${tint ?? ''}|${finish}|${bone ?? ''}`;
+    const group = this.groups.get(key) ?? { tint, finish, bone, meshes: [] };
+    group.meshes.push(mesh);
+    this.groups.set(key, group);
+  }
+
+  build(name: string): { meshes: Mesh[]; tints: (TintSlot | null)[]; bones: (BoneName | null)[] } {
+    const meshes: Mesh[] = [];
+    const tints: (TintSlot | null)[] = [];
+    const bones: (BoneName | null)[] = [];
+    for (const { tint, finish, bone, meshes: group } of this.groups.values()) {
+      const merged = group.length === 1 ? group[0] : Mesh.MergeMeshes(group, true, true);
+      if (!merged) continue;
+      const suffix = finish === PLAIN ? '' : `@${finish.replace('material.finish.', '')}`;
+      merged.name = `${name}${tint ? `:${tint}` : ''}${bone ? `#${bone}` : ''}${suffix}`;
+      merged.material = finish === PLAIN ? this.lib.plainFinish() : this.lib.finish(finish);
+      meshes.push(merged);
+      tints.push(tint);
+      bones.push(bone);
+    }
+    return { meshes, tints, bones };
+  }
+}
+
+/** Group key for parts drawn with the shared plain finish. */
+const PLAIN = 'plain';
+
+function partMesh(scene: Scene, p: PlaceholderPart, lod: 0 | 1, index: number, alpha: number): Mesh {
   const [sx, sy, sz] = p.size;
   const lo = lod === 1;
   let mesh: Mesh;
   let shade: ((nx: number, ny: number, nz: number) => number) | null = null;
-  switch (p.shape) {
+  // `torus` and `lathe` extend the manifest schema (see `ExtraShapes`).
+  const ext = p as PlaceholderPart & ExtraShapes;
+  switch (p.shape as PlaceholderPart['shape'] | 'torus' | 'lathe') {
+    case 'torus':
+      // size: [outer diameter x, tube thickness, outer diameter z].
+      mesh = MeshBuilder.CreateTorus('part', { diameter: Math.max(sx - sy, 1e-3), thickness: sy, tessellation: p.segments ?? (lo ? 12 : 24) }, scene);
+      mesh.scaling.set(1, 1, sz / sx);
+      break;
+    case 'lathe':
+      mesh = latheMesh(scene, ext.profile ?? [[0, -0.5], [0.5, -0.5], [0.5, 0.5], [0, 0.5]], p.segments ?? (lo ? 12 : 24));
+      mesh.scaling.set(sx, sy, sz);
+      break;
     case 'cylinder':
     case 'cone': {
       const top = p.shape === 'cone' ? (p.taper ?? 0) : (p.taper ?? 1);
@@ -130,11 +189,10 @@ function partMesh(scene: Scene, p: PlaceholderPart, lod: 0 | 1, index: number): 
   const c = Color3.FromHexString(p.color);
   const count = mesh.getTotalVertices();
   const colors = new Float32Array(count * 4);
-  const normals = shade ? mesh.getVerticesData(VertexBuffer.NormalKind) : null;
   const positions = shade ? mesh.getVerticesData(VertexBuffer.PositionKind) : null;
   for (let i = 0; i < count; i++) {
     let k = 1;
-    if (shade && normals && positions) {
+    if (shade && positions) {
       // Use the direction from the part centre (not the bumpy normal) for smooth occlusion.
       const dx = (positions[i * 3] - p.at[0]) / (sx / 2);
       const dy = (positions[i * 3 + 1] - p.at[1]) / (sy / 2);
@@ -145,9 +203,82 @@ function partMesh(scene: Scene, p: PlaceholderPart, lod: 0 | 1, index: number): 
     colors[i * 4] = c.r * k;
     colors[i * 4 + 1] = c.g * k;
     colors[i * 4 + 2] = c.b * k;
-    colors[i * 4 + 3] = 1;
+    colors[i * 4 + 3] = alpha;
   }
   mesh.setVerticesData(VertexBuffer.ColorKind, colors);
+  return mesh;
+}
+
+/** Placeholder shapes beyond the base schema. */
+interface ExtraShapes {
+  /**
+   * `lathe`: profile [radius, y] points in unit space (radius 0..0.5, y -0.5..0.5), revolved
+   * around the vertical axis and scaled by `size`. Walk the outer surface upwards and any inner
+   * surface downwards (the surface faces the right-hand side of the walk); bends sharper than
+   * 40 degrees get a hard edge.
+   */
+  profile?: [number, number][];
+}
+
+/** Surface of revolution from a profile (see `ExtraShapes.profile`), centred on the origin. */
+function latheMesh(scene: Scene, profile: [number, number][], segments: number): Mesh {
+  // Per profile point: one vertex ring (smooth) or two (hard edge), each with its 2D normal.
+  const rings: { r: number; y: number; nr: number; ny: number }[][] = [];
+  const segNormal = (a: [number, number], b: [number, number]): [number, number] => {
+    const dr = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const l = Math.hypot(dr, dy) || 1;
+    return [dy / l, -dr / l];
+  };
+  for (let i = 0; i < profile.length; i++) {
+    const [r, y] = profile[i];
+    const prev = i > 0 ? segNormal(profile[i - 1], profile[i]) : null;
+    const next = i < profile.length - 1 ? segNormal(profile[i], profile[i + 1]) : null;
+    if (prev && next && prev[0] * next[0] + prev[1] * next[1] > Math.cos((40 * Math.PI) / 180)) {
+      const nr = prev[0] + next[0];
+      const ny = prev[1] + next[1];
+      const l = Math.hypot(nr, ny) || 1;
+      rings.push([{ r, y, nr: nr / l, ny: ny / l }]);
+    } else {
+      const a = prev ?? next!;
+      const b = next ?? prev!;
+      rings.push([{ r, y, nr: a[0], ny: a[1] }, { r, y, nr: b[0], ny: b[1] }]);
+    }
+  }
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const indices: number[] = [];
+  // Vertex rows: the incoming vertex of point i ends segment i-1, the outgoing one starts segment i.
+  const rowStart: { in: number; out: number }[] = [];
+  for (const ring of rings) {
+    const starts: number[] = [];
+    for (const v of ring) {
+      starts.push(positions.length / 3);
+      for (let k = 0; k <= segments; k++) {
+        const a = (k / segments) * Math.PI * 2;
+        const c = Math.cos(a);
+        const s = Math.sin(a);
+        positions.push(v.r * c, v.y, v.r * s);
+        normals.push(v.nr * c, v.ny, v.nr * s);
+      }
+    }
+    rowStart.push({ in: starts[0], out: starts[starts.length - 1] });
+  }
+  for (let i = 0; i < rings.length - 1; i++) {
+    const a0 = rowStart[i].out;
+    const b0 = rowStart[i + 1].in;
+    for (let k = 0; k < segments; k++) {
+      pushTri(positions, normals, indices, a0 + k, a0 + k + 1, b0 + k);
+      pushTri(positions, normals, indices, a0 + k + 1, b0 + k + 1, b0 + k);
+    }
+  }
+  const mesh = new Mesh('part', scene);
+  const data = new VertexData();
+  data.positions = positions;
+  data.normals = normals;
+  data.indices = indices;
+  data.uvs = new Array((positions.length / 3) * 2).fill(0);
+  data.applyToMesh(mesh, true);
   return mesh;
 }
 
@@ -302,21 +433,48 @@ function fallbackParts([w, d]: [number, number]): PlaceholderPart[] {
   return [{ shape: 'box', size: [w * 0.8, 0.8, d * 0.8], at: [0, 0.4, 0], color: '#B8B2AA' }];
 }
 
+/** Optional model entry fields beyond the base schema (read defensively; see the file header). */
+interface ModelExtras {
+  /** Exact size [width x, height y, depth z] in metres after `rotationY`; replaces `scale`. */
+  fit?: Vec3;
+  /** With `fit`: `back` puts the back (-Z) of the model on the footprint's back edge instead of centring it. */
+  align?: 'centre' | 'back';
+  /** Restyles materials by glTF material name; `*` applies to every material not listed. */
+  materials?: Record<string, MaterialOverride>;
+  /** Extra placeholder primitives drawn with the model (in the final, fitted space). */
+  parts?: PlaceholderPart[];
+}
+
+interface MaterialOverride {
+  /** Replace with a game finish (`material.finish.*`) coloured by `color` (default: the file's colour). */
+  finish?: string;
+  /** sRGB hex: the finish colour, or (without `finish`) a multiplier on the file's base colour. */
+  color?: string;
+  roughness?: number;
+  metallic?: number;
+  /** Drop the meshes that use this material. */
+  hide?: boolean;
+}
+
 async function loadGltf(scene: Scene, name: string, entry: ModelEntry): Promise<ModelTemplate> {
+  const extras = entry as ModelEntry & ModelExtras;
   const result = await ImportMeshAsync(entry.url!, scene);
-  const s = entry.scale ?? 1;
+  const fit = extras.fit;
+  const s = fit ? 1 : (entry.scale ?? 1);
   const [ox, oy, oz] = entry.offset ?? [0, 0, 0];
   const extra = Matrix.Compose(
     new Vector3(s, s, s),
     Quaternion.RotationAxis(Vector3.Up(), ((entry.rotationY ?? 0) * Math.PI) / 180),
-    new Vector3(ox, oy, oz),
+    fit ? Vector3.Zero() : new Vector3(ox, oy, oz),
   );
+  const overrides = extras.materials ?? {};
+  const overrideFor = (m: Material | null): MaterialOverride | undefined => (m && overrides[m.name]) ?? overrides['*'];
 
   const lib = MaterialLibrary.for(scene);
-  const meshes: Mesh[] = [];
-  let height = 0;
+  const baked: Mesh[] = [];
   for (const node of result.meshes) {
     if (!(node instanceof Mesh) || node.getTotalVertices() === 0) continue;
+    if (overrideFor(node.material)?.hide) continue;
     // Bake the full hierarchy transform so thin-instance matrices place the model directly.
     const world = node.computeWorldMatrix(true).multiply(extra);
     node.setParent(null);
@@ -327,16 +485,111 @@ async function loadGltf(scene: Scene, name: string, entry: ModelEntry): Promise<
     node.bakeTransformIntoVertices(world);
     node.refreshBoundingInfo();
     node.name = name;
-    lib.adopt(node.material);
+    baked.push(node);
+  }
+  if (fit && baked.length) fitInto(baked, fit, extras.align ?? 'centre', [ox, oy, oz]);
+
+  const groups = new PartGroups(scene);
+  const kept: Mesh[] = [];
+  const tinted = new Set<Material>();
+  let height = 0;
+  for (const node of baked) {
     height = Math.max(height, node.getBoundingInfo().boundingBox.maximum.y);
-    meshes.push(node);
+    const ov = overrideFor(node.material);
+    if (ov?.finish) {
+      groups.add(restyledMesh(scene, node, ov, groups.finish(ov.finish).alpha), null, groups.finish(ov.finish).group, null);
+      continue;
+    }
+    const mat = node.material;
+    if (ov && mat instanceof PBRMaterial && !tinted.has(mat)) {
+      tinted.add(mat);
+      if (ov.color) mat.albedoColor = mat.albedoColor.multiply(Color3.FromHexString(ov.color).toLinearSpace());
+      if (ov.roughness !== undefined) mat.roughness = ov.roughness;
+      if (ov.metallic !== undefined) mat.metallic = ov.metallic;
+    }
+    lib.adopt(mat);
+    kept.push(node);
   }
+  extras.parts?.forEach((part, i) => groups.addPart(part, 0, i));
+  height = Math.max(height, groups.height);
+
+  // Everything not kept (hierarchy nodes, hidden or restyled meshes, their unused materials) goes.
+  const used = new Set(kept.map((m) => m.material));
+  const unusedMaterials = new Set<Material>();
+  for (const node of result.meshes) if (node.material && !used.has(node.material)) unusedMaterials.add(node.material);
   for (const node of [...result.transformNodes, ...result.meshes]) {
-    if (!meshes.includes(node as Mesh)) node.dispose(true);
+    if (!kept.includes(node as Mesh)) node.dispose(true);
   }
+  for (const m of unusedMaterials) m.dispose(false, true);
   for (const group of result.animationGroups) group.dispose();
-  const merged = mergeByMaterial(meshes, name);
-  return { meshes: merged, tints: merged.map(() => null), height };
+
+  const merged = mergeByMaterial(kept, name);
+  const restyled = groups.build(name);
+  return {
+    meshes: [...merged, ...restyled.meshes],
+    tints: [...merged.map(() => null), ...restyled.tints],
+    bones: [...merged.map(() => null), ...restyled.bones],
+    height,
+  };
+}
+
+/** Scales and moves baked meshes so their joint bounds fill `size`, bottom on y = 0. */
+function fitInto(meshes: Mesh[], [w, h, d]: Vec3, align: 'centre' | 'back', [ox, oy, oz]: Vec3): void {
+  const min = new Vector3(Infinity, Infinity, Infinity);
+  const max = new Vector3(-Infinity, -Infinity, -Infinity);
+  for (const m of meshes) {
+    const b = m.getBoundingInfo().boundingBox;
+    min.minimizeInPlace(b.minimum);
+    max.maximizeInPlace(b.maximum);
+  }
+  const ext = max.subtract(min);
+  const sx = w / Math.max(ext.x, 1e-6);
+  const sy = h / Math.max(ext.y, 1e-6);
+  const sz = d / Math.max(ext.z, 1e-6);
+  const cx = (min.x + max.x) / 2;
+  const cz = align === 'back' ? min.z : (min.z + max.z) / 2;
+  const tz = align === 'back' ? -0.5 + oz : oz;
+  const m = Matrix.Scaling(sx, sy, sz).multiply(Matrix.Translation(ox - cx * sx, oy - min.y * sy, tz - cz * sz));
+  for (const mesh of meshes) {
+    mesh.bakeTransformIntoVertices(m);
+    mesh.refreshBoundingInfo();
+  }
+}
+
+/**
+ * A copy of a baked glTF mesh in placeholder form (positions, normals, metre UVs, vertex colour
+ * carrying the finish), so it merges with placeholder parts of the same finish.
+ */
+function restyledMesh(scene: Scene, node: Mesh, ov: MaterialOverride, alpha: number): Mesh {
+  const positions = node.getVerticesData(VertexBuffer.PositionKind)!;
+  const indices = node.getIndices() ?? Array.from({ length: positions.length / 3 }, (_, i) => i);
+  let normals = node.getVerticesData(VertexBuffer.NormalKind);
+  if (!normals) {
+    normals = new Float32Array(positions.length);
+    VertexData.ComputeNormals(positions, indices, normals);
+  }
+  // The source winding depends on the file's handedness and the baked transform; re-wind every
+  // triangle to match its vertex normals the way the finish materials expect (see `pushTri`).
+  const pos = Array.from(positions);
+  const nor = Array.from(normals);
+  const wound: number[] = [];
+  for (let i = 0; i + 2 < indices.length; i += 3) pushTri(pos, nor, wound, indices[i], indices[i + 1], indices[i + 2]);
+  const mesh = new Mesh('part', scene);
+  const data = new VertexData();
+  data.positions = Float32Array.from(positions);
+  data.normals = Float32Array.from(normals);
+  data.indices = Uint32Array.from(wound);
+  data.uvs = new Float32Array((positions.length / 3) * 2);
+  data.applyToMesh(mesh, true);
+  boxProjectUVs(mesh);
+  const mat = node.material;
+  const c = ov.color ? Color3.FromHexString(ov.color) : mat instanceof PBRMaterial ? mat.albedoColor.toGammaSpace() : Color3.White();
+  const count = positions.length / 3;
+  const colors = new Float32Array(count * 4);
+  for (let i = 0; i < count; i++) colors.set([c.r, c.g, c.b, alpha], i * 4);
+  mesh.setVerticesData(VertexBuffer.ColorKind, colors);
+  mesh.refreshBoundingInfo();
+  return mesh;
 }
 
 /** One mesh (draw call) per material: glTF files often split a model into several nodes. */

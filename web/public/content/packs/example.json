@@ -1,0 +1,89 @@
+{
+  "$comment": "Example content pack: shows every pack feature. See docs/content-packs.md. Check with: cargo run -q -p sim-core --example check_pack -- web/public/content/packs/example.json",
+  "tags": ["spa"],
+  "buyCategories": [
+    { "id": "wellness", "label": "Wellness" }
+  ],
+  "feelings": [
+    {
+      "id": "relaxed",
+      "label": "Relaxed",
+      "emotion": "relaxed",
+      "mood": 0.08,
+      "hours": 8,
+      "effects": { "needGain": { "energy": 1.25, "comfort": 1.2 } }
+    },
+    {
+      "id": "deliciousMeal",
+      "label": "Delicious meal",
+      "emotion": "happy",
+      "mood": 0.1,
+      "hours": 4,
+      "effects": { "needDecay": { "hunger": 0.8 } }
+    }
+  ],
+  "objects": [
+    {
+      "id": "whirlpoolTub",
+      "name": "Whirlpool tub",
+      "model": "model.whirlpoolTub",
+      "icon": "icon.object.whirlpoolTub",
+      "footprint": [2, 2],
+      "slots": 2,
+      "price": 2200,
+      "category": "wellness",
+      "description": "Bubbling jets melt the day away. A soak leaves residents relaxed: they sleep and lounge better for hours.",
+      "interactions": [
+        {
+          "id": "soak",
+          "label": "Soak in the tub",
+          "anim": "bath",
+          "minutes": 45,
+          "pose": "sit",
+          "effects": { "comfort": 0.8, "hygiene": 0.25, "fun": 0.15 },
+          "tags": ["spa", "lounge"],
+          "feeling": "relaxed"
+        }
+      ]
+    },
+    {
+      "id": "chefStove",
+      "name": "Chef's stove",
+      "model": "model.chefStove",
+      "icon": "icon.object.chefStove",
+      "footprint": [2, 1],
+      "price": 1500,
+      "category": "kitchen",
+      "description": "Six burners and a proper oven. The better the cook, the better the meal; good cooks (Cooking 4+) make delicious meals.",
+      "interactions": [
+        {
+          "id": "cook",
+          "label": "Cook a hearty meal",
+          "anim": "cook",
+          "minutes": 45,
+          "effects": { "hunger": 0.8, "fun": 0.15 },
+          "tags": ["food", "cooking"],
+          "skills": { "cooking": 0.2 },
+          "skill": "cooking",
+          "feeling": "deliciousMeal",
+          "feelingMinSkill": 4
+        },
+        {
+          "id": "practise",
+          "label": "Practise recipes",
+          "anim": "cook",
+          "minutes": 60,
+          "effects": { "hunger": 0.4, "fun": 0.1 },
+          "tags": ["food", "cooking", "training", "creative"],
+          "skills": { "cooking": 0.25, "creativity": 0.04 },
+          "skill": "cooking",
+          "autonomous": true
+        }
+      ]
+    }
+  ],
+  "traitPatches": {
+    "lazy": { "effects": { "tagPreference": { "spa": 1.6 } } },
+    "foodie": { "startingSkills": { "cooking": 2 } }
+  }
+}

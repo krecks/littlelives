@@ -64,8 +64,18 @@ impl Game {
         view::social_options_json(&self.world, actor as usize, target as usize)
     }
 
+    /// Every career level plus object and build rules (JSON, static per game).
+    pub fn catalog(&self) -> String {
+        view::catalog_json(&self.world.content)
+    }
+
     pub fn structure(&self) -> String {
         view::structure_json(&self.world)
+    }
+
+    /// Snapshot layout (JSON): float offsets plus the content's animation tags (`actions`).
+    pub fn snapshot_layout(&self) -> String {
+        snapshot::layout_json(&self.world.content)
     }
 
     pub fn structure_version(&self) -> u32 {
@@ -132,9 +142,4 @@ impl MeshBuffers {
     pub fn indices(&self) -> Vec<u32> {
         self.indices.clone()
     }
-}
-
-#[wasm_bindgen]
-pub fn snapshot_layout() -> String {
-    snapshot::layout_json()
 }

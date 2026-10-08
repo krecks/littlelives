@@ -1,0 +1,235 @@
+{
+  "$comment": "Gloomy pack: moody, beautiful things for melancholy residents. Gloomy residents get bored faster (fun decays 1.2x), so this pack gives them music, rain, journals and candlelit baths that keep boredom at bay (fun-decay relief buffs), turn sadness into creative fuel (writing/creativity buffs) and help them sleep. New shared tags: music, cozy. Check with: cargo run -q -p sim-core --example check_pack -- web/public/content/packs/gloomy.json",
+  "feelings": [
+    {
+      "id": "gloomy.bittersweet",
+      "label": "Bittersweet",
+      "emotion": "relaxed",
+      "mood": 0.06,
+      "hours": 4,
+      "effects": { "needDecay": { "fun": 0.85 }, "tagPreference": { "cozy": 1.2 } }
+    },
+    {
+      "id": "gloomy.catharsis",
+      "label": "Catharsis",
+      "emotion": "inspired",
+      "mood": 0.1,
+      "hours": 6,
+      "effects": { "skillGain": { "creativity": 1.25, "writing": 1.25, "dexterity": 1.15 }, "needDecay": { "fun": 0.85 } }
+    },
+    {
+      "id": "gloomy.unburdened",
+      "label": "Unburdened",
+      "emotion": "happy",
+      "mood": 0.07,
+      "hours": 4,
+      "effects": { "needDecay": { "fun": 0.9 }, "tagPreference": { "friendly": 1.3 }, "tagAcceptance": { "friendly": 0.05 } }
+    },
+    {
+      "id": "gloomy.deepCalm",
+      "label": "Deep calm",
+      "emotion": "relaxed",
+      "mood": 0.1,
+      "hours": 8,
+      "effects": { "needGain": { "energy": 1.25, "comfort": 1.15 }, "needDecay": { "fun": 0.85 } }
+    }
+  ],
+  "objects": [
+    {
+      "id": "gloomy.recordCabinet",
+      "name": "Midnight record cabinet",
+      "model": "model.gloomy.recordCabinet",
+      "footprint": [1, 1],
+      "price": 380,
+      "category": "living",
+      "slots": 1,
+      "description": "A turntable on a cabinet of slow, sad records: an hour of music beats boredom, and a fresh album leaves residents pleasantly bittersweet.",
+      "interactions": [
+        {
+          "id": "listen",
+          "label": "Listen to old records",
+          "anim": "listen",
+          "minutes": 60,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.6, "comfort": 0.1 },
+          "tags": ["entertainment", "music"]
+        },
+        {
+          "id": "newAlbum",
+          "label": "Put on a new album",
+          "anim": "listen",
+          "minutes": 45,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.5, "comfort": 0.1 },
+          "tags": ["entertainment", "music", "cozy"],
+          "skills": { "perception": 0.05 },
+          "cost": 5,
+          "feeling": "gloomy.bittersweet"
+        }
+      ]
+    },
+    {
+      "id": "gloomy.cello",
+      "name": "Nocturne cello",
+      "model": "model.gloomy.cello",
+      "footprint": [1, 1],
+      "price": 1100,
+      "category": "hobbies",
+      "slots": 1,
+      "description": "A dark-varnished cello with a stool. Practice builds Dexterity; skilled players (Dexterity 4+) pour their heart into a lament and come away in Catharsis.",
+      "interactions": [
+        {
+          "id": "practise",
+          "label": "Practise scales",
+          "anim": "music",
+          "minutes": 60,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.2 },
+          "tags": ["training", "music", "creative"],
+          "skills": { "dexterity": 0.22, "creativity": 0.06 },
+          "skill": "dexterity"
+        },
+        {
+          "id": "lament",
+          "label": "Play a lament",
+          "anim": "music",
+          "minutes": 45,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.45, "comfort": 0.05 },
+          "tags": ["entertainment", "music", "creative"],
+          "skills": { "dexterity": 0.08, "creativity": 0.04 },
+          "skill": "dexterity",
+          "feeling": "gloomy.catharsis",
+          "feelingMinSkill": 4
+        }
+      ]
+    },
+    {
+      "id": "gloomy.journalDesk",
+      "name": "Candlelit writing desk",
+      "model": "model.gloomy.journalDesk",
+      "footprint": [2, 1],
+      "price": 650,
+      "category": "office",
+      "slots": 1,
+      "description": "Ink, candle and a leather journal. Journaling lifts a heavy heart (Unburdened); poetry trains Writing, and real poets (Writing 5+) find Catharsis.",
+      "interactions": [
+        {
+          "id": "journal",
+          "label": "Journal your feelings",
+          "anim": "write",
+          "minutes": 40,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.3, "comfort": 0.15 },
+          "tags": ["creative", "cozy"],
+          "skills": { "writing": 0.06 },
+          "feeling": "gloomy.unburdened"
+        },
+        {
+          "id": "poetry",
+          "label": "Write poetry",
+          "anim": "write",
+          "minutes": 60,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.1, "comfort": 0.1 },
+          "tags": ["training", "creative"],
+          "skills": { "writing": 0.22, "creativity": 0.06 },
+          "skill": "writing",
+          "feeling": "gloomy.catharsis",
+          "feelingMinSkill": 5
+        }
+      ]
+    },
+    {
+      "id": "gloomy.rainLamp",
+      "name": "Rainfall lamp",
+      "model": "model.gloomy.rainLamp",
+      "footprint": [1, 1],
+      "price": 160,
+      "category": "decor",
+      "slots": 1,
+      "description": "A glass column of endless indoor rain; watching it is oddly soothing and a little fun.",
+      "interactions": [
+        {
+          "id": "watchRain",
+          "label": "Watch the rain",
+          "anim": "look",
+          "minutes": 30,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "comfort": 0.2, "fun": 0.2 },
+          "tags": ["lounge", "cozy"]
+        }
+      ]
+    },
+    {
+      "id": "gloomy.windowSeat",
+      "name": "Brooding window seat",
+      "model": "model.gloomy.windowSeat",
+      "footprint": [2, 1],
+      "price": 650,
+      "category": "living",
+      "slots": 2,
+      "description": "A cushioned nook under a rain-streaked window for two: comfortable brooding, or a short doze under the throw.",
+      "interactions": [
+        {
+          "id": "brood",
+          "label": "Gaze out the window",
+          "anim": "look",
+          "minutes": 40,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "comfort": 0.7, "fun": 0.12 },
+          "tags": ["rest", "lounge", "cozy"]
+        },
+        {
+          "id": "doze",
+          "label": "Doze under the throw",
+          "anim": "nap",
+          "minutes": 45,
+          "pose": "lie",
+          "autonomous": true,
+          "effects": { "energy": 0.17, "comfort": 0.2 },
+          "tags": ["rest", "nap"]
+        }
+      ]
+    },
+    {
+      "id": "gloomy.soakingTub",
+      "name": "Moonstone soaking tub",
+      "model": "model.gloomy.soakingTub",
+      "footprint": [2, 2],
+      "price": 2800,
+      "category": "bathroom",
+      "slots": 1,
+      "description": "A deep stone tub with a candle ledge. A candlelit soak cleans, comforts and cheers, and leaves residents in Deep calm: better sleep and slower boredom for hours.",
+      "interactions": [
+        {
+          "id": "soak",
+          "label": "Candlelit soak",
+          "anim": "bath",
+          "minutes": 50,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "hygiene": 0.7, "comfort": 0.6, "fun": 0.2 },
+          "tags": ["hygiene", "spa", "cozy"],
+          "feeling": "gloomy.deepCalm"
+        }
+      ]
+    }
+  ],
+  "traitPatches": {
+    "gloomy": {
+      "effects": {
+        "tagPreference": { "music": 1.8, "cozy": 1.6, "creative": 1.3 },
+        "skillGain": { "writing": 1.1, "creativity": 1.1 }
+      }
+    }
+  }
+}

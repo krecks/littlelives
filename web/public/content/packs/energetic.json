@@ -1,0 +1,217 @@
+{
+  "$comment": "Energetic pack: sport gear for residents who are always on the move. A bouldering wall and a screen spin bike train Strength and Endurance (strong riders get an Endorphin rush), a trampoline and streetball hoop turn exercise into fun, a power blender and contrast shower soften the cost of all that sweat, and the premium recovery pod finally gets an energetic resident to rest. New tag: sport. Check with: cargo run -q -p sim-core --example check_pack -- web/public/content/packs/energetic.json",
+  "objects": [
+    {
+      "id": "energetic.boulderingWall",
+      "name": "Home bouldering wall",
+      "model": "model.energetic.boulderingWall",
+      "footprint": [2, 1],
+      "price": 1100,
+      "category": "fitness",
+      "slots": 1,
+      "description": "A slightly overhanging plywood wall studded with colourful holds over a thick crash mat. Builds Strength and Dexterity.",
+      "interactions": [
+        {
+          "id": "climb",
+          "label": "Climb a route",
+          "anim": "exercise",
+          "minutes": 60,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.2, "energy": -0.3, "hygiene": -0.3 },
+          "tags": ["training", "fitness", "sport"],
+          "skills": { "strength": 0.2, "dexterity": 0.07 }
+        }
+      ]
+    },
+    {
+      "id": "energetic.spinBike",
+      "name": "Interactive spin bike",
+      "model": "model.energetic.spinBike",
+      "footprint": [1, 2],
+      "price": 1250,
+      "category": "fitness",
+      "slots": 1,
+      "description": "A heavy-flywheel bike with a route screen. Builds Endurance; the fitter the rider, the more fun the ride, and riders with Endurance 4+ finish on an Endorphin rush.",
+      "interactions": [
+        {
+          "id": "ride",
+          "label": "Ride a virtual route",
+          "anim": "exercise",
+          "minutes": 45,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.35, "energy": -0.25, "hygiene": -0.25 },
+          "tags": ["training", "fitness", "sport", "screen"],
+          "skills": { "endurance": 0.2, "strength": 0.05 },
+          "skill": "endurance",
+          "feeling": "energetic.endorphinRush",
+          "feelingMinSkill": 4
+        }
+      ]
+    },
+    {
+      "id": "energetic.trampoline",
+      "name": "Rebound trampoline",
+      "model": "model.energetic.trampoline",
+      "footprint": [2, 2],
+      "price": 480,
+      "category": "outdoor",
+      "slots": 1,
+      "description": "A springy backyard trampoline: pure fun for restless residents, with a little Endurance and Dexterity on the side.",
+      "interactions": [
+        {
+          "id": "bounce",
+          "label": "Bounce around",
+          "anim": "exercise",
+          "minutes": 30,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.4, "energy": -0.12, "hygiene": -0.08 },
+          "tags": ["fitness", "sport", "outdoors"],
+          "skills": { "endurance": 0.06, "dexterity": 0.04 }
+        }
+      ]
+    },
+    {
+      "id": "energetic.streetballHoop",
+      "name": "Streetball hoop",
+      "model": "model.energetic.streetballHoop",
+      "footprint": [1, 1],
+      "price": 340,
+      "category": "outdoor",
+      "slots": 2,
+      "description": "A weighted hoop for the driveway. Shooting around is fun and, with a friend, a little social too.",
+      "interactions": [
+        {
+          "id": "shoot",
+          "label": "Shoot hoops",
+          "anim": "exercise",
+          "minutes": 40,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.4, "social": 0.1, "energy": -0.15, "hygiene": -0.15 },
+          "tags": ["fitness", "sport", "outdoors"],
+          "skills": { "dexterity": 0.06, "strength": 0.03 }
+        }
+      ]
+    },
+    {
+      "id": "energetic.powerBlender",
+      "name": "Power blender station",
+      "model": "model.energetic.powerBlender",
+      "footprint": [1, 1],
+      "price": 320,
+      "category": "kitchen",
+      "slots": 1,
+      "description": "A counter with a high-speed blender and a fruit bowl for quick smoothies ($4 of fruit each). Better cooks blend better; Cooking 3+ leaves residents Fuelled up.",
+      "interactions": [
+        {
+          "id": "blend",
+          "label": "Blend a power smoothie",
+          "anim": "drink",
+          "minutes": 15,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "hunger": 0.35, "energy": 0.06, "fun": 0.05 },
+          "tags": ["food"],
+          "skills": { "cooking": 0.06 },
+          "skill": "cooking",
+          "feeling": "energetic.fuelledUp",
+          "feelingMinSkill": 3
+        }
+      ]
+    },
+    {
+      "id": "energetic.contrastShower",
+      "name": "Contrast rain shower",
+      "model": "model.energetic.contrastShower",
+      "footprint": [1, 1],
+      "price": 1050,
+      "category": "bathroom",
+      "slots": 1,
+      "description": "A wide rain head that alternates hot and cold. Rinses off a workout faster than a normal shower and leaves residents Refreshed.",
+      "interactions": [
+        {
+          "id": "rinse",
+          "label": "Take a contrast shower",
+          "anim": "shower",
+          "minutes": 15,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "hygiene": 0.95, "energy": 0.06 },
+          "tags": ["hygiene"],
+          "feeling": "energetic.refreshed"
+        }
+      ]
+    },
+    {
+      "id": "energetic.recoveryPod",
+      "name": "Recovery pod",
+      "model": "model.energetic.recoveryPod",
+      "footprint": [1, 2],
+      "price": 3200,
+      "category": "fitness",
+      "slots": 1,
+      "description": "A padded lounger under a tinted canopy with compression and cool air ($8 running cost a session). Restores comfort and a little energy, and leaves residents Fully recovered: they sleep deeper and train harder for hours.",
+      "interactions": [
+        {
+          "id": "recover",
+          "label": "Run a recovery session",
+          "anim": "relax",
+          "minutes": 45,
+          "pose": "lie",
+          "autonomous": true,
+          "effects": { "comfort": 0.85, "energy": 0.12, "fun": 0.1 },
+          "tags": ["rest", "spa", "sport"],
+          "feeling": "energetic.recovered"
+        }
+      ]
+    }
+  ],
+  "feelings": [
+    {
+      "id": "energetic.endorphinRush",
+      "label": "Endorphin rush",
+      "emotion": "energized",
+      "mood": 0.1,
+      "hours": 4,
+      "effects": {
+        "needDecay": { "fun": 0.8, "energy": 0.9 },
+        "skillGain": { "endurance": 1.15, "strength": 1.15, "dexterity": 1.15 }
+      }
+    },
+    {
+      "id": "energetic.fuelledUp",
+      "label": "Fuelled up",
+      "emotion": "energized",
+      "mood": 0.07,
+      "hours": 4,
+      "effects": { "needDecay": { "hunger": 0.85, "energy": 0.85 } }
+    },
+    {
+      "id": "energetic.refreshed",
+      "label": "Refreshed",
+      "emotion": "energized",
+      "mood": 0.06,
+      "hours": 3,
+      "effects": { "needDecay": { "hygiene": 0.8 }, "walkSpeed": 1.05 }
+    },
+    {
+      "id": "energetic.recovered",
+      "label": "Fully recovered",
+      "emotion": "relaxed",
+      "mood": 0.1,
+      "hours": 8,
+      "effects": {
+        "needGain": { "energy": 1.2, "comfort": 1.15 },
+        "skillGain": { "strength": 1.1, "endurance": 1.1 }
+      }
+    }
+  ],
+  "traitPatches": {
+    "energetic": {
+      "effects": { "tagPreference": { "sport": 1.8, "fitness": 1.2 } }
+    }
+  }
+}

@@ -1,0 +1,260 @@
+{
+  "$comment": "Nature Lover pack: garden and greenhouse items that pull Nature Lovers outdoors. Grow and pick vegetables, pot seedlings (Dexterity), watch birds and raise orchids (Perception; skilled gardeners earn feelings), unwind in a glasshouse, rinse off under a cedar outdoor shower and doze in a hammock. Adds the shared 'garden' tag. Check with: cargo run -q -p sim-core --example check_pack -- web/public/content/packs/natureLover.json",
+  "feelings": [
+    {
+      "id": "natureLover.inBloom",
+      "label": "In bloom",
+      "emotion": "relaxed",
+      "mood": 0.1,
+      "hours": 8,
+      "effects": { "needGain": { "energy": 1.2, "comfort": 1.2 }, "needDecay": { "fun": 0.85 } }
+    },
+    {
+      "id": "natureLover.greenThumb",
+      "label": "Green thumb",
+      "emotion": "inspired",
+      "mood": 0.1,
+      "hours": 6,
+      "effects": { "skillGain": { "perception": 1.25, "dexterity": 1.15, "creativity": 1.15 }, "tagPreference": { "garden": 1.3 } }
+    },
+    {
+      "id": "natureLover.birdsong",
+      "label": "Heard the birdsong",
+      "emotion": "happy",
+      "mood": 0.06,
+      "hours": 4,
+      "effects": { "needDecay": { "fun": 0.8, "social": 0.9 } }
+    },
+    {
+      "id": "natureLover.freshAir",
+      "label": "Fresh air",
+      "emotion": "energized",
+      "mood": 0.06,
+      "hours": 3,
+      "effects": { "needDecay": { "energy": 0.85 }, "walkSpeed": 1.05 }
+    }
+  ],
+  "objects": [
+    {
+      "id": "natureLover.veggieBed",
+      "name": "Raised veggie bed",
+      "model": "model.natureLover.veggieBed",
+      "footprint": [2, 1],
+      "price": 180,
+      "category": "outdoor",
+      "slots": 1,
+      "description": "Lettuce, carrots and tomatoes: tend it for a little Perception and fun, or pick a free, fresh snack straight from the soil.",
+      "interactions": [
+        {
+          "id": "tendVeggies",
+          "label": "Tend the vegetables",
+          "anim": "garden",
+          "minutes": 30,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.15, "hygiene": -0.08 },
+          "tags": ["chores", "nature", "garden", "outdoors"],
+          "skills": { "perception": 0.08, "dexterity": 0.04 }
+        },
+        {
+          "id": "pickSnack",
+          "label": "Pick something fresh",
+          "anim": "eat",
+          "minutes": 15,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "hunger": 0.3, "fun": 0.05 },
+          "tags": ["food", "nature", "garden", "outdoors"]
+        }
+      ]
+    },
+    {
+      "id": "natureLover.pottingBench",
+      "name": "Potting bench",
+      "model": "model.natureLover.pottingBench",
+      "footprint": [2, 1],
+      "price": 420,
+      "category": "hobbies",
+      "slots": 1,
+      "description": "Builds Dexterity: pot seedlings with steady hands. Skilled gardeners (Dexterity 4+) tie bouquets that give them a Green thumb.",
+      "interactions": [
+        {
+          "id": "potSeedlings",
+          "label": "Pot seedlings",
+          "anim": "garden",
+          "minutes": 60,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.15, "hygiene": -0.1 },
+          "tags": ["training", "nature", "garden"],
+          "skills": { "dexterity": 0.22, "perception": 0.06 }
+        },
+        {
+          "id": "tieBouquet",
+          "label": "Tie a garden bouquet",
+          "anim": "garden",
+          "minutes": 30,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.25 },
+          "tags": ["creative", "nature", "garden"],
+          "skills": { "creativity": 0.1, "dexterity": 0.05 },
+          "skill": "dexterity",
+          "feeling": "natureLover.greenThumb",
+          "feelingMinSkill": 4
+        }
+      ]
+    },
+    {
+      "id": "natureLover.birdFeeder",
+      "name": "Bird feeder post",
+      "model": "model.natureLover.birdFeeder",
+      "footprint": [1, 1],
+      "price": 140,
+      "category": "outdoor",
+      "slots": 1,
+      "description": "Fill it with seed and watch who visits: fun that sharpens Perception, and keen observers (Perception 3+) leave cheered by the birdsong.",
+      "interactions": [
+        {
+          "id": "birdwatch",
+          "label": "Fill the feeder and birdwatch",
+          "anim": "look",
+          "minutes": 40,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.35 },
+          "tags": ["entertainment", "nature", "outdoors"],
+          "skills": { "perception": 0.1 },
+          "skill": "perception",
+          "feeling": "natureLover.birdsong",
+          "feelingMinSkill": 3
+        }
+      ]
+    },
+    {
+      "id": "natureLover.gardenHammock",
+      "name": "Garden hammock",
+      "model": "model.natureLover.gardenHammock",
+      "footprint": [2, 1],
+      "price": 650,
+      "category": "outdoor",
+      "slots": 1,
+      "description": "A canvas hammock on a cedar stand: lounge in the open air, or doze off for a refreshing outdoor nap.",
+      "interactions": [
+        {
+          "id": "swing",
+          "label": "Swing in the hammock",
+          "anim": "relax",
+          "minutes": 45,
+          "pose": "lie",
+          "autonomous": true,
+          "effects": { "comfort": 0.7, "fun": 0.1 },
+          "tags": ["rest", "lounge", "nature", "outdoors"]
+        },
+        {
+          "id": "doze",
+          "label": "Doze in the hammock",
+          "anim": "nap",
+          "minutes": 60,
+          "pose": "lie",
+          "autonomous": true,
+          "effects": { "energy": 0.22, "comfort": 0.15 },
+          "tags": ["rest", "nap", "outdoors"],
+          "feeling": "natureLover.freshAir"
+        }
+      ]
+    },
+    {
+      "id": "natureLover.cedarShower",
+      "name": "Cedar outdoor shower",
+      "model": "model.natureLover.cedarShower",
+      "footprint": [1, 1],
+      "price": 580,
+      "category": "outdoor",
+      "slots": 1,
+      "description": "Rinse off the garden soil under the open sky: a full wash that leaves residents with a burst of Fresh air.",
+      "interactions": [
+        {
+          "id": "rinse",
+          "label": "Shower in the open air",
+          "anim": "shower",
+          "minutes": 25,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "hygiene": 1.0, "comfort": 0.05 },
+          "tags": ["hygiene", "nature"],
+          "feeling": "natureLover.freshAir"
+        }
+      ]
+    },
+    {
+      "id": "natureLover.mossTerrarium",
+      "name": "Moss terrarium",
+      "model": "model.natureLover.mossTerrarium",
+      "footprint": [1, 1],
+      "price": 150,
+      "category": "decor",
+      "slots": 1,
+      "description": "A little glass forest on a stand: a calming indoor garden to mist and tend when the weather keeps residents inside.",
+      "interactions": [
+        {
+          "id": "mist",
+          "label": "Mist the terrarium",
+          "anim": "garden",
+          "minutes": 15,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.1, "comfort": 0.05 },
+          "tags": ["chores", "nature", "garden"],
+          "skills": { "perception": 0.05 }
+        }
+      ]
+    },
+    {
+      "id": "natureLover.glasshouse",
+      "name": "Fern glasshouse",
+      "model": "model.natureLover.glasshouse",
+      "footprint": [2, 2],
+      "price": 3200,
+      "category": "outdoor",
+      "slots": 2,
+      "description": "A warm glass room full of ferns and orchids. Unwinding inside leaves residents In bloom (better sleep and comfort for hours); cultivating orchids builds Perception, and skilled growers (Perception 5+) earn a Green thumb.",
+      "interactions": [
+        {
+          "id": "unwind",
+          "label": "Unwind among the ferns",
+          "anim": "relax",
+          "minutes": 45,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "comfort": 0.75, "fun": 0.3, "energy": 0.06 },
+          "tags": ["lounge", "spa", "nature", "garden"],
+          "feeling": "natureLover.inBloom"
+        },
+        {
+          "id": "orchids",
+          "label": "Cultivate orchids",
+          "anim": "garden",
+          "minutes": 60,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.2 },
+          "tags": ["training", "nature", "garden"],
+          "skills": { "perception": 0.22, "creativity": 0.06 },
+          "skill": "perception",
+          "feeling": "natureLover.greenThumb",
+          "feelingMinSkill": 5
+        }
+      ]
+    }
+  ],
+  "traitPatches": {
+    "natureLover": {
+      "effects": {
+        "tagPreference": { "garden": 2.0, "outdoors": 1.4 },
+        "skillGain": { "perception": 1.15, "dexterity": 1.1 }
+      },
+      "startingSkills": { "dexterity": 1 }
+    }
+  }
+}

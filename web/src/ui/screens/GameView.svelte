@@ -20,6 +20,8 @@
         if (!left) session = s;
       })
       .catch((err: unknown) => {
+        // Left (or replaced, e.g. by a dev hot reload) before it started: nothing went wrong.
+        if (left) return;
         console.error(err);
         error = err instanceof Error ? err.message : String(err);
       });
@@ -65,32 +67,44 @@
     inset: 0;
     pointer-events: none;
   }
+  /* While the camera flies in from the menus: a small pill, the scene stays visible. */
   .splash {
     position: absolute;
-    inset: 0;
+    inset: auto 0 48px 0;
     display: grid;
     place-items: center;
-    background: rgba(233, 238, 248, 0.6);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    pointer-events: none;
   }
   .box {
     display: flex;
-    flex-direction: column;
     align-items: center;
     gap: 12px;
-    padding: 28px 36px;
+    padding: 12px 22px;
     max-width: 480px;
     text-align: center;
-    font-weight: 550;
+    font-weight: 600;
+    border-radius: var(--radius-pill);
+    pointer-events: auto;
+    animation: pill 420ms var(--ease) both;
+  }
+  .box:has(.error) {
+    flex-direction: column;
+    border-radius: var(--radius-lg);
+    padding: 24px 32px;
+  }
+  @keyframes pill {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
   }
   .error {
     color: var(--bad);
     font-weight: 500;
   }
   .spinner {
-    width: 28px;
-    height: 28px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     border: 3px solid var(--accent-soft);
     border-top-color: var(--accent);

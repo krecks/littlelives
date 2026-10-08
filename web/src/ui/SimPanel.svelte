@@ -1,5 +1,6 @@
 <script lang="ts">
   import CareerTab from './CareerTab.svelte';
+  import SkillsTab from './SkillsTab.svelte';
   import Icon from './Icon.svelte';
   import { moodLabel, needColor } from './format';
   import SimPreview from './kit/SimPreview.svelte';
@@ -7,7 +8,7 @@
   import { services } from './services';
   import { game } from './state.svelte';
 
-  const tabs = ['Now', 'People', 'Feelings', 'Career'] as const;
+  const tabs = ['Now', 'People', 'Feelings', 'Career', 'Skills'] as const;
   let tab = $state<(typeof tabs)[number]>('Now');
 
   const info = (id: number) => game.roster.find((r) => r.id === id);
@@ -26,12 +27,8 @@
 </script>
 
 {#snippet face(id: number, size: number)}
-  {@const look = info(id)?.appearance}
-  {#if look}
-    <span class="face" style="margin:{-0.17 * size}px 0 0 {-size / 2}px">
-      <SimPreview appearance={look} size={size * 2} animate={false} />
-    </span>
-  {/if}
+  {@const who = info(id)}
+  {#if who}<SimPreview appearance={who.appearance} gender={who.gender} id={who.id} {size} />{/if}
 {/snippet}
 
 <section class="panel">
@@ -77,7 +74,7 @@
       <div class="tabs" role="tablist">
         {#each tabs as t (t)}
           <button role="tab" aria-selected={tab === t} class:active={tab === t} onclick={() => (tab = t)}>
-            {t}{#if t === 'Feelings' && sim.moodlets.length}<span class="count">{sim.moodlets.length}</span>{/if}
+            {t}{#if t === 'Feelings' && sim.feelings.length}<span class="count">{sim.feelings.length}</span>{/if}
           </button>
         {/each}
       </div>
@@ -124,9 +121,11 @@
         </ul>
       {:else if tab === 'Career'}
         <CareerTab {sim} />
+      {:else if tab === 'Skills'}
+        <SkillsTab {sim} />
       {:else}
         <ul class="feelings">
-          {#each sim.moodlets as m (m.id)}
+          {#each sim.feelings as m (m.id)}
             <li class:good={m.mood > 0} class:bad={m.mood < 0}>
               <span class="mood-delta">{m.mood > 0 ? '+' : ''}{Math.round(m.mood * 100)}</span>
               <span class="label">{m.label}</span>
@@ -170,9 +169,6 @@
     border-radius: 50%;
     overflow: hidden;
     background: var(--surface-muted);
-  }
-  .face {
-    display: block;
   }
   .avatar {
     width: 34px;
@@ -259,11 +255,15 @@
     background: var(--hairline);
   }
   .tabs button {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 0;
     height: 28px;
+    padding: 0 4px;
     border-radius: var(--radius-sm);
     font-weight: 600;
-    font-size: 12px;
+    font-size: 11.5px;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
     color: var(--text-muted);
   }
   .tabs button.active {
@@ -272,8 +272,8 @@
     box-shadow: var(--shadow-sm);
   }
   .count {
-    margin-left: 5px;
-    padding: 0 6px;
+    margin-left: 3px;
+    padding: 0 5px;
     border-radius: var(--radius-pill);
     background: var(--accent);
     color: var(--text-inverse);

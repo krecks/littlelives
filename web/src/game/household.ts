@@ -2,19 +2,31 @@
 
 import type { AssetRegistry } from '../assets/registry';
 import type { Content } from '../content/content';
+import { GARMENTS, pickOutfit } from '../render/babylon/characters/outfit';
 
 export const HAIR_STYLES = ['short', 'long', 'bun', 'none'] as const;
 export type HairStyle = (typeof HAIR_STYLES)[number];
 
 /** Opaque to the simulation; read by the renderer and UI. */
 export interface Appearance {
-  /** Outfit colour. */
+  /** Outfit (top) colour. */
   body: string;
   skin: string;
   hair: string;
   hairStyle: HairStyle;
   /** Scale factor, 0.9..1.1. */
   height: number;
+  /** Facial hair (bodies that have it). */
+  beard?: boolean;
+  /**
+   * Garments (character part names: `top.tee`, `bottom.skirt`, `shoes.boots`, ...) and their
+   * colours. Missing in older saves: the renderer then picks them from the Sim's id.
+   */
+  top?: string;
+  bottom?: string;
+  shoes?: string;
+  bottomColor?: string;
+  shoesColor?: string;
   /** Optional model key overriding `model.sim` (for future character models). */
   model?: string;
 }
@@ -57,11 +69,20 @@ export interface SimSpawn {
   z: number;
 }
 
-export function palette(assets: AssetRegistry, key: 'palette.skin' | 'palette.hair' | 'palette.outfit'): string[] {
+export function palette(
+  assets: AssetRegistry,
+  key: 'palette.skin' | 'palette.hair' | 'palette.outfit' | 'palette.bottoms' | 'palette.shoes',
+): string[] {
   return assets.get(key, 'palette')?.colors ?? ['#CCCCCC'];
 }
 
 const pick = <T>(list: readonly T[]): T => list[Math.floor(Math.random() * list.length)];
+
+/** The gender each appearance made by `randomSim` belongs to (for avatars given only a look). */
+const lookGenders = new WeakMap<object, string>();
+export function genderOfLook(appearance: Appearance): string | undefined {
+  return lookGenders.get(appearance);
+}
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 function weighted<T>(options: readonly [T, number][]): T {
@@ -89,8 +110,43 @@ function randomHair(gender: string): HairStyle {
     : weighted<HairStyle>([['short', 75], ['long', 10], ['none', 15]]);
 }
 
+/** A first name that suits `gender`, avoiding `taken` names while there are others. */
+export function randomFirstName(content: Content, gender: string, taken: readonly string[] = []): string {
+  const names = content.firstNames(gender);
+  const free = names.filter((n) => !taken.includes(n));
+  return pick(free.length ? free : names);
+}
+
+/**
+ * After a gender change: a first name picked for the old gender (not one typed in) becomes one
+ * for the new gender, and garments the new body doesn't have become their closest match.
+ */
+export function regender(content: Content, sim: SimDraft, from: string, taken: readonly string[] = []): void {
+  const to = sim.gender;
+  const fits = content.firstNames(to);
+  if (content.firstNames(from).includes(sim.name) && !fits.includes(sim.name)) sim.name = randomFirstName(content, to, taken);
+  const look = sim.appearance;
+  const tops = GARMENTS.TOPS[to] ?? GARMENTS.TOPS.male;
+  const bottoms = GARMENTS.BOTTOMS[to] ?? GARMENTS.BOTTOMS.male;
+  const similar: Record<string, string> = {
+    'top.tank': 'top.vneck',
+    'top.blouse': 'top.polo',
+    'top.vneck': 'top.tank',
+    'top.polo': 'top.blouse',
+    'bottom.skirt': 'bottom.trousers',
+    'bottom.capri': 'bottom.trousers',
+  };
+  if (look.top && !tops.includes(look.top)) look.top = tops.includes(similar[look.top]) ? similar[look.top] : tops[0];
+  if (look.bottom && !bottoms.includes(look.bottom)) look.bottom = bottoms.includes(similar[look.bottom]) ? similar[look.bottom] : bottoms[0];
+  if (look.beard && to !== 'male') look.beard = false;
+}
+
+/** Drafts made before garments could be chosen get a random outfit (kept from then on). */
+export function ensureOutfit(sim: SimDraft): void {
+  if (!sim.appearance.top) Object.assign(sim.appearance, pickOutfit(sim.gender));
+}
+
 export function randomSim(content: Content, assets: AssetRegistry, taken: readonly string[] = []): SimDraft {
-  const free = content.names.first.filter((n) => !taken.includes(n));
   const gender = content.genders.length ? pick(content.genders).id : '';
   const traits: string[] = [];
   const target = content.rules.minTraits + Math.floor(Math.random() * (content.rules.maxTraits - content.rules.minTraits + 1));
@@ -102,18 +158,22 @@ export function randomSim(content: Content, assets: AssetRegistry, taken: readon
   for (const p of [...content.perks].sort(() => Math.random() - 0.5)) {
     if (content.perkCost([...perks, p.id]) <= content.rules.perkPoints && Math.random() < 0.6) perks.push(p.id);
   }
+  const appearance: Appearance = {
+    body: pick(palette(assets, 'palette.outfit')),
+    skin: pick(palette(assets, 'palette.skin')),
+    hair: pick(palette(assets, 'palette.hair')),
+    hairStyle: randomHair(gender),
+    height: Math.round((0.94 + Math.random() * 0.12) * 100) / 100,
+    beard: gender === 'male' && Math.random() < 0.2,
+    ...pickOutfit(gender),
+  };
+  lookGenders.set(appearance, gender);
   return {
     uid: uid(),
-    name: pick(free.length ? free : content.names.first),
+    name: randomFirstName(content, gender, taken),
     gender,
     attractedTo: randomAttraction(content, gender),
-    appearance: {
-      body: pick(palette(assets, 'palette.outfit')),
-      skin: pick(palette(assets, 'palette.skin')),
-      hair: pick(palette(assets, 'palette.hair')),
-      hairStyle: randomHair(gender),
-      height: Math.round((0.94 + Math.random() * 0.12) * 100) / 100,
-    },
+    appearance,
     traits,
     perks,
   };

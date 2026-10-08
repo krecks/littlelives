@@ -1,0 +1,290 @@
+{
+  "$comment": "Street and garden dressing (render/babylon/street.ts) and see-through window glass (house.ts). Listed in the base manifest's packs.",
+  "version": 1,
+  "entries": {
+    "material.sidewalk": {
+      "type": "material",
+      "color": "#E4E0D8",
+      "texture": "sidewalk/albedo.webp",
+      "normal": "normal.webp",
+      "arm": "arm.webp",
+      "uvScale": 0.556,
+      "projection": "xz",
+      "roughness": 1,
+      "normalStrength": 0.8
+    },
+    "material.window.clear": {
+      "type": "material",
+      "color": "#2C383C",
+      "roughness": 0.03,
+      "metallic": 0,
+      "alpha": 0.18
+    },
+    "model.street.hedge": {
+      "type": "model",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            1.25,
+            0.95,
+            0.62
+          ],
+          "at": [
+            0,
+            0.47,
+            0
+          ],
+          "color": "#557F36",
+          "material": "material.finish.foliage",
+          "noise": 0.12
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.7,
+            0.5,
+            0.5
+          ],
+          "at": [
+            0.3,
+            0.78,
+            0.04
+          ],
+          "color": "#618C3C",
+          "material": "material.finish.foliage",
+          "noise": 0.16
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.6,
+            0.45,
+            0.5
+          ],
+          "at": [
+            -0.32,
+            0.76,
+            -0.04
+          ],
+          "color": "#4D7531",
+          "material": "material.finish.foliage",
+          "noise": 0.16
+        }
+      ]
+    },
+    "model.street.flowers": {
+      "type": "model",
+      "placeholder": [
+        {
+          "shape": "blob",
+          "size": [
+            0.6,
+            0.26,
+            0.52
+          ],
+          "at": [
+            0,
+            0.11,
+            0
+          ],
+          "color": "#4E7432",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.36,
+            0.2,
+            0.32
+          ],
+          "at": [
+            0.12,
+            0.2,
+            -0.06
+          ],
+          "color": "#5C8438",
+          "material": "material.finish.foliage",
+          "noise": 0.2
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.075,
+            0.05,
+            0.075
+          ],
+          "at": [
+            -0.049,
+            0.265,
+            0.084
+          ],
+          "color": "#E8678A",
+          "material": "material.finish.foliage",
+          "segments": 5
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.075,
+            0.05,
+            0.075
+          ],
+          "at": [
+            0.168,
+            0.237,
+            0.07
+          ],
+          "color": "#F2D04A",
+          "material": "material.finish.foliage",
+          "segments": 5
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.075,
+            0.05,
+            0.075
+          ],
+          "at": [
+            0.17,
+            0.204,
+            0.055
+          ],
+          "color": "#FFFFFF",
+          "material": "material.finish.foliage",
+          "segments": 5
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.075,
+            0.05,
+            0.075
+          ],
+          "at": [
+            -0.086,
+            0.209,
+            0.032
+          ],
+          "color": "#B07AD8",
+          "material": "material.finish.foliage",
+          "segments": 5
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.075,
+            0.05,
+            0.075
+          ],
+          "at": [
+            -0.218,
+            0.212,
+            0.095
+          ],
+          "color": "#E8503A",
+          "material": "material.finish.foliage",
+          "segments": 5
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.075,
+            0.05,
+            0.075
+          ],
+          "at": [
+            0.034,
+            0.295,
+            0.172
+          ],
+          "color": "#F4A0B8",
+          "material": "material.finish.foliage",
+          "segments": 5
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.075,
+            0.05,
+            0.075
+          ],
+          "at": [
+            -0.141,
+            0.298,
+            -0.063
+          ],
+          "color": "#8EA8F0",
+          "material": "material.finish.foliage",
+          "segments": 5
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.075,
+            0.05,
+            0.075
+          ],
+          "at": [
+            0.241,
+            0.229,
+            0.062
+          ],
+          "color": "#E8678A",
+          "material": "material.finish.foliage",
+          "segments": 5
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.075,
+            0.05,
+            0.075
+          ],
+          "at": [
+            0.064,
+            0.231,
+            0.069
+          ],
+          "color": "#B07AD8",
+          "material": "material.finish.foliage",
+          "segments": 5
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.075,
+            0.05,
+            0.075
+          ],
+          "at": [
+            0.047,
+            0.258,
+            -0.09
+          ],
+          "color": "#8EA8F0",
+          "material": "material.finish.foliage",
+          "segments": 5
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.075,
+            0.05,
+            0.075
+          ],
+          "at": [
+            -0.099,
+            0.255,
+            -0.101
+          ],
+          "color": "#FFFFFF",
+          "material": "material.finish.foliage",
+          "segments": 5
+        }
+      ]
+    }
+  }
+}

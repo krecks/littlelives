@@ -1,0 +1,236 @@
+{
+  "$comment": "Loner pack: quiet, one-seat hobbies and retreats for residents who recharge alone, plus ways to top up Social without small talk (shortwave radio) and to eat without a doorbell. New shared tags: cozy, garden. See docs/personalities/loner.md.",
+  "objects": [
+    {
+      "id": "loner.quietPod",
+      "name": "Hush-shell reading pod",
+      "model": "model.loner.quietPod",
+      "footprint": [1, 1],
+      "price": 850,
+      "category": "living",
+      "slots": 1,
+      "description": "A padded, hooded seat for exactly one: comfort and a little fun at once, and a recharged loner feels lonely more slowly.",
+      "interactions": [
+        {
+          "id": "retreat",
+          "label": "Retreat into the pod",
+          "anim": "relax",
+          "minutes": 40,
+          "pose": "sit",
+          "effects": { "comfort": 0.7, "fun": 0.2 },
+          "tags": ["lounge", "cozy"],
+          "feeling": "loner.recharged"
+        },
+        {
+          "id": "read",
+          "label": "Read in peace",
+          "anim": "read",
+          "minutes": 45,
+          "pose": "sit",
+          "effects": { "fun": 0.45, "comfort": 0.2 },
+          "tags": ["reading", "entertainment", "cozy"],
+          "skills": { "intelligence": 0.1, "writing": 0.03 }
+        }
+      ]
+    },
+    {
+      "id": "loner.shortwaveRadio",
+      "name": "Shortwave radio desk",
+      "model": "model.loner.shortwaveRadio",
+      "footprint": [1, 1],
+      "price": 780,
+      "category": "office",
+      "slots": 1,
+      "description": "Talk to strangers far away on your own terms: a little Social without small talk, and it builds Technology. Skilled operators (Technology 4+) catch a kindred signal.",
+      "interactions": [
+        {
+          "id": "airwaves",
+          "label": "Chat on the airwaves",
+          "anim": "phone",
+          "minutes": 45,
+          "pose": "sit",
+          "effects": { "social": 0.3, "fun": 0.2 },
+          "tags": ["entertainment", "cozy"],
+          "skills": { "technology": 0.05, "charisma": 0.03 },
+          "skill": "technology",
+          "feeling": "loner.kindredSignal",
+          "feelingMinSkill": 4
+        },
+        {
+          "id": "tune",
+          "label": "Tune and solder the rig",
+          "anim": "tinker",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": { "fun": 0.1 },
+          "tags": ["training"],
+          "skills": { "technology": 0.22, "handiness": 0.06 },
+          "skill": "technology"
+        }
+      ]
+    },
+    {
+      "id": "loner.puzzleTable",
+      "name": "Jigsaw puzzle table",
+      "model": "model.loner.puzzleTable",
+      "footprint": [1, 1],
+      "price": 320,
+      "category": "hobbies",
+      "slots": 1,
+      "description": "Hours of quiet fun that sharpen Perception. A fresh box costs $6; sharp eyes (Perception 3+) finish it in the zone.",
+      "interactions": [
+        {
+          "id": "piece",
+          "label": "Fit a few pieces",
+          "anim": "play",
+          "minutes": 45,
+          "pose": "sit",
+          "effects": { "fun": 0.42 },
+          "tags": ["entertainment", "cozy"],
+          "skills": { "perception": 0.1, "intelligence": 0.04 }
+        },
+        {
+          "id": "newPuzzle",
+          "label": "Start a 2,000-piece puzzle",
+          "anim": "play",
+          "minutes": 90,
+          "pose": "sit",
+          "effects": { "fun": 0.6 },
+          "tags": ["entertainment", "training", "cozy"],
+          "skills": { "perception": 0.2, "intelligence": 0.05 },
+          "cost": 6,
+          "skill": "perception",
+          "feeling": "loner.inTheZone",
+          "feelingMinSkill": 3
+        }
+      ]
+    },
+    {
+      "id": "loner.bonsaiBench",
+      "name": "Bonsai potting bench",
+      "model": "model.loner.bonsaiBench",
+      "footprint": [1, 1],
+      "price": 420,
+      "category": "hobbies",
+      "slots": 1,
+      "description": "A slow, silent craft: shaping a tiny tree builds Dexterity, and steady hands get more out of every session.",
+      "interactions": [
+        {
+          "id": "shape",
+          "label": "Wire and shape the bonsai",
+          "anim": "garden",
+          "minutes": 60,
+          "effects": { "fun": 0.3 },
+          "tags": ["training", "garden", "nature"],
+          "skills": { "dexterity": 0.21, "creativity": 0.06 },
+          "skill": "dexterity"
+        },
+        {
+          "id": "tend",
+          "label": "Mist and feed",
+          "anim": "garden",
+          "minutes": 15,
+          "effects": { "fun": 0.12, "comfort": 0.05 },
+          "tags": ["chores", "garden", "nature"],
+          "skills": { "perception": 0.05 }
+        }
+      ]
+    },
+    {
+      "id": "loner.soloSauna",
+      "name": "Cedar sauna for one",
+      "model": "model.loner.soloSauna",
+      "footprint": [1, 2],
+      "price": 3400,
+      "category": "bathroom",
+      "slots": 1,
+      "description": "A private cedar cabin: comfort and hygiene in one hot, silent session. Afterwards the resident sleeps deeper and barely misses company for hours.",
+      "interactions": [
+        {
+          "id": "sweat",
+          "label": "Sweat in silence",
+          "anim": "relax",
+          "minutes": 40,
+          "pose": "sit",
+          "effects": { "comfort": 0.85, "hygiene": 0.3, "fun": 0.1 },
+          "tags": ["spa", "rest"],
+          "feeling": "loner.deepQuiet"
+        }
+      ]
+    },
+    {
+      "id": "loner.deliveryHatch",
+      "name": "No-knock delivery hatch",
+      "model": "model.loner.deliveryHatch",
+      "footprint": [1, 1],
+      "price": 280,
+      "category": "kitchen",
+      "slots": 1,
+      "description": "Order a hot meal through a wall hatch: no doorbell, no small talk. Faster and more filling than cooking, but every order costs money.",
+      "interactions": [
+        {
+          "id": "order",
+          "label": "Order a meal for one",
+          "anim": "eat",
+          "minutes": 30,
+          "pose": "stand",
+          "effects": { "hunger": 0.75, "fun": 0.05 },
+          "tags": ["food"],
+          "cost": 9
+        },
+        {
+          "id": "treat",
+          "label": "Order a treat box",
+          "anim": "eat",
+          "minutes": 10,
+          "pose": "stand",
+          "effects": { "hunger": 0.25, "fun": 0.08 },
+          "tags": ["food"],
+          "cost": 4
+        }
+      ]
+    }
+  ],
+  "feelings": [
+    {
+      "id": "loner.recharged",
+      "label": "Recharged",
+      "emotion": "relaxed",
+      "mood": 0.06,
+      "hours": 3,
+      "effects": { "needDecay": { "social": 0.85, "fun": 0.9 } }
+    },
+    {
+      "id": "loner.kindredSignal",
+      "label": "Kindred signal",
+      "emotion": "happy",
+      "mood": 0.08,
+      "hours": 6,
+      "effects": { "needDecay": { "social": 0.75 }, "skillGain": { "charisma": 1.2 } }
+    },
+    {
+      "id": "loner.inTheZone",
+      "label": "In the zone",
+      "emotion": "focused",
+      "mood": 0.07,
+      "hours": 4,
+      "effects": { "skillGain": { "perception": 1.25, "intelligence": 1.15 }, "tagPreference": { "training": 1.2 } }
+    },
+    {
+      "id": "loner.deepQuiet",
+      "label": "Deep quiet",
+      "emotion": "relaxed",
+      "mood": 0.1,
+      "hours": 8,
+      "effects": { "needGain": { "energy": 1.25, "comfort": 1.15 }, "needDecay": { "social": 0.85 } }
+    }
+  ],
+  "traitPatches": {
+    "loner": {
+      "effects": {
+        "tagPreference": { "cozy": 1.8, "garden": 1.5, "spa": 1.3 },
+        "skillGain": { "perception": 1.15 }
+      }
+    }
+  }
+}

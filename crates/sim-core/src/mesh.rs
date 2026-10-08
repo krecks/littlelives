@@ -74,65 +74,76 @@ pub fn build_walls(lot: &Lot, height: f32) -> MeshData {
 }
 
 /// Walls whose edges lie inside `region` (inclusive of its boundary lines).
+///
+/// Doors leave a gap below `DOOR_HEIGHT` (only the lintel is built); windows leave a gap
+/// between `WINDOW_SILL` and `WINDOW_HEAD`. Walls lower than the sill (the cutaway stubs)
+/// are solid across windows.
 pub fn build_walls_in(lot: &Lot, height: f32, region: Region) -> MeshData {
     let [rx0, rz0, rx1, rz1] = clamp_region(lot, region);
     let mut mesh = MeshData::default();
     let t = WALL_THICKNESS / 2.0;
+    // Edges built as one solid box, merged into runs.
+    let solid = |e: Edge| e == Edge::Wall || (e == Edge::Window && height <= WINDOW_SILL);
 
-    // Horizontal grid lines.
+    // Horizontal grid lines: boxes span `a0..a1` along x at `z`.
     for z in rz0..=rz1 {
         let zf = z as f32;
-        let mut x = rx0;
-        while x < rx1 {
-            match lot.h_edge(x, z) {
-                Edge::Wall => {
-                    let start = x;
-                    while x < rx1 && lot.h_edge(x, z) == Edge::Wall {
-                        x += 1;
-                    }
-                    mesh.add_box(
-                        [start as f32 - t, 0.0, zf - t],
-                        [x as f32 + t, height, zf + t],
-                    );
-                    continue;
-                }
-                Edge::Door if height > DOOR_HEIGHT => {
-                    let xf = x as f32;
-                    mesh.add_box([xf, DOOR_HEIGHT, zf - t], [xf + 1.0, height, zf + t]);
-                }
-                _ => {}
-            }
-            x += 1;
-        }
+        let mut add = |a0: f32, a1: f32, y0: f32, y1: f32| {
+            mesh.add_box([a0, y0, zf - t], [a1, y1, zf + t]);
+        };
+        wall_line(rx0, rx1, |x| lot.h_edge(x, z), solid, height, t, &mut add);
     }
 
-    // Vertical grid lines.
+    // Vertical grid lines: boxes span `a0..a1` along z at `x`.
     for x in rx0..=rx1 {
         let xf = x as f32;
-        let mut z = rz0;
-        while z < rz1 {
-            match lot.v_edge(x, z) {
-                Edge::Wall => {
-                    let start = z;
-                    while z < rz1 && lot.v_edge(x, z) == Edge::Wall {
-                        z += 1;
-                    }
-                    mesh.add_box(
-                        [xf - t, 0.0, start as f32 - t],
-                        [xf + t, height, z as f32 + t],
-                    );
-                    continue;
-                }
-                Edge::Door if height > DOOR_HEIGHT => {
-                    let zf = z as f32;
-                    mesh.add_box([xf - t, DOOR_HEIGHT, zf], [xf + t, height, zf + 1.0]);
-                }
-                _ => {}
-            }
-            z += 1;
-        }
+        let mut add = |a0: f32, a1: f32, y0: f32, y1: f32| {
+            mesh.add_box([xf - t, y0, a0], [xf + t, y1, a1]);
+        };
+        wall_line(rz0, rz1, |z| lot.v_edge(x, z), solid, height, t, &mut add);
     }
     mesh
+}
+
+/// Height of a window's sill (the wall is solid below it).
+pub const WINDOW_SILL: f32 = 0.9;
+/// Height of a window's head (the wall is solid above it).
+pub const WINDOW_HEAD: f32 = 2.1;
+
+/// Boxes for the edges `from..to` of one grid line, as `add(a0, a1, y0, y1)` along the line.
+fn wall_line(
+    from: usize,
+    to: usize,
+    edge: impl Fn(usize) -> Edge,
+    solid: impl Fn(Edge) -> bool,
+    height: f32,
+    t: f32,
+    add: &mut impl FnMut(f32, f32, f32, f32),
+) {
+    let mut a = from;
+    while a < to {
+        let e = edge(a);
+        if solid(e) {
+            let start = a;
+            while a < to && solid(edge(a)) {
+                a += 1;
+            }
+            add(start as f32 - t, a as f32 + t, 0.0, height);
+            continue;
+        }
+        let af = a as f32;
+        match e {
+            Edge::Door if height > DOOR_HEIGHT => add(af, af + 1.0, DOOR_HEIGHT, height),
+            Edge::Window => {
+                add(af, af + 1.0, 0.0, WINDOW_SILL);
+                if height > WINDOW_HEAD {
+                    add(af, af + 1.0, WINDOW_HEAD, height);
+                }
+            }
+            _ => {}
+        }
+        a += 1;
+    }
 }
 
 /// One floor quad per indoor tile.
@@ -205,5 +216,34 @@ mod tests {
                 .len(),
             build_walls(&lot, WALL_HEIGHT).positions.len()
         );
+    }
+
+    #[test]
+    fn windows_leave_an_opening_between_sill_and_head() {
+        let file: LotFile = serde_json::from_str(
+            r#"{"width":6,"depth":6,"walls":[[1,1,5,1],[2,2,2,5]],
+                "windows":[{"x":3,"z":1,"axis":"x"},{"x":2,"z":3,"axis":"z"}]}"#,
+        )
+        .unwrap();
+        let lot = Lot::from_file(&file).unwrap();
+        let boxes = |m: &MeshData| m.positions.len() / 3 / 20;
+        let heights = |m: &MeshData| {
+            let mut ys: Vec<i32> = m
+                .positions
+                .chunks(3)
+                .map(|p| (p[1] * 100.0).round() as i32)
+                .collect();
+            ys.sort();
+            ys.dedup();
+            ys
+        };
+        // Per line: two wall runs, the part below the sill and the part above the head.
+        let full = build_walls(&lot, WALL_HEIGHT);
+        assert_eq!(boxes(&full), 2 * 4);
+        assert_eq!(heights(&full), vec![0, 90, 210, 280]);
+        // Low walls merge the window into one solid run per line.
+        let low = build_walls(&lot, WALL_HEIGHT_LOW);
+        assert_eq!(boxes(&low), 2);
+        assert_eq!(heights(&low), vec![0, 35]);
     }
 }

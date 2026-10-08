@@ -5,31 +5,43 @@
  * - WebGPU first (WebGL2 fallback). With WebGPU, snapshot rendering records the frame's
  *   draw commands once and replays them; it is re-recorded only on structural changes.
  * - Every object type is one mesh drawn with thin instances (one draw call per type).
- * - Sims are thin instances too; per frame we update one matrix buffer per mesh.
+ * - Sims are skinned characters (characters.ts): thin instances per body part, GPU skinning
+ *   from one pose texture that is rewritten each frame (no new draw commands).
+ * - The viewed house is generated into one mesh per material (house.ts); the cutaway is done
+ *   in the vertex shader from a per-vertex attribute.
  * - No allocations in `update()`.
+ *
+ * Look: a visual style (styles.ts) drives lighting keys, sky, fog, post-processing, colour
+ * grading and filtering; it can change live.
  */
 
 import {
   ArcRotateCamera,
   Color3,
   Color4,
+  ColorCurves,
   Constants,
   DefaultRenderingPipeline,
-  DepthOfFieldEffectBlurLevel,
   DirectionalLight,
+  DynamicTexture,
   Engine,
   HemisphericLight,
   ImageProcessingConfiguration,
+  Light,
   Material,
   Matrix,
   Mesh,
   MeshBuilder,
+  PBRMaterial,
+  PointLight,
+  Quaternion,
   Scene,
   SceneInstrumentation,
   CreateScreenshotAsync,
   ShadowGenerator,
   SSAO2RenderingPipeline,
   StandardMaterial,
+  TransformNode,
   Vector3,
   VertexBuffer,
   VertexData,
@@ -38,24 +50,47 @@ import {
   type AbstractEngine,
 } from '@babylonjs/core';
 import type { FrameState } from '../../core/bridge';
-import type { MeshArrays, WorldStructure } from '../../core/protocol';
-import { Pose } from '../../core/snapshot';
+import type { MeshArrays, ObjectPlacement, WorldStructure } from '../../core/protocol';
 import type { QualitySettings } from '../quality';
-import type { Appearance } from '../../game/household';
-import type { LiveRenderOptions, PickResult, Renderer, RendererDeps, RenderStats, ViewRect, WallMode } from '../types';
+import { stylePreset, type StylePreset, type VisualStyle } from '../styles';
+import type {
+  CameraPose,
+  EdgePreview,
+  LiveRenderOptions,
+  LotHighlight,
+  PickResult,
+  PlacementGhost,
+  Renderer,
+  RendererDeps,
+  RenderStats,
+  TownShot,
+  ViewRect,
+  WallMode,
+} from '../types';
 import { createLighting, lightingAt } from './environment';
+import { HouseBuilder, WALL_HEIGHT, WALL_STUB } from './house';
+import { Street } from './street';
 import { MaterialLibrary } from './materials';
 import { buildModel, type ModelTemplate } from './models';
-import { Landscape, Sky } from './nature';
+import { Characters, MAX_CHARACTERS } from './characters';
+import { installNature, Landscape, natureDecor, Sky } from './nature';
+import { LAYER_ALL, LAYER_TOWN, LAYER_WORLD } from './layers';
+import { NightGrade } from './nightGrade';
+import { TownOverview } from './overview';
+import { TiltShift } from './tiltShift';
 
 const ACCENT = Color3.FromHexString('#5B7CFA');
 /** Helpers are parked below the ground instead of toggling visibility (keeps snapshots valid). */
 const HIDDEN_Y = -100;
-/** Larger jumps between snapshots (e.g. getting out of bed) snap instead of sliding. */
-const TELEPORT_DISTANCE = 1.5;
 /** Game minutes between lighting updates (with / without snapshot rendering). */
 const LIGHT_STEP = 0.5;
 const LIGHT_STEP_SNAPSHOT = 5;
+/** Interior lights (largest rooms first). */
+const ROOM_LIGHTS = 4;
+/** Camera distance below which the viewed lot's roof is hidden even with walls up. */
+const ROOF_MIN_DISTANCE = 15;
+/** Capacity of the wall-tool preview buffers (grown on demand). */
+const PREVIEW_CAPACITY = 128;
 
 interface PlacedObject {
   id: number;
@@ -66,21 +101,28 @@ interface PlacedObject {
   height: number;
 }
 
-/** One mesh set (a body or a hairstyle) instanced for the Sims that use it. */
-interface SimGroup {
-  meshes: Mesh[];
-  /** Sim index (snapshot order) for each instance. */
-  slots: number[];
-  matrices: Float32Array;
-}
-
-const MAX_SIMS = 64;
-/** How far the road is drawn beyond the viewed lot. */
-const STREET_MARGIN = 10;
+const MAX_SIMS = MAX_CHARACTERS;
+/** How far the road (and garden paths) is drawn beyond the viewed lot: the whole street. */
+const STREET_MARGIN = 500;
 /** Sims are drawn this far outside the lot (e.g. walking up the garden path). */
 const SIM_VIEW_MARGIN = 2;
-/** Snapshot animation codes (see `social::ANIMATIONS` in sim-core). */
-const Anim = { None: 0, Talk: 1, Laugh: 2, Flirt: 3, Argue: 4, Fight: 5, Hug: 6, Kiss: 7 } as const;
+/** Selection marker colour slot (0 = great .. 4 = bad) per emotion id; no emotion = slot 1. */
+const EMOTION_MOOD: Record<string, number> = { happy: 0, flirty: 0, confident: 0, focused: 0, inspired: 0, energized: 0, relaxed: 0, embarrassed: 3, sad: 3, tense: 3, angry: 4 };
+/** Game camera zoom limits (the overview lifts them while it drives the camera). */
+const RADIUS_LIMITS = [6, 95] as const;
+/** Frames in which a game world built behind the overview is also drawn (hidden), so its shaders and pipelines are ready when it is shown. */
+const WARM_WORLD_FRAMES = 4;
+
+/** A landscape, shared by the game world and the overview when they are the same town. */
+interface NatureSet {
+  /** Kept to refresh the lawn when rooms or objects change (build mode). */
+  landscape: Landscape;
+  meshes: Mesh[];
+  casters: Mesh[];
+  ready: Promise<void>;
+  users: Set<'world' | 'town'>;
+  pending: number;
+}
 
 export class BabylonRenderer implements Renderer {
   private engine!: AbstractEngine;
@@ -91,8 +133,14 @@ export class BabylonRenderer implements Renderer {
   private sky!: HemisphericLight;
   private shadows!: ShadowGenerator;
   private post: DefaultRenderingPipeline | null = null;
+  private tiltShift: TiltShift | null = null;
+  private nightGrade: NightGrade | null = null;
   private instrumentation!: SceneInstrumentation;
   private canvas!: HTMLCanvasElement;
+  private lib!: MaterialLibrary;
+  private house!: HouseBuilder;
+  /** Neighbour houses, sidewalks, streetlights, gardens and cars (street.ts). */
+  private street!: Street;
 
   private worldMeshes: Mesh[] = [];
   private onFrame: ((now: number) => void) | null = null;
@@ -105,53 +153,120 @@ export class BabylonRenderer implements Renderer {
    */
   private readonly templates = new Map<string, Promise<ModelTemplate>>();
   private readonly templatesInUse = new Set<string>();
-  /** Landscape meshes survive lot switches; rebuilt only for a different town. */
-  private natureMeshes: Mesh[] = [];
+  /** Landscape shadow casters (the landscape survives lot switches; rebuilt only for a different town). */
   private natureCasters: Mesh[] = [];
-  private natureKey = '';
+  /** Landscapes by town (seed and size), and which one each layer shows. */
+  private readonly natures = new Map<string, NatureSet>();
+  private readonly natureIn: Record<'world' | 'town', NatureSet | null> = { world: null, town: null };
+  private readonly natureTicket = { world: 0, town: 0 };
+
+  // Town overview (menus), on its own camera layer; see `showTown`.
+  private overview: TownOverview | null = null;
+  private townMode = false;
+  /** Overview lighting: the minute shown and the one it eases towards. */
+  private townMinute = 18 * 60;
+  private townMinuteGoal = 18 * 60;
+  private townShot: TownShot | null = null;
+  private townHighlight: LotHighlight | null = null;
+  private townListener: (() => void) | null = null;
+  private townTicket = 0;
+  private townQueue: Promise<void> = Promise.resolve();
+  /** Holds the game camera's pose while the overview drives the real camera. */
+  private parked!: ArcRotateCamera;
+  private warmFrames = 0;
+  private worldBuilding = false;
+  /** World/overview builds in progress; snapshot recording waits until there are none. */
+  private builds = 0;
+  private snapshotGeneration = 0;
+  private readonly warmPose = { alpha: 0, beta: 0, radius: 0, x: 0, y: 0, z: 0, ox: 0, oy: 0 };
   /** Lot being shown; null = everything. */
   private view: ViewRect | null = null;
+  /** Fallback walls (simulation meshes) when the house builder can't read the layout. */
   private walls: Mesh | null = null;
   private wallsLow: Mesh | null = null;
+  private roofs: Mesh[] = [];
+  private roofShown = false;
+  /** Shadow casters without the house walls, and the walls (they cast only with walls up). */
+  private baseCasters: Mesh[] = [];
+  private wallCasters: Mesh[] = [];
   private wallMode: WallMode = 'down';
+  /** Camera look bits for the cutaway (+x, -x, +z, -z). */
+  private cutLook = -1;
   private placed: PlacedObject[] = [];
-  private simGroups: SimGroup[] = [];
+  private characters!: Characters;
   private cursor!: Mesh;
-  private ring!: Mesh;
   private selectedSim: number | null = null;
   private cameraPlaced = false;
-  private vertexColorMaterial!: StandardMaterial;
+  /** Lot the camera was last turned towards (see `buildSims`). */
+  private framedView = '';
 
+  private style: StylePreset;
+  private options: LiveRenderOptions = { bloom: true, tiltShift: true, resolutionScale: 1, cameraSensitivity: 1 };
   private skyDome!: Sky;
   private readonly lighting = createLighting();
   private lastLightMinute = -1;
+  private lastMinute = 12 * 60;
   private readonly lotCentre = new Vector3();
+  /** `?debug`: expose the scene/renderer on `window` and log build timings. */
+  private readonly debug = new URLSearchParams(location.search).has('debug');
+  /** `?hour=21` freezes the lighting at that hour (for screenshots and look development). */
+  private readonly fixedHour: number | null;
+  private readonly roomLights: PointLight[] = [];
+  private roomLightAreas: number[] = [];
+  private readonly lampColor = new Color3();
+  private readonly glowColor = new Color3();
+
+  // Selection marker (sparkle star, outline, glow halo) and contact shadows (thin instances
+  // updated per frame).
+  private marker: Mesh[] = [];
+  private markerHalo!: Mesh;
+  private readonly markerMatrix = new Float32Array(16);
+  private readonly markerColor = new Float32Array(4);
+  private readonly markerOutlineColor = new Float32Array(4);
+  private readonly markerHaloMatrix = new Float32Array(16);
+  private readonly markerHaloColor = new Float32Array(4);
+  private markerPalette: number[][] = [];
+  private emotionMood: number[] = [];
+  private simShadow!: Mesh;
+  private readonly simShadowMatrices = new Float32Array(MAX_SIMS * 16);
+  private objectShadow!: Mesh;
+
+  // Build mode helpers.
+  private ghostRoot!: TransformNode;
+  private ghostKey = '';
+  private ghostMeshes: Mesh[] = [];
+  private readonly ghostColor = new Float32Array(4);
+  private ghostMaterial!: StandardMaterial;
+  private ghostValid = true;
+  private previewMeshes!: Record<EdgePreview['kind'], Mesh>;
+  private previewBuffers!: Record<EdgePreview['kind'], Float32Array>;
+  private previewValid = true;
+  private grid!: Mesh;
+  private gridOn = false;
 
   // Scratch objects for allocation-free updates.
   private readonly mRot = new Matrix();
-  private readonly mLocal = new Matrix();
   private readonly mPos = new Matrix();
-  private readonly mTmp = new Matrix();
   private readonly mOut = new Matrix();
-  private readonly mScale = new Matrix();
-  private readonly mA = new Matrix();
-  private readonly mB = new Matrix();
-  /** Per-Sim world matrices, computed once per frame and shared by body and hair groups. */
-  private readonly simMatrices = new Float32Array(MAX_SIMS * 16);
-  private readonly simHeads = new Float32Array(MAX_SIMS * 3);
-  private simHeights = new Float32Array(MAX_SIMS).fill(1);
   private simCount = 0;
-  private readonly simVisible = new Uint8Array(MAX_SIMS);
-  private readonly lieLocal = Matrix.RotationX(-Math.PI / 2).multiply(Matrix.Translation(0, 0.77, 0.83));
-  private readonly sitLocal = Matrix.Translation(0, 0.35, 0.08);
+  private readonly simInView = (x: number, z: number) => this.inView(x, z, SIM_VIEW_MARGIN);
   private readonly vTmp = new Vector3();
+  private readonly vScale = new Vector3();
+  private readonly qTmp = new Quaternion();
   private readonly vProj = new Vector3();
   private readonly viewport = new Viewport(0, 0, 1, 1);
+  /** Camera alpha, beta, radius, target x/y/z and screen offset x/y at the last frame. */
+  private readonly lastView = new Float64Array(8);
 
   constructor(
     private readonly deps: RendererDeps,
     private readonly quality: QualitySettings,
-  ) {}
+  ) {
+    this.style = stylePreset(quality.visualStyle);
+    this.options = { ...this.options, bloom: quality.bloom, tiltShift: quality.tiltShift };
+    const hour = Number(new URLSearchParams(location.search).get('hour'));
+    this.fixedHour = Number.isFinite(hour) && new URLSearchParams(location.search).has('hour') ? hour : null;
+  }
 
   async init(canvas: HTMLCanvasElement): Promise<void> {
     this.canvas = canvas;
@@ -169,122 +284,139 @@ export class BabylonRenderer implements Renderer {
     scene.skipPointerMovePicking = true;
     scene.constantlyUpdateMeshUnderPointer = false;
     this.instrumentation = new SceneInstrumentation(scene);
+    // `?debug`: expose the scene for inspection from the console / test harness.
+    if (this.debug) Object.assign(window, { __scene: scene, __renderer: this });
     // PBR materials and image-based lighting; the environment must exist before materials compile.
-    MaterialLibrary.for(scene).setAssets(this.deps.assets);
+    this.lib = MaterialLibrary.for(scene).setAssets(this.deps.assets);
+    // Frozen and thawed materials bind differently; a recording made while some were thawed
+    // (lighting changes) goes stale once they refreeze, so record again.
+    this.lib.onRefrozen = () => this.resetSnapshot();
+    this.house = new HouseBuilder(scene);
+    this.street = new Street(scene, this.deps.assets, this.house);
+    // Wind sway and tint variation for foliage materials (hooks them as the models load).
+    installNature(scene);
     await this.setupEnvironment();
-
-    this.vertexColorMaterial = new StandardMaterial('vertexColor', scene);
-    this.vertexColorMaterial.specularColor = Color3.Black();
-    this.vertexColorMaterial.freeze();
 
     this.setupCamera();
     this.setupLights();
-    this.skyDome = new Sky(scene, 700);
-    // Distance fog in the horizon colour makes the hills fade into the sky.
+    this.skyDome = new Sky(scene, 700, this.deps.assets.has('image.clouds', 'image') ? this.deps.assets.get('image.clouds', 'image')!.url : undefined);
+    this.skyDome.setLayerMask(LAYER_ALL);
+    // Distance fog in the horizon colour makes the hills fade into the sky (aerial haze).
     scene.fogMode = Scene.FOGMODE_EXP2;
-    scene.fogDensity = 0.0024;
     this.setupPostProcessing();
     this.setupHelpers();
+    await this.setupMarker();
+    this.characters = new Characters(scene, this.deps.assets, this.lib);
+    void this.characters.init();
+    this.applyStyle();
     window.addEventListener('resize', this.onResize);
   }
 
   async setWorld(world: WorldStructure, view: ViewRect | null): Promise<void> {
-    this.suspendSnapshot();
+    this.beginBuild();
+    this.worldBuilding = true;
+    try {
+      await this.buildWorld(world, view);
+    } finally {
+      this.worldBuilding = false;
+      this.endBuild();
+    }
+    // Built behind the overview (prepared in a menu): draw it hidden a few times so it shows without a hitch.
+    if (this.townMode) this.warmFrames = WARM_WORLD_FRAMES;
+  }
+
+  private async buildWorld(world: WorldStructure, view: ViewRect | null): Promise<void> {
+    const started = performance.now();
     for (const mesh of this.worldMeshes) mesh.dispose(false, false);
     this.worldMeshes = [];
+    this.roofs = [];
+    this.walls = this.wallsLow = null;
     this.placed = [];
-    this.simGroups = [];
     this.view = view;
 
     const { width, depth } = world;
-    this.lotCentre.set(width / 2, 0, depth / 2);
+    this.lotCentre.set(view ? view.x + view.w / 2 : width / 2, 0, view ? view.z + view.d / 2 : depth / 2);
     if (!this.cameraPlaced) {
-      this.camera.setTarget(this.lotCentre.clone());
+      // (Re-aims from the camera's current position; a parked camera computes it first.)
+      this.gameCamera.getViewMatrix(true);
+      this.gameCamera.setTarget(this.lotCentre.clone());
       this.cameraPlaced = true;
     }
 
-    // The landscape depends only on the town, not on which lot is viewed: build it once.
-    const natureKey = `${world.meta?.seed ?? 1}:${width}x${depth}`;
-    if (natureKey !== this.natureKey) {
-      for (const mesh of this.natureMeshes) mesh.dispose(false, false);
-      const nature = await new Landscape(world).build(this.scene, this.deps.assets, world);
-      this.natureMeshes = nature.meshes;
-      this.natureCasters = nature.casters;
-      this.natureKey = natureKey;
-      for (const mesh of this.natureMeshes) mesh.freezeWorldMatrix();
-    }
+    // The landscape depends only on the town, not on which lot is viewed (and may be the overview's).
+    const nature = await this.useNature('world', world);
+    // No grass through floors of rooms built (or furniture bought) since the lawn was scattered.
+    nature.landscape.refreshLawn(world);
+    this.natureCasters = nature.casters;
     this.templatesInUse.clear();
     this.buildStreets(world);
-    this.buildLot(world);
-    this.buildSilhouettes(world);
+    const houseCasters = this.buildLot(world);
+    const streetCasters = await this.street.build(world, this.view);
     await this.buildObjects(world);
     await this.buildSims(world);
     this.retireTemplates(new Set(this.templatesInUse));
     const templates = await this.templateMeshes();
 
-    const flat = new Set(['floors', 'streets', 'paths']);
-    const casters = [...this.worldMeshes.filter((m) => !flat.has(m.name)), ...templates, ...this.natureCasters];
-    this.shadows.getShadowMap()!.renderList = casters;
+    const notCasting = new Set(['floors', 'floorsTiled', 'floorsCarpet', 'streets', 'paths', 'contactShadows', 'objectShadows', 'windows', 'windowsInner', 'plinth', 'wallsTiled']);
+    this.baseCasters = [
+      ...new Set([
+        ...this.worldMeshes.filter((m) => !notCasting.has(m.name) && !m.name.startsWith('silhouette') && !houseCasters.includes(m)),
+        ...templates,
+        // Sims' small details (eyes, brows) don't cast sun shadows.
+        ...this.characters.casters(),
+        ...this.natureCasters,
+        ...streetCasters,
+      ]),
+    ];
+    this.wallCasters = houseCasters;
     for (const mesh of [...this.worldMeshes, ...templates]) mesh.freezeWorldMatrix();
+    this.applyWallMode();
     this.lastLightMinute = -1;
-    this.finishSetup();
+    if (this.debug) console.info(`[render] setWorld ${(performance.now() - started).toFixed(1)} ms`);
   }
 
   update(frame: FrameState): void {
-    const { prev, curr, alpha, layout, now } = frame;
+    const { curr, layout, now } = frame;
     // Snapshot rendering bakes light uniforms and the clear colour into the recording, so
     // lighting changes force a re-record; throttle them to keep most frames replayed.
-    const minute = curr[layout.header.minute];
+    const minute = this.fixedHour !== null ? this.fixedHour * 60 : curr[layout.header.minute];
+    this.lastMinute = minute;
+    // Behind the overview the game world waits (nothing of it is drawn).
+    if (this.townMode) return;
     const snapshot = this.webgpu?.snapshotRendering ?? false;
     if (Math.abs(minute - this.lastLightMinute) >= (snapshot ? LIGHT_STEP_SNAPSHOT : LIGHT_STEP)) {
       this.applyLighting(minute);
       this.lastLightMinute = minute;
-      if (snapshot) this.webgpu!.snapshotRenderingReset();
+      this.resetSnapshot();
+    }
+    this.updateCutaway();
+    this.followCamera();
+    this.skyDome.drift(this.engine.getDeltaTime());
+    if (this.roofs.length && this.roofVisible() !== this.roofShown) {
+      this.roofShown = !this.roofShown;
+      for (const roof of this.roofs) roof.setEnabled(this.roofShown);
+      this.resetSnapshot();
     }
 
     const count = Math.min(curr[layout.header.simCount], MAX_SIMS);
-    const H = layout.headerLen;
-    const S = layout.simStride;
-    const k = layout.sim;
     this.simCount = count;
-    for (let i = 0; i < count; i++) {
-      const o = H + i * S;
-      const cx = curr[o + k.x];
-      const cz = curr[o + k.z];
-      let x = cx;
-      let z = cz;
-      let yaw = curr[o + k.yaw];
-      if (Math.abs(cx - prev[o + k.x]) + Math.abs(cz - prev[o + k.z]) < TELEPORT_DISTANCE) {
-        x = lerp(prev[o + k.x], cx, alpha);
-        z = lerp(prev[o + k.z], cz, alpha);
-        yaw = lerpAngle(prev[o + k.yaw], yaw, alpha);
-      }
-      const pose = curr[o + k.pose];
-      const height = this.simHeights[i];
-      // Sims at work or on other lots aren't drawn (a zero matrix collapses the instance).
-      this.simVisible[i] = curr[o + k.away] === 0 && this.inView(x, z, SIM_VIEW_MARGIN) ? 1 : 0;
-      if (!this.simVisible[i]) {
-        this.simMatrices.fill(0, i * 16, i * 16 + 16);
-        if (i === this.selectedSim) this.ring.position.y = HIDDEN_Y;
-        continue;
-      }
-      this.writeSimMatrix(i, x, z, yaw, pose, curr[o + k.moving] > 0, curr[o + k.anim], now, height, this.simMatrices, i * 16);
-      this.simHeads[i * 3] = x;
-      this.simHeads[i * 3 + 1] = (pose === Pose.Lie ? 1.1 : pose === Pose.Sit ? 1.55 : 1.95) * height;
-      this.simHeads[i * 3 + 2] = z;
-      if (i === this.selectedSim) this.ring.position.set(x, 0.04, z);
+    this.markerMatrix.fill(0);
+    this.markerHaloMatrix.fill(0);
+    // Sims: pose every visible Sim into the shared pose texture (characters.ts).
+    this.characters.update(frame, this.simInView, this.simShadowMatrices);
+    const sel = this.selectedSim;
+    if (sel !== null && sel < count && this.characters.visible[sel]) {
+      const h = this.characters.heads;
+      const emotion = curr[layout.headerLen + sel * layout.simStride + layout.sim.emotion];
+      this.writeMarker(h[sel * 3], h[sel * 3 + 1], h[sel * 3 + 2], emotion, now);
     }
-    for (const group of this.simGroups) {
-      const m = group.matrices;
-      for (let j = 0; j < group.slots.length; j++) {
-        const src = group.slots[j] * 16;
-        for (let e = 0; e < 16; e++) m[j * 16 + e] = this.simMatrices[src + e];
-      }
-      for (const mesh of group.meshes) mesh.thinInstanceBufferUpdated('matrix');
+    this.simShadow.thinInstanceBufferUpdated('matrix');
+    for (const mesh of this.marker) {
+      mesh.thinInstanceBufferUpdated('matrix');
+      mesh.thinInstanceBufferUpdated('color');
     }
-    if (this.selectedSim === null || this.selectedSim >= count) this.ring.position.y = HIDDEN_Y;
-
-    if (this.post?.depthOfFieldEnabled) this.post.depthOfField.focusDistance = this.camera.radius * 1000;
+    this.markerHalo.thinInstanceBufferUpdated('matrix');
+    this.markerHalo.thinInstanceBufferUpdated('color');
   }
 
   pick(x: number, y: number): PickResult {
@@ -312,7 +444,9 @@ export class BabylonRenderer implements Renderer {
     this.viewport.width = this.canvas.clientWidth;
     this.viewport.height = this.canvas.clientHeight;
     this.vTmp.set(x, y, z);
-    Vector3.ProjectToRef(this.vTmp, Matrix.IdentityReadOnly, this.scene.getTransformMatrix(), this.viewport, this.vProj);
+    // The overview moves the camera just before drawing: project with its current matrices.
+    const transform = this.townMode ? this.camera.getTransformationMatrix() : this.scene.getTransformMatrix();
+    Vector3.ProjectToRef(this.vTmp, Matrix.IdentityReadOnly, transform, this.viewport, this.vProj);
     if (this.vProj.z < 0 || this.vProj.z > 1) return false;
     out.x = this.vProj.x;
     out.y = this.vProj.y;
@@ -320,18 +454,15 @@ export class BabylonRenderer implements Renderer {
   }
 
   simHead(index: number, out: { x: number; y: number; z: number }): boolean {
-    if (index >= this.simCount || !this.simVisible[index]) return false;
-    out.x = this.simHeads[index * 3];
-    out.y = this.simHeads[index * 3 + 1];
-    out.z = this.simHeads[index * 3 + 2];
-    return true;
+    return index < this.simCount && this.characters.head(index, out);
   }
 
   focus(x: number, z: number): void {
     // Keep the viewing angle; move the camera with its target (setTarget's default
     // would keep the camera's position and swing the angles instead).
-    this.camera.setTarget(new Vector3(x, 0, z), false, false, true);
-    this.camera.radius = Math.min(this.camera.radius, 32);
+    const cam = this.gameCamera;
+    cam.setTarget(new Vector3(x, 0, z), false, false, true);
+    cam.radius = Math.min(cam.radius, 32);
     this.cameraPlaced = true;
   }
 
@@ -342,27 +473,118 @@ export class BabylonRenderer implements Renderer {
 
   setSelectedSim(id: number | null): void {
     this.selectedSim = id;
+    this.characters?.select(id);
   }
 
   setWallMode(mode: WallMode): void {
     this.wallMode = mode;
-    this.walls?.setEnabled(mode === 'up');
-    this.wallsLow?.setEnabled(mode === 'down');
-    if (this.webgpu?.snapshotRendering) this.webgpu.snapshotRenderingReset();
+    this.applyWallMode();
+    this.resetSnapshot();
+  }
+
+  setVisualStyle(style: VisualStyle): void {
+    if (style === this.style.id) return;
+    this.style = stylePreset(style);
+    this.applyStyle();
   }
 
   configure(options: LiveRenderOptions): void {
-    if (this.post) {
-      this.post.bloomEnabled = options.bloom;
-      this.post.depthOfFieldEnabled = options.tiltShift;
-    }
-    const scale = Math.min(1, Math.max(0.5, options.resolutionScale));
-    this.engine.setHardwareScalingLevel(1 / (window.devicePixelRatio * scale));
+    this.options = { ...this.options, ...options };
+    if (options.visualStyle && options.visualStyle !== this.style.id) this.style = stylePreset(options.visualStyle);
     const s = Math.max(0.25, options.cameraSensitivity);
     this.camera.angularSensibilityX = this.camera.angularSensibilityY = 1000 / s;
     this.camera.panningSensibility = 90 / s;
     this.camera.wheelDeltaPercentage = 0.012 * s;
-    if (this.webgpu?.snapshotRendering) this.webgpu.snapshotRenderingReset();
+    this.applyStyle();
+  }
+
+  // --- build mode ----------------------------------------------------------------------
+
+  setPlacementGhost(ghost: PlacementGhost | null): void {
+    if (!ghost) {
+      if (this.ghostRoot.position.y !== HIDDEN_Y) {
+        this.ghostRoot.position.y = HIDDEN_Y;
+        this.ghostRoot.computeWorldMatrix(true);
+      }
+      return;
+    }
+    if (ghost.model !== this.ghostKey) this.loadGhost(ghost.model);
+    // Rotate about the footprint centre, like placed objects.
+    this.ghostRoot.position.set(ghost.x + ghost.w / 2, 0.005, ghost.z + ghost.d / 2);
+    this.ghostRoot.rotation.y = (ghost.rot * Math.PI) / 2;
+    if (ghost.valid !== this.ghostValid) {
+      this.ghostValid = ghost.valid;
+      this.setGhostTint();
+    }
+  }
+
+  setEdgePreview(edges: readonly EdgePreview[], valid: boolean): void {
+    const counts = { wall: 0, door: 0, window: 0, open: 0 };
+    for (const e of edges) {
+      let buf = this.previewBuffers[e.kind];
+      const n = counts[e.kind]++;
+      if ((n + 1) * 16 > buf.length) {
+        const grown = new Float32Array(buf.length * 2);
+        grown.set(buf);
+        buf = this.previewBuffers[e.kind] = grown;
+        this.previewMeshes[e.kind].thinInstanceSetBuffer('matrix', buf, 16, false);
+      }
+      // Unit slab (1 x 1 x 1 centred box) scaled to the edge: walls full height, doors a
+      // door-sized slab, windows a glassy pane between sill and head, removals a red sleeve
+      // just around the existing wall.
+      const h = e.kind === 'door' ? 2.1 : e.kind === 'window' ? 1.2 : e.kind === 'open' ? WALL_HEIGHT + 0.06 : WALL_HEIGHT;
+      const y0 = e.kind === 'window' ? 0.9 : 0;
+      const t = e.kind === 'open' ? 0.22 : e.kind === 'window' ? 0.2 : 0.16;
+      const sx = e.axis === 'h' ? 1 : t;
+      const sz = e.axis === 'h' ? t : 1;
+      const cx = e.axis === 'h' ? e.x + 0.5 : e.x;
+      const cz = e.axis === 'h' ? e.z : e.z + 0.5;
+      const o = n * 16;
+      buf.fill(0, o, o + 16);
+      buf[o] = sx;
+      buf[o + 5] = h;
+      buf[o + 10] = sz;
+      buf[o + 12] = cx;
+      buf[o + 13] = y0 + h / 2;
+      buf[o + 14] = cz;
+      buf[o + 15] = 1;
+    }
+    for (const kind of ['wall', 'door', 'window', 'open'] as const) {
+      const mesh = this.previewMeshes[kind];
+      mesh.thinInstanceCount = counts[kind];
+      mesh.thinInstanceBufferUpdated('matrix');
+      // Empty previews are disabled so they cost no draw call.
+      if (mesh.isEnabled(false) !== counts[kind] > 0) {
+        mesh.setEnabled(counts[kind] > 0);
+        this.resetSnapshot();
+      }
+    }
+    if (valid !== this.previewValid) {
+      this.previewValid = valid;
+      const tint = valid ? null : Color3.FromHexString('#E5484D');
+      const colors = { wall: '#9FC4FF', door: '#B07A4A', window: '#7FE0F2' };
+      for (const kind of ['wall', 'door', 'window'] as const) {
+        const mat = this.previewMeshes[kind].material as StandardMaterial;
+        mat.emissiveColor.copyFrom(tint ?? Color3.FromHexString(colors[kind]));
+      }
+      this.resetSnapshot();
+    }
+  }
+
+  setBuildGrid(rect: ViewRect | null): void {
+    const on = rect !== null;
+    if (rect) {
+      this.grid.scaling.set(rect.w, 1, rect.d);
+      this.grid.position.set(rect.x + rect.w / 2, 0.03, rect.z + rect.d / 2);
+      const tex = (this.grid.material as StandardMaterial).diffuseTexture as DynamicTexture;
+      tex.uScale = rect.w;
+      tex.vScale = rect.d;
+    }
+    if (on !== this.gridOn) {
+      this.gridOn = on;
+      this.grid.setEnabled(on);
+      this.resetSnapshot();
+    }
   }
 
   async captureThumbnail(width: number, height: number): Promise<string | null> {
@@ -372,6 +594,20 @@ export class BabylonRenderer implements Renderer {
       console.warn('[render] thumbnail capture failed', err);
       return null;
     }
+  }
+
+  cameraPose(): CameraPose {
+    const cam = this.gameCamera;
+    return { alpha: cam.alpha, beta: cam.beta, radius: cam.radius, target: [cam.target.x, cam.target.y, cam.target.z] };
+  }
+
+  setCameraPose(pose: CameraPose): void {
+    const cam = this.gameCamera;
+    cam.setTarget(new Vector3(...pose.target), false, false, true);
+    cam.alpha = pose.alpha;
+    cam.beta = pose.beta;
+    cam.radius = pose.radius;
+    this.cameraPlaced = true;
   }
 
   stats(): RenderStats {
@@ -405,28 +641,289 @@ export class BabylonRenderer implements Renderer {
   }
 
   clear(): void {
-    this.suspendSnapshot();
+    this.pauseSnapshot();
     for (const mesh of this.worldMeshes) mesh.dispose(false, false);
     this.worldMeshes = [];
+    this.roofs = [];
+    this.baseCasters = [];
+    this.wallCasters = [];
+    this.walls = this.wallsLow = null;
     this.retireTemplates(new Set());
     this.placed = [];
-    this.simGroups = [];
+    this.characters?.clear();
     this.simCount = 0;
     this.selectedSim = null;
     this.onFrame = null;
-    this.ring.position.y = HIDDEN_Y;
     this.cursor.position.y = HIDDEN_Y;
+    this.markerMatrix.fill(0);
+    this.markerHaloMatrix.fill(0);
+    this.simShadowMatrices.fill(0);
+    this.setPlacementGhost(null);
+    this.setEdgePreview([], true);
+    this.setBuildGrid(null);
     this.cameraPlaced = false;
+    this.framedView = '';
+    this.warmFrames = 0;
   }
 
   dispose(): void {
     window.removeEventListener('resize', this.onResize);
+    this.overview?.dispose();
     this.engine.dispose();
   }
 
+  // --- town overview (menus) ---------------------------------------------------------
+
+  get townShown(): boolean {
+    return this.townMode;
+  }
+
+  showTown(world: WorldStructure, minute: number): Promise<void> {
+    const ticket = ++this.townTicket;
+    const run = this.townQueue.then(async () => {
+      // Requests queue up while one builds; only the newest is built.
+      if (ticket !== this.townTicket) return;
+      const overview = (this.overview ??= new TownOverview(this.scene, this.deps.assets, this.deps.content, this.house, this.lib, this.camera));
+      this.beginBuild();
+      try {
+        // Same seed and size can still be a new layout ("New neighbours"): re-fit the lawn to its houses.
+        (await this.useNature('town', world)).landscape.refreshLawn(world);
+        await overview.build(world);
+        if (this.townHighlight) overview.setHighlight(this.townHighlight);
+        // Interior lamps of the game's house never reach the overview.
+        const own = new Set<Mesh>(overview.meshes);
+        for (const light of this.roomLights) light.excludedMeshes = [...light.excludedMeshes.filter((m) => !m.isDisposed() && !own.has(m as Mesh)), ...own];
+      } finally {
+        this.endBuild();
+      }
+      if (ticket !== this.townTicket) return;
+      if (!this.townMode) {
+        // Entering from the game (or at start-up): the shot's hour at once.
+        this.townMinute = this.townMinuteGoal = this.townShot?.minute ?? minute;
+        this.enterTown();
+      }
+      else {
+        this.updateShadowList();
+        this.resetSnapshot();
+      }
+    });
+    this.townQueue = run.catch(() => {});
+    return run;
+  }
+
+  async hideTown(glide = 0): Promise<void> {
+    // Let a pending overview build finish first, so it can't switch back to the overview later.
+    this.townTicket++;
+    await this.townQueue;
+    if (!this.townMode) return;
+    const rig = this.overview?.rig;
+    if (glide > 0 && rig && this.active) {
+      const p = this.parked;
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, glide * 1000 + 600);
+        rig.glideTo({ alpha: p.alpha, beta: p.beta, radius: p.radius, x: p.target.x, z: p.target.z }, glide, () => {
+          clearTimeout(timer);
+          resolve();
+        });
+      });
+    }
+    if (this.townMode) this.leaveTown();
+  }
+
+  setTownShot(shot: TownShot, cut = false): void {
+    this.townShot = shot;
+    this.overview?.rig.setShot(shot, cut || !this.townMode);
+    if (shot.minute !== undefined) {
+      this.townMinuteGoal = shot.minute;
+      if (cut || !this.townMode) this.townMinute = shot.minute;
+    }
+  }
+
+  nudgeTown(dAlpha: number, zoom: number): void {
+    if (this.townMode) this.overview?.rig.nudge(dAlpha, zoom);
+  }
+
+  setLotHighlight(highlight: LotHighlight): void {
+    this.townHighlight = highlight;
+    this.overview?.setHighlight(highlight);
+  }
+
+  onTownFrame(fn: (() => void) | null): void {
+    this.townListener = fn;
+  }
+
+  /** The camera the game world uses: the real one, or the parked pose while the overview drives it. */
+  private get gameCamera(): ArcRotateCamera {
+    return this.townMode ? this.parked : this.camera;
+  }
+
+  private enterTown(): void {
+    const cam = this.camera;
+    this.townMode = true;
+    copyPose(cam, this.parked);
+    cam.detachControl();
+    cam.inertialAlphaOffset = cam.inertialBetaOffset = cam.inertialRadiusOffset = 0;
+    cam.inertialPanningX = cam.inertialPanningY = 0;
+    cam.lowerRadiusLimit = 2;
+    cam.upperRadiusLimit = 1200;
+    cam.lowerBetaLimit = 0.05;
+    cam.upperBetaLimit = 1.45;
+    cam.layerMask = LAYER_TOWN;
+    const rig = this.overview!.rig;
+    rig.syncFromCamera();
+    if (this.townShot) rig.setShot(this.townShot, true);
+    this.cursor.position.y = HIDDEN_Y;
+    this.lastLightMinute = -1;
+    this.updateShadowList();
+    this.pauseSnapshot();
+  }
+
+  private leaveTown(): void {
+    const cam = this.camera;
+    this.townMode = false;
+    this.warmFrames = 0;
+    cam.layerMask = LAYER_WORLD;
+    copyPose(this.parked, cam);
+    cam.targetScreenOffset.set(0, 0);
+    [cam.lowerRadiusLimit, cam.upperRadiusLimit] = RADIUS_LIMITS;
+    cam.lowerBetaLimit = 0.3;
+    cam.upperBetaLimit = 1.35;
+    cam.inertialAlphaOffset = cam.inertialBetaOffset = cam.inertialRadiusOffset = 0;
+    cam.attachControl(true);
+    this.updateShadowList();
+    this.scene.fogDensity = this.style.fog;
+    this.applyLighting(this.lastMinute);
+    this.lastLightMinute = this.lastMinute;
+    this.cutLook = -1;
+    this.updateCutaway();
+    // The game draws live (see `scheduleSnapshot`).
+    this.snapshotGeneration++;
+    if (this.webgpu) this.webgpu.snapshotRendering = false;
+  }
+
+  /** Overview per frame: camera rig, highlights, lighting at the menu's hour. Allocation-free. */
+  private townFrame(dt: number): void {
+    const overview = this.overview!;
+    const w = this.canvas.clientWidth || 1;
+    const h = this.canvas.clientHeight || 1;
+    overview.rig.setViewport(w, h);
+    overview.frame(Math.min(0.1, dt / 1000), w / h);
+    // The light eases between the screens' hours (about two seconds).
+    const goal = this.townMinuteGoal;
+    if (this.townMinute !== goal) {
+      const step = Math.max(0.5, Math.abs(goal - this.townMinute) * Math.min(1, dt / 600));
+      this.townMinute = Math.abs(goal - this.townMinute) <= step ? goal : this.townMinute + Math.sign(goal - this.townMinute) * step;
+    }
+    if (this.lastLightMinute !== this.townMinute) {
+      this.applyLighting(this.townMinute);
+      this.lastLightMinute = this.townMinute;
+      this.resetSnapshot();
+    }
+    // Haze is tuned for the game's close camera; from high above it would wash the town out.
+    const fog = this.style.fog * Math.min(1, Math.max(0.3, 55 / this.camera.radius));
+    if (Math.abs(fog - this.scene.fogDensity) > this.style.fog * 0.02) this.scene.fogDensity = fog;
+    this.followCamera();
+    this.skyDome.drift(dt);
+    this.townListener?.();
+  }
+
+  /**
+   * Draws the game world once more in this frame, from its own (parked) view, before the overview
+   * is drawn over it: compiles its shaders and pipelines while it is still hidden.
+   */
+  private warmWorld(): void {
+    this.warmFrames--;
+    const cam = this.camera;
+    const p = this.parked;
+    const w = this.warmPose;
+    [w.alpha, w.beta, w.radius, w.x, w.y, w.z, w.ox, w.oy] = [cam.alpha, cam.beta, cam.radius, cam.target.x, cam.target.y, cam.target.z, cam.targetScreenOffset.x, cam.targetScreenOffset.y];
+    const webgpu = this.webgpu;
+    const snapshot = webgpu?.snapshotRendering ?? false;
+    if (webgpu && snapshot) webgpu.snapshotRendering = false;
+    cam.layerMask = LAYER_WORLD;
+    copyPose(p, cam);
+    cam.targetScreenOffset.set(0, 0);
+    const map = this.shadows.getShadowMap()!;
+    map.renderList = this.wallMode === 'up' ? [...this.baseCasters, ...this.wallCasters] : this.baseCasters;
+    this.scene.render();
+    cam.layerMask = LAYER_TOWN;
+    cam.alpha = w.alpha;
+    cam.beta = w.beta;
+    cam.radius = w.radius;
+    cam.target.copyFromFloats(w.x, w.y, w.z);
+    cam.targetScreenOffset.copyFromFloats(w.ox, w.oy);
+    this.updateShadowList();
+    if (webgpu && snapshot) webgpu.snapshotRendering = true;
+  }
+
+  /** Shadow casters of what is on screen: the overview, or the game world (its walls only with walls up). */
+  private updateShadowList(): void {
+    const map = this.shadows.getShadowMap()!;
+    if (this.townMode) map.renderList = [...(this.overview?.casters ?? []), ...(this.natureIn.town?.casters ?? [])];
+    else map.renderList = this.wallMode === 'up' ? [...this.baseCasters, ...this.wallCasters] : this.baseCasters;
+  }
+
+  /**
+   * The landscape of `world` for a layer: shared with the other layer when it is the same town
+   * (seed and size), otherwise built; one no layer shows any more is disposed.
+   */
+  private async useNature(layer: 'world' | 'town', world: WorldStructure): Promise<NatureSet> {
+    const key = `${world.meta?.seed ?? 1}:${world.width}x${world.depth}`;
+    const ticket = ++this.natureTicket[layer];
+    let set = this.natures.get(key);
+    if (!set) {
+      const landscape = new Landscape(world);
+      const created: NatureSet = { landscape, meshes: [], casters: [], users: new Set(), pending: 0, ready: Promise.resolve() };
+      created.ready = landscape.build(this.scene, this.deps.assets, world).then((nature) => {
+        created.meshes = nature.meshes;
+        created.casters = nature.casters;
+        for (const mesh of nature.meshes) {
+          mesh.freezeWorldMatrix();
+          mesh.layerMask = 0;
+        }
+      });
+      this.natures.set(key, (set = created));
+    }
+    set.pending++;
+    try {
+      await set.ready;
+    } finally {
+      set.pending--;
+    }
+    if (ticket === this.natureTicket[layer]) {
+      const old = this.natureIn[layer];
+      if (old !== set) old?.users.delete(layer);
+      set.users.add(layer);
+      this.natureIn[layer] = set;
+    }
+    // Drop landscapes nobody shows; draw each on the layers that use it.
+    const all: Mesh[] = [];
+    for (const [k, n] of this.natures) {
+      if (!n.users.size && !n.pending) {
+        for (const mesh of n.meshes) mesh.dispose(false, false);
+        this.natures.delete(k);
+        continue;
+      }
+      const mask = (n.users.has('world') ? LAYER_WORLD : 0) | (n.users.has('town') ? LAYER_TOWN : 0);
+      for (const mesh of n.meshes) mesh.layerMask = mask;
+      all.push(...n.meshes);
+    }
+    // Interior lamps never light the landscape (keeps its shaders simple).
+    const landscape = new Set(all);
+    for (const light of this.roomLights) {
+      light.excludedMeshes = [...new Set([...light.excludedMeshes.filter((m) => !m.isDisposed()), ...landscape, this.skyDome.mesh])];
+    }
+    return set;
+  }
+
   private readonly renderFrame = () => {
-    if (this.idleOrbit) this.camera.alpha += this.engine.getDeltaTime() * 0.00003;
+    const dt = this.engine.getDeltaTime();
+    if (this.idleOrbit && !this.townMode) this.camera.alpha += dt * 0.00003;
     this.onFrame?.(performance.now());
+    if (this.townMode && this.overview) {
+      this.townFrame(dt);
+      if (this.warmFrames > 0 && !this.worldBuilding) this.warmWorld();
+    }
     this.scene.render();
     for (let i = this.frameWaiters.length - 1; i >= 0; i--) {
       const w = this.frameWaiters[i];
@@ -440,7 +937,7 @@ export class BabylonRenderer implements Renderer {
   // --- setup -------------------------------------------------------------------------
 
   private setupCamera(): void {
-    const cam = (this.camera = new ArcRotateCamera('camera', -Math.PI * 0.62, 0.78, 24, Vector3.Zero(), this.scene));
+    const cam = (this.camera = new ArcRotateCamera('camera', -Math.PI * 0.62, 0.86, 24, Vector3.Zero(), this.scene));
     cam.lowerRadiusLimit = 6;
     cam.upperRadiusLimit = 95;
     cam.lowerBetaLimit = 0.3;
@@ -452,7 +949,12 @@ export class BabylonRenderer implements Renderer {
     cam.panningInertia = 0.82;
     cam.minZ = 0.3;
     cam.maxZ = 1600;
+    // A slightly longer lens than the default flattens perspective a little: the dollhouse look.
+    cam.fov = 0.7;
     cam.attachControl(true);
+    // Holds the game view while the town overview drives the camera (never drawn).
+    this.parked = new ArcRotateCamera('parkedCamera', cam.alpha, cam.beta, cam.radius, Vector3.Zero(), this.scene);
+    this.parked.fov = cam.fov;
   }
 
   private setupLights(): void {
@@ -470,6 +972,19 @@ export class BabylonRenderer implements Renderer {
     shadows.normalBias = 0.02;
     // Physically, shadows block all direct sunlight; the environment fills them in.
     shadows.setDarkness(0);
+    // Note: with WebGPU snapshot rendering Babylon renders every render target each frame (to
+    // keep the recorded passes aligned), so a render-once shadow map would not save anything.
+
+    // Warm interior lamps for the largest rooms; always enabled (so shaders never recompile)
+    // and dimmed to zero by day.
+    for (let i = 0; i < ROOM_LIGHTS; i++) {
+      const light = new PointLight(`room${i}`, new Vector3(0, HIDDEN_Y, 0), this.scene);
+      light.falloffType = Light.FALLOFF_GLTF;
+      light.range = 7;
+      light.intensity = 0;
+      light.specular = new Color3(0.4, 0.35, 0.3);
+      this.roomLights.push(light);
+    }
   }
 
   private setupPostProcessing(): void {
@@ -493,27 +1008,16 @@ export class BabylonRenderer implements Renderer {
     post.imageProcessingEnabled = true;
     const ip = post.imageProcessing;
     ip.toneMappingEnabled = true;
-    // Filmic (ACES) tonemapping: natural highlight roll-off for physically based lighting.
-    ip.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
-    ip.contrast = 1.08;
     ip.vignetteEnabled = true;
-    ip.vignetteWeight = 0.9;
     ip.vignetteStretch = 0.5;
     ip.vignetteColor = new Color4(0.02, 0.02, 0.04, 0);
-
-    post.bloomEnabled = q.bloom;
-    post.bloomThreshold = 1.0;
-    post.bloomWeight = 0.12;
-    post.bloomKernel = 48;
+    ip.colorCurvesEnabled = true;
+    ip.colorCurves = new ColorCurves();
     post.bloomScale = 0.5;
-
-    post.depthOfFieldEnabled = q.tiltShift;
-    if (q.tiltShift) {
-      post.depthOfFieldBlurLevel = DepthOfFieldEffectBlurLevel.Low;
-      post.depthOfField.fStop = 2.8;
-      post.depthOfField.focalLength = 50;
-      post.depthOfField.lensSize = 50;
-    }
+    // Miniature focus as a screen-space tilt-shift (no depth pre-pass, unlike depth of field).
+    post.depthOfFieldEnabled = false;
+    this.tiltShift = new TiltShift(this.camera, this.engine, this.webgpu !== null);
+    this.nightGrade = new NightGrade(this.camera, this.engine, this.webgpu !== null);
   }
 
   private setupHelpers(): void {
@@ -525,12 +1029,227 @@ export class BabylonRenderer implements Renderer {
     this.cursor.material = cursorMat;
     this.cursor.position.y = HIDDEN_Y;
 
-    const ringMat = new StandardMaterial('selection', this.scene);
-    ringMat.disableLighting = true;
-    ringMat.emissiveColor = ACCENT;
-    this.ring = MeshBuilder.CreateTorus('selection', { diameter: 0.75, thickness: 0.06, tessellation: 40 }, this.scene);
-    this.ring.material = ringMat;
-    this.ring.position.y = HIDDEN_Y;
+    // Soft round contact shadows (Sims: per frame; objects: per world) from one radial texture.
+    const blob = new DynamicTexture('blob', 64, this.scene, true);
+    const ctx = blob.getContext();
+    const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(0,0,0,0.55)');
+    g.addColorStop(0.55, 'rgba(0,0,0,0.3)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+    blob.update();
+    blob.hasAlpha = true;
+    const blobMat = new StandardMaterial('blobShadow', this.scene);
+    blobMat.disableLighting = true;
+    blobMat.diffuseColor = Color3.Black();
+    blobMat.emissiveColor = Color3.Black();
+    blobMat.specularColor = Color3.Black();
+    blobMat.opacityTexture = blob;
+    blobMat.disableDepthWrite = true;
+    blobMat.zOffset = -3;
+    const makeBlob = (name: string) => {
+      const mesh = MeshBuilder.CreateGround(name, { width: 1, height: 1 }, this.scene);
+      mesh.material = blobMat;
+      mesh.isPickable = false;
+      return mesh;
+    };
+    this.simShadow = makeBlob('simShadows');
+    this.simShadow.thinInstanceSetBuffer('matrix', this.simShadowMatrices, 16, false);
+    this.simShadow.alwaysSelectAsActiveMesh = true;
+    this.objectShadow = makeBlob('objectShadowTemplate');
+    this.objectShadow.thinInstanceSetBuffer('matrix', new Float32Array(16), 16, true);
+    this.objectShadow.thinInstanceCount = 0;
+    this.objectShadow.setEnabled(false);
+
+    // Build mode: placement ghost, wall-tool previews and the tile grid.
+    this.ghostRoot = new TransformNode('ghost', this.scene);
+    this.ghostRoot.position.y = HIDDEN_Y;
+    const ghostMat = (this.ghostMaterial = new StandardMaterial('ghost', this.scene));
+    ghostMat.alpha = 0.5;
+    ghostMat.specularColor = Color3.Black();
+    ghostMat.emissiveColor = new Color3(0.25, 0.25, 0.25);
+    ghostMat.backFaceCulling = false;
+
+    const preview = (kind: EdgePreview['kind'], color: string, alpha: number) => {
+      const mat = new StandardMaterial(`preview-${kind}`, this.scene);
+      mat.disableLighting = true;
+      mat.emissiveColor = Color3.FromHexString(color);
+      mat.alpha = alpha;
+      mat.backFaceCulling = false;
+      const mesh = MeshBuilder.CreateBox(`preview-${kind}`, { size: 1 }, this.scene);
+      mesh.material = mat;
+      mesh.isPickable = false;
+      mesh.alwaysSelectAsActiveMesh = true;
+      const buffer = new Float32Array(PREVIEW_CAPACITY * 16);
+      mesh.thinInstanceSetBuffer('matrix', buffer, 16, false);
+      mesh.thinInstanceCount = 0;
+      mesh.setEnabled(false);
+      return [mesh, buffer] as const;
+    };
+    const [wall, wallBuf] = preview('wall', '#9FC4FF', 0.45);
+    const [door, doorBuf] = preview('door', '#B07A4A', 0.6);
+    const [pane, paneBuf] = preview('window', '#7FE0F2', 0.55);
+    const [open, openBuf] = preview('open', '#E5484D', 0.5);
+    this.previewMeshes = { wall, door, window: pane, open };
+    this.previewBuffers = { wall: wallBuf, door: doorBuf, window: paneBuf, open: openBuf };
+
+    // Tile grid: white lines on a transparent texture, repeated once per tile.
+    const gridTex = new DynamicTexture('grid', 128, this.scene, true);
+    const gctx = gridTex.getContext();
+    gctx.clearRect(0, 0, 128, 128);
+    gctx.fillStyle = 'rgba(255,255,255,1)';
+    gctx.fillRect(0, 0, 128, 3);
+    gctx.fillRect(0, 0, 3, 128);
+    gridTex.update();
+    gridTex.hasAlpha = true;
+    gridTex.wrapU = gridTex.wrapV = DynamicTexture.WRAP_ADDRESSMODE;
+    const gridMat = new StandardMaterial('grid', this.scene);
+    gridMat.disableLighting = true;
+    gridMat.diffuseTexture = gridTex;
+    gridMat.useAlphaFromDiffuseTexture = true;
+    gridMat.emissiveColor = new Color3(0.9, 0.95, 1);
+    gridMat.alpha = 0.45;
+    gridMat.disableDepthWrite = true;
+    gridMat.zOffset = -4;
+    this.grid = MeshBuilder.CreateGround('buildGrid', { width: 1, height: 1 }, this.scene);
+    this.grid.material = gridMat;
+    this.grid.isPickable = false;
+    this.grid.setEnabled(false);
+  }
+
+  /**
+   * The selection marker over the selected Sim (`model.marker`): a small soft four-point
+   * sparkle star, unlit, with a thin deeper-toned outline (so it reads on light floors and
+   * bright sky) and a faint additive glow disc behind it. All face the camera.
+   */
+  private async setupMarker(): Promise<void> {
+    const template = await buildModel(this.scene, 'model.marker', this.deps.assets.get('model.marker', 'model'), [1, 1]);
+    const mat = new PBRMaterial('marker', this.scene);
+    mat.unlit = true;
+    mat.albedoColor = Color3.White();
+    // Outline: the star's back faces pushed out along their normals (inverted hull).
+    const outlineMat = new PBRMaterial('markerOutline', this.scene);
+    outlineMat.unlit = true;
+    outlineMat.albedoColor = Color3.White();
+    outlineMat.cullBackFaces = false;
+    const meshes: Mesh[] = [];
+    for (const mesh of template.meshes) {
+      const positions = mesh.getVerticesData(VertexBuffer.PositionKind)!;
+      const normals = mesh.getVerticesData(VertexBuffer.NormalKind)!;
+      const n = normals.length / 3;
+      const outline = new Mesh('markerOutline', this.scene);
+      const data = new VertexData();
+      data.positions = positions.map((p, i) => p + normals[i] * 0.009);
+      data.normals = normals.slice();
+      data.indices = mesh.getIndices()!.slice();
+      data.colors = new Float32Array(n * 4).fill(1);
+      data.applyToMesh(outline, false);
+      outline.material = outlineMat;
+      // Smooth, pillowy shading: a hot core that blooms, brightest on the faces turned to the
+      // viewer, softly deeper towards the ray tips.
+      const colors = new Float32Array(n * 4);
+      for (let i = 0; i < n; i++) {
+        const r = Math.hypot(positions[i * 3], positions[i * 3 + 1]);
+        const face = Math.abs(normals[i * 3 + 2]) * 0.75 + Math.max(0, normals[i * 3 + 1]) * 0.25;
+        const k = (0.7 + 0.3 * face) * (1.45 - 0.6 * Math.min(1, r / 0.16));
+        colors.set([k, k, k, 1], i * 4);
+      }
+      mesh.setVerticesData(VertexBuffer.ColorKind, colors);
+      mesh.material = mat;
+      for (const [m, color] of [[mesh, this.markerColor], [outline, this.markerOutlineColor]] as const) {
+        m.isPickable = false;
+        m.applyFog = false;
+        m.alwaysSelectAsActiveMesh = true;
+        m.thinInstanceSetBuffer('matrix', this.markerMatrix, 16, false);
+        m.thinInstanceSetBuffer('color', color, 4, false);
+        meshes.push(m);
+      }
+    }
+    this.marker = meshes;
+
+    // Glow: a radial gradient disc, added on top of the scene (reads at night, subtle by day).
+    const glow = new DynamicTexture('markerGlow', 64, this.scene, true);
+    const ctx = glow.getContext();
+    const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,255,255,0.9)');
+    g.addColorStop(0.25, 'rgba(255,255,255,0.45)');
+    g.addColorStop(0.6, 'rgba(255,255,255,0.12)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+    glow.update();
+    glow.hasAlpha = true;
+    const haloMat = new StandardMaterial('markerHalo', this.scene);
+    haloMat.disableLighting = true;
+    haloMat.diffuseColor = Color3.Black();
+    haloMat.specularColor = Color3.Black();
+    haloMat.emissiveColor = Color3.White();
+    haloMat.opacityTexture = glow;
+    haloMat.alphaMode = Constants.ALPHA_ADD;
+    haloMat.disableDepthWrite = true;
+    haloMat.backFaceCulling = false;
+    const halo = MeshBuilder.CreatePlane('markerHalo', { size: 1 }, this.scene);
+    halo.material = haloMat;
+    halo.isPickable = false;
+    halo.applyFog = false;
+    halo.alwaysSelectAsActiveMesh = true;
+    halo.thinInstanceSetBuffer('matrix', this.markerHaloMatrix, 16, false);
+    halo.thinInstanceSetBuffer('color', this.markerHaloColor, 4, false);
+    this.markerHalo = halo;
+  }
+
+  // --- style -------------------------------------------------------------------------
+
+  /** Applies the visual style and the live options (post-processing, fog, filtering, ...). */
+  private applyStyle(): void {
+    const st = this.style;
+    const o = this.options;
+    const post = this.post;
+    if (post) {
+      const ip = post.imageProcessing;
+      ip.toneMappingType = st.toneMapping === 'neutral' ? ImageProcessingConfiguration.TONEMAPPING_KHR_PBR_NEUTRAL : ImageProcessingConfiguration.TONEMAPPING_ACES;
+      ip.contrast = st.contrast;
+      ip.vignetteWeight = st.vignette;
+      const curves = ip.colorCurves!;
+      curves.globalSaturation = st.saturation;
+      curves.highlightsHue = st.highlightsHue;
+      curves.highlightsDensity = st.highlightsDensity;
+      curves.shadowsHue = st.shadowsHue;
+      curves.shadowsDensity = st.shadowsDensity;
+      post.bloomEnabled = o.bloom && this.quality.bloom !== undefined && st.bloomWeight > 0;
+      post.bloomThreshold = st.bloomThreshold;
+      post.bloomWeight = st.bloomWeight;
+      post.bloomKernel = st.bloomKernel;
+      post.sharpenEnabled = st.sharpen > 0;
+      if (st.sharpen > 0) post.sharpen.edgeAmount = st.sharpen;
+      post.grainEnabled = st.grain > 0;
+      if (st.grain > 0) {
+        post.grain.intensity = st.grain;
+        post.grain.animated = false;
+      }
+    }
+    if (this.tiltShift) {
+      this.tiltShift.strength = st.tiltShift;
+      this.tiltShift.enabled = o.tiltShift && st.tiltShift > 0;
+    }
+    this.scene.fogDensity = st.fog;
+    this.shadows.usePercentageCloserFiltering = st.softShadows;
+    this.shadows.filteringQuality = st.softShadows ? ShadowGenerator.QUALITY_MEDIUM : ShadowGenerator.QUALITY_LOW;
+    this.lib.setNearest(st.nearestTextures);
+    const scale = Math.min(1, Math.max(0.5, o.resolutionScale));
+    this.engine.setHardwareScalingLevel(st.pixelScale / (window.devicePixelRatio * scale));
+    this.canvas.style.imageRendering = st.pixelScale > 1 ? 'pixelated' : '';
+    this.markerPalette = st.marker.map((hex) => {
+      const c = Color3.FromHexString(hex).toLinearSpace();
+      return [c.r * 1.2, c.g * 1.2, c.b * 1.2, 1];
+    });
+    this.lampColor.copyFrom(Color3.FromHexString(st.lampColor).toLinearSpace());
+    this.glowColor.copyFrom(Color3.FromHexString(st.windowGlow).toLinearSpace());
+    const minute = this.townMode ? this.townMinute : this.lastMinute;
+    this.applyLighting(minute);
+    this.lastLightMinute = minute;
+    this.resetSnapshot();
   }
 
   // --- world building ----------------------------------------------------------------
@@ -560,42 +1279,6 @@ export class BabylonRenderer implements Renderer {
     }
   }
 
-  /** Neighbouring houses as simple massing blocks with a roof, so the street isn't empty. */
-  private buildSilhouettes(world: WorldStructure): void {
-    if (!this.view) return;
-    const parts: Mesh[] = [];
-    for (const plot of world.plots) {
-      if (!plot.house || this.inView(plot.x + plot.w / 2, plot.z + plot.d / 2, 0)) continue;
-      const [x0, z0, x1, z1] = plot.house;
-      const [w, d] = [x1 - x0, z1 - z0];
-      const body = MeshBuilder.CreateBox('silhouette', { width: w, depth: d, height: 2.8 }, this.scene);
-      body.position.set(x0 + w / 2, 1.4, z0 + d / 2);
-      body.bakeCurrentTransformIntoVertices();
-      paint(body, SILHOUETTE_WALL);
-      // Gable roof: two slabs pitched at 30° meeting along a ridge parallel to x.
-      const pitch = Math.PI / 6;
-      const run = d / 2 + 0.3;
-      const rise = Math.tan(pitch) * (d / 2);
-      parts.push(body);
-      for (const side of [-1, 1]) {
-        const slab = MeshBuilder.CreateBox('silhouette', { width: w + 0.6, height: 0.16, depth: run / Math.cos(pitch) }, this.scene);
-        slab.rotation.set(side * pitch, 0, 0);
-        slab.position.set(x0 + w / 2, 2.8 + rise / 2, z0 + d / 2 - (side * run) / 2);
-        slab.bakeCurrentTransformIntoVertices();
-        paint(slab, SILHOUETTE_ROOF);
-        parts.push(slab);
-      }
-    }
-    if (!parts.length) return;
-    const merged = Mesh.MergeMeshes(parts, true, true);
-    if (!merged) return;
-    merged.name = 'silhouettes';
-    // Untextured: plaster stretched over whole house faces looks wrong; colour comes from vertices.
-    merged.material = MaterialLibrary.for(this.scene).finish();
-    merged.receiveShadows = true;
-    this.worldMeshes.push(merged);
-  }
-
   /** Whether a world point is inside the viewed lot (expanded by `margin`). */
   private inView(x: number, z: number, margin: number): boolean {
     const v = this.view;
@@ -612,26 +1295,135 @@ export class BabylonRenderer implements Renderer {
     return x1 > x0 && z1 > z0 ? { x: x0, z: z0, w: x1 - x0, d: z1 - z0 } : null;
   }
 
-  private buildLot(world: WorldStructure): void {
-    this.meshFromArrays('floors', world.meshes.floors, this.lotMaterial('material.floor'));
-    const wallMat = this.lotMaterial('material.wall');
-    this.walls = this.meshFromArrays('walls', world.meshes.walls, wallMat);
-    this.wallsLow = this.meshFromArrays('wallsLow', world.meshes.wallsLow, wallMat);
-    this.walls?.setEnabled(this.wallMode === 'up');
-    this.wallsLow?.setEnabled(this.wallMode === 'down');
+  /** The viewed house (walls, trims, windows, floors, roof, room lights); returns shadow casters. */
+  private buildLot(world: WorldStructure): Mesh[] {
+    const built = this.house.build(world, this.view);
+    if (!built) {
+      // Unknown wall layout: fall back to the simulation's plain meshes.
+      this.meshFromArrays('floors', world.meshes.floors, this.lotMaterial('material.floor'));
+      const wallMat = this.lotMaterial('material.wall');
+      this.walls = this.meshFromArrays('walls', world.meshes.walls, wallMat);
+      this.wallsLow = this.meshFromArrays('wallsLow', world.meshes.wallsLow, wallMat);
+      this.roomLightAreas = [];
+      for (const light of this.roomLights) light.position.y = HIDDEN_Y;
+      return [];
+    }
+    this.worldMeshes.push(...built.meshes);
+    this.roofs = built.roofs;
+    // Roofs start hidden (walls down / cutaway); compile them now so walls-up doesn't hitch.
+    for (const roof of built.roofs) void roof.material?.forceCompilationAsync(roof).catch(() => {});
+    // Garden dressing split into species (hedges or mixed shrub borders, varied lot trees).
+    for (const [key, items] of [...natureDecor('model.bush', built.shrubs), ...natureDecor('model.tree', built.trees, world, this.view)]) void this.placeDecor(key, items);
+    this.roomLightAreas = [];
+    this.roomLights.forEach((light, i) => {
+      const l = built.lights[i];
+      if (l) light.position.set(l.x, l.y, l.z);
+      else light.position.y = HIDDEN_Y;
+      this.roomLightAreas.push(l ? l.area : 0);
+    });
+    return built.casters;
+  }
+
+  /** Garden dressing as thin instances of a cached template (`deco:` keys). */
+  private async placeDecor(key: string, items: [number, number, number, number][]): Promise<void> {
+    if (!items.length) return;
+    const template = await this.template(`deco:${key}`, () => buildModel(this.scene, key, this.deps.assets.get(key, 'model'), [1, 1]));
+    const matrices = new Float32Array(items.length * 16);
+    items.forEach(([x, z, s, yaw], i) => {
+      Matrix.ComposeToRef(this.vScale.setAll(s), Quaternion.RotationYawPitchRollToRef(yaw, 0, 0, this.qTmp), this.vTmp.set(x, 0, z), this.mOut);
+      this.mOut.copyToArray(matrices, i * 16);
+    });
+    for (const mesh of template.meshes) {
+      mesh.thinInstanceSetBuffer('matrix', matrices, 16, true);
+      mesh.thinInstanceRefreshBoundingInfo(false);
+      mesh.receiveShadows = true;
+    }
+    this.resetSnapshot();
+  }
+
+  private applyWallMode(): void {
+    const mode = this.wallMode;
+    this.walls?.setEnabled(mode === 'up');
+    this.wallsLow?.setEnabled(mode !== 'up');
+    this.roofShown = this.roofVisible();
+    for (const roof of this.roofs) roof.setEnabled(this.roofShown);
+    // Cut walls would still cast full-height shadows (the shadow pass has no cutaway), so the
+    // house only casts with walls up; stubs and open rooms are then sunlit, as in the classics.
+    this.updateShadowList();
+    this.lib.wallCut.params.x = mode === 'down' ? 1 : 0;
+    this.lib.wallCut.params.y = WALL_STUB;
+    this.cutLook = -1;
+    this.updateCutaway();
+  }
+
+  /** The viewed lot's roof: only with walls up, and not when zoomed in (it would fill the view). */
+  private roofVisible(): boolean {
+    return this.wallMode === 'up' && this.gameCamera.radius > ROOF_MIN_DISTANCE;
+  }
+
+  /**
+   * Snapshot replays were observed to keep the camera of their recording, so a moving camera
+   * re-records each frame (normal rendering cost) and replay resumes once it is still.
+   */
+  private followCamera(): void {
+    const c = this.camera;
+    const v = this.lastView;
+    const t = c.target;
+    const o = c.targetScreenOffset;
+    if (v[0] === c.alpha && v[1] === c.beta && v[2] === c.radius && v[3] === t.x && v[4] === t.y && v[5] === t.z && v[6] === o.x && v[7] === o.y) return;
+    v[0] = c.alpha;
+    v[1] = c.beta;
+    v[2] = c.radius;
+    v[3] = t.x;
+    v[4] = t.y;
+    v[5] = t.z;
+    v[6] = o.x;
+    v[7] = o.y;
+    this.resetSnapshot();
+  }
+
+  /** Cutaway: walls facing the camera drop when the view direction crosses a quadrant. */
+  private updateCutaway(): void {
+    let bits = 0;
+    if (this.wallMode === 'cutaway') {
+      // Camera looks from its position towards the target: direction -(cos a, sin a) in xz.
+      const dx = -Math.cos(this.gameCamera.alpha);
+      const dz = -Math.sin(this.gameCamera.alpha);
+      if (dx > 0.3) bits |= 1;
+      if (dx < -0.3) bits |= 2;
+      if (dz > 0.3) bits |= 4;
+      if (dz < -0.3) bits |= 8;
+    }
+    if (bits === this.cutLook) return;
+    this.cutLook = bits;
+    this.lib.wallCut.look.set(bits & 1 ? 1 : 0, bits & 2 ? 1 : 0, bits & 4 ? 1 : 0, bits & 8 ? 1 : 0);
+    this.resetSnapshot();
+  }
+
+  /** Model key for an object, preferring its style variant (`model.sofa@modern`) when one exists. */
+  private objectModel(o: ObjectPlacement): string {
+    const def = this.deps.content.object(o.def);
+    const base = def?.model ?? `model.${o.def}`;
+    // `style` and `styles` arrive with build/buy mode; read them defensively.
+    const style = (o as ObjectPlacement & { style?: number }).style;
+    const styles: readonly { id: string }[] = (this.deps.content as unknown as { styles?: { id: string }[] }).styles ?? [];
+    const id = typeof style === 'number' ? styles[style]?.id : undefined;
+    return id && this.deps.assets.has(`${base}@${id}`, 'model') ? `${base}@${id}` : base;
   }
 
   private async buildObjects(world: WorldStructure): Promise<void> {
     const shown = world.objects.filter((o) => this.inView(o.x + o.w / 2, o.z + o.d / 2, 0));
-    const byDef = Map.groupBy(shown, (o) => o.def);
+    const byModel = Map.groupBy(shown, (o) => `${o.def}|${this.objectModel(o)}`);
     const templates = await Promise.all(
-      [...byDef.keys()].map((defId) => {
-        const def = this.deps.content.object(defId);
-        const key = def?.model ?? `model.${defId}`;
-        return this.template(`object:${defId}`, () => buildModel(this.scene, defId, this.deps.assets.get(key, 'model'), def?.footprint ?? [1, 1]));
+      [...byModel.entries()].map(([group, list]) => {
+        const key = group.slice(group.indexOf('|') + 1);
+        const def = this.deps.content.object(list[0].def);
+        return this.template(`object:${key}`, () => buildModel(this.scene, key, this.deps.assets.get(key, 'model'), def?.footprint ?? [1, 1]));
       }),
     );
-    [...byDef.values()].forEach((list, n) => {
+    // Soft contact shadows under every object, sized to its footprint.
+    const blobs = new Float32Array(Math.max(1, shown.length) * 16);
+    [...byModel.values()].forEach((list, n) => {
       const template = templates[n];
       const matrices = new Float32Array(list.length * 16);
       list.forEach((o, i) => {
@@ -647,6 +1439,23 @@ export class BabylonRenderer implements Renderer {
         mesh.receiveShadows = true;
       }
     });
+    shown.forEach((o, i) => {
+      const k = i * 16;
+      blobs[k] = o.w * 1.15;
+      blobs[k + 5] = 1;
+      blobs[k + 10] = o.d * 1.15;
+      blobs[k + 12] = o.x + o.w / 2;
+      blobs[k + 13] = 0.018;
+      blobs[k + 14] = o.z + o.d / 2;
+      blobs[k + 15] = 1;
+    });
+    if (!shown.length) return;
+    const shadows = this.objectShadow.clone('objectShadows', null, true, false) as Mesh;
+    shadows.setEnabled(true);
+    shadows.thinInstanceSetBuffer('matrix', blobs, 16, true);
+    shadows.thinInstanceCount = shown.length;
+    shadows.thinInstanceRefreshBoundingInfo(false);
+    this.worldMeshes.push(shadows);
   }
 
   /** Cached template by key; marks it as used by the world being built. */
@@ -681,39 +1490,22 @@ export class BabylonRenderer implements Renderer {
   }
 
   private async buildSims(world: WorldStructure): Promise<void> {
-    const { assets } = this.deps;
-    this.simHeights = new Float32Array(MAX_SIMS).fill(1);
-    for (const s of world.sims) if (s.id < MAX_SIMS) this.simHeights[s.id] = clampHeight(s.appearance?.height);
-    // Each Sim is a body plus a hairstyle; both are separate, swappable models.
-    const parts = world.sims.flatMap((s) => [
-      { key: s.appearance?.model ?? 'model.sim', sim: s },
-      { key: `model.hair.${s.appearance?.hairStyle ?? 'short'}`, sim: s },
-    ]);
-    const byModel = Map.groupBy(parts, (p) => p.key);
-    for (const [modelKey, entries] of byModel) {
-      const sims = entries.map((e) => e.sim);
-      const template: ModelTemplate = await this.template(`sim:${modelKey}`, () =>
-        buildModel(this.scene, modelKey, assets.get(modelKey, 'model'), [1, 1]),
-      );
-      if (template.meshes.length === 0) continue;
-      const matrices = new Float32Array(sims.length * 16);
-      template.meshes.forEach((mesh, m) => {
-        mesh.thinInstanceSetBuffer('matrix', matrices, 16, false);
-        const tint = template.tints[m];
-        if (tint) {
-          const colors = new Float32Array(sims.length * 4);
-          sims.forEach((s, i) => {
-            const c = Color3.FromHexString(appearanceColor(s.appearance, tint));
-            colors.set([c.r, c.g, c.b, 1], i * 4);
-          });
-          mesh.thinInstanceSetBuffer('color', colors, 4, true);
-        }
-        // Sims move every frame; skip per-frame bounding/culling work.
-        mesh.alwaysSelectAsActiveMesh = true;
-        // (template meshes are cached; not disposed with the world)
-      });
-      this.simGroups.push({ meshes: template.meshes, slots: sims.map((s) => s.id), matrices });
+    await this.characters.build(world);
+    // Sims arrive at the lot's entry, in front of the door. The first time a lot is shown, view it
+    // from that side (three-quarter angle) so the cutaway opens the front wall instead of the
+    // full-height back wall hiding the arriving household.
+    const v = this.view;
+    const key = v ? `${v.x},${v.z},${v.w},${v.d}` : '';
+    if (v && key !== this.framedView) {
+      this.framedView = key;
+      const entry = world.plots.find((p) => p.x === v.x && p.z === v.z)?.entry;
+      const dx = entry ? entry[0] - (v.x + v.w / 2) : 0;
+      const dz = entry ? entry[1] - (v.z + v.d / 2) : 0;
+      if (Math.hypot(dx, dz) > 1) this.gameCamera.alpha = Math.atan2(dz, dx) - Math.PI * 0.12;
     }
+    // Selection marker colour per emotion code (index + 1; 0 = none).
+    this.emotionMood = [1, ...this.deps.content.emotions.map((e) => EMOTION_MOOD[e.id] ?? 1)];
+    this.characters.setEmotions(this.deps.content.emotions.map((e) => e.id));
   }
 
   private meshFromArrays(name: string, arrays: MeshArrays, material: Material): Mesh | null {
@@ -734,90 +1526,100 @@ export class BabylonRenderer implements Renderer {
   private lotMaterial(key: string): Material {
     // Textured PBR surface from the shared library (cached per key, frozen once loaded).
     // Generated geometry has explicit normals; don't depend on triangle winding.
-    return MaterialLibrary.for(this.scene).surface(key, { doubleSided: true });
+    return this.lib.surface(key, { doubleSided: true });
+  }
+
+  /** Builds (once per model key) the translucent preview meshes for buy mode. */
+  private loadGhost(model: string): void {
+    this.ghostKey = model;
+    for (const mesh of this.ghostMeshes) mesh.dispose(false, false);
+    this.ghostMeshes = [];
+    const key = model;
+    void buildModel(this.scene, `ghost:${key}`, this.deps.assets.get(key, 'model'), [1, 1]).then((template) => {
+      if (this.ghostKey !== key) {
+        for (const mesh of template.meshes) mesh.dispose(false, false);
+        return;
+      }
+      for (const mesh of template.meshes) {
+        mesh.material = this.ghostMaterial;
+        mesh.parent = this.ghostRoot;
+        mesh.isPickable = false;
+        mesh.renderingGroupId = 1;
+        mesh.thinInstanceSetBuffer('matrix', Matrix.Identity().asArray() as unknown as Float32Array, 16, true);
+        mesh.thinInstanceSetBuffer('color', this.ghostColor, 4, false);
+        mesh.alwaysSelectAsActiveMesh = true;
+      }
+      this.ghostMeshes = template.meshes;
+      this.setGhostTint();
+    });
+  }
+
+  private setGhostTint(): void {
+    this.ghostColor.set(this.ghostValid ? [0.55, 1.0, 0.6, 1] : [1.0, 0.45, 0.42, 1]);
+    for (const mesh of this.ghostMeshes) mesh.thinInstanceBufferUpdated('color');
+    this.resetSnapshot();
   }
 
   // --- per frame ---------------------------------------------------------------------
 
-  private writeSimMatrix(
-    i: number,
-    x: number,
-    z: number,
-    yaw: number,
-    pose: number,
-    moving: boolean,
-    anim: number,
-    now: number,
-    height: number,
-    out: Float32Array,
-    offset: number,
-  ): void {
-    Matrix.ScalingToRef(height, height, height, this.mScale);
-    Matrix.RotationYToRef(yaw, this.mRot);
-    this.mScale.multiplyToRef(this.mRot, this.mRot);
-    if (pose === Pose.Lie) {
-      this.lieLocal.multiplyToRef(this.mRot, this.mTmp);
-    } else if (pose === Pose.Sit) {
-      this.sitLocal.multiplyToRef(this.mRot, this.mTmp);
-    } else {
-      this.socialLocal(i, anim, moving, now, this.mLocal);
-      this.mLocal.multiplyToRef(this.mRot, this.mTmp);
-    }
-    Matrix.TranslationToRef(x, 0, z, this.mPos);
-    this.mTmp.multiplyToRef(this.mPos, this.mOut);
-    this.mOut.copyToArray(out, offset);
-  }
-
   /**
-   * Procedural body language for conversations: lean, sway, bounce, lunge.
-   * Writes a local transform (applied before the Sim's own rotation) into `out`.
+   * The selection marker floats above the selected Sim facing the camera: a slow bob, a soft
+   * breathing pulse in size and brightness, and no spin. It grows a little with camera distance
+   * so it stays readable when zoomed out. Its colour follows their mood. Allocation-free.
    */
-  private socialLocal(i: number, anim: number, moving: boolean, now: number, out: Matrix): void {
-    const t = now * 0.001 + i * 1.7;
-    let lean = 0;
-    let sway = 0;
-    let lift = moving ? Math.abs(Math.sin(t * 12.5)) * 0.05 : 0;
-    let lunge = 0;
-    let twist = 0;
-    switch (anim) {
-      case Anim.Talk:
-        sway = Math.sin(t * 3) * 0.035;
-        lift = Math.abs(Math.sin(t * 6)) * 0.012;
-        break;
-      case Anim.Laugh:
-        lift = Math.abs(Math.sin(t * 14)) * 0.06;
-        lean = -0.08;
-        break;
-      case Anim.Flirt:
-        sway = Math.sin(t * 2) * 0.08;
-        lean = 0.06;
-        break;
-      case Anim.Argue:
-        lean = 0.14;
-        twist = Math.sin(t * 16) * 0.05;
-        break;
-      case Anim.Fight:
-        lunge = Math.sin(t * 11) * 0.18;
-        lean = 0.18;
-        twist = Math.sin(t * 23) * 0.12;
-        break;
-      case Anim.Hug:
-        lean = 0.22;
-        break;
-      case Anim.Kiss:
-        lean = 0.3;
-        break;
+  private writeMarker(x: number, headY: number, z: number, emotion: number, now: number): void {
+    const t = now * 0.001;
+    const breath = Math.sin(t * 2.4);
+    const cam = this.camera.globalPosition;
+    const dist = Math.hypot(cam.x - x, cam.y - headY, cam.z - z);
+    const grow = 1 + Math.min(2.2, Math.max(0, dist - 5) * 0.06);
+    const s = grow * (1 + breath * 0.05);
+    // Float clear of the head: the lower ray's tip stays ~8 cm above it at any size.
+    const by = headY + 0.07 + 0.19 * grow + Math.sin(t * 1.5) * 0.03;
+    // Camera right / up / forward in world space: the columns of the view matrix's rotation.
+    const v = this.camera.getViewMatrix().m;
+    // The halo: same orientation, larger, nudged just behind the star (away from the camera).
+    const hs = 0.62 * s * (1 + breath * 0.06);
+    const out = this.markerMatrix;
+    const halo = this.markerHaloMatrix;
+    for (let r = 0; r < 3; r++) {
+      for (let k = 0; k < 3; k++) {
+        out[r * 4 + k] = v[r + k * 4] * s;
+        halo[r * 4 + k] = v[r + k * 4] * hs;
+      }
+      out[r * 4 + 3] = halo[r * 4 + 3] = 0;
     }
-    Matrix.RotationYawPitchRollToRef(twist, lean, sway, this.mA);
-    Matrix.TranslationToRef(0, lift, lunge, this.mB);
-    this.mA.multiplyToRef(this.mB, out);
+    out[12] = x;
+    out[13] = by;
+    out[14] = z;
+    out[15] = halo[15] = 1;
+    for (let k = 0; k < 3; k++) halo[12 + k] = out[12 + k] + v[2 + k * 4] * 0.04;
+
+    const slot = this.emotionMood[emotion | 0] ?? 1;
+    const c = this.markerPalette[slot] ?? this.markerPalette[0];
+    if (!c) return;
+    const glow = 1 + breath * 0.12;
+    this.markerColor[0] = c[0] * glow;
+    this.markerColor[1] = c[1] * glow;
+    this.markerColor[2] = c[2] * glow;
+    this.markerColor[3] = 1;
+    // Outline: the mood colour, much deeper (amber -> warm brown, periwinkle -> ink blue).
+    this.markerOutlineColor[0] = c[0] * 0.16;
+    this.markerOutlineColor[1] = c[1] * 0.13;
+    this.markerOutlineColor[2] = c[2] * 0.12;
+    this.markerOutlineColor[3] = 1;
+    const h = 0.22 * (1 + breath * 0.25);
+    this.markerHaloColor[0] = c[0] * h;
+    this.markerHaloColor[1] = c[1] * h;
+    this.markerHaloColor[2] = c[2] * h;
+    this.markerHaloColor[3] = 1;
   }
 
   private applyLighting(minute: number): void {
-    const l = lightingAt(minute, this.lighting);
+    const l = lightingAt(minute, this.style, this.lighting);
     this.sun.direction.copyFrom(l.sunDirection);
     l.sunDirection.scaleToRef(-40, this.vTmp);
-    this.sun.position.copyFrom(this.lotCentre).addInPlace(this.vTmp);
+    this.sun.position.copyFrom(this.townMode && this.overview ? this.overview.centre : this.lotCentre).addInPlace(this.vTmp);
     this.sun.intensity = l.sunIntensity;
     this.sun.diffuse.copyFrom(l.sunColor);
     this.sun.specular.copyFrom(l.sunColor);
@@ -828,32 +1630,89 @@ export class BabylonRenderer implements Renderer {
     l.clearColor.toLinearSpaceToRef(this.scene.fogColor);
     this.scene.clearColor.set(this.scene.fogColor.r, this.scene.fogColor.g, this.scene.fogColor.b, 1);
     this.skyDome.update(l);
-    MaterialLibrary.for(this.scene).setEnvironmentIntensity(l.envIntensity);
-    if (this.post) this.post.imageProcessing.exposure = l.exposure;
+    this.lib.setEnvironmentIntensity(l.envIntensity);
+    if (this.post) {
+      this.post.imageProcessing.exposure = l.exposure * this.style.exposure;
+      // Moonlit nights: blue-grey dark tones, warm lamps and windows (see nightGrade.ts).
+      if (this.nightGrade) {
+        this.nightGrade.amount = l.night * this.style.nightGrade;
+        this.nightGrade.update();
+      }
+    }
+
+    // Warm lamps inside, glowing windows outside at night; cool daylight in the panes by day.
+    this.roomLights.forEach((light, i) => {
+      // The overview has no interiors: the game house's lamps stay off behind it.
+      const area = this.townMode ? 0 : (this.roomLightAreas[i] ?? 0);
+      light.intensity = area > 0 ? l.lamps * (4 + Math.min(area, 30) * 0.35) : 0;
+      light.range = 4 + Math.sqrt(area) * 1.4;
+      light.diffuse.copyFrom(this.lampColor);
+    });
+    const glass = this.lib.surface('material.window', { vertexColors: true, cutaway: true }) as PBRMaterial;
+    // Windows light up only once it is getting dark outside.
+    const glow = Math.min(1, Math.max(0, (l.lamps - 0.35) / 0.5));
+    this.glowColor.scaleToRef(glow * glow * 1.6, glass.emissiveColor);
+    this.lib.touch(glass);
+    const inner = this.lib.surface('material.window.inner', { vertexColors: true, cutaway: true }) as PBRMaterial;
+    l.clearColor.toLinearSpaceToRef(inner.emissiveColor);
+    inner.emissiveColor.scaleInPlace((1 - l.lamps) * 0.9 + 0.05);
+    this.lib.touch(inner);
+    this.street?.setNight(l.lamps, this.glowColor);
+    this.overview?.setNight(l.lamps, this.glowColor);
   }
 
-  private suspendSnapshot(): void {
+  private resetSnapshot(): void {
+    if (this.webgpu?.snapshotRendering) this.webgpu.snapshotRenderingReset();
+  }
+
+  /** A world or overview build starts: no snapshot recording until every build is done. */
+  private beginBuild(): void {
+    this.builds++;
+    this.snapshotGeneration++;
     if (this.webgpu) this.webgpu.snapshotRendering = false;
   }
 
-  /** Starts snapshot recording once the scene and its post-process effects have settled. */
-  private finishSetup(): void {
-    const engine = this.webgpu;
-    if (!engine || !this.quality.snapshotRendering) return;
-    this.scene.executeWhenReady(() =>
-      this.afterFrames(10, () => {
-        engine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_STANDARD;
-        engine.snapshotRendering = true;
-      }),
-    );
+  private endBuild(): void {
+    this.builds = Math.max(0, this.builds - 1);
+    if (this.builds === 0) this.scheduleSnapshot();
   }
 
-  private afterFrames(frames: number, fn: () => void): void {
-    let left = frames;
-    const observer = this.scene.onAfterRenderObservable.add(() => {
-      if (--left > 0) return;
-      this.scene.onAfterRenderObservable.remove(observer);
-      fn();
+  /** Stops replaying (the scene changed a lot) and records again once it has settled. */
+  private pauseSnapshot(): void {
+    this.snapshotGeneration++;
+    if (this.webgpu) this.webgpu.snapshotRendering = false;
+    if (this.builds === 0) this.scheduleSnapshot();
+  }
+
+  /**
+   * Starts snapshot recording once the scene and its post-process effects have settled: only for
+   * the town overview behind the menus. In play, replays don't pick up the Sims' pose texture
+   * updates (Sims froze between re-recordings) and each re-record cost a 50-70 ms hitch, while
+   * drawing live costs only ~0.2 ms more per frame.
+   */
+  private scheduleSnapshot(): void {
+    const engine = this.webgpu;
+    const generation = ++this.snapshotGeneration;
+    if (!engine || !this.quality.snapshotRendering || !this.townMode) return;
+    // A newer build (or pause) may have started by the time this runs; it records once it is done.
+    const current = () => generation === this.snapshotGeneration && this.builds === 0 && this.townMode;
+    this.scene.executeWhenReady(() => {
+      let left = 10;
+      const observer = this.scene.onAfterRenderObservable.add(() => {
+        if (--left > 0) return;
+        this.scene.onAfterRenderObservable.remove(observer);
+        if (!current()) return;
+        engine.snapshotRenderingMode = Constants.SNAPSHOTRENDERING_STANDARD;
+        engine.snapshotRendering = true;
+        // Record once more after the first replays: the first recording can capture one-off
+        // start-up state (late material freezes) and then stop following the camera.
+        let again = 15;
+        const second = this.scene.onAfterRenderObservable.add(() => {
+          if (--again > 0) return;
+          this.scene.onAfterRenderObservable.remove(second);
+          if (current()) this.resetSnapshot();
+        });
+      });
     });
   }
 
@@ -862,39 +1721,16 @@ export class BabylonRenderer implements Renderer {
   /** Image-based lighting from a prefiltered environment (manifest key `environment.sky`). */
   private async setupEnvironment(): Promise<void> {
     const entry = this.deps.assets.get('environment.sky', 'image');
-    if (entry) await MaterialLibrary.for(this.scene).loadEnvironment(entry.url);
+    if (entry) await this.lib.loadEnvironment(entry.url);
   }
 }
 
-const FALLBACK_TINT = { body: '#8FA89A', skin: '#D9A882', hair: '#5A3B2A' } as const;
-
-function appearanceColor(appearance: Appearance | null | undefined, slot: keyof typeof FALLBACK_TINT): string {
-  const value = appearance?.[slot];
-  return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value : FALLBACK_TINT[slot];
-}
-
-function clampHeight(h: number | undefined): number {
-  return typeof h === 'number' && Number.isFinite(h) ? Math.min(1.15, Math.max(0.85, h)) : 1;
-}
-
-const SILHOUETTE_WALL = Color3.FromHexString('#E6E0D6');
-const SILHOUETTE_ROOF = Color3.FromHexString('#8C6B58');
-
-function paint(mesh: Mesh, color: Color3): void {
-  const colors = new Float32Array(mesh.getTotalVertices() * 4);
-  for (let i = 0; i < colors.length; i += 4) colors.set([color.r, color.g, color.b, 1], i);
-  mesh.setVerticesData(VertexBuffer.ColorKind, colors);
-}
-
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
-}
-
-function lerpAngle(a: number, b: number, t: number): number {
-  let d = (b - a) % (Math.PI * 2);
-  if (d > Math.PI) d -= Math.PI * 2;
-  if (d < -Math.PI) d += Math.PI * 2;
-  return a + d * t;
+/** Copies an orbit camera's angles, radius and target. */
+function copyPose(from: ArcRotateCamera, to: ArcRotateCamera): void {
+  to.alpha = from.alpha;
+  to.beta = from.beta;
+  to.radius = from.radius;
+  to.target.copyFrom(from.target);
 }
 
 /** Ray vs axis-aligned box (slab test). Returns distance or Infinity. */

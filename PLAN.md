@@ -1,8 +1,8 @@
-# open-sims-wasm: Technical Plan
+# Littlelives: Technical Plan
 
 *Status: M1 skeleton built (2026-10-07). See "Status" below.*
 
-A Sims-like life simulation that runs entirely in the browser: Rust/WASM simulation core, a GPU renderer, a Svelte 5 + CSS interface, and saves stored in the browser.
+A life simulation with a classic life-sim feel that runs entirely in the browser: Rust/WASM simulation core, a GPU renderer, a Svelte 5 + CSS interface, and saves stored in the browser.
 
 **Ground rules (from the project owner):**
 - **Performance is the top priority.** The CPU runs the game logic; the GPU does everything visual.
@@ -15,20 +15,20 @@ A Sims-like life simulation that runs entirely in the browser: Rust/WASM simulat
 
 | Area | State |
 |---|---|
-| Sim core (Rust) | Needs, utility AI with smart objects, A* pathfinding, lot/rooms, mesh generation, clock. **Town** of plots and households with object ownership. **Social life**: directional relationships (friendship, romance, chemistry), 16 data-driven social interactions with success chances, moodlets and emotions that steer behaviour, jealousy, partners and break-ups, fights, story events. **Gender and attraction**. **Daily life**: data-driven careers with shifts, pay, performance and promotions; time-of-day schedules; household funds; neighbours visiting each other (guests stay on the host's lot and use only non-private objects). Save format v3 (loads v1 and v2). 48 tests; about 240 ns per tick for 4 Sims. |
+| Sim core (Rust) | Needs, utility AI with smart objects, A* pathfinding, lot/rooms, mesh generation, clock. **Town** of plots and households with object ownership. **Social life**: directional relationships (friendship, romance, chemistry), 16 data-driven social interactions with success chances, feelings and emotions that steer behaviour, jealousy, partners and break-ups, fights, story events. **Gender and attraction**. **Daily life**: data-driven careers with shifts, pay, performance and promotions; time-of-day schedules; household funds; neighbours visiting each other (guests stay on the host's lot and use only non-private objects). **Careers and skills**: 1000 positions (25 categories × 4 tracks × grades A–J) expanded from `careers.json`; 12 skills trained at work and with home objects; skill fit decides hiring (probation), the workweek length and promotions. **Money**: dollars, weekly rent by lot size plus bills by household value, per-use costs only for consumables, debt. **Day/night rhythm**: sleep through the night, early risers for early shifts, slower need decay asleep, practice fatigue. **Build/buy** (`home.rs`): buy (auto or exact placement), move, sell, restyle (visual only), upgrade quality (instant Buy-mode purchase), walls, doors and windows with reachability checks; multi-slot objects (double beds). Save format v4 (loads v1–v3). 63 tests. |
 | WASM bridge | Sim in a Web Worker at 20 Hz; seqlock snapshot over SharedArrayBuffer (with conversation, emotion and animation fields); requests for saves and social options. |
-| Renderer | **Only the viewed lot is drawn** (its walls/floors are generated per region; other houses appear as silhouettes; Sims elsewhere or at work are hidden); the view follows the selected Sim. Babylon.js 9.29 on WebGPU (WebGL2 fallback), thin instances everywhere, snapshot rendering, time-of-day lighting with a gradient sky dome and distance fog, procedural landscape (terrain hills, clustered forests, lawn detail), roads, swappable hair models, procedural conversation body language. Town plus landscape: about 105 draw calls at 60 fps. |
-| UI | Main menu, settings, credits, load/save with thumbnails, pause menu. New game: **neighbourhood creator → household creator (gender, attraction, hairstyle, traits, perks, bonds) → home picker**. HUD: Sim panel (Now / People / Feelings), social menu with chances, story feed, speech bubbles. |
-| Not yet | Renderer bake-off (M0), cutaway walls, build/buy mode (funds exist but nothing to buy yet), skinned characters, knocking/greeting visitors, children and school, lamps, audio. Background simulation runs at full fidelity (cheap at town scale); a lower-detail mode for far-away lots would only matter for much larger towns. |
+| Renderer | **Only the viewed lot is drawn** (its walls/floors are generated per region; other houses appear as silhouettes; residents elsewhere or at work are hidden); the view follows the selected resident. Babylon.js 9.29 on WebGPU (WebGL2 fallback), thin instances everywhere, snapshot rendering, time-of-day lighting with a gradient sky dome and distance fog, procedural landscape (terrain hills, clustered forests, lawn detail), roads, swappable hair models, procedural conversation body language. Town plus landscape: about 105 draw calls at 60 fps. |
+| UI | Main menu, settings, credits, load/save with thumbnails, pause menu. **Menus over a live 3D town** (`render/babylon/overview.ts`, `game/menuScene.ts`): the shared renderer draws a whole-neighbourhood overview (every lot as a dressed shell, street, gardens, park; golden hour on the title screen) behind every menu screen; the neighbourhood and home steps use it as a clickable map (lot glow, tags pinned to lots, camera glides), and Move in flies the camera into the lot. New game: **neighbourhood creator → household creator (gender, attraction, skin, hair, clothes, traits, perks, bonds) → home picker**. The household creator shows the in-game 3D resident (`render/preview`: a small second engine, only alive while the stage is shown or portraits are drawn) with drag-to-turn, zoom to the face and little reactions; avatars everywhere are 3D head-and-shoulders portraits, drawn in batches and cached by look. HUD: resident panel (Now / People / Feelings), social menu with chances, story feed, speech bubbles. |
+| Not yet | Renderer bake-off (M0), cutaway walls, floors/roofs/stairs in build mode, skinned characters, knocking/greeting visitors, children and school, lamps, audio. Background simulation runs at full fidelity (cheap at town scale); a lower-detail mode for far-away lots would only matter for much larger towns. |
 
 ### Startup performance
 - The renderer (engine, compiled shaders and pipelines, cached object meshes, landscape) is owned by a long-lived **game host** and reused across sessions; sessions only swap world contents.
-- Sessions are **prepared in the background**, paused and without input: the latest save while the main menu is open (shown behind the menu as a slowly orbiting live backdrop), and the chosen house on the home screen. Starting is then a reveal.
+- Sessions are **prepared in the background**, paused and without input: the latest save while the main menu is open, and the chosen house on the home screen. Their world builds hidden behind the menus' town overview (camera layer masks, `render/babylon/layers.ts`) and is drawn invisibly for a few frames so its shaders and pipelines are ready. Starting is then a reveal: a fade for a saved game, a camera flight into the lot for a new one. The overview and a new game of the same town share one landscape.
 - Measured (production build, headless Chrome, M-series Mac): Continue 286 ms with 110 + 165 ms main-thread stalls → **48 ms, no long tasks**; Move in 397 ms → **98 ms, no long tasks**. The remaining cost of a cold start is WebGPU shader/pipeline compilation, which now happens while the player is still in a menu.
 
 ### Known issues and findings from the first build
 - **Babylon SSAO2 on WebGPU fails to bind its sampler on about 1 in 4 startups** (`randomSampler not found`, then `createBindGroup` errors and a frozen frame). It still fails when the pipeline is created late, so ambient occlusion is off by default; `?quality=ultra` turns it back on for testing upstream fixes.
-- **Standard-mode snapshot rendering bakes light uniforms and the clear colour into the recording.** The renderer re-records whenever lighting changes, throttled to every 5 game minutes. Moving Sims (thin-instance buffers) and helper meshes update without re-recording.
+- **Standard-mode snapshot rendering bakes light uniforms and the clear colour into the recording.** The renderer re-records whenever lighting changes, throttled to every 5 game minutes. Moving residents (thin-instance buffers) and helper meshes update without re-recording.
 - **Bundle size:** importing Babylon from the package root produces a 6 MB (1.3 MB gzip) chunk. Switching to deep imports is a planned clean-up.
 
 ---
@@ -125,21 +125,21 @@ The main thread's only rendering job is to upload the snapshot and **replay pre-
 
 ## 3. Simulation core (Rust)
 
-Pure Rust crate `hearth-sim` with **no browser dependencies**. It is tested and benchmarked natively with `cargo test` / `cargo bench`; a thin `hearth-wasm` crate holds the bindings.
+Pure Rust crate `sim-core` with **no browser dependencies**. It is tested and benchmarked natively with `cargo test` / `cargo bench`; a thin `sim-wasm` crate holds the bindings.
 
 | System | Design |
 |---|---|
 | **Data model** | Data-oriented: structure-of-arrays storage with generational IDs. No ECS framework, to keep the WASM small and the code fast. |
 | **Time** | Fixed 20 Hz tick; game clock with pause / 1× / 2× / 3× (3× = more ticks per real second, capped). Deterministic, seeded RNG. |
-| **Needs and mood** | Hunger, energy, bladder, hygiene, fun, social, comfort, environment. Each decays along a curve; mood = weighted sum + moodlets (temporary modifiers). |
-| **AI ("smart objects")** | Objects *advertise* interactions with need deltas. Each Sim scores them with need-weighted utility curves, distance cost and personality modifiers, then picks from the top-N with weighted randomness. Player commands go to a queue and override autonomy. This is the proven Sims model. |
-| **Interactions** | Small state machines: route to slot → animate → apply effects → exit. Multi-Sim interactions (talking, sharing a sofa) reserve object slots. |
-| **Pathfinding** | Tile grid (1 m tiles, 4 sub-positions); walls block tile edges; doors are portals. A* with Jump Point Search, a cached room-level graph for long routes, string-pulling for smooth paths. Slot reservation plus simple local avoidance between Sims. |
+| **Needs and mood** | Hunger, energy, bladder, hygiene, fun, social, comfort, environment. Each decays along a curve; mood = weighted sum + feelings (temporary modifiers). |
+| **AI ("smart objects")** | Objects *advertise* interactions with need deltas. Each resident scores them with need-weighted utility curves, distance cost and personality modifiers, then picks from the top-N with weighted randomness. Player commands go to a queue and override autonomy. This is the proven smart-object model of classic life sims. |
+| **Interactions** | Small state machines: route to slot → animate → apply effects → exit. Multi-resident interactions (talking, sharing a sofa) reserve object slots. |
+| **Pathfinding** | Tile grid (1 m tiles, 4 sub-positions); walls block tile edges; doors are portals. A* with Jump Point Search, a cached room-level graph for long routes, string-pulling for smooth paths. Slot reservation plus simple local avoidance between residents. |
 | **Lot / build** | Multi-level tile grid; walls on edges; rooms found by flood fill (used by the AI, room lighting and cutaway). **Rust generates wall/floor meshes** into WASM memory; the renderer uploads them directly. |
 | **Picking** | Ray against the tile grid and object bounding boxes, done in Rust. No GPU readback. |
 | **Saving** | `postcard` binary format, versioned schema, written to OPFS (fallback IndexedDB). Autosave runs in the worker, so the frame never stalls. |
 
-Performance budget: a sim tick under **1 ms for 8 Sims** and under **3 ms for 50 Sims** (neighbourhood scale later). WASM SIMD (`+simd128`) on; `wasm-opt -O3`; `lto = "fat"`, `opt-level = 3`, `panic = "abort"`.
+Performance budget: a sim tick under **1 ms for 8 residents** and under **3 ms for 50 residents** (neighbourhood scale later). WASM SIMD (`+simd128`) on; `wasm-opt -O3`; `lto = "fat"`, `opt-level = 3`, `panic = "abort"`.
 
 ---
 
@@ -160,7 +160,7 @@ Performance budget: a sim tick under **1 ms for 8 Sims** and under **3 ms for 50
 
 - **Render bundles:** the draw commands for the house are recorded once and replayed every frame, so the CPU cost is close to zero. They are re-recorded only when build mode changes the house. (Babylon calls this "snapshot rendering".)
 - **GPU culling:** a compute shader tests object bounds against the camera and writes `drawIndirect` arguments. The CPU never loops over objects.
-- **GPU animation:** skinning in the vertex shader. Background/neighbourhood Sims use baked vertex-animation textures, so hundreds cost almost nothing.
+- **GPU animation:** skinning in the vertex shader. Background/neighbourhood residents use baked vertex-animation textures, so hundreds cost almost nothing.
 - **GPU particles:** compute-driven steam, fire, sparkles and mood effects.
 - **All per-object data lives in GPU storage buffers** (transforms, material IDs, highlight state). Each tick, the snapshot from the sim is uploaded in **one** buffer write.
 - **Limit:** multi-draw-indirect (one call for *everything*) is still experimental in Chrome (~0.25% of devices), so each draw is still one cheap call. Merged meshes, instancing and shared materials keep the count low (about 100–300).
@@ -171,7 +171,7 @@ Performance budget: a sim tick under **1 ms for 8 Sims** and under **3 ms for 50
 - Static walls and floors are merged into **one mesh per room chunk**, rebuilt only on build-mode edits.
 - Furniture is **instanced by model** (every identical chair is one draw call).
 - Texture atlases plus a small set of shared materials, which keeps material switches low.
-- Characters: GPU skinning, 2–3 LODs, animation sampling skipped for off-screen Sims.
+- Characters: GPU skinning, 2–3 LODs, animation sampling skipped for off-screen residents.
 - Frustum culling plus per-level culling (upper floors hidden in cutaway).
 - Adaptive resolution: render scale drops before frame rate does.
 
@@ -183,7 +183,7 @@ Performance budget: a sim tick under **1 ms for 8 Sims** and under **3 ms for 50
 
 - Svelte 5 runes; plain CSS with design tokens (colour, radius, blur, motion) and **no UI framework**.
 - Visual language: frosted glass panels (`backdrop-filter`), soft shadows, rounded geometry, one accent colour per mode (Live / Build / Buy), spring-based micro-animations, variable fonts.
-- Panels: Sim portrait plus mood ring, needs (circular gauges), interaction pie menu (radial, at the cursor), action queue, clock and speed control, build/buy catalog with 3D thumbnails rendered once and cached.
+- Panels: resident portrait plus mood ring, needs (circular gauges), interaction pie menu (radial, at the cursor), action queue, clock and speed control, build/buy catalog with 3D thumbnails rendered once and cached.
 - Accessibility: keyboard shortcuts, reduced-motion support, scalable UI.
 - Performance rules: no per-frame reactive updates; the catalog uses virtual scrolling; thumbnails are lazy-loaded.
 
@@ -196,14 +196,14 @@ Performance budget: a sim tick under **1 ms for 8 Sims** and under **3 ms for 50
 - **Override packs:** manifests listed in `packs` (or passed as `?pack=…`) override keys, so a new art set is a folder plus one line, with no code changes.
 - **Graceful fallback:** a missing model becomes a neutral box and a missing icon a neutral glyph, so broken art never breaks the game.
 - Format for real art: **glTF 2.0**, optimised with `gltf-transform` (meshopt, KTX2, dedupe, quantise). The loader bakes transforms so thin instancing keeps working.
-- Starting library: CC0 packs (Quaternius, Kenney, Poly Haven); a **modular character system** (body + head + hair + outfits on one skeleton) for Create-a-Sim later.
+- Starting library: CC0 packs (Quaternius, Kenney, Poly Haven); a **modular character system** (body + head + hair + outfits on one skeleton) for the household creator.
 
 ---
 
 ## 7. Repository layout (as built)
 
 ```
-open-sims-wasm/
+littlelives/
 ├─ crates/
 │  ├─ sim-core/        # pure Rust simulation, no browser deps, native tests
 │  └─ sim-wasm/        # thin wasm-bindgen layer
@@ -228,14 +228,14 @@ The snapshot memory layout is **defined once in Rust** (`sim-core/src/snapshot.r
 
 | # | Milestone | Done when |
 |---|---|---|
-| **M0** | **Renderer bake-off** (about 1 week). *Pending; the M1 skeleton uses Babylon.js behind the `Renderer` interface.* | One "stress lot" (2-storey house, ~1,500 objects, 30 lamps, sun shadows plus post-processing, 20 skinned Sims) built in **PlayCanvas, three.js and Babylon.js (with snapshot rendering)**, judged on how much work each engine lets us move to the GPU. Measured CPU/GPU ms in Chrome, Safari and Firefox on a Mac and a Windows integrated-GPU laptop. **The winner is locked in.** |
+| **M0** | **Renderer bake-off** (about 1 week). *Pending; the M1 skeleton uses Babylon.js behind the `Renderer` interface.* | One "stress lot" (2-storey house, ~1,500 objects, 30 lamps, sun shadows plus post-processing, 20 skinned residents) built in **PlayCanvas, three.js and Babylon.js (with snapshot rendering)**, judged on how much work each engine lets us move to the GPU. Measured CPU/GPU ms in Chrome, Safari and Firefox on a Mac and a Windows integrated-GPU laptop. **The winner is locked in.** |
 | M1 ✅ | Skeleton | Monorepo, Rust→WASM build, sim worker, SharedArrayBuffer bridge, renderer showing a lot with camera controls, Svelte HUD shell, cross-origin-isolated dev server. |
-| M2 ◐ | Living Sim | 1 Sim, 8 needs, 8 smart objects, autonomy, click-to-move, pathfinding, interaction pie menu, time controls. *Mostly done in the skeleton: 2 Sims, 6 needs, 10 objects.* |
+| M2 ◐ | Living resident | 1 resident, 8 needs, 8 smart objects, autonomy, click-to-move, pathfinding, interaction pie menu, time controls. *Mostly done in the skeleton: 2 residents, 6 needs, 10 objects.* |
 | M3 | Look pass | Time-of-day lighting, shadows, ambient occlusion, bloom, tilt-shift, cutaway walls, UI design polish. *The "stunning" milestone.* |
 | M4 | Build and Buy | Walls/floors/doors/windows, room detection, catalog, placement, undo/redo. |
-| M5 | Household | Multiple Sims, relationships, conversations, multi-Sim interactions. |
+| M5 | Household | Multiple residents, relationships, conversations, multi-resident interactions. |
 | M6 | Persistence | Save/load, autosave, multiple save slots, schema migration. |
-| M7 | Create-a-Sim | Modular characters, outfits, traits. |
+| M7 | Household creator | Modular characters, outfits, traits. |
 | Later | Careers, skills, neighbourhood, audio. |
 
 Every milestone ships with: native sim tests, a perf-harness run in CI (headless Chrome), and the frame-time budget checked.
@@ -251,8 +251,8 @@ Every milestone ships with: native sim tests, a perf-harness run in CI (headless
 | No Firefox WebGPU on Linux | WebGL2 fallback is built in and tested (`?renderer=webgl`); budgets are measured on WebGL2 too. |
 | Cross-origin isolation blocks third-party embeds | Self-host all assets; `postMessage` fallback path. |
 | Benchmark bias toward PlayCanvas | M0 bake-off on our own scene decides. |
-| Scope creep (The Sims is huge) | Strict milestones; M2 + M3 make a playable, beautiful vertical slice first. |
-| Trademark | "The Sims" is an EA trademark. `open-sims-wasm` is fine as a private project name; choose a different public name before releasing it, and use only original or licensed art. |
+| Scope creep (life sims are huge) | Strict milestones; M2 + M3 make a playable, beautiful vertical slice first. |
+| Trademark ✅ | Done: the project is called Littlelives (see "Naming" below). Use only original or licensed art. |
 
 ---
 
@@ -260,4 +260,20 @@ Every milestone ships with: native sim tests, a perf-harness run in CI (headless
 
 1. **Devices:** desktop only.
 2. **Art direction:** modern, minimalist and stylised; all art is replaceable through the manifest.
-3. **Name:** open-sims-wasm.
+3. **Name:** Littlelives (`littlelives` in slugs).
+4. **Licence:** MIT for the code; third-party art keeps its own licence (CC0, see `web/public/assets/CREDITS.md`).
+
+### Naming
+
+The project was first called `open-sims-wasm`. Before going open source it was renamed to
+**Littlelives** to stay clear of Electronic Arts' trademarks:
+
+- Display text says *Littlelives*; slugs (package name, file names) use `littlelives`.
+- Characters are called **residents** in everything a player or pack author reads.
+- The temporary mood modifiers are called **feelings**. Content packs and saves written with the
+  old key names still load (serde aliases in sim-core, `LEGACY_KEYS` in both content mergers).
+- Kept on purpose: the repository folder, the crate names `sim-core` / `sim-wasm` ("sim" for
+  simulation), code identifiers such as `sim` and `SimView`, and the browser storage keys
+  (`open-sims-wasm` IndexedDB database, `open-sims-wasm.settings`) so existing saves and
+  settings survive.
+- Credits and the README keep a short nominative disclaimer naming EA's trademark.

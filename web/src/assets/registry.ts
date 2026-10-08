@@ -26,6 +26,11 @@ export class AssetRegistry {
     return undefined;
   }
 
+  /** Whether `key` exists with type `type` (no warning; for optional variants such as `model.sofa@modern`). */
+  has(key: string, type: AssetType): boolean {
+    return this.entries.get(key)?.type === type;
+  }
+
   /** Icons never fail: a missing key yields a neutral placeholder so the UI stays intact. */
   icon(key: string): IconEntry {
     return this.get(key, 'icon') ?? { type: 'icon', url: FALLBACK_ICON, mode: 'mask' };

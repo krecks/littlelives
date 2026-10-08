@@ -3,7 +3,9 @@
   --font: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   --text: #1d2230;
-  --text-muted: #6a7182;
+  --text-strong: #121826;
+  /* Secondary text; dark enough to read on glass over a busy 3D scene (>= 4.5:1 on --glass). */
+  --text-muted: #5a6274;
   --text-inverse: #ffffff;
   --accent: #5b7cfa;
   --accent-soft: rgba(91, 124, 250, 0.14);
@@ -87,6 +89,37 @@ button:focus-visible {
     transition-duration: 0ms !important;
     animation-duration: 0ms !important;
   }
+}
+
+/* ---- Menus over the live 3D town ------------------------------------------ */
+
+:root {
+  /* Panels that sit directly on the scene: denser than HUD glass so text stays readable. */
+  --glass-menu: rgba(250, 251, 253, 0.8);
+  --glass-menu-border: rgba(255, 255, 255, 0.85);
+  --glass-menu-shadow: 0 18px 50px rgba(16, 22, 40, 0.24), 0 2px 6px rgba(16, 22, 40, 0.08);
+  /* Title-screen panel (dark, cinematic). */
+  --glass-dark: rgba(14, 18, 26, 0.5);
+  --glass-dark-border: rgba(255, 255, 255, 0.14);
+  /* Soft light haze behind header text at the top of the screen. */
+  --scene-haze: linear-gradient(180deg, rgba(252, 249, 243, 0.92) 0%, rgba(252, 249, 243, 0.72) 48%, rgba(252, 249, 243, 0) 100%);
+  /* Tags pinned above lots. */
+  --tag-bg: rgba(255, 255, 255, 0.93);
+  --tag-shadow: 0 6px 18px rgba(16, 22, 40, 0.28), 0 1px 2px rgba(16, 22, 40, 0.18);
+  --tag-shadow-hover: 0 10px 26px rgba(16, 22, 40, 0.34), 0 1px 2px rgba(16, 22, 40, 0.18);
+  --tag-home: #5b7cfa;
+  --tag-sale: #e9a23b;
+  --tag-park: #43a96b;
+}
+
+/* A panel that floats on the 3D scene. */
+.menu-glass {
+  background: var(--glass-menu);
+  border: 1px solid var(--glass-menu-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-menu-shadow);
+  backdrop-filter: blur(22px) saturate(1.5);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
 }
 
 /* ---- Shared controls ------------------------------------------------------ */

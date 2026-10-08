@@ -1,0 +1,219 @@
+{
+  "$comment": "Hot-headed pack: safe outlets for a short fuse and ways to cool it. A heavy bag, a plate-smash bin and a thunder drum kit let residents blow off steam (lower urge to insult or fight, more willing to apologise); a meditation cushion, a grudge journal and the premium cold-plunge tub calm them down for longer. Trains Strength, Creativity, Dexterity, Writing and Perception. New tags: sport, music (shared vocabulary); also uses the base spa tag. Check with: cargo run -q -p sim-core --example check_pack -- web/public/content/packs/hotHeaded.json",
+  "tags": ["sport", "music"],
+  "objects": [
+    {
+      "id": "hotHeaded.heavyBag",
+      "name": "Heavy punching bag",
+      "model": "model.hotHeaded.heavyBag",
+      "footprint": [1, 1],
+      "price": 380,
+      "category": "fitness",
+      "slots": 1,
+      "description": "A free-standing leather heavy bag that takes whatever you throw at it. Builds Strength, and every session leaves the resident having blown off steam.",
+      "interactions": [
+        {
+          "id": "pound",
+          "label": "Pound the bag",
+          "anim": "exercise",
+          "minutes": 45,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.15, "energy": -0.25, "hygiene": -0.25 },
+          "tags": ["training", "fitness", "sport"],
+          "skills": { "strength": 0.22, "endurance": 0.06 },
+          "skill": "strength",
+          "feeling": "hotHeaded.blewOffSteam"
+        }
+      ]
+    },
+    {
+      "id": "hotHeaded.smashBin",
+      "name": "Plate-smash bin",
+      "model": "model.hotHeaded.smashBin",
+      "footprint": [1, 1],
+      "price": 450,
+      "category": "hobbies",
+      "slots": 1,
+      "description": "A padded, lidded crate and a stack of thrift-store plates to hurl into it. Loud, satisfying fun ($6 of crockery a go) that leaves the resident having blown off steam.",
+      "interactions": [
+        {
+          "id": "smash",
+          "label": "Smash old plates",
+          "anim": "exercise",
+          "minutes": 20,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.3, "energy": -0.05 },
+          "tags": ["entertainment", "sport"],
+          "feeling": "hotHeaded.blewOffSteam"
+        }
+      ]
+    },
+    {
+      "id": "hotHeaded.thunderDrums",
+      "name": "Thunder drum kit",
+      "model": "model.hotHeaded.thunderDrums",
+      "footprint": [2, 1],
+      "price": 1150,
+      "category": "hobbies",
+      "slots": 1,
+      "description": "A five-piece rock kit for turning rage into rhythm. Builds Creativity and Dexterity; drummers with Creativity 4+ really pour their frustration into it and blow off steam.",
+      "interactions": [
+        {
+          "id": "drum",
+          "label": "Bang the drums",
+          "anim": "music",
+          "minutes": 60,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.45 },
+          "tags": ["training", "entertainment", "creative", "music"],
+          "skills": { "creativity": 0.2, "dexterity": 0.08 },
+          "skill": "creativity",
+          "feeling": "hotHeaded.blewOffSteam",
+          "feelingMinSkill": 4
+        }
+      ]
+    },
+    {
+      "id": "hotHeaded.coolDownCushion",
+      "name": "Cool-down meditation cushion",
+      "model": "model.hotHeaded.coolDownCushion",
+      "footprint": [1, 1],
+      "price": 180,
+      "category": "decor",
+      "slots": 1,
+      "description": "A floor cushion, a singing bowl and a candle. Counting to ten here leaves a resident cooled down; longer breathing practice builds Perception.",
+      "interactions": [
+        {
+          "id": "countToTen",
+          "label": "Count to ten",
+          "anim": "meditate",
+          "minutes": 20,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "comfort": 0.35, "fun": 0.05 },
+          "tags": ["rest", "lounge"],
+          "feeling": "hotHeaded.cooledDown"
+        },
+        {
+          "id": "breathe",
+          "label": "Practise mindful breathing",
+          "anim": "meditate",
+          "minutes": 60,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "comfort": 0.15, "fun": 0.05 },
+          "tags": ["training", "lounge"],
+          "skills": { "perception": 0.2, "endurance": 0.04 },
+          "skill": "perception"
+        }
+      ]
+    },
+    {
+      "id": "hotHeaded.grudgeJournal",
+      "name": "Grudge-to-gratitude writing desk",
+      "model": "model.hotHeaded.grudgeJournal",
+      "footprint": [1, 1],
+      "price": 280,
+      "category": "office",
+      "slots": 1,
+      "description": "A small desk with a leather journal for writing grudges out instead of shouting them. Builds Writing; residents with Writing 3+ find the words to let it go and want to make up.",
+      "interactions": [
+        {
+          "id": "writeItOut",
+          "label": "Write out the grudge",
+          "anim": "write",
+          "minutes": 45,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.1, "comfort": 0.15 },
+          "tags": ["training", "creative"],
+          "skills": { "writing": 0.2, "charisma": 0.05 },
+          "skill": "writing",
+          "feeling": "hotHeaded.letItGo",
+          "feelingMinSkill": 3
+        }
+      ]
+    },
+    {
+      "id": "hotHeaded.coldPlunge",
+      "name": "Glacier cold-plunge tub",
+      "model": "model.hotHeaded.coldPlunge",
+      "footprint": [1, 2],
+      "price": 2600,
+      "category": "bathroom",
+      "slots": 1,
+      "description": "An insulated ice-bath tub with a chiller. A bracing plunge ($8 of ice and filtering) washes, wakes and soothes at once, and leaves even the hottest head in an ice-cold calm for hours.",
+      "interactions": [
+        {
+          "id": "plunge",
+          "label": "Take a cold plunge",
+          "anim": "bath",
+          "minutes": 30,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "hygiene": 0.45, "comfort": 0.2, "energy": 0.1, "fun": 0.05 },
+          "tags": ["spa", "hygiene"],
+          "feeling": "hotHeaded.iceCalm"
+        }
+      ]
+    }
+  ],
+  "feelings": [
+    {
+      "id": "hotHeaded.blewOffSteam",
+      "label": "Blew off steam",
+      "emotion": "relaxed",
+      "mood": 0.1,
+      "hours": 4,
+      "effects": {
+        "tagPreference": { "mean": 0.5, "violent": 0.4, "makeup": 1.5 },
+        "tagAcceptance": { "friendly": 0.05 }
+      }
+    },
+    {
+      "id": "hotHeaded.cooledDown",
+      "label": "Cooled down",
+      "emotion": "relaxed",
+      "mood": 0.07,
+      "hours": 5,
+      "effects": {
+        "tagPreference": { "mean": 0.6, "violent": 0.5, "makeup": 1.8 },
+        "needGain": { "comfort": 1.15 }
+      }
+    },
+    {
+      "id": "hotHeaded.letItGo",
+      "label": "Let it go",
+      "emotion": "happy",
+      "mood": 0.08,
+      "hours": 8,
+      "effects": {
+        "tagPreference": { "makeup": 2.5, "mean": 0.5, "friendly": 1.2 },
+        "tagAcceptance": { "makeup": 0.1, "friendly": 0.05 }
+      }
+    },
+    {
+      "id": "hotHeaded.iceCalm",
+      "label": "Ice-cold calm",
+      "emotion": "relaxed",
+      "mood": 0.13,
+      "hours": 8,
+      "effects": {
+        "tagPreference": { "mean": 0.35, "violent": 0.3, "makeup": 2.0, "spa": 0.5 },
+        "tagAcceptance": { "friendly": 0.08 },
+        "needGain": { "energy": 1.15, "comfort": 1.15 }
+      }
+    }
+  ],
+  "traitPatches": {
+    "hotHeaded": {
+      "effects": {
+        "tagPreference": { "sport": 1.7, "music": 1.3, "fitness": 1.3 },
+        "skillGain": { "strength": 1.15 }
+      }
+    }
+  }
+}

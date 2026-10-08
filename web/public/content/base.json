@@ -85,7 +85,13 @@
         "tagPreference": {
           "food": 1.6,
           "cooking": 1.8
+        },
+        "skillGain": {
+          "cooking": 1.3
         }
+      },
+      "startingSkills": {
+        "cooking": 2
       }
     },
     {
@@ -96,7 +102,15 @@
       "effects": {
         "tagPreference": {
           "reading": 2.2
+        },
+        "skillGain": {
+          "intelligence": 1.25,
+          "writing": 1.25
         }
+      },
+      "startingSkills": {
+        "intelligence": 2,
+        "writing": 1
       }
     },
     {
@@ -113,6 +127,9 @@
           "screen": 1.8,
           "lounge": 1.4
         }
+      },
+      "startingSkills": {
+        "technology": 1
       }
     },
     {
@@ -131,6 +148,9 @@
           "hygiene": 1.5,
           "chores": 1.6
         }
+      },
+      "startingSkills": {
+        "handiness": 1
       }
     },
     {
@@ -166,7 +186,14 @@
         },
         "tagPreference": {
           "rest": 0.8
+        },
+        "skillGain": {
+          "endurance": 1.2
         }
+      },
+      "startingSkills": {
+        "endurance": 2,
+        "strength": 1
       }
     },
     {
@@ -184,8 +211,13 @@
         },
         "tagPreference": {
           "rest": 1.6
+        },
+        "skillGain": {
+          "endurance": 0.8,
+          "strength": 0.8
         }
-      }
+      },
+      "startingSkills": {}
     },
     {
       "id": "cheerful",
@@ -200,6 +232,9 @@
         "tagAcceptance": {
           "friendly": 0.05
         }
+      },
+      "startingSkills": {
+        "charisma": 1
       }
     },
     {
@@ -218,6 +253,10 @@
         "tagAcceptance": {
           "fun": -0.1
         }
+      },
+      "startingSkills": {
+        "writing": 1,
+        "creativity": 1
       }
     },
     {
@@ -230,6 +269,9 @@
         "tagPreference": {
           "nature": 3.0
         }
+      },
+      "startingSkills": {
+        "perception": 1
       }
     },
     {
@@ -249,7 +291,13 @@
         },
         "tagSuccess": {
           "friendly": 0.05
+        },
+        "skillGain": {
+          "charisma": 1.2
         }
+      },
+      "startingSkills": {
+        "charisma": 2
       }
     },
     {
@@ -266,7 +314,13 @@
         },
         "tagPreference": {
           "social": 0.6
+        },
+        "skillGain": {
+          "intelligence": 1.1
         }
+      },
+      "startingSkills": {
+        "intelligence": 1
       }
     },
     {
@@ -281,6 +335,9 @@
         "tagAcceptance": {
           "romantic": 0.12
         }
+      },
+      "startingSkills": {
+        "creativity": 1
       }
     },
     {
@@ -299,6 +356,9 @@
         "tagAcceptance": {
           "friendly": -0.08
         }
+      },
+      "startingSkills": {
+        "strength": 1
       }
     },
     {
@@ -318,6 +378,9 @@
         "tagAcceptance": {
           "makeup": 0.15
         }
+      },
+      "startingSkills": {
+        "charisma": 1
       }
     }
   ],
@@ -449,8 +512,71 @@
       "Jun",
       "Clara",
       "Ezra",
-      "Nia"
+      "Nia",
+      "Hana",
+      "Sofia",
+      "Amara",
+      "Freya",
+      "Yara",
+      "Lucia",
+      "Ines",
+      "Mateo",
+      "Hugo",
+      "Silas",
+      "Arjun",
+      "Tomas",
+      "Elias",
+      "Kofi",
+      "Felix",
+      "Nico",
+      "Idris"
     ],
+    "byGender": {
+      "female": [
+        "Ada",
+        "Noor",
+        "Elif",
+        "Maya",
+        "Iris",
+        "Lena",
+        "Zoe",
+        "Mila",
+        "Clara",
+        "Nia",
+        "Mika",
+        "Kai",
+        "Jun",
+        "Hana",
+        "Sofia",
+        "Amara",
+        "Freya",
+        "Yara",
+        "Lucia",
+        "Ines"
+      ],
+      "male": [
+        "Jonah",
+        "Leo",
+        "Theo",
+        "Finn",
+        "Omar",
+        "Ravi",
+        "Ezra",
+        "Mika",
+        "Kai",
+        "Jun",
+        "Mateo",
+        "Hugo",
+        "Silas",
+        "Arjun",
+        "Tomas",
+        "Elias",
+        "Kofi",
+        "Felix",
+        "Nico",
+        "Idris"
+      ]
+    },
     "last": [
       "Park",
       "Lindqvist",
@@ -548,9 +674,52 @@
           "social": 0.6
         }
       }
+    },
+    {
+      "id": "focused",
+      "label": "Focused",
+      "icon": "icon.emotion.focused",
+      "effects": {
+        "tagPreference": {
+          "training": 1.4
+        }
+      }
+    },
+    {
+      "id": "inspired",
+      "label": "Inspired",
+      "icon": "icon.emotion.inspired",
+      "effects": {
+        "tagPreference": {
+          "creative": 1.5
+        }
+      }
+    },
+    {
+      "id": "energized",
+      "label": "Energized",
+      "icon": "icon.emotion.energized",
+      "effects": {
+        "tagPreference": {
+          "fitness": 1.5,
+          "rest": 0.8
+        }
+      }
+    },
+    {
+      "id": "relaxed",
+      "label": "Relaxed",
+      "icon": "icon.emotion.relaxed",
+      "effects": {
+        "tagPreference": {
+          "rest": 1.4,
+          "lounge": 1.4,
+          "spa": 1.4
+        }
+      }
     }
   ],
-  "moodlets": [
+  "feelings": [
     {
       "id": "goodChat",
       "label": "Good conversation",
@@ -690,6 +859,13 @@
       "emotion": "embarrassed",
       "mood": -0.1,
       "hours": 12
+    },
+    {
+      "id": "inDebt",
+      "label": "Worried about money",
+      "emotion": "sad",
+      "mood": -0.12,
+      "hours": 24
     }
   ],
   "socials": [
@@ -750,13 +926,13 @@
       "success": {
         "friendship": 3,
         "targetFriendship": 3,
-        "moodlet": "goodChat",
-        "targetMoodlet": "goodChat"
+        "feeling": "goodChat",
+        "targetFeeling": "goodChat"
       },
       "failure": {
         "friendship": -2,
         "targetFriendship": -2,
-        "moodlet": "awkward"
+        "feeling": "awkward"
       }
     },
     {
@@ -788,13 +964,13 @@
       "success": {
         "friendship": 5,
         "targetFriendship": 5,
-        "moodlet": "laughed",
-        "targetMoodlet": "laughed"
+        "feeling": "laughed",
+        "targetFeeling": "laughed"
       },
       "failure": {
         "friendship": -2,
         "targetFriendship": -3,
-        "moodlet": "awkward"
+        "feeling": "awkward"
       }
     },
     {
@@ -822,11 +998,11 @@
       "success": {
         "friendship": 3,
         "targetFriendship": 6,
-        "targetMoodlet": "flattered"
+        "targetFeeling": "flattered"
       },
       "failure": {
         "targetFriendship": -2,
-        "moodlet": "awkward"
+        "feeling": "awkward"
       }
     },
     {
@@ -858,13 +1034,13 @@
       "success": {
         "friendship": 8,
         "targetFriendship": 8,
-        "moodlet": "bonded",
-        "targetMoodlet": "bonded"
+        "feeling": "bonded",
+        "targetFeeling": "bonded"
       },
       "failure": {
         "friendship": -2,
         "targetFriendship": -3,
-        "moodlet": "awkward"
+        "feeling": "awkward"
       }
     },
     {
@@ -898,13 +1074,13 @@
       "success": {
         "friendship": 5,
         "targetFriendship": 5,
-        "moodlet": "hugged",
-        "targetMoodlet": "hugged"
+        "feeling": "hugged",
+        "targetFeeling": "hugged"
       },
       "failure": {
         "friendship": -3,
         "targetFriendship": -6,
-        "moodlet": "awkward"
+        "feeling": "awkward"
       }
     },
     {
@@ -942,14 +1118,14 @@
         "targetRomance": 8,
         "friendship": 2,
         "targetFriendship": 2,
-        "moodlet": "flirty",
-        "targetMoodlet": "flirty"
+        "feeling": "flirty",
+        "targetFeeling": "flirty"
       },
       "failure": {
         "romance": -3,
         "targetRomance": -5,
         "targetFriendship": -3,
-        "moodlet": "rejected"
+        "feeling": "rejected"
       }
     },
     {
@@ -982,13 +1158,13 @@
       "success": {
         "romance": 8,
         "targetRomance": 8,
-        "moodlet": "flirty",
-        "targetMoodlet": "flirty"
+        "feeling": "flirty",
+        "targetFeeling": "flirty"
       },
       "failure": {
         "romance": -3,
         "targetRomance": -4,
-        "moodlet": "awkward"
+        "feeling": "awkward"
       }
     },
     {
@@ -1023,15 +1199,15 @@
       "success": {
         "romance": 10,
         "targetRomance": 10,
-        "moodlet": "kissed",
-        "targetMoodlet": "kissed",
+        "feeling": "kissed",
+        "targetFeeling": "kissed",
         "effect": "kiss"
       },
       "failure": {
         "romance": -6,
         "targetRomance": -10,
         "targetFriendship": -4,
-        "moodlet": "rejected"
+        "feeling": "rejected"
       }
     },
     {
@@ -1066,14 +1242,14 @@
       "success": {
         "romance": 10,
         "targetRomance": 10,
-        "moodlet": "inLove",
-        "targetMoodlet": "inLove",
+        "feeling": "inLove",
+        "targetFeeling": "inLove",
         "effect": "becomePartners"
       },
       "failure": {
         "romance": -10,
         "targetRomance": -5,
-        "moodlet": "rejected"
+        "feeling": "rejected"
       }
     },
     {
@@ -1099,7 +1275,7 @@
         "social": 0.05
       },
       "success": {
-        "moodlet": "relieved",
+        "feeling": "relieved",
         "effect": "breakUp"
       },
       "failure": {
@@ -1128,7 +1304,7 @@
       "success": {
         "friendship": -5,
         "targetFriendship": -12,
-        "targetMoodlet": "insulted"
+        "targetFeeling": "insulted"
       }
     },
     {
@@ -1159,8 +1335,8 @@
       "success": {
         "friendship": -10,
         "targetFriendship": -10,
-        "moodlet": "argued",
-        "targetMoodlet": "argued"
+        "feeling": "argued",
+        "targetFeeling": "argued"
       }
     },
     {
@@ -1192,13 +1368,13 @@
       "success": {
         "friendship": 4,
         "targetFriendship": 4,
-        "moodlet": "laughed",
-        "targetMoodlet": "laughed"
+        "feeling": "laughed",
+        "targetFeeling": "laughed"
       },
       "failure": {
         "friendship": -2,
         "targetFriendship": -8,
-        "targetMoodlet": "pranked"
+        "targetFeeling": "pranked"
       }
     },
     {
@@ -1239,8 +1415,8 @@
           "comfort": -0.1
         },
         "effect": "fight",
-        "winnerMoodlet": "wonFight",
-        "loserMoodlet": "lostFight"
+        "winnerFeeling": "wonFight",
+        "loserFeeling": "lostFight"
       }
     },
     {
@@ -1273,13 +1449,13 @@
       "success": {
         "friendship": 10,
         "targetFriendship": 14,
-        "moodlet": "relieved",
-        "targetMoodlet": "relieved"
+        "feeling": "relieved",
+        "targetFeeling": "relieved"
       },
       "failure": {
         "friendship": -2,
         "targetFriendship": -3,
-        "moodlet": "awkward"
+        "feeling": "awkward"
       }
     }
   ],
@@ -1309,7 +1485,8 @@
     "busyTags": [
       "sleep",
       "bathroom",
-      "hygiene"
+      "hygiene",
+      "nap"
     ],
     "romanticTags": [
       "romantic"
@@ -1318,340 +1495,42 @@
     "jealousyRange": 8,
     "jealousyFriendship": -10,
     "jealousyRomance": -15,
-    "jealousyMoodlet": "jealous",
-    "heartbreakMoodlet": "heartbroken",
+    "jealousyFeeling": "jealous",
+    "heartbreakFeeling": "heartbroken",
     "friendshipDecay": 1.5,
     "romanceDecay": 3
   },
-  "careers": [
-    {
-      "id": "culinary",
-      "label": "Culinary",
-      "icon": "icon.career.culinary",
-      "workEffects": {
-        "hunger": 0.25,
-        "energy": -0.3,
-        "hygiene": -0.25,
-        "fun": -0.1,
-        "social": 0.2
-      },
-      "levels": [
-        {
-          "title": "Dishwasher",
-          "pay": 120,
-          "start": 9,
-          "hours": 6,
-          "days": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        {
-          "title": "Line Cook",
-          "pay": 190,
-          "start": 10,
-          "hours": 7,
-          "days": [
-            1,
-            2,
-            3,
-            4,
-            5
-          ]
-        },
-        {
-          "title": "Sous Chef",
-          "pay": 300,
-          "start": 12,
-          "hours": 8,
-          "days": [
-            1,
-            2,
-            3,
-            4,
-            5
-          ]
-        },
-        {
-          "title": "Head Chef",
-          "pay": 480,
-          "start": 14,
-          "hours": 8,
-          "days": [
-            2,
-            3,
-            4,
-            5,
-            6
-          ]
-        }
-      ]
-    },
-    {
-      "id": "tech",
-      "label": "Tech",
-      "icon": "icon.career.tech",
-      "workEffects": {
-        "hunger": -0.15,
-        "energy": -0.25,
-        "fun": -0.15,
-        "comfort": -0.1,
-        "social": 0.1
-      },
-      "levels": [
-        {
-          "title": "Support Intern",
-          "pay": 140,
-          "start": 9,
-          "hours": 7,
-          "days": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        {
-          "title": "Junior Developer",
-          "pay": 230,
-          "start": 9,
-          "hours": 8,
-          "days": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        {
-          "title": "Software Engineer",
-          "pay": 360,
-          "start": 10,
-          "hours": 8,
-          "days": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        {
-          "title": "Tech Lead",
-          "pay": 560,
-          "start": 10,
-          "hours": 8,
-          "days": [
-            0,
-            1,
-            2,
-            3
-          ]
-        }
-      ]
-    },
-    {
-      "id": "healthcare",
-      "label": "Healthcare",
-      "icon": "icon.career.healthcare",
-      "workEffects": {
-        "hunger": -0.2,
-        "energy": -0.4,
-        "hygiene": -0.15,
-        "social": 0.25
-      },
-      "levels": [
-        {
-          "title": "Orderly",
-          "pay": 130,
-          "start": 7,
-          "hours": 8,
-          "days": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        {
-          "title": "Nurse",
-          "pay": 220,
-          "start": 7,
-          "hours": 9,
-          "days": [
-            0,
-            1,
-            2,
-            5,
-            6
-          ]
-        },
-        {
-          "title": "Resident",
-          "pay": 340,
-          "start": 8,
-          "hours": 10,
-          "days": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        {
-          "title": "Doctor",
-          "pay": 600,
-          "start": 9,
-          "hours": 8,
-          "days": [
-            0,
-            1,
-            2,
-            3
-          ]
-        }
-      ]
-    },
-    {
-      "id": "arts",
-      "label": "Arts",
-      "icon": "icon.career.arts",
-      "workEffects": {
-        "hunger": -0.2,
-        "energy": -0.2,
-        "fun": 0.15,
-        "social": 0.15
-      },
-      "levels": [
-        {
-          "title": "Gallery Assistant",
-          "pay": 100,
-          "start": 11,
-          "hours": 6,
-          "days": [
-            1,
-            2,
-            3,
-            4,
-            5
-          ]
-        },
-        {
-          "title": "Illustrator",
-          "pay": 170,
-          "start": 12,
-          "hours": 6,
-          "days": [
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        {
-          "title": "Art Director",
-          "pay": 290,
-          "start": 12,
-          "hours": 7,
-          "days": [
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        {
-          "title": "Celebrated Artist",
-          "pay": 520,
-          "start": 14,
-          "hours": 5,
-          "days": [
-            2,
-            3,
-            4
-          ]
-        }
-      ]
-    },
-    {
-      "id": "retail",
-      "label": "Retail",
-      "icon": "icon.career.retail",
-      "workEffects": {
-        "hunger": -0.2,
-        "energy": -0.25,
-        "comfort": -0.2,
-        "social": 0.3
-      },
-      "levels": [
-        {
-          "title": "Cashier",
-          "pay": 110,
-          "start": 8,
-          "hours": 7,
-          "days": [
-            0,
-            1,
-            2,
-            4,
-            5
-          ]
-        },
-        {
-          "title": "Sales Associate",
-          "pay": 160,
-          "start": 9,
-          "hours": 7,
-          "days": [
-            0,
-            1,
-            2,
-            4,
-            5
-          ]
-        },
-        {
-          "title": "Store Manager",
-          "pay": 260,
-          "start": 9,
-          "hours": 8,
-          "days": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ]
-        },
-        {
-          "title": "Regional Manager",
-          "pay": 420,
-          "start": 9,
-          "hours": 8,
-          "days": [
-            0,
-            1,
-            2,
-            3
-          ]
-        }
-      ]
-    }
-  ],
   "careerRules": {
     "commuteMinutes": 30,
     "lateMinutes": 60,
     "missedPenalty": 20,
     "performancePerShift": 12,
-    "promotionMoodlet": "promoted",
-    "missedMoodlet": "skippedWork"
+    "promotionFeeling": "promoted",
+    "missedFeeling": "skippedWork",
+    "performancePerFit": 3,
+    "probationLevels": 2,
+    "workweek": [
+      {
+        "fit": -99,
+        "days": 1,
+        "label": "Probation"
+      },
+      {
+        "fit": 0,
+        "days": 0,
+        "label": "Standard"
+      },
+      {
+        "fit": 2,
+        "days": -1,
+        "label": "Flexible"
+      },
+      {
+        "fit": 4,
+        "days": -2,
+        "label": "Expert"
+      }
+    ]
   },
   "schedule": [
     {
@@ -1701,6 +1580,44 @@
           "cooking": 1.4
         }
       }
+    },
+    {
+      "from": 17,
+      "to": 21,
+      "effects": {
+        "tagPreference": {
+          "training": 1.5
+        }
+      }
+    },
+    {
+      "from": 6,
+      "to": 9,
+      "effects": {
+        "tagPreference": {
+          "fitness": 1.4
+        }
+      }
+    },
+    {
+      "from": 9,
+      "to": 20,
+      "effects": {
+        "tagPreference": {
+          "sleep": 0.1,
+          "nap": 0.5
+        }
+      }
+    },
+    {
+      "from": 21,
+      "to": 23.5,
+      "effects": {
+        "tagPreference": {
+          "bathroom": 1.6,
+          "hygiene": 1.3
+        }
+      }
     }
   ],
   "visits": {
@@ -1714,7 +1631,17 @@
     "latestHour": 20
   },
   "economy": {
-    "startingFunds": 1500
+    "startingFunds": 2500,
+    "currency": "$",
+    "rent": {
+      "weekday": 6,
+      "hour": 12,
+      "base": 150,
+      "perTile": 0.4,
+      "billsBase": 25,
+      "billsRate": 0.015,
+      "debtFeeling": "inDebt"
+    }
   },
   "events": {
     "met": "{a} met {b}",
@@ -1731,8 +1658,49 @@
     "jealous": "{a} saw {b} flirting with {c}",
     "promoted": "{a} got promoted!",
     "missedWork": "{a} missed work",
-    "visited": "{a} is visiting {b}"
+    "visited": "{a} is visiting {b}",
+    "skillUp": "{a} reached {skill} level {n}",
+    "paidRent": "{a}'s household paid {money} for rent and bills",
+    "rentDebt": "{a}'s household couldn't cover {money} for rent and bills and is in debt",
+    "upgraded": "{a} upgraded something at home to quality {n}"
   },
+  "tags": [
+    "spa"
+  ],
+  "animations": [
+    "eat",
+    "cook",
+    "wash",
+    "shower",
+    "bath",
+    "toilet",
+    "sleep",
+    "nap",
+    "sit",
+    "type",
+    "read",
+    "watch",
+    "play",
+    "paint",
+    "exercise",
+    "run",
+    "lift",
+    "dance",
+    "talk",
+    "clean",
+    "garden",
+    "music",
+    "tinker",
+    "look",
+    "drink",
+    "relax",
+    "phone",
+    "idle",
+    "sing",
+    "write",
+    "listen",
+    "meditate"
+  ],
   "objects": [
     {
       "id": "fridge",
@@ -1746,6 +1714,7 @@
         {
           "id": "snack",
           "label": "Grab a snack",
+          "anim": "eat",
           "minutes": 10,
           "effects": {
             "hunger": 0.3
@@ -1757,6 +1726,7 @@
         {
           "id": "meal",
           "label": "Make a meal",
+          "anim": "cook",
           "minutes": 40,
           "effects": {
             "hunger": 0.85,
@@ -1765,9 +1735,33 @@
           "tags": [
             "food",
             "cooking"
-          ]
+          ],
+          "skills": {
+            "cooking": 0.12
+          }
+        },
+        {
+          "id": "gourmet",
+          "label": "Cook a gourmet meal",
+          "anim": "cook",
+          "minutes": 75,
+          "effects": {
+            "hunger": 0.95,
+            "fun": 0.15
+          },
+          "tags": [
+            "food",
+            "cooking",
+            "training"
+          ],
+          "skills": {
+            "cooking": 0.25,
+            "creativity": 0.04
+          }
         }
-      ]
+      ],
+      "price": 600,
+      "category": "kitchen"
     },
     {
       "id": "sink",
@@ -1781,6 +1775,7 @@
         {
           "id": "wash",
           "label": "Wash hands",
+          "anim": "wash",
           "minutes": 4,
           "effects": {
             "hygiene": 0.15
@@ -1789,7 +1784,9 @@
             "hygiene"
           ]
         }
-      ]
+      ],
+      "price": 180,
+      "category": "bathroom"
     },
     {
       "id": "bed",
@@ -1803,6 +1800,7 @@
         {
           "id": "sleep",
           "label": "Sleep",
+          "anim": "sleep",
           "minutes": 480,
           "pose": "lie",
           "effects": {
@@ -1817,6 +1815,7 @@
         {
           "id": "nap",
           "label": "Take a nap",
+          "anim": "nap",
           "minutes": 60,
           "pose": "lie",
           "effects": {
@@ -1825,10 +1824,13 @@
           },
           "tags": [
             "rest",
-            "sleep"
+            "nap"
           ]
         }
-      ]
+      ],
+      "price": 750,
+      "category": "bedroom",
+      "slots": 2
     },
     {
       "id": "toilet",
@@ -1842,6 +1844,7 @@
         {
           "id": "use",
           "label": "Use toilet",
+          "anim": "toilet",
           "minutes": 8,
           "pose": "sit",
           "effects": {
@@ -1851,7 +1854,9 @@
             "bathroom"
           ]
         }
-      ]
+      ],
+      "price": 300,
+      "category": "bathroom"
     },
     {
       "id": "shower",
@@ -1865,6 +1870,7 @@
         {
           "id": "shower",
           "label": "Take a shower",
+          "anim": "shower",
           "minutes": 20,
           "effects": {
             "hygiene": 1.0
@@ -1873,7 +1879,9 @@
             "hygiene"
           ]
         }
-      ]
+      ],
+      "price": 650,
+      "category": "bathroom"
     },
     {
       "id": "sofa",
@@ -1887,6 +1895,7 @@
         {
           "id": "relax",
           "label": "Relax",
+          "anim": "relax",
           "minutes": 30,
           "pose": "sit",
           "effects": {
@@ -1897,7 +1906,10 @@
             "lounge"
           ]
         }
-      ]
+      ],
+      "price": 500,
+      "category": "living",
+      "slots": 2
     },
     {
       "id": "tv",
@@ -1911,6 +1923,7 @@
         {
           "id": "watch",
           "label": "Watch TV",
+          "anim": "watch",
           "minutes": 60,
           "effects": {
             "fun": 0.7
@@ -1920,7 +1933,9 @@
             "screen"
           ]
         }
-      ]
+      ],
+      "price": 400,
+      "category": "living"
     },
     {
       "id": "bookshelf",
@@ -1934,6 +1949,7 @@
         {
           "id": "read",
           "label": "Read a book",
+          "anim": "read",
           "minutes": 45,
           "effects": {
             "fun": 0.45
@@ -1941,9 +1957,32 @@
           "tags": [
             "entertainment",
             "reading"
-          ]
+          ],
+          "skills": {
+            "intelligence": 0.12,
+            "writing": 0.04
+          }
+        },
+        {
+          "id": "study",
+          "label": "Study",
+          "anim": "read",
+          "minutes": 60,
+          "effects": {
+            "fun": 0.1
+          },
+          "tags": [
+            "reading",
+            "training"
+          ],
+          "skills": {
+            "intelligence": 0.22,
+            "writing": 0.06
+          }
         }
-      ]
+      ],
+      "price": 250,
+      "category": "living"
     },
     {
       "id": "armchair",
@@ -1957,6 +1996,7 @@
         {
           "id": "sit",
           "label": "Sit down",
+          "anim": "sit",
           "minutes": 20,
           "pose": "sit",
           "effects": {
@@ -1966,7 +2006,9 @@
             "lounge"
           ]
         }
-      ]
+      ],
+      "price": 300,
+      "category": "living"
     },
     {
       "id": "plant",
@@ -1980,6 +2022,7 @@
         {
           "id": "water",
           "label": "Water plant",
+          "anim": "garden",
           "minutes": 5,
           "autonomous": false,
           "effects": {
@@ -1990,7 +2033,9 @@
             "nature"
           ]
         }
-      ]
+      ],
+      "price": 40,
+      "category": "decor"
     },
     {
       "id": "bench",
@@ -2004,6 +2049,7 @@
         {
           "id": "sit",
           "label": "Sit on the bench",
+          "anim": "sit",
           "minutes": 30,
           "pose": "sit",
           "effects": {
@@ -2015,7 +2061,10 @@
             "outdoors"
           ]
         }
-      ]
+      ],
+      "price": 200,
+      "category": "outdoor",
+      "slots": 2
     },
     {
       "id": "flowerbed",
@@ -2029,6 +2078,7 @@
         {
           "id": "tend",
           "label": "Tend the flowers",
+          "anim": "garden",
           "minutes": 15,
           "effects": {
             "fun": 0.12
@@ -2037,9 +2087,14 @@
             "chores",
             "nature",
             "outdoors"
-          ]
+          ],
+          "skills": {
+            "perception": 0.05
+          }
         }
-      ]
+      ],
+      "price": 60,
+      "category": "outdoor"
     },
     {
       "id": "tree",
@@ -2049,7 +2104,9 @@
         1,
         1
       ],
-      "interactions": []
+      "interactions": [],
+      "price": 120,
+      "category": "outdoor"
     },
     {
       "id": "pine",
@@ -2059,7 +2116,9 @@
         1,
         1
       ],
-      "interactions": []
+      "interactions": [],
+      "price": 120,
+      "category": "outdoor"
     },
     {
       "id": "bush",
@@ -2069,7 +2128,576 @@
         1,
         1
       ],
+      "interactions": [],
+      "price": 40,
+      "category": "outdoor"
+    },
+    {
+      "id": "treadmill",
+      "name": "Treadmill",
+      "model": "model.treadmill",
+      "footprint": [
+        1,
+        2
+      ],
+      "price": 650,
+      "category": "fitness",
+      "description": "Builds Endurance.",
+      "interactions": [
+        {
+          "id": "run",
+          "label": "Go for a run",
+          "anim": "run",
+          "minutes": 60,
+          "effects": {
+            "fun": 0.1,
+            "energy": -0.3,
+            "hygiene": -0.3
+          },
+          "tags": [
+            "training",
+            "fitness"
+          ],
+          "skills": {
+            "endurance": 0.25,
+            "strength": 0.05
+          }
+        }
+      ]
+    },
+    {
+      "id": "weightBench",
+      "name": "Weight bench",
+      "model": "model.weightBench",
+      "footprint": [
+        1,
+        2
+      ],
+      "price": 480,
+      "category": "fitness",
+      "description": "Builds Strength.",
+      "interactions": [
+        {
+          "id": "lift",
+          "label": "Lift weights",
+          "anim": "lift",
+          "minutes": 45,
+          "pose": "lie",
+          "effects": {
+            "fun": 0.05,
+            "energy": -0.25,
+            "hygiene": -0.25
+          },
+          "tags": [
+            "training",
+            "fitness"
+          ],
+          "skills": {
+            "strength": 0.25,
+            "endurance": 0.05
+          }
+        }
+      ]
+    },
+    {
+      "id": "chessTable",
+      "name": "Chess table",
+      "model": "model.chessTable",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 350,
+      "category": "hobbies",
+      "description": "Builds Intelligence and Perception.",
+      "interactions": [
+        {
+          "id": "chess",
+          "label": "Practise chess",
+          "anim": "play",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.35
+          },
+          "tags": [
+            "training",
+            "entertainment"
+          ],
+          "skills": {
+            "intelligence": 0.18,
+            "perception": 0.06
+          }
+        }
+      ]
+    },
+    {
+      "id": "computerDesk",
+      "name": "Computer desk",
+      "model": "model.computerDesk",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 1100,
+      "category": "office",
+      "description": "Builds Technology, Writing and Business.",
+      "interactions": [
+        {
+          "id": "code",
+          "label": "Practise coding",
+          "anim": "type",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.1,
+            "comfort": 0.1
+          },
+          "tags": [
+            "training",
+            "screen"
+          ],
+          "skills": {
+            "technology": 0.22,
+            "intelligence": 0.05
+          }
+        },
+        {
+          "id": "write",
+          "label": "Write",
+          "anim": "type",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.15,
+            "comfort": 0.1
+          },
+          "tags": [
+            "training",
+            "creative"
+          ],
+          "skills": {
+            "writing": 0.22,
+            "creativity": 0.05
+          }
+        },
+        {
+          "id": "markets",
+          "label": "Study the markets",
+          "anim": "type",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.05,
+            "comfort": 0.1
+          },
+          "tags": [
+            "training",
+            "screen"
+          ],
+          "skills": {
+            "business": 0.22,
+            "intelligence": 0.04
+          }
+        },
+        {
+          "id": "browse",
+          "label": "Browse the web",
+          "anim": "type",
+          "minutes": 45,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.45,
+            "comfort": 0.1
+          },
+          "tags": [
+            "entertainment",
+            "screen"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "easel",
+      "name": "Easel",
+      "model": "model.easel",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 300,
+      "category": "hobbies",
+      "description": "Builds Creativity.",
+      "interactions": [
+        {
+          "id": "paint",
+          "label": "Paint",
+          "anim": "paint",
+          "minutes": 60,
+          "effects": {
+            "fun": 0.35
+          },
+          "tags": [
+            "training",
+            "creative"
+          ],
+          "skills": {
+            "creativity": 0.22,
+            "dexterity": 0.05
+          }
+        }
+      ]
+    },
+    {
+      "id": "mirror",
+      "name": "Standing mirror",
+      "model": "model.mirror",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 180,
+      "category": "bedroom",
+      "description": "Builds Charisma.",
+      "interactions": [
+        {
+          "id": "speech",
+          "label": "Practise a speech",
+          "anim": "talk",
+          "minutes": 30,
+          "effects": {
+            "social": 0.05
+          },
+          "tags": [
+            "training"
+          ],
+          "skills": {
+            "charisma": 0.22
+          }
+        }
+      ]
+    },
+    {
+      "id": "workbench",
+      "name": "Workbench",
+      "model": "model.workbench",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 700,
+      "category": "hobbies",
+      "description": "Builds Handiness — handy residents can upgrade objects.",
+      "interactions": [
+        {
+          "id": "tinker",
+          "label": "Tinker",
+          "anim": "tinker",
+          "minutes": 60,
+          "effects": {
+            "fun": 0.15,
+            "hygiene": -0.1
+          },
+          "tags": [
+            "training"
+          ],
+          "skills": {
+            "handiness": 0.22,
+            "dexterity": 0.05
+          }
+        }
+      ]
+    },
+    {
+      "id": "telescope",
+      "name": "Telescope",
+      "model": "model.telescope",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 900,
+      "category": "hobbies",
+      "description": "Builds Perception.",
+      "interactions": [
+        {
+          "id": "stargaze",
+          "label": "Stargaze",
+          "anim": "look",
+          "minutes": 45,
+          "effects": {
+            "fun": 0.3
+          },
+          "tags": [
+            "training",
+            "outdoors"
+          ],
+          "skills": {
+            "perception": 0.22,
+            "intelligence": 0.05
+          }
+        }
+      ]
+    },
+    {
+      "id": "piano",
+      "name": "Piano",
+      "model": "model.piano",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 1400,
+      "category": "hobbies",
+      "description": "Builds Dexterity and Creativity.",
+      "interactions": [
+        {
+          "id": "play",
+          "label": "Play the piano",
+          "anim": "music",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.45
+          },
+          "tags": [
+            "training",
+            "entertainment",
+            "creative"
+          ],
+          "skills": {
+            "dexterity": 0.2,
+            "creativity": 0.08
+          }
+        }
+      ]
+    },
+    {
+      "id": "diningTable",
+      "name": "Dining table",
+      "model": "model.diningTable",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 350,
+      "category": "kitchen",
+      "slots": 2,
+      "interactions": [
+        {
+          "id": "coffee",
+          "label": "Have a coffee",
+          "anim": "drink",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.25,
+            "energy": 0.08
+          },
+          "tags": [
+            "food",
+            "lounge"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lamp",
+      "name": "Floor lamp",
+      "model": "model.lamp",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 120,
+      "category": "decor",
       "interactions": []
     }
+  ],
+  "skills": [
+    {
+      "id": "intelligence",
+      "label": "Intelligence",
+      "icon": "icon.skill.intelligence",
+      "description": "Learning, logic and problem solving."
+    },
+    {
+      "id": "strength",
+      "label": "Strength",
+      "icon": "icon.skill.strength",
+      "description": "Lifting, carrying and physical power."
+    },
+    {
+      "id": "endurance",
+      "label": "Endurance",
+      "icon": "icon.skill.endurance",
+      "description": "Stamina for long, demanding days."
+    },
+    {
+      "id": "charisma",
+      "label": "Charisma",
+      "icon": "icon.skill.charisma",
+      "description": "Charm, confidence and public speaking."
+    },
+    {
+      "id": "creativity",
+      "label": "Creativity",
+      "icon": "icon.skill.creativity",
+      "description": "Ideas, art and original thinking."
+    },
+    {
+      "id": "technology",
+      "label": "Technology",
+      "icon": "icon.skill.technology",
+      "description": "Computers, code and gadgets."
+    },
+    {
+      "id": "handiness",
+      "label": "Handiness",
+      "icon": "icon.skill.handiness",
+      "description": "Fixing, building and upgrading things."
+    },
+    {
+      "id": "cooking",
+      "label": "Cooking",
+      "icon": "icon.skill.cooking",
+      "description": "From burnt toast to gourmet."
+    },
+    {
+      "id": "writing",
+      "label": "Writing",
+      "icon": "icon.skill.writing",
+      "description": "Clear words, stories and reports."
+    },
+    {
+      "id": "perception",
+      "label": "Perception",
+      "icon": "icon.skill.perception",
+      "description": "Noticing details others miss."
+    },
+    {
+      "id": "dexterity",
+      "label": "Dexterity",
+      "icon": "icon.skill.dexterity",
+      "description": "Steady, skilled hands."
+    },
+    {
+      "id": "business",
+      "label": "Business",
+      "icon": "icon.skill.business",
+      "description": "Money, negotiation and leadership."
+    }
+  ],
+  "skillRules": {
+    "maxLevel": 10,
+    "workGainPerHour": 0.04,
+    "slowdown": 0.25,
+    "interest": 0.05,
+    "goalInterest": 0.3,
+    "fatiguePerHour": 1.0,
+    "fatigueRecoveryPerHour": 0.35,
+    "effectPerLevel": 0.05
+  },
+  "dayRhythm": {
+    "wakeHour": 7,
+    "bedHour": 22.5,
+    "sleepTags": [
+      "sleep"
+    ],
+    "nightDecay": {
+      "energy": 1.8
+    },
+    "asleepDecay": {
+      "hunger": 0.4,
+      "bladder": 0.35,
+      "hygiene": 0.5,
+      "fun": 0.2,
+      "comfort": 0.3,
+      "social": 0.2
+    },
+    "wakeBeforeWorkMinutes": 75
+  },
+  "objectRules": {
+    "maxQuality": 3,
+    "qualityBonus": 0.25,
+    "upgradeCost": 0.3,
+    "resale": 0.6
+  },
+  "build": {
+    "wall": 40,
+    "door": 150,
+    "window": 120,
+    "remove": 10
+  },
+  "styles": [
+    {
+      "id": "modern",
+      "label": "Modern"
+    },
+    {
+      "id": "cozy",
+      "label": "Cozy"
+    },
+    {
+      "id": "minimal",
+      "label": "Minimal"
+    }
+  ],
+  "buyCategories": [
+    {
+      "id": "kitchen",
+      "label": "Kitchen"
+    },
+    {
+      "id": "bathroom",
+      "label": "Bathroom"
+    },
+    {
+      "id": "bedroom",
+      "label": "Bedroom"
+    },
+    {
+      "id": "living",
+      "label": "Living"
+    },
+    {
+      "id": "office",
+      "label": "Office"
+    },
+    {
+      "id": "fitness",
+      "label": "Fitness"
+    },
+    {
+      "id": "hobbies",
+      "label": "Hobbies"
+    },
+    {
+      "id": "decor",
+      "label": "Decor"
+    },
+    {
+      "id": "outdoor",
+      "label": "Outdoor"
+    }
+  ],
+  "include": [
+    "careers.json",
+    "packs/example.json",
+    "packs/foodie.json",
+    "packs/bookworm.json",
+    "packs/couchPotato.json",
+    "packs/neat.json",
+    "packs/slob.json",
+    "packs/energetic.json",
+    "packs/lazy.json",
+    "packs/cheerful.json",
+    "packs/gloomy.json",
+    "packs/natureLover.json",
+    "packs/outgoing.json",
+    "packs/loner.json",
+    "packs/romantic.json",
+    "packs/hotHeaded.json",
+    "packs/kind.json"
   ]
 }

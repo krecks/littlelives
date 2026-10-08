@@ -1,6 +1,6 @@
 # Download a Poly Haven glTF (1k) with its files. usage: python3 -I ph_model.py <outdir> <id>...
 import json, sys, urllib.request, os
-UA = {'User-Agent': 'open-sims-wasm-asset-fetch/1.0'}
+UA = {'User-Agent': 'littlelives-asset-fetch/1.0'}
 def get(u): return urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=120).read()
 out, ids = sys.argv[1], sys.argv[2:]
 for i in ids:

@@ -1,0 +1,226 @@
+{
+  "$comment": "Lazy pack: comfort-first furniture for residents who tire quickly. Better sleep and naps that slow energy decay, cosy lounging, food that arrives without cooking (for a fee), an effortless workout that softens the lazy resident's slow Strength/Endurance, and a smart-home hub where tech-savvy residents automate chores away. See docs/personalities/lazy.md.",
+  "tags": ["cozy"],
+  "feelings": [
+    {
+      "id": "lazy.dreamySleep",
+      "label": "Slept like a cloud",
+      "emotion": "relaxed",
+      "mood": 0.1,
+      "hours": 8,
+      "effects": { "needDecay": { "energy": 0.8 }, "needGain": { "comfort": 1.15 } }
+    },
+    {
+      "id": "lazy.powerNap",
+      "label": "Perfect power nap",
+      "emotion": "energized",
+      "mood": 0.06,
+      "hours": 3,
+      "effects": { "needDecay": { "energy": 0.85 }, "walkSpeed": 1.1, "skillGain": { "endurance": 1.15 } }
+    },
+    {
+      "id": "lazy.autopilot",
+      "label": "House on autopilot",
+      "emotion": "happy",
+      "mood": 0.08,
+      "hours": 8,
+      "effects": { "needDecay": { "comfort": 0.85, "energy": 0.9 }, "tagPreference": { "cozy": 1.2 } }
+    },
+    {
+      "id": "lazy.noDishes",
+      "label": "No dishes tonight",
+      "emotion": "relaxed",
+      "mood": 0.05,
+      "hours": 3,
+      "effects": { "needGain": { "comfort": 1.1 } }
+    }
+  ],
+  "objects": [
+    {
+      "id": "lazy.snoozecloudBed",
+      "name": "Snoozecloud adjustable bed",
+      "model": "model.lazy.snoozecloudBed",
+      "footprint": [2, 2],
+      "slots": 2,
+      "price": 2600,
+      "category": "bedroom",
+      "description": "A cloud-soft adjustable double bed: a night on it leaves residents rested for longer (energy drains 20% slower for 8 hours) and its lie-ins are extra cosy.",
+      "interactions": [
+        {
+          "id": "sleep",
+          "label": "Sleep",
+          "anim": "sleep",
+          "minutes": 480,
+          "pose": "lie",
+          "effects": { "energy": 1.0, "comfort": 0.6 },
+          "tags": ["rest", "sleep"],
+          "feeling": "lazy.dreamySleep"
+        },
+        {
+          "id": "sleepIn",
+          "label": "Sleep in a little",
+          "anim": "nap",
+          "minutes": 75,
+          "pose": "lie",
+          "effects": { "energy": 0.3, "comfort": 0.3 },
+          "tags": ["rest", "nap", "cozy"]
+        }
+      ]
+    },
+    {
+      "id": "lazy.napPod",
+      "name": "Daydream nap pod",
+      "model": "model.lazy.napPod",
+      "footprint": [1, 1],
+      "slots": 1,
+      "price": 680,
+      "category": "living",
+      "description": "A padded cocoon chair for curling up anywhere; a quick nap inside leaves the resident briefly energized, quicker on their feet and keener to exercise.",
+      "interactions": [
+        {
+          "id": "curlUp",
+          "label": "Curl up in the pod",
+          "anim": "relax",
+          "minutes": 30,
+          "pose": "sit",
+          "effects": { "comfort": 0.55, "fun": 0.1 },
+          "tags": ["rest", "lounge", "cozy"]
+        },
+        {
+          "id": "powerNap",
+          "label": "Take a power nap",
+          "anim": "nap",
+          "minutes": 40,
+          "pose": "lie",
+          "effects": { "energy": 0.16, "comfort": 0.15 },
+          "tags": ["rest", "nap"],
+          "feeling": "lazy.powerNap"
+        }
+      ]
+    },
+    {
+      "id": "lazy.quiltTable",
+      "name": "Heated quilt table",
+      "model": "model.lazy.quiltTable",
+      "footprint": [2, 1],
+      "slots": 2,
+      "price": 640,
+      "category": "living",
+      "description": "A low table with a warm quilt and floor cushions for two: the cosiest place to snack, chat or doze off for the afternoon.",
+      "interactions": [
+        {
+          "id": "tuckIn",
+          "label": "Tuck in under the quilt",
+          "anim": "relax",
+          "minutes": 40,
+          "pose": "sit",
+          "effects": { "comfort": 0.7, "fun": 0.1 },
+          "tags": ["rest", "lounge", "cozy"]
+        },
+        {
+          "id": "doze",
+          "label": "Doze under the quilt",
+          "anim": "nap",
+          "minutes": 45,
+          "pose": "lie",
+          "effects": { "energy": 0.17, "comfort": 0.2 },
+          "tags": ["rest", "nap", "cozy"]
+        }
+      ]
+    },
+    {
+      "id": "lazy.deliveryLocker",
+      "name": "Doorstep delivery locker",
+      "model": "model.lazy.deliveryLocker",
+      "footprint": [1, 1],
+      "slots": 1,
+      "price": 380,
+      "category": "kitchen",
+      "description": "Order hot food without lifting a pan: takeout costs money each time but fills residents faster than cooking and spares them the dishes.",
+      "interactions": [
+        {
+          "id": "takeout",
+          "label": "Order takeout",
+          "anim": "eat",
+          "minutes": 30,
+          "effects": { "hunger": 0.8, "fun": 0.1 },
+          "tags": ["food"],
+          "cost": 10,
+          "feeling": "lazy.noDishes"
+        },
+        {
+          "id": "noodles",
+          "label": "Order cheap noodles",
+          "anim": "eat",
+          "minutes": 20,
+          "effects": { "hunger": 0.55 },
+          "tags": ["food"],
+          "cost": 5
+        }
+      ]
+    },
+    {
+      "id": "lazy.vibePlate",
+      "name": "Effortless vibration plate",
+      "model": "model.lazy.vibePlate",
+      "footprint": [1, 1],
+      "slots": 1,
+      "price": 520,
+      "category": "fitness",
+      "description": "Stand still and let the plate do the work: trains Endurance and Strength a bit slower than a treadmill but barely tires or dirties the resident.",
+      "interactions": [
+        {
+          "id": "shake",
+          "label": "Do an effortless workout",
+          "anim": "exercise",
+          "minutes": 30,
+          "effects": { "fun": 0.05, "energy": -0.08, "hygiene": -0.05 },
+          "tags": ["training", "fitness"],
+          "skills": { "endurance": 0.2, "strength": 0.06 }
+        }
+      ]
+    },
+    {
+      "id": "lazy.smartHub",
+      "name": "Smart-home command hub",
+      "model": "model.lazy.smartHub",
+      "footprint": [1, 1],
+      "slots": 1,
+      "price": 750,
+      "category": "office",
+      "description": "Trains Technology by programming the house to run itself; residents with Technology 4+ set it up so well the whole home feels effortless for hours.",
+      "interactions": [
+        {
+          "id": "program",
+          "label": "Program home routines",
+          "anim": "type",
+          "minutes": 60,
+          "effects": { "fun": 0.1, "comfort": 0.05 },
+          "tags": ["training", "screen"],
+          "skills": { "technology": 0.22, "intelligence": 0.05 },
+          "skill": "technology",
+          "feeling": "lazy.autopilot",
+          "feelingMinSkill": 4
+        },
+        {
+          "id": "story",
+          "label": "Ask the assistant for a story",
+          "anim": "listen",
+          "minutes": 30,
+          "effects": { "fun": 0.3, "social": 0.08 },
+          "tags": ["entertainment", "screen"],
+          "skills": { "technology": 0.04 },
+          "skill": "technology"
+        }
+      ]
+    }
+  ],
+  "traitPatches": {
+    "lazy": {
+      "effects": {
+        "tagPreference": { "cozy": 1.8, "nap": 1.4 },
+        "skillGain": { "technology": 1.15 }
+      }
+    }
+  }
+}

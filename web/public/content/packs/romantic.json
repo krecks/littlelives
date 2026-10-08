@@ -1,0 +1,235 @@
+{
+  "$comment": "Romantic pack: date-night furniture for residents who dream of love. Candlelit dinners, a rose-petal tub for two, love letters, a vanity to primp before a date, love songs and a rose-arbour swing. Several items leave feelings that make flirting land more often. New tags: romance (object-side romance; the social tag 'romantic' stays reserved for conversations) and music. See docs/personalities/romantic.md.",
+  "objects": [
+    {
+      "id": "romantic.candlelitTable",
+      "name": "Candlelit bistro table",
+      "model": "model.romantic.candlelitTable",
+      "footprint": [2, 1],
+      "price": 780,
+      "category": "kitchen",
+      "slots": 2,
+      "description": "A linen-draped table for two with tall candles and a single rose. Dinner here is a little more fun and comfortable than at the fridge; good cooks (Cooking 4+) leave with a Candlelit glow that makes flirting land.",
+      "interactions": [
+        {
+          "id": "candlelitDinner",
+          "label": "Have a candlelit dinner",
+          "anim": "eat",
+          "minutes": 50,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "hunger": 0.8, "fun": 0.15, "comfort": 0.05 },
+          "tags": ["food", "cooking", "romance"],
+          "skills": { "cooking": 0.08 },
+          "skill": "cooking",
+          "feeling": "romantic.candlelitGlow",
+          "feelingMinSkill": 4
+        },
+        {
+          "id": "shareDessert",
+          "label": "Share a dessert",
+          "anim": "eat",
+          "minutes": 20,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "hunger": 0.25, "fun": 0.1 },
+          "tags": ["food", "romance"]
+        }
+      ]
+    },
+    {
+      "id": "romantic.heartTub",
+      "name": "Heart-shaped petal tub",
+      "model": "model.romantic.heartTub",
+      "footprint": [2, 2],
+      "price": 2800,
+      "category": "bathroom",
+      "slots": 2,
+      "description": "A blush-pink tub for two, scattered with rose petals. A soak soothes Comfort, Hygiene and Fun at once and leaves residents Petal-soft: they sleep better and are easier to woo for hours.",
+      "interactions": [
+        {
+          "id": "petalBath",
+          "label": "Take a rose-petal bath",
+          "anim": "bath",
+          "minutes": 45,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "comfort": 0.8, "hygiene": 0.5, "fun": 0.15 },
+          "tags": ["spa", "romance"],
+          "feeling": "romantic.petalSoft"
+        }
+      ]
+    },
+    {
+      "id": "romantic.letterBureau",
+      "name": "Love-letter bureau",
+      "model": "model.romantic.letterBureau",
+      "footprint": [1, 1],
+      "price": 420,
+      "category": "office",
+      "slots": 1,
+      "description": "A little writing desk with pigeonholes, a quill and red sealing wax. Builds Writing (and a little Charisma); practised writers (Writing 3+) compose poems that leave them Lovestruck.",
+      "interactions": [
+        {
+          "id": "writeLetter",
+          "label": "Write a love letter",
+          "anim": "write",
+          "minutes": 60,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.1, "social": 0.05 },
+          "tags": ["training", "romance"],
+          "skills": { "writing": 0.22, "charisma": 0.06 }
+        },
+        {
+          "id": "writePoem",
+          "label": "Compose a love poem",
+          "anim": "write",
+          "minutes": 45,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.35 },
+          "tags": ["creative", "romance"],
+          "skills": { "writing": 0.08, "creativity": 0.06 },
+          "skill": "writing",
+          "feeling": "romantic.lovestruck",
+          "feelingMinSkill": 3
+        }
+      ]
+    },
+    {
+      "id": "romantic.vanity",
+      "name": "Rose-gold vanity",
+      "model": "model.romantic.vanity",
+      "footprint": [1, 1],
+      "price": 520,
+      "category": "bedroom",
+      "slots": 1,
+      "description": "An oval mirror, a velvet pouf and a row of perfumes. Primping freshens up a little, teaches a bit of Charisma and leaves the resident Date-ready; charming residents get more out of it.",
+      "interactions": [
+        {
+          "id": "primp",
+          "label": "Get ready for a date",
+          "anim": "wash",
+          "minutes": 20,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "hygiene": 0.2, "comfort": 0.05 },
+          "tags": ["romance"],
+          "skills": { "charisma": 0.08 },
+          "skill": "charisma",
+          "feeling": "romantic.dateReady"
+        }
+      ]
+    },
+    {
+      "id": "romantic.gramophone",
+      "name": "Moonlight gramophone",
+      "model": "model.romantic.gramophone",
+      "footprint": [1, 1],
+      "price": 360,
+      "category": "living",
+      "slots": 1,
+      "description": "A brass-horn record player stocked with old love songs. Listening is good Fun and gives residents butterflies; waltzing trains Dexterity.",
+      "interactions": [
+        {
+          "id": "listen",
+          "label": "Listen to love songs",
+          "anim": "listen",
+          "minutes": 45,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.45, "comfort": 0.05 },
+          "tags": ["entertainment", "music", "romance"],
+          "feeling": "flirty"
+        },
+        {
+          "id": "waltz",
+          "label": "Practise a waltz",
+          "anim": "dance",
+          "minutes": 30,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.25, "hygiene": -0.04 },
+          "tags": ["entertainment", "music"],
+          "skills": { "dexterity": 0.1, "endurance": 0.04 }
+        }
+      ]
+    },
+    {
+      "id": "romantic.roseArbourSwing",
+      "name": "Rose-arbour swing",
+      "model": "model.romantic.roseArbourSwing",
+      "footprint": [2, 1],
+      "price": 750,
+      "category": "outdoor",
+      "slots": 2,
+      "description": "A porch swing for two under an arch of climbing roses. Swinging restores Comfort and Fun outdoors; tending the roses is a gentle chore.",
+      "interactions": [
+        {
+          "id": "swing",
+          "label": "Swing under the roses",
+          "anim": "relax",
+          "minutes": 40,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "comfort": 0.45, "fun": 0.2 },
+          "tags": ["outdoors", "lounge", "nature", "romance"]
+        },
+        {
+          "id": "tendRoses",
+          "label": "Tend the climbing roses",
+          "anim": "garden",
+          "minutes": 30,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.1, "hygiene": -0.03 },
+          "tags": ["chores", "nature"],
+          "skills": { "perception": 0.06 }
+        }
+      ]
+    }
+  ],
+  "feelings": [
+    {
+      "id": "romantic.candlelitGlow",
+      "label": "Candlelit glow",
+      "emotion": "flirty",
+      "mood": 0.1,
+      "hours": 5,
+      "effects": { "needGain": { "social": 1.2 }, "tagPreference": { "romantic": 1.3 }, "tagSuccess": { "romantic": 0.08 } }
+    },
+    {
+      "id": "romantic.petalSoft",
+      "label": "Petal-soft",
+      "emotion": "relaxed",
+      "mood": 0.12,
+      "hours": 8,
+      "effects": { "needGain": { "energy": 1.2, "comfort": 1.15 }, "tagAcceptance": { "romantic": 0.08 } }
+    },
+    {
+      "id": "romantic.dateReady",
+      "label": "Date-ready",
+      "emotion": "flirty",
+      "mood": 0.06,
+      "hours": 3,
+      "effects": { "needGain": { "social": 1.15 }, "tagSuccess": { "romantic": 0.06 } }
+    },
+    {
+      "id": "romantic.lovestruck",
+      "label": "Lovestruck",
+      "emotion": "inspired",
+      "mood": 0.08,
+      "hours": 6,
+      "effects": { "skillGain": { "writing": 1.2, "charisma": 1.15 }, "tagPreference": { "romance": 1.3 } }
+    }
+  ],
+  "traitPatches": {
+    "romantic": {
+      "effects": {
+        "tagPreference": { "romance": 1.8, "music": 1.2 },
+        "skillGain": { "charisma": 1.1 }
+      }
+    }
+  }
+}

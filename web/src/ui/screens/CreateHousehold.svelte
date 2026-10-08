@@ -1,15 +1,22 @@
 <script lang="ts">
+  import { onMount, untrack } from 'svelte';
   import {
     bondBetween,
+    ensureOutfit,
     HAIR_STYLES,
     householdProblems,
     palette,
+    randomFirstName,
     randomHousehold,
     randomSim,
+    regender,
     setBond,
+    type Appearance,
     type HouseholdDraft,
   } from '../../game/household';
+  import type { Wardrobe } from '../../render/types';
   import Segmented from '../kit/Segmented.svelte';
+  import SimStage from '../kit/SimStage.svelte';
   import { app } from '../app.svelte';
   import Icon from '../Icon.svelte';
   import SimPreview from '../kit/SimPreview.svelte';
@@ -21,7 +28,24 @@
     body: palette(assets, 'palette.outfit'),
     skin: palette(assets, 'palette.skin'),
     hair: palette(assets, 'palette.hair'),
+    bottomColor: palette(assets, 'palette.bottoms'),
+    shoesColor: palette(assets, 'palette.shoes'),
   };
+  const garmentLabels: Record<string, string> = {
+    'top.tee': 'T-shirt',
+    'top.long': 'Long sleeve',
+    'top.vneck': 'V-neck',
+    'top.polo': 'Polo',
+    'top.tank': 'Tank top',
+    'top.blouse': 'Blouse',
+    'bottom.trousers': 'Trousers',
+    'bottom.shorts': 'Shorts',
+    'bottom.capri': 'Capris',
+    'bottom.skirt': 'Skirt',
+    'shoes.sneakers': 'Sneakers',
+    'shoes.boots': 'Boots',
+  };
+  const garmentLabel = (part: string) => garmentLabels[part] ?? part.slice(part.indexOf('.') + 1).replace(/^./, (c) => c.toUpperCase());
   const tabs = ['Identity', 'Look', 'Traits', 'Perks', 'Bonds'] as const;
   const bondLabels: Record<string, string> = {
     roommates: 'Roommates',
@@ -35,21 +59,63 @@
     .map((value) => ({ value, label: bondLabels[value] }));
 
   const neighbourNames = (app.town?.households ?? []).map((h) => h.household.name);
-  let household = $state<HouseholdDraft>(
-    app.household ? structuredClone(app.household) : randomHousehold(content, assets, 2, neighbourNames),
-  );
+  const initial = app.household ? structuredClone(app.household) : randomHousehold(content, assets, 2, neighbourNames);
+  for (const m of initial.members) ensureOutfit(m);
+  let household = $state<HouseholdDraft>(initial);
   let active = $state(0);
+  let stage = $state.raw<SimStage | null>(null);
+  let wardrobe = $state.raw<Wardrobe | null>(null);
   let tab = $state<(typeof tabs)[number]>('Identity');
   let showProblems = $state(false);
 
   const sim = $derived(household.members[Math.min(active, household.members.length - 1)]);
   const problems = $derived(householdProblems(content, household));
   const spent = $derived(content.perkCost(sim.perks));
+  const others = () => household.members.filter((m) => m !== sim).map((m) => m.name);
+
+  $effect(() => {
+    const gender = sim.gender;
+    let alive = true;
+    void services.previews.wardrobe(gender).then((w) => alive && (wardrobe = w));
+    return () => (alive = false);
+  });
+
+  // A gender change keeps the Sim but fits its name (if it was a picked one) and clothes.
+  let shown = { uid: '', gender: '' };
+  $effect(() => {
+    const uid = sim.uid;
+    const gender = sim.gender;
+    untrack(() => {
+      if (shown.uid === uid && shown.gender !== gender) {
+        regender(content, sim, shown.gender, others());
+        stage?.react('admire');
+      } else if (shown.uid && shown.uid !== uid) {
+        stage?.react('hello');
+      }
+      shown = { uid, gender };
+    });
+  });
+
+  // Say hello once the stage is up.
+  onMount(() => stage?.react('hello'));
+
+  function setLook<K extends keyof Appearance>(key: K, value: Appearance[K]) {
+    if (sim.appearance[key] === value) return;
+    sim.appearance[key] = value;
+    stage?.react('admire');
+  }
 
   function addMember() {
     if (household.members.length >= rules.maxHousehold) return;
     household.members.push(randomSim(content, assets, household.members.map((m) => m.name)));
     active = household.members.length - 1;
+  }
+
+  function surprise() {
+    household = randomHousehold(content, assets, undefined, neighbourNames);
+    active = 0;
+    shown = { uid: household.members[0].uid, gender: household.members[0].gender };
+    stage?.react('cheer');
   }
 
   function removeMember(i: number) {
@@ -59,14 +125,19 @@
   }
 
   function randomize() {
-    const others = household.members.filter((m) => m !== sim).map((m) => m.name);
-    Object.assign(sim, { ...randomSim(content, assets, others), uid: sim.uid });
+    const fresh = randomSim(content, assets, others());
+    shown = { uid: sim.uid, gender: fresh.gender };
+    Object.assign(sim, { ...fresh, uid: sim.uid });
+    stage?.react('cheer');
   }
 
   function toggleTrait(id: string) {
     const i = sim.traits.indexOf(id);
     if (i >= 0) sim.traits.splice(i, 1);
-    else if (!content.traitBlocker(sim.traits, id)) sim.traits.push(id);
+    else if (!content.traitBlocker(sim.traits, id)) {
+      sim.traits.push(id);
+      stage?.react(`trait:${id}`);
+    }
   }
 
   function togglePerk(id: string, cost: number) {
@@ -89,8 +160,8 @@
   function bondWarning(otherUid: string): string | null {
     const other = household.members.find((m) => m.uid === otherUid);
     if (!other || bondFor(otherUid) !== 'partners') return null;
-    if (!sim.attractedTo.includes(other.gender)) return `${sim.name} isn't attracted to ${content.gender(other.gender)?.label.toLowerCase()} Sims`;
-    if (!other.attractedTo.includes(sim.gender)) return `${other.name} isn't attracted to ${content.gender(sim.gender)?.label.toLowerCase()} Sims`;
+    if (!sim.attractedTo.includes(other.gender)) return `${sim.name} isn't attracted to ${content.gender(other.gender)?.label.toLowerCase()} residents`;
+    if (!other.attractedTo.includes(sim.gender)) return `${other.name} isn't attracted to ${content.gender(sim.gender)?.label.toLowerCase()} residents`;
     return null;
   }
 
@@ -114,7 +185,7 @@
       <input class="input family" aria-label="Household name" placeholder="Household name" bind:value={household.name} maxlength="24" />
     </div>
     <div class="actions">
-      <button class="btn" onclick={() => ((household = randomHousehold(content, assets, undefined, neighbourNames)), (active = 0))}>
+      <button class="btn" onclick={surprise}>
         <Icon name="icon.ui.dice" size={18} /> Surprise me
       </button>
       <button class="btn primary" onclick={next}>Choose a home →</button>
@@ -133,7 +204,7 @@
       {#each household.members as m, i (i)}
         <div class="member" class:active={i === active}>
           <button class="pick" onclick={() => (active = i)}>
-            <span class="mini"><SimPreview appearance={m.appearance} size={44} animate={false} /></span>
+            <span class="mini"><SimPreview appearance={m.appearance} gender={m.gender} size={44} /></span>
             <span class="meta">
               <b>{m.name || 'Unnamed'}</b>
               <span class="traits">
@@ -152,20 +223,21 @@
     </aside>
 
     <section class="stage">
-      <div class="spot"></div>
-      {#key active}
-        <div class="hero"><SimPreview appearance={sim.appearance} size={250} /></div>
-      {/key}
-      <h2>{sim.name || 'Unnamed'} <span>{household.name}</span></h2>
-      <div class="chips">
-        {#each sim.traits as t (t)}
-          <span class="chip"><Icon name={content.trait(t)?.icon ?? ''} size={14} />{content.trait(t)?.label}</span>
-        {/each}
-        {#each sim.perks as p (p)}
-          <span class="chip perk"><Icon name={content.perk(p)?.icon ?? ''} size={14} />{content.perk(p)?.label}</span>
-        {/each}
+      <SimStage bind:this={stage} gender={sim.gender} appearance={sim.appearance} />
+      <div class="nameplate glass">
+        <h2>{sim.name || 'Unnamed'} <span>{household.name}</span></h2>
+        {#if sim.traits.length || sim.perks.length}
+          <div class="chips">
+            {#each sim.traits as t (t)}
+              <span class="chip"><Icon name={content.trait(t)?.icon ?? ''} size={14} />{content.trait(t)?.label}</span>
+            {/each}
+            {#each sim.perks as p (p)}
+              <span class="chip perk"><Icon name={content.perk(p)?.icon ?? ''} size={14} />{content.perk(p)?.label}</span>
+            {/each}
+          </div>
+        {/if}
+        <button class="btn randomize" onclick={randomize}><Icon name="icon.ui.dice" size={18} /> Randomize {sim.name || 'member'}</button>
       </div>
-      <button class="btn" onclick={randomize}><Icon name="icon.ui.dice" size={18} /> Randomize {sim.name || 'member'}</button>
     </section>
 
     <section class="editor glass">
@@ -186,7 +258,7 @@
               <button
                 class="btn"
                 aria-label="Random name"
-                onclick={() => (sim.name = content.names.first[Math.floor(Math.random() * content.names.first.length)])}
+                onclick={() => (sim.name = randomFirstName(content, sim.gender, [...others(), sim.name]))}
               >
                 <Icon name="icon.ui.dice" size={18} />
               </button>
@@ -209,39 +281,73 @@
               </div>
               <span class="hint small">
                 {sim.attractedTo.length === 0
-                  ? `${sim.name || 'This Sim'} isn't interested in romance.`
-                  : 'Romantic interactions only happen between Sims attracted to each other.'}
+                  ? `${sim.name || 'This resident'} isn't interested in romance.`
+                  : 'Romantic interactions only happen between residents attracted to each other.'}
               </span>
             </div>
           {/if}
           <p class="hint">
-            Traits shape what {sim.name || 'this Sim'} enjoys and how quickly their needs change. Perks are small advantages bought with
+            Traits shape what {sim.name || 'this resident'} enjoys and how quickly their needs change. Perks are small advantages bought with
             {rules.perkPoints} points.
           </p>
         {:else if tab === 'Look'}
-          {#each [['body', 'Outfit'], ['skin', 'Skin tone'], ['hair', 'Hair']] as const as [key, label] (key)}
-            <div class="field">
-              <span class="eyebrow">{label}</span>
-              <div class="swatches">
-                {#each swatches[key] as color (color)}
-                  <button
-                    class="swatch"
-                    class:selected={sim.appearance[key] === color}
-                    style="--c:{color}"
-                    aria-label="{label} {color}"
-                    onclick={() => (sim.appearance[key] = color)}
-                  ></button>
-                {/each}
-              </div>
+          {#snippet colors(key: 'body' | 'skin' | 'hair' | 'bottomColor' | 'shoesColor', label: string)}
+            <div class="swatches" role="radiogroup" aria-label={label}>
+              {#each swatches[key] as color (color)}
+                <button
+                  class="swatch"
+                  role="radio"
+                  aria-checked={sim.appearance[key] === color}
+                  class:selected={sim.appearance[key] === color}
+                  style="--c:{color}"
+                  aria-label="{label} {color}"
+                  onclick={() => setLook(key, color)}
+                ></button>
+              {/each}
             </div>
-          {/each}
+          {/snippet}
+          {#snippet garments(key: 'top' | 'bottom' | 'shoes', parts: readonly string[], label: string)}
+            <div class="chips-row" role="radiogroup" aria-label={label}>
+              {#each parts as part (part)}
+                <button class="pill" role="radio" aria-checked={sim.appearance[key] === part} class:on={sim.appearance[key] === part} onclick={() => setLook(key, part)}>
+                  {garmentLabel(part)}
+                </button>
+              {/each}
+            </div>
+          {/snippet}
           <div class="field">
-            <span class="eyebrow">Hairstyle</span>
+            <span class="eyebrow">Skin tone</span>
+            {@render colors('skin', 'Skin tone')}
+          </div>
+          <div class="field">
+            <span class="eyebrow">Hair</span>
             <Segmented
               label="Hairstyle"
               bind:value={sim.appearance.hairStyle}
               options={HAIR_STYLES.map((h) => ({ value: h, label: h === 'none' ? 'Bald' : h[0].toUpperCase() + h.slice(1) }))}
             />
+            {@render colors('hair', 'Hair colour')}
+            {#if wardrobe?.beard}
+              <div class="chips-row" role="radiogroup" aria-label="Facial hair">
+                <button class="pill" role="radio" aria-checked={!sim.appearance.beard} class:on={!sim.appearance.beard} onclick={() => setLook('beard', false)}>Clean-shaven</button>
+                <button class="pill" role="radio" aria-checked={!!sim.appearance.beard} class:on={!!sim.appearance.beard} onclick={() => setLook('beard', true)}>Beard</button>
+              </div>
+            {/if}
+          </div>
+          <div class="field">
+            <span class="eyebrow">Top</span>
+            {#if wardrobe}{@render garments('top', wardrobe.tops, 'Top')}{/if}
+            {@render colors('body', 'Top colour')}
+          </div>
+          <div class="field">
+            <span class="eyebrow">Bottom</span>
+            {#if wardrobe}{@render garments('bottom', wardrobe.bottoms, 'Bottom')}{/if}
+            {@render colors('bottomColor', 'Bottom colour')}
+          </div>
+          <div class="field">
+            <span class="eyebrow">Shoes</span>
+            {#if wardrobe}{@render garments('shoes', wardrobe.shoes, 'Shoes')}{/if}
+            {@render colors('shoesColor', 'Shoe colour')}
           </div>
           <label class="field">
             <span class="eyebrow">Height</span>
@@ -265,12 +371,12 @@
             {/each}
           </div>
         {:else if tab === 'Bonds'}
-          <p class="hint">How {sim.name || 'this Sim'} starts out with the rest of the household. Relationships keep changing in play.</p>
+          <p class="hint">How {sim.name || 'this resident'} starts out with the rest of the household. Relationships keep changing in play.</p>
           {#each household.members.filter((m) => m.uid !== sim.uid) as other (other.uid)}
             {@const warning = bondWarning(other.uid)}
             <div class="field bond">
               <div class="bond-head">
-                <span class="mini"><SimPreview appearance={other.appearance} size={36} animate={false} /></span>
+                <span class="mini"><SimPreview appearance={other.appearance} gender={other.gender} size={36} /></span>
                 <b>{other.name || 'Unnamed'}</b>
               </div>
               <div class="bond-pick" role="radiogroup" aria-label="Bond with {other.name}">
@@ -358,6 +464,7 @@
     font-size: 13px;
   }
   main {
+    grid-row: 3;
     min-height: 0;
     display: grid;
     grid-template-columns: 240px 1fr 460px;
@@ -424,57 +531,78 @@
     background: rgba(236, 106, 92, 0.15);
     color: var(--bad);
   }
+  /* The member count and "Add member" sit on the live 3D town: give them their own surface. */
+  .members > .eyebrow {
+    align-self: flex-start;
+    padding: 5px 11px;
+    border-radius: var(--radius-pill);
+    background: var(--glass-menu);
+    border: 1px solid var(--glass-menu-border);
+    color: #3b4254;
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
   .add {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 12px;
     border-radius: var(--radius-md);
-    border: 1.5px dashed rgba(29, 34, 48, 0.18);
-    color: var(--text-muted);
-    font-weight: 600;
+    border: 1.5px dashed rgba(29, 34, 48, 0.28);
+    background: var(--glass-menu);
+    color: #3b4254;
+    font-weight: 650;
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
   }
   .add:hover {
     border-color: var(--accent);
     color: var(--accent);
+    background: #fff;
   }
   .stage {
     position: relative;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 14px;
+    justify-content: flex-end;
   }
-  .spot {
-    position: absolute;
-    top: 18%;
-    width: 380px;
-    height: 380px;
-    border-radius: 50%;
-    background: radial-gradient(closest-side, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
-  }
-  .hero {
+  .nameplate {
     position: relative;
-    animation: swap 420ms var(--ease);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    max-width: min(460px, 100%);
+    padding: 12px 18px 14px;
+    pointer-events: none;
+  }
+  .nameplate > * {
+    pointer-events: auto;
   }
   h2 {
-    position: relative;
     margin: 0;
-    font-size: 30px;
+    font-size: 26px;
     letter-spacing: -0.03em;
+    line-height: 1.15;
+    text-align: center;
   }
   h2 span {
     color: var(--text-muted);
     font-weight: 500;
   }
   .chips {
-    position: relative;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 6px;
-    max-width: 420px;
+  }
+  .randomize {
+    margin-top: 2px;
   }
   .chip {
     display: inline-flex;
@@ -522,7 +650,7 @@
     padding: 16px 10px 10px;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 20px;
   }
   .field {
     display: flex;
@@ -690,11 +818,5 @@
     color: var(--text-muted);
     font-size: 12px;
     line-height: 1.4;
-  }
-  @keyframes swap {
-    from {
-      opacity: 0;
-      transform: translateY(10px) scale(0.97);
-    }
   }
 </style>

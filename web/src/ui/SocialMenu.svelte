@@ -26,7 +26,7 @@
   <div class="scrim" onclick={() => services.controls.closeMenu()}></div>
   <div class="social glass" style="left:{left}px;top:{top}px" role="dialog" aria-label="Interact with {target.name}">
     <header>
-      <span class="face"><SimPreview appearance={target.appearance} size={52} animate={false} /></span>
+      <span class="face"><SimPreview appearance={target.appearance} gender={target.gender} id={target.id} size={46} /></span>
       <div>
         <b>{target.name}</b>
         <span class="sub">{mine ? 'Your household' : `The ${household?.name}s`}</span>

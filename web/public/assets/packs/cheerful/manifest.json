@@ -1,0 +1,4912 @@
+{
+  "version": 1,
+  "entries": {
+    "model.cheerful.jukebox": {
+      "type": "model",
+      "placeholder": [
+        {
+          "shape": "box",
+          "size": [
+            0.74,
+            0.08,
+            0.5
+          ],
+          "at": [
+            0,
+            0.04,
+            -0.2
+          ],
+          "color": "#D0D3D6",
+          "material": "material.finish.chrome",
+          "radius": 0.02
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.7,
+            1.0,
+            0.46
+          ],
+          "at": [
+            0,
+            0.58,
+            -0.2
+          ],
+          "color": "#D7263D",
+          "material": "material.finish.gloss",
+          "radius": 0.06
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.7,
+            0.46,
+            0.7
+          ],
+          "at": [
+            0,
+            1.08,
+            -0.2
+          ],
+          "color": "#D7263D",
+          "material": "material.finish.gloss",
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 32
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.6,
+            0.47,
+            0.6
+          ],
+          "at": [
+            0,
+            1.08,
+            -0.2
+          ],
+          "color": "#F6A609",
+          "material": "material.finish.gloss",
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 32
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.5,
+            0.48,
+            0.5
+          ],
+          "at": [
+            0,
+            1.08,
+            -0.2
+          ],
+          "color": "#FFE29A",
+          "material": "material.finish.gloss",
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 32
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.4,
+            0.49,
+            0.4
+          ],
+          "at": [
+            0,
+            1.08,
+            -0.2
+          ],
+          "color": "#5B3A8C",
+          "material": "material.finish.gloss",
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 32
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.4,
+            0.2,
+            0.47
+          ],
+          "at": [
+            0,
+            0.98,
+            -0.2
+          ],
+          "color": "#5B3A8C",
+          "material": "material.finish.gloss",
+          "radius": 0.01
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.26,
+            0.012,
+            0.26
+          ],
+          "at": [
+            0,
+            1.02,
+            0.045
+          ],
+          "color": "#2B2433",
+          "material": "material.finish.gloss",
+          "rotate": [
+            90,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.08,
+            0.014,
+            0.08
+          ],
+          "at": [
+            0,
+            1.02,
+            0.047
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.gloss",
+          "rotate": [
+            90,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.5,
+            0.3,
+            0.02
+          ],
+          "at": [
+            0,
+            0.42,
+            0.035
+          ],
+          "color": "#E9D8B0",
+          "material": "material.finish.fabric",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.52,
+            0.32,
+            0.015
+          ],
+          "at": [
+            0,
+            0.42,
+            0.03
+          ],
+          "color": "#B8925A",
+          "material": "material.finish.metal",
+          "radius": 0.012
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.46,
+            0.1,
+            0.02
+          ],
+          "at": [
+            0,
+            0.7,
+            0.036
+          ],
+          "color": "#FFF2C8",
+          "material": "material.finish.gloss",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.46,
+            0.012,
+            0.024
+          ],
+          "at": [
+            0,
+            0.76,
+            0.036
+          ],
+          "color": "#D0D3D6",
+          "material": "material.finish.chrome",
+          "radius": 0.004
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.03,
+            0.03,
+            0.03
+          ],
+          "at": [
+            -0.15,
+            0.63,
+            0.04
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.gloss",
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.03,
+            0.03,
+            0.03
+          ],
+          "at": [
+            -0.05,
+            0.63,
+            0.04
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.gloss",
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.03,
+            0.03,
+            0.03
+          ],
+          "at": [
+            0.05,
+            0.63,
+            0.04
+          ],
+          "color": "#9ED8C6",
+          "material": "material.finish.gloss",
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.03,
+            0.03,
+            0.03
+          ],
+          "at": [
+            0.15,
+            0.63,
+            0.04
+          ],
+          "color": "#6EC1E4",
+          "material": "material.finish.gloss",
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.07,
+            0.86,
+            0.07
+          ],
+          "at": [
+            -0.33,
+            0.55,
+            0.02
+          ],
+          "color": "#F6A609",
+          "material": "material.finish.gloss",
+          "segments": 14
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.05,
+            0.84,
+            0.05
+          ],
+          "at": [
+            -0.33,
+            0.55,
+            0.02
+          ],
+          "color": "#FFE29A",
+          "material": "material.finish.gloss",
+          "segments": 12
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.09,
+            0.09,
+            0.09
+          ],
+          "at": [
+            -0.33,
+            1.0,
+            0.02
+          ],
+          "color": "#D0D3D6",
+          "material": "material.finish.chrome",
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.07,
+            0.86,
+            0.07
+          ],
+          "at": [
+            0.33,
+            0.55,
+            0.02
+          ],
+          "color": "#F6A609",
+          "material": "material.finish.gloss",
+          "segments": 14
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.05,
+            0.84,
+            0.05
+          ],
+          "at": [
+            0.33,
+            0.55,
+            0.02
+          ],
+          "color": "#FFE29A",
+          "material": "material.finish.gloss",
+          "segments": 12
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.09,
+            0.09,
+            0.09
+          ],
+          "at": [
+            0.33,
+            1.0,
+            0.02
+          ],
+          "color": "#D0D3D6",
+          "material": "material.finish.chrome",
+          "segments": 10
+        }
+      ]
+    },
+    "model.cheerful.karaokeMachine": {
+      "type": "model",
+      "url": "../../models/kenney/speaker.glb",
+      "fit": [
+        0.5,
+        0.86,
+        0.42
+      ],
+      "align": "back",
+      "offset": [
+        0,
+        0,
+        0.04
+      ],
+      "materials": {
+        "wood": {
+          "finish": "material.finish.gloss",
+          "color": "#8A6BC0"
+        },
+        "metalMedium": {
+          "finish": "material.finish.satin",
+          "color": "#54456E"
+        }
+      },
+      "parts": [
+        {
+          "shape": "box",
+          "size": [
+            0.46,
+            0.34,
+            0.04
+          ],
+          "at": [
+            0,
+            1.08,
+            -0.2
+          ],
+          "color": "#2B2433",
+          "material": "material.finish.satin",
+          "radius": 0.02,
+          "rotate": [
+            -10,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.42,
+            0.29,
+            0.004
+          ],
+          "at": [
+            0.0,
+            1.0838,
+            -0.1783
+          ],
+          "color": "#3B2A6B",
+          "material": "material.finish.gloss",
+          "rotate": [
+            -10,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.32,
+            0.03,
+            0.003
+          ],
+          "at": [
+            0.0,
+            1.1237,
+            -0.1823
+          ],
+          "color": "#FFFFFF",
+          "material": "material.finish.gloss",
+          "rotate": [
+            -10,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.24,
+            0.03,
+            0.003
+          ],
+          "at": [
+            -0.02,
+            1.0646,
+            -0.1719
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.gloss",
+          "rotate": [
+            -10,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.06,
+            0.12,
+            0.04
+          ],
+          "at": [
+            0,
+            0.9,
+            -0.22
+          ],
+          "color": "#2B2433",
+          "material": "material.finish.satin",
+          "radius": 0.01
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.26,
+            0.02,
+            0.26
+          ],
+          "at": [
+            0.18,
+            0.01,
+            0.25
+          ],
+          "color": "#3A3D41",
+          "material": "material.finish.satin",
+          "segments": 20
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.022,
+            1.33,
+            0.022
+          ],
+          "at": [
+            0.18,
+            0.685,
+            0.25
+          ],
+          "color": "#D0D3D6",
+          "material": "material.finish.chrome",
+          "rotate": [
+            0.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.018,
+            0.1221,
+            0.018
+          ],
+          "at": [
+            0.14,
+            1.385,
+            0.22
+          ],
+          "color": "#D0D3D6",
+          "material": "material.finish.chrome",
+          "rotate": [
+            55.01,
+            -126.87,
+            0
+          ]
+        },
+        {
+          "shape": "capsule",
+          "size": [
+            0.05,
+            0.2,
+            0.05
+          ],
+          "at": [
+            0.08,
+            1.44,
+            0.17
+          ],
+          "color": "#2B2433",
+          "material": "material.finish.satin",
+          "rotate": [
+            50,
+            0,
+            40
+          ]
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.065,
+            0.065,
+            0.065
+          ],
+          "at": [
+            0.05,
+            1.5,
+            0.13
+          ],
+          "color": "#C9CCD0",
+          "material": "material.finish.metal",
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.025,
+            1.68,
+            0.025
+          ],
+          "at": [
+            -0.32,
+            0.86,
+            0.28
+          ],
+          "color": "#3A3D41",
+          "material": "material.finish.satin",
+          "rotate": [
+            0.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.24,
+            0.02,
+            0.24
+          ],
+          "at": [
+            -0.32,
+            0.01,
+            0.28
+          ],
+          "color": "#3A3D41",
+          "material": "material.finish.satin",
+          "segments": 20
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.16,
+            0.2,
+            0.16
+          ],
+          "at": [
+            -0.3,
+            1.72,
+            0.24
+          ],
+          "color": "#EAEAEA",
+          "material": "material.finish.gloss",
+          "taper": 0.55,
+          "rotate": [
+            60,
+            30,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.12,
+            0.01,
+            0.12
+          ],
+          "at": [
+            -0.3433,
+            1.67,
+            0.165
+          ],
+          "color": "#FFF4B0",
+          "material": "material.finish.gloss",
+          "rotate": [
+            60,
+            30,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.42,
+            0.004,
+            0.42
+          ],
+          "at": [
+            0.0,
+            0.003,
+            0.18
+          ],
+          "color": "#F6E3A0",
+          "material": "material.finish.gloss",
+          "segments": 24
+        }
+      ],
+      "placeholder": [
+        {
+          "shape": "box",
+          "size": [
+            0.5,
+            0.86,
+            0.42
+          ],
+          "at": [
+            0,
+            0.43,
+            -0.25
+          ],
+          "color": "#8A6BC0",
+          "material": "material.finish.gloss",
+          "radius": 0.03
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.46,
+            0.34,
+            0.04
+          ],
+          "at": [
+            0,
+            1.08,
+            -0.2
+          ],
+          "color": "#2B2433",
+          "material": "material.finish.satin",
+          "radius": 0.02,
+          "rotate": [
+            -10,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.42,
+            0.29,
+            0.004
+          ],
+          "at": [
+            0.0,
+            1.0838,
+            -0.1783
+          ],
+          "color": "#3B2A6B",
+          "material": "material.finish.gloss",
+          "rotate": [
+            -10,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.32,
+            0.03,
+            0.003
+          ],
+          "at": [
+            0.0,
+            1.1237,
+            -0.1823
+          ],
+          "color": "#FFFFFF",
+          "material": "material.finish.gloss",
+          "rotate": [
+            -10,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.24,
+            0.03,
+            0.003
+          ],
+          "at": [
+            -0.02,
+            1.0646,
+            -0.1719
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.gloss",
+          "rotate": [
+            -10,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.06,
+            0.12,
+            0.04
+          ],
+          "at": [
+            0,
+            0.9,
+            -0.22
+          ],
+          "color": "#2B2433",
+          "material": "material.finish.satin",
+          "radius": 0.01
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.26,
+            0.02,
+            0.26
+          ],
+          "at": [
+            0.18,
+            0.01,
+            0.25
+          ],
+          "color": "#3A3D41",
+          "material": "material.finish.satin",
+          "segments": 20
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.022,
+            1.33,
+            0.022
+          ],
+          "at": [
+            0.18,
+            0.685,
+            0.25
+          ],
+          "color": "#D0D3D6",
+          "material": "material.finish.chrome",
+          "rotate": [
+            0.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.018,
+            0.1221,
+            0.018
+          ],
+          "at": [
+            0.14,
+            1.385,
+            0.22
+          ],
+          "color": "#D0D3D6",
+          "material": "material.finish.chrome",
+          "rotate": [
+            55.01,
+            -126.87,
+            0
+          ]
+        },
+        {
+          "shape": "capsule",
+          "size": [
+            0.05,
+            0.2,
+            0.05
+          ],
+          "at": [
+            0.08,
+            1.44,
+            0.17
+          ],
+          "color": "#2B2433",
+          "material": "material.finish.satin",
+          "rotate": [
+            50,
+            0,
+            40
+          ]
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.065,
+            0.065,
+            0.065
+          ],
+          "at": [
+            0.05,
+            1.5,
+            0.13
+          ],
+          "color": "#C9CCD0",
+          "material": "material.finish.metal",
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.025,
+            1.68,
+            0.025
+          ],
+          "at": [
+            -0.32,
+            0.86,
+            0.28
+          ],
+          "color": "#3A3D41",
+          "material": "material.finish.satin",
+          "rotate": [
+            0.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.24,
+            0.02,
+            0.24
+          ],
+          "at": [
+            -0.32,
+            0.01,
+            0.28
+          ],
+          "color": "#3A3D41",
+          "material": "material.finish.satin",
+          "segments": 20
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.16,
+            0.2,
+            0.16
+          ],
+          "at": [
+            -0.3,
+            1.72,
+            0.24
+          ],
+          "color": "#EAEAEA",
+          "material": "material.finish.gloss",
+          "taper": 0.55,
+          "rotate": [
+            60,
+            30,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.12,
+            0.01,
+            0.12
+          ],
+          "at": [
+            -0.3433,
+            1.67,
+            0.165
+          ],
+          "color": "#FFF4B0",
+          "material": "material.finish.gloss",
+          "rotate": [
+            60,
+            30,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.42,
+            0.004,
+            0.42
+          ],
+          "at": [
+            0.0,
+            0.003,
+            0.18
+          ],
+          "color": "#F6E3A0",
+          "material": "material.finish.gloss",
+          "segments": 24
+        }
+      ]
+    },
+    "model.cheerful.mocktailCart": {
+      "type": "model",
+      "placeholder": [
+        {
+          "shape": "box",
+          "size": [
+            0.78,
+            0.03,
+            0.46
+          ],
+          "at": [
+            0,
+            0.3,
+            -0.06
+          ],
+          "color": "#9ED8C6",
+          "material": "material.finish.gloss",
+          "radius": 0.012
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.8,
+            0.03,
+            0.02
+          ],
+          "at": [
+            0,
+            0.33,
+            -0.29
+          ],
+          "color": "#B8925A",
+          "material": "material.finish.metal",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.8,
+            0.03,
+            0.02
+          ],
+          "at": [
+            0,
+            0.33,
+            0.17
+          ],
+          "color": "#B8925A",
+          "material": "material.finish.metal",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.78,
+            0.03,
+            0.46
+          ],
+          "at": [
+            0,
+            0.8,
+            -0.06
+          ],
+          "color": "#9ED8C6",
+          "material": "material.finish.gloss",
+          "radius": 0.012
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.8,
+            0.03,
+            0.02
+          ],
+          "at": [
+            0,
+            0.83,
+            -0.29
+          ],
+          "color": "#B8925A",
+          "material": "material.finish.metal",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.8,
+            0.03,
+            0.02
+          ],
+          "at": [
+            0,
+            0.83,
+            0.17
+          ],
+          "color": "#B8925A",
+          "material": "material.finish.metal",
+          "radius": 0.008
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.025,
+            1.6,
+            0.025
+          ],
+          "at": [
+            -0.39,
+            0.8,
+            -0.29
+          ],
+          "color": "#B8925A",
+          "material": "material.finish.metal",
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.025,
+            1.6,
+            0.025
+          ],
+          "at": [
+            -0.39,
+            0.8,
+            0.17
+          ],
+          "color": "#B8925A",
+          "material": "material.finish.metal",
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.025,
+            1.6,
+            0.025
+          ],
+          "at": [
+            0.39,
+            0.8,
+            -0.29
+          ],
+          "color": "#B8925A",
+          "material": "material.finish.metal",
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.025,
+            1.6,
+            0.025
+          ],
+          "at": [
+            0.39,
+            0.8,
+            0.17
+          ],
+          "color": "#B8925A",
+          "material": "material.finish.metal",
+          "segments": 10
+        },
+        {
+          "shape": "torus",
+          "size": [
+            0.14,
+            0.03,
+            0.14
+          ],
+          "at": [
+            -0.36,
+            0.07,
+            0.2
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "rotate": [
+            0,
+            0,
+            90
+          ],
+          "segments": 16
+        },
+        {
+          "shape": "torus",
+          "size": [
+            0.14,
+            0.03,
+            0.14
+          ],
+          "at": [
+            0.36,
+            0.07,
+            0.2
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "rotate": [
+            0,
+            0,
+            90
+          ],
+          "segments": 16
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.14,
+            0.03,
+            0.56
+          ],
+          "at": [
+            -0.35,
+            1.62,
+            -0.06
+          ],
+          "color": "#F4F4F2",
+          "material": "material.finish.fabric",
+          "radius": 0.01,
+          "rotate": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.14,
+            0.03,
+            0.56
+          ],
+          "at": [
+            -0.21,
+            1.62,
+            -0.06
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.fabric",
+          "radius": 0.01,
+          "rotate": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.14,
+            0.03,
+            0.56
+          ],
+          "at": [
+            -0.07,
+            1.62,
+            -0.06
+          ],
+          "color": "#F4F4F2",
+          "material": "material.finish.fabric",
+          "radius": 0.01,
+          "rotate": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.14,
+            0.03,
+            0.56
+          ],
+          "at": [
+            0.07,
+            1.62,
+            -0.06
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.fabric",
+          "radius": 0.01,
+          "rotate": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.14,
+            0.03,
+            0.56
+          ],
+          "at": [
+            0.21,
+            1.62,
+            -0.06
+          ],
+          "color": "#F4F4F2",
+          "material": "material.finish.fabric",
+          "radius": 0.01,
+          "rotate": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.14,
+            0.03,
+            0.56
+          ],
+          "at": [
+            0.35,
+            1.62,
+            -0.06
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.fabric",
+          "radius": 0.01,
+          "rotate": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.14,
+            0.1,
+            0.012
+          ],
+          "at": [
+            -0.35,
+            1.56,
+            0.22
+          ],
+          "color": "#F4F4F2",
+          "material": "material.finish.fabric",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.14,
+            0.1,
+            0.012
+          ],
+          "at": [
+            -0.21,
+            1.56,
+            0.22
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.fabric",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.14,
+            0.1,
+            0.012
+          ],
+          "at": [
+            -0.07,
+            1.56,
+            0.22
+          ],
+          "color": "#F4F4F2",
+          "material": "material.finish.fabric",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.14,
+            0.1,
+            0.012
+          ],
+          "at": [
+            0.07,
+            1.56,
+            0.22
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.fabric",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.14,
+            0.1,
+            0.012
+          ],
+          "at": [
+            0.21,
+            1.56,
+            0.22
+          ],
+          "color": "#F4F4F2",
+          "material": "material.finish.fabric",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.14,
+            0.1,
+            0.012
+          ],
+          "at": [
+            0.35,
+            1.56,
+            0.22
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.fabric",
+          "radius": 0.004
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.12,
+            0.26,
+            0.12
+          ],
+          "at": [
+            -0.24,
+            0.965,
+            -0.16
+          ],
+          "color": "#E6F0F2",
+          "material": "material.finish.glass",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.42,
+              -0.5
+            ],
+            [
+              0.5,
+              -0.42
+            ],
+            [
+              0.5,
+              0.3
+            ],
+            [
+              0.38,
+              0.42
+            ],
+            [
+              0.3,
+              0.5
+            ],
+            [
+              0.0,
+              0.5
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.1,
+            0.16,
+            0.1
+          ],
+          "at": [
+            -0.24,
+            0.925,
+            -0.16
+          ],
+          "color": "#FF9A3C",
+          "material": "material.finish.gloss"
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.2,
+            0.14,
+            0.2
+          ],
+          "at": [
+            0.18,
+            0.905,
+            -0.18
+          ],
+          "color": "#D0D3D6",
+          "material": "material.finish.chrome",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.3,
+              -0.5
+            ],
+            [
+              0.44,
+              -0.2
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.46,
+              0.5
+            ],
+            [
+              0.4,
+              -0.15
+            ],
+            [
+              0.27,
+              -0.4
+            ],
+            [
+              0.0,
+              -0.4
+            ]
+          ],
+          "segments": 16
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.16,
+            0.965,
+            -0.17
+          ],
+          "color": "#E6F7FF",
+          "material": "material.finish.gloss",
+          "segments": 6
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.21,
+            0.965,
+            -0.2
+          ],
+          "color": "#E6F7FF",
+          "material": "material.finish.gloss",
+          "segments": 6
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.12,
+            0.17,
+            0.12
+          ],
+          "at": [
+            0.3,
+            0.92,
+            0.05
+          ],
+          "color": "#E8B33C",
+          "material": "material.finish.satin",
+          "noise": 0.1
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.1,
+            0.12,
+            0.1
+          ],
+          "at": [
+            0.3,
+            1.055,
+            0.05
+          ],
+          "color": "#4F9A3E",
+          "material": "material.finish.foliage",
+          "taper": 0.0,
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.07,
+            0.07,
+            0.07
+          ],
+          "at": [
+            0.12,
+            0.87,
+            0.08
+          ],
+          "color": "#F2E05C",
+          "material": "material.finish.gloss",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.07,
+            0.07,
+            0.07
+          ],
+          "at": [
+            0.06,
+            0.87,
+            0.1
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.gloss",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.08,
+            0.08,
+            0.08
+          ],
+          "at": [
+            0.0,
+            0.875,
+            0.06
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.gloss",
+          "segments": 10
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.07,
+            0.12,
+            0.07
+          ],
+          "at": [
+            -0.08,
+            0.895,
+            0.1
+          ],
+          "color": "#E6F0F2",
+          "material": "material.finish.glass",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.42,
+              -0.5
+            ],
+            [
+              0.5,
+              -0.42
+            ],
+            [
+              0.5,
+              0.3
+            ],
+            [
+              0.38,
+              0.42
+            ],
+            [
+              0.3,
+              0.5
+            ],
+            [
+              0.0,
+              0.5
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.0588,
+            0.084,
+            0.0588
+          ],
+          "at": [
+            -0.08,
+            0.8782,
+            0.1
+          ],
+          "color": "#F07AA0",
+          "material": "material.finish.gloss",
+          "segments": 12
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.07,
+            0.12,
+            0.07
+          ],
+          "at": [
+            -0.2,
+            0.895,
+            0.08
+          ],
+          "color": "#E6F0F2",
+          "material": "material.finish.glass",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.42,
+              -0.5
+            ],
+            [
+              0.5,
+              -0.42
+            ],
+            [
+              0.5,
+              0.3
+            ],
+            [
+              0.38,
+              0.42
+            ],
+            [
+              0.3,
+              0.5
+            ],
+            [
+              0.0,
+              0.5
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.0588,
+            0.084,
+            0.0588
+          ],
+          "at": [
+            -0.2,
+            0.8782,
+            0.08
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.gloss",
+          "segments": 12
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.07,
+            0.12,
+            0.07
+          ],
+          "at": [
+            -0.32,
+            0.895,
+            0.1
+          ],
+          "color": "#E6F0F2",
+          "material": "material.finish.glass",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.42,
+              -0.5
+            ],
+            [
+              0.5,
+              -0.42
+            ],
+            [
+              0.5,
+              0.3
+            ],
+            [
+              0.38,
+              0.42
+            ],
+            [
+              0.3,
+              0.5
+            ],
+            [
+              0.0,
+              0.5
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.0588,
+            0.084,
+            0.0588
+          ],
+          "at": [
+            -0.32,
+            0.8782,
+            0.1
+          ],
+          "color": "#7FD4C1",
+          "material": "material.finish.gloss",
+          "segments": 12
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.3,
+            0.2,
+            0.2
+          ],
+          "at": [
+            -0.15,
+            0.415,
+            -0.08
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.03
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.12,
+            0.012,
+            0.012
+          ],
+          "at": [
+            -0.15,
+            0.47,
+            0.025
+          ],
+          "color": "#D0D3D6",
+          "material": "material.finish.chrome",
+          "radius": 0.004
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.07,
+            0.24,
+            0.07
+          ],
+          "at": [
+            0.12,
+            0.435,
+            -0.12
+          ],
+          "color": "#F07AA0",
+          "material": "material.finish.gloss",
+          "taper": 0.6
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.07,
+            0.24,
+            0.07
+          ],
+          "at": [
+            0.21,
+            0.435,
+            -0.12
+          ],
+          "color": "#7FD4C1",
+          "material": "material.finish.gloss",
+          "taper": 0.6
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.07,
+            0.24,
+            0.07
+          ],
+          "at": [
+            0.3,
+            0.435,
+            -0.12
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.gloss",
+          "taper": 0.6
+        }
+      ]
+    },
+    "model.cheerful.rainbowHammock": {
+      "type": "model",
+      "placeholder": [
+        {
+          "shape": "box",
+          "size": [
+            0.1734,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.6783,
+            0.8019,
+            -0.2583
+          ],
+          "color": "#E4572E",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -43.27
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1734,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.6783,
+            0.8019,
+            -0.155
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -43.27
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1734,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.6783,
+            0.8019,
+            -0.0517
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -43.27
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1734,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.6783,
+            0.8019,
+            0.0517
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -43.27
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1734,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.6783,
+            0.8019,
+            0.155
+          ],
+          "color": "#3FA7D6",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -43.27
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1734,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.6783,
+            0.8019,
+            0.2583
+          ],
+          "color": "#7B5EA7",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -43.27
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1597,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.555,
+            0.6964,
+            -0.2583
+          ],
+          "color": "#E4572E",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -37.61
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1597,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.555,
+            0.6964,
+            -0.155
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -37.61
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1597,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.555,
+            0.6964,
+            -0.0517
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -37.61
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1597,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.555,
+            0.6964,
+            0.0517
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -37.61
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1597,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.555,
+            0.6964,
+            0.155
+          ],
+          "color": "#3FA7D6",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -37.61
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1597,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.555,
+            0.6964,
+            0.2583
+          ],
+          "color": "#7B5EA7",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -37.61
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1478,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.4317,
+            0.6119,
+            -0.2583
+          ],
+          "color": "#E4572E",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -30.93
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1478,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.4317,
+            0.6119,
+            -0.155
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -30.93
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1478,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.4317,
+            0.6119,
+            -0.0517
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -30.93
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1478,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.4317,
+            0.6119,
+            0.0517
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -30.93
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1478,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.4317,
+            0.6119,
+            0.155
+          ],
+          "color": "#3FA7D6",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -30.93
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1478,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.4317,
+            0.6119,
+            0.2583
+          ],
+          "color": "#7B5EA7",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -30.93
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1382,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.3083,
+            0.5486,
+            -0.2583
+          ],
+          "color": "#E4572E",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -23.17
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1382,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.3083,
+            0.5486,
+            -0.155
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -23.17
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1382,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.3083,
+            0.5486,
+            -0.0517
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -23.17
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1382,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.3083,
+            0.5486,
+            0.0517
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -23.17
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1382,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.3083,
+            0.5486,
+            0.155
+          ],
+          "color": "#3FA7D6",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -23.17
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1382,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.3083,
+            0.5486,
+            0.2583
+          ],
+          "color": "#7B5EA7",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -23.17
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1313,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.185,
+            0.5064,
+            -0.2583
+          ],
+          "color": "#E4572E",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -14.4
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1313,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.185,
+            0.5064,
+            -0.155
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -14.4
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1313,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.185,
+            0.5064,
+            -0.0517
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -14.4
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1313,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.185,
+            0.5064,
+            0.0517
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -14.4
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1313,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.185,
+            0.5064,
+            0.155
+          ],
+          "color": "#3FA7D6",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -14.4
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1313,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.185,
+            0.5064,
+            0.2583
+          ],
+          "color": "#7B5EA7",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -14.4
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1278,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.0617,
+            0.4853,
+            -0.2583
+          ],
+          "color": "#E4572E",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -4.89
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1278,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.0617,
+            0.4853,
+            -0.155
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -4.89
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1278,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.0617,
+            0.4853,
+            -0.0517
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -4.89
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1278,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.0617,
+            0.4853,
+            0.0517
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -4.89
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1278,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.0617,
+            0.4853,
+            0.155
+          ],
+          "color": "#3FA7D6",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -4.89
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1278,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.0617,
+            0.4853,
+            0.2583
+          ],
+          "color": "#7B5EA7",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -4.89
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1278,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.0617,
+            0.4853,
+            -0.2583
+          ],
+          "color": "#E4572E",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            4.89
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1278,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.0617,
+            0.4853,
+            -0.155
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            4.89
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1278,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.0617,
+            0.4853,
+            -0.0517
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            4.89
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1278,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.0617,
+            0.4853,
+            0.0517
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            4.89
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1278,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.0617,
+            0.4853,
+            0.155
+          ],
+          "color": "#3FA7D6",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            4.89
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1278,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.0617,
+            0.4853,
+            0.2583
+          ],
+          "color": "#7B5EA7",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            4.89
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1313,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.185,
+            0.5064,
+            -0.2583
+          ],
+          "color": "#E4572E",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            14.4
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1313,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.185,
+            0.5064,
+            -0.155
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            14.4
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1313,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.185,
+            0.5064,
+            -0.0517
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            14.4
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1313,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.185,
+            0.5064,
+            0.0517
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            14.4
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1313,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.185,
+            0.5064,
+            0.155
+          ],
+          "color": "#3FA7D6",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            14.4
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1313,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.185,
+            0.5064,
+            0.2583
+          ],
+          "color": "#7B5EA7",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            14.4
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1382,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.3083,
+            0.5486,
+            -0.2583
+          ],
+          "color": "#E4572E",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            23.17
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1382,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.3083,
+            0.5486,
+            -0.155
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            23.17
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1382,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.3083,
+            0.5486,
+            -0.0517
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            23.17
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1382,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.3083,
+            0.5486,
+            0.0517
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            23.17
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1382,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.3083,
+            0.5486,
+            0.155
+          ],
+          "color": "#3FA7D6",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            23.17
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1382,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.3083,
+            0.5486,
+            0.2583
+          ],
+          "color": "#7B5EA7",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            23.17
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1478,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.4317,
+            0.6119,
+            -0.2583
+          ],
+          "color": "#E4572E",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            30.93
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1478,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.4317,
+            0.6119,
+            -0.155
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            30.93
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1478,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.4317,
+            0.6119,
+            -0.0517
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            30.93
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1478,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.4317,
+            0.6119,
+            0.0517
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            30.93
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1478,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.4317,
+            0.6119,
+            0.155
+          ],
+          "color": "#3FA7D6",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            30.93
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1478,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.4317,
+            0.6119,
+            0.2583
+          ],
+          "color": "#7B5EA7",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            30.93
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1597,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.555,
+            0.6964,
+            -0.2583
+          ],
+          "color": "#E4572E",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            37.61
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1597,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.555,
+            0.6964,
+            -0.155
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            37.61
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1597,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.555,
+            0.6964,
+            -0.0517
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            37.61
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1597,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.555,
+            0.6964,
+            0.0517
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            37.61
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1597,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.555,
+            0.6964,
+            0.155
+          ],
+          "color": "#3FA7D6",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            37.61
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1597,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.555,
+            0.6964,
+            0.2583
+          ],
+          "color": "#7B5EA7",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            37.61
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1734,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.6783,
+            0.8019,
+            -0.2583
+          ],
+          "color": "#E4572E",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            43.27
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1734,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.6783,
+            0.8019,
+            -0.155
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            43.27
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1734,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.6783,
+            0.8019,
+            -0.0517
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            43.27
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1734,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.6783,
+            0.8019,
+            0.0517
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            43.27
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1734,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.6783,
+            0.8019,
+            0.155
+          ],
+          "color": "#3FA7D6",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            43.27
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1734,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.6783,
+            0.8019,
+            0.2583
+          ],
+          "color": "#7B5EA7",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            43.27
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.7,
+            0.07,
+            0.09
+          ],
+          "at": [
+            0,
+            0.05,
+            0.0
+          ],
+          "color": "#C9905A",
+          "material": "material.finish.wood",
+          "radius": 0.02
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.07,
+            0.995,
+            0.07
+          ],
+          "at": [
+            -0.85,
+            0.555,
+            0.0
+          ],
+          "color": "#C9905A",
+          "material": "material.finish.wood",
+          "rotate": [
+            5.77,
+            -90.0,
+            0
+          ],
+          "radius": 0.02
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.08,
+            0.04,
+            0.6
+          ],
+          "at": [
+            -0.88,
+            0.04,
+            0.0
+          ],
+          "color": "#C9905A",
+          "material": "material.finish.wood",
+          "radius": 0.015
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.012,
+            0.3521,
+            0.012
+          ],
+          "at": [
+            -0.8,
+            0.93,
+            -0.15
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.matte",
+          "rotate": [
+            113.43,
+            158.2,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.012,
+            0.3521,
+            0.012
+          ],
+          "at": [
+            -0.8,
+            0.93,
+            0.15
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.matte",
+          "rotate": [
+            113.43,
+            21.8,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.04,
+            0.04,
+            0.66
+          ],
+          "at": [
+            -0.74,
+            0.86,
+            0.0
+          ],
+          "color": "#B07A4A",
+          "material": "material.finish.wood",
+          "radius": 0.012
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.07,
+            0.995,
+            0.07
+          ],
+          "at": [
+            0.85,
+            0.555,
+            0.0
+          ],
+          "color": "#C9905A",
+          "material": "material.finish.wood",
+          "rotate": [
+            5.77,
+            90.0,
+            0
+          ],
+          "radius": 0.02
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.08,
+            0.04,
+            0.6
+          ],
+          "at": [
+            0.88,
+            0.04,
+            0.0
+          ],
+          "color": "#C9905A",
+          "material": "material.finish.wood",
+          "radius": 0.015
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.012,
+            0.3521,
+            0.012
+          ],
+          "at": [
+            0.8,
+            0.93,
+            -0.15
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.matte",
+          "rotate": [
+            113.43,
+            -158.2,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.012,
+            0.3521,
+            0.012
+          ],
+          "at": [
+            0.8,
+            0.93,
+            0.15
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.matte",
+          "rotate": [
+            113.43,
+            -21.8,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.04,
+            0.04,
+            0.66
+          ],
+          "at": [
+            0.74,
+            0.86,
+            0.0
+          ],
+          "color": "#B07A4A",
+          "material": "material.finish.wood",
+          "radius": 0.012
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.42,
+            0.12,
+            0.3
+          ],
+          "at": [
+            -0.55,
+            0.76,
+            0.0
+          ],
+          "color": "#F4F4F2",
+          "material": "material.finish.fabric",
+          "rotate": [
+            0,
+            0,
+            -25
+          ],
+          "radius": 0.05
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.5,
+            0.03,
+            0.4
+          ],
+          "at": [
+            0.3,
+            0.5,
+            0.05
+          ],
+          "color": "#F6E3A0",
+          "material": "material.finish.fabric",
+          "rotate": [
+            0,
+            15,
+            0
+          ],
+          "radius": 0.012
+        }
+      ]
+    },
+    "model.cheerful.sunriseLamp": {
+      "type": "model",
+      "placeholder": [
+        {
+          "shape": "cylinder",
+          "size": [
+            0.3,
+            0.03,
+            0.3
+          ],
+          "at": [
+            0,
+            0.015,
+            -0.3
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.gloss",
+          "segments": 24
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.03,
+            0.92,
+            0.03
+          ],
+          "at": [
+            0.0,
+            0.49,
+            -0.3
+          ],
+          "color": "#E9DCC7",
+          "material": "material.finish.metal",
+          "rotate": [
+            0.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.76,
+            0.06,
+            0.76
+          ],
+          "at": [
+            0,
+            1.25,
+            -0.3
+          ],
+          "color": "#F4F1EA",
+          "material": "material.finish.gloss",
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 40
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.66,
+            0.065,
+            0.66
+          ],
+          "at": [
+            0,
+            1.25,
+            -0.3
+          ],
+          "color": "#FFB347",
+          "material": "material.finish.gloss",
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 40
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.5,
+            0.07,
+            0.5
+          ],
+          "at": [
+            0,
+            1.25,
+            -0.3
+          ],
+          "color": "#FFCF6E",
+          "material": "material.finish.gloss",
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 40
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.3,
+            0.075,
+            0.3
+          ],
+          "at": [
+            0,
+            1.25,
+            -0.3
+          ],
+          "color": "#FFE7A8",
+          "material": "material.finish.gloss",
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 32
+        },
+        {
+          "shape": "torus",
+          "size": [
+            0.78,
+            0.03,
+            0.78
+          ],
+          "at": [
+            0,
+            1.25,
+            -0.3
+          ],
+          "color": "#E9DCC7",
+          "material": "material.finish.metal",
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 40
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.6,
+            0.012,
+            0.36
+          ],
+          "at": [
+            0,
+            0.006,
+            0.14
+          ],
+          "color": "#F29E8E",
+          "material": "material.finish.matte",
+          "radius": 0.004
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.12,
+            0.6,
+            0.12
+          ],
+          "at": [
+            0.0,
+            0.06,
+            0.38
+          ],
+          "color": "#E9876F",
+          "material": "material.finish.matte",
+          "rotate": [
+            0,
+            0,
+            90
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.66,
+            0.003,
+            0.5
+          ],
+          "at": [
+            0,
+            0.002,
+            0.12
+          ],
+          "color": "#FFE1A8",
+          "material": "material.finish.gloss",
+          "noise": 0.05
+        }
+      ]
+    },
+    "model.cheerful.partyBooth": {
+      "type": "model",
+      "placeholder": [
+        {
+          "shape": "box",
+          "size": [
+            1.86,
+            0.4,
+            0.62
+          ],
+          "at": [
+            0,
+            0.2,
+            -0.05
+          ],
+          "color": "#E57B7B",
+          "material": "material.finish.fabric",
+          "radius": 0.08
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.8,
+            0.1,
+            0.56
+          ],
+          "at": [
+            0,
+            0.4,
+            -0.04
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.fabric",
+          "radius": 0.04
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.86,
+            0.62,
+            0.22
+          ],
+          "at": [
+            0,
+            0.72,
+            -0.42
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.fabric",
+          "rotate": [
+            -8,
+            0,
+            0
+          ],
+          "radius": 0.08
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.86,
+            0.03,
+            0.24
+          ],
+          "at": [
+            0,
+            1.04,
+            -0.44
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.satin",
+          "radius": 0.012
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.9,
+            1.6,
+            0.06
+          ],
+          "at": [
+            0,
+            0.8,
+            -0.9
+          ],
+          "color": "#7A5FB8",
+          "material": "material.finish.satin",
+          "radius": 0.02
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.3,
+            0.72,
+            1.0
+          ],
+          "at": [
+            -0.8,
+            0.36,
+            0.4
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.fabric",
+          "radius": 0.08
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.3,
+            0.03,
+            1.0
+          ],
+          "at": [
+            -0.8,
+            0.73,
+            0.4
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.satin",
+          "radius": 0.012
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.3,
+            0.72,
+            1.0
+          ],
+          "at": [
+            0.8,
+            0.36,
+            0.4
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.fabric",
+          "radius": 0.08
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.3,
+            0.03,
+            1.0
+          ],
+          "at": [
+            0.8,
+            0.73,
+            0.4
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.satin",
+          "radius": 0.012
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.62,
+            0.04,
+            0.62
+          ],
+          "at": [
+            0,
+            0.72,
+            0.52
+          ],
+          "color": "#F4F4F2",
+          "material": "material.finish.gloss",
+          "profile": [
+            [
+              0,
+              -0.5
+            ],
+            [
+              0.5,
+              -0.5
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0,
+              0.5
+            ]
+          ],
+          "segments": 32
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.08,
+            0.68,
+            0.08
+          ],
+          "at": [
+            0,
+            0.36,
+            0.52
+          ],
+          "color": "#B8925A",
+          "material": "material.finish.metal"
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.4,
+            0.03,
+            0.4
+          ],
+          "at": [
+            0,
+            0.015,
+            0.52
+          ],
+          "color": "#B8925A",
+          "material": "material.finish.metal",
+          "segments": 24
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.34,
+            0.22,
+            0.02
+          ],
+          "at": [
+            0,
+            0.86,
+            0.6
+          ],
+          "color": "#2B2433",
+          "material": "material.finish.satin",
+          "radius": 0.012,
+          "rotate": [
+            12,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.31,
+            0.19,
+            0.003
+          ],
+          "at": [
+            0.0,
+            0.8625,
+            0.5883
+          ],
+          "color": "#E84F9A",
+          "material": "material.finish.gloss",
+          "rotate": [
+            12,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.12,
+            0.012,
+            0.08
+          ],
+          "at": [
+            0,
+            0.745,
+            0.62
+          ],
+          "color": "#2B2433",
+          "material": "material.finish.satin",
+          "radius": 0.004
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.07,
+            0.12,
+            0.07
+          ],
+          "at": [
+            -0.18,
+            0.8,
+            0.42
+          ],
+          "color": "#E6F0F2",
+          "material": "material.finish.glass",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.42,
+              -0.5
+            ],
+            [
+              0.5,
+              -0.42
+            ],
+            [
+              0.5,
+              0.3
+            ],
+            [
+              0.38,
+              0.42
+            ],
+            [
+              0.3,
+              0.5
+            ],
+            [
+              0.0,
+              0.5
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.0588,
+            0.084,
+            0.0588
+          ],
+          "at": [
+            -0.18,
+            0.7832,
+            0.42
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.gloss",
+          "segments": 12
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.07,
+            0.12,
+            0.07
+          ],
+          "at": [
+            0.18,
+            0.8,
+            0.42
+          ],
+          "color": "#E6F0F2",
+          "material": "material.finish.glass",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.42,
+              -0.5
+            ],
+            [
+              0.5,
+              -0.42
+            ],
+            [
+              0.5,
+              0.3
+            ],
+            [
+              0.38,
+              0.42
+            ],
+            [
+              0.3,
+              0.5
+            ],
+            [
+              0.0,
+              0.5
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.0588,
+            0.084,
+            0.0588
+          ],
+          "at": [
+            0.18,
+            0.7832,
+            0.42
+          ],
+          "color": "#7FD4C1",
+          "material": "material.finish.gloss",
+          "segments": 12
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.18,
+            0.06,
+            0.18
+          ],
+          "at": [
+            0.12,
+            0.77,
+            0.62
+          ],
+          "color": "#F4F4F2",
+          "material": "material.finish.gloss",
+          "profile": [
+            [
+              0,
+              -0.5
+            ],
+            [
+              0.3,
+              -0.5
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.42,
+              0.5
+            ],
+            [
+              0.25,
+              -0.3
+            ],
+            [
+              0,
+              -0.3
+            ]
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.15,
+            0.06,
+            0.15
+          ],
+          "at": [
+            0.12,
+            0.8,
+            0.62
+          ],
+          "color": "#FFF3C4",
+          "material": "material.finish.matte",
+          "noise": 0.3
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.06,
+            0.06
+          ],
+          "at": [
+            -0.84,
+            1.56,
+            -0.86
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            -0.77,
+            1.3,
+            -0.86
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.06,
+            0.06
+          ],
+          "at": [
+            -0.7,
+            1.56,
+            -0.86
+          ],
+          "color": "#6EC1E4",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            -0.63,
+            1.3505,
+            -0.86
+          ],
+          "color": "#B8A1E3",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.06,
+            0.06
+          ],
+          "at": [
+            -0.56,
+            1.56,
+            -0.86
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            -0.49,
+            1.3546,
+            -0.86
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.06,
+            0.06
+          ],
+          "at": [
+            -0.42,
+            1.56,
+            -0.86
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            -0.35,
+            1.3085,
+            -0.86
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.06,
+            0.06
+          ],
+          "at": [
+            -0.28,
+            1.56,
+            -0.86
+          ],
+          "color": "#B8A1E3",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            -0.21,
+            1.2546,
+            -0.86
+          ],
+          "color": "#6EC1E4",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.06,
+            0.06
+          ],
+          "at": [
+            -0.14,
+            1.56,
+            -0.86
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            -0.07,
+            1.2425,
+            -0.86
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.06,
+            0.06
+          ],
+          "at": [
+            0.0,
+            1.56,
+            -0.86
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.07,
+            1.2832,
+            -0.86
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.06,
+            0.06
+          ],
+          "at": [
+            0.14,
+            1.56,
+            -0.86
+          ],
+          "color": "#6EC1E4",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.21,
+            1.3394,
+            -0.86
+          ],
+          "color": "#B8A1E3",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.06,
+            0.06
+          ],
+          "at": [
+            0.28,
+            1.56,
+            -0.86
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.35,
+            1.3594,
+            -0.86
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.06,
+            0.06
+          ],
+          "at": [
+            0.42,
+            1.56,
+            -0.86
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.49,
+            1.3247,
+            -0.86
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.06,
+            0.06
+          ],
+          "at": [
+            0.56,
+            1.56,
+            -0.86
+          ],
+          "color": "#B8A1E3",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.63,
+            1.2674,
+            -0.86
+          ],
+          "color": "#6EC1E4",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.06,
+            0.06
+          ],
+          "at": [
+            0.7,
+            1.56,
+            -0.86
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.77,
+            1.24,
+            -0.86
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.06,
+            0.06
+          ],
+          "at": [
+            0.84,
+            1.56,
+            -0.86
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.91,
+            1.2678,
+            -0.86
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.gloss",
+          "segments": 8
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.05,
+            0.01
+          ],
+          "at": [
+            -0.6,
+            1.0,
+            -0.865
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.gloss",
+          "radius": 0.01,
+          "rotate": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.05,
+            0.01
+          ],
+          "at": [
+            -0.3,
+            1.18,
+            -0.865
+          ],
+          "color": "#6EC1E4",
+          "material": "material.finish.gloss",
+          "radius": 0.01,
+          "rotate": [
+            0,
+            0,
+            30
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.05,
+            0.01
+          ],
+          "at": [
+            0.1,
+            0.98,
+            -0.865
+          ],
+          "color": "#F28D8D",
+          "material": "material.finish.gloss",
+          "radius": 0.01,
+          "rotate": [
+            0,
+            0,
+            60
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.05,
+            0.01
+          ],
+          "at": [
+            0.45,
+            1.15,
+            -0.865
+          ],
+          "color": "#8CC63F",
+          "material": "material.finish.gloss",
+          "radius": 0.01,
+          "rotate": [
+            0,
+            0,
+            90
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.05,
+            0.01
+          ],
+          "at": [
+            0.7,
+            0.95,
+            -0.865
+          ],
+          "color": "#B8A1E3",
+          "material": "material.finish.gloss",
+          "radius": 0.01,
+          "rotate": [
+            0,
+            0,
+            120
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.05,
+            0.01
+          ],
+          "at": [
+            -0.05,
+            1.4,
+            -0.865
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.gloss",
+          "radius": 0.01,
+          "rotate": [
+            0,
+            0,
+            150
+          ]
+        }
+      ]
+    }
+  }
+}

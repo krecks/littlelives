@@ -1,5 +1,6 @@
 <script lang="ts">
   import { applyPreset, resetSettings, RESTART_KEYS, settings, type QualityPreset } from '../../settings/settings.svelte';
+  import { STYLES, VISUAL_STYLES } from '../../render/styles';
   import { app } from '../app.svelte';
   import Segmented from '../kit/Segmented.svelte';
   import Toggle from '../kit/Toggle.svelte';
@@ -17,7 +18,7 @@
   });
 
   const keys = [
-    ['Left-click Sim / Tab', 'Select a Sim'],
+    ['Left-click a resident / Tab', 'Select a resident'],
     ['Left-click object', 'Interaction menu'],
     ['Left-click floor', 'Walk there'],
     ['Left-drag / right-drag', 'Rotate / pan camera'],
@@ -42,6 +43,14 @@
 
   <div class="rows">
     {#if tab === 'Graphics'}
+      <div class="row">
+        <div><b>Visual style</b><span>{STYLES[settings.visualStyle].description} Same game, different look.</span></div>
+        <Segmented
+          label="Visual style"
+          bind:value={settings.visualStyle}
+          options={VISUAL_STYLES.map((id) => ({ value: id, label: STYLES[id].label }))}
+        />
+      </div>
       <div class="row">
         <div><b>Quality preset</b><span>Shadow detail, anti-aliasing and effects. Applies on next load.</span></div>
         <Segmented
@@ -87,7 +96,7 @@
       </div>
     {:else if tab === 'Gameplay'}
       <div class="row">
-        <div><b>Free will</b><span>Sims look after their own needs when you don't give orders.</span></div>
+        <div><b>Free will</b><span>Residents look after their own needs when you don't give orders.</span></div>
         <Toggle label="Free will" bind:checked={settings.autonomy} />
       </div>
       <div class="row">

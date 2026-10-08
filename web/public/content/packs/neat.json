@@ -1,0 +1,220 @@
+{
+  "$comment": "Neat pack: cleaning gear, laundry, a luxury steam shower and an organizer desk. Neat residents get grubby fast (hygiene decay x1.2) and love chores; these items turn tidying into fun, skill and mood buffs, and the steam shower slows how fast they feel grubby. New tag: cleaning. See docs/personalities/neat.md.",
+  "objects": [
+    {
+      "id": "neat.steamMopDock",
+      "name": "Steam mop dock",
+      "model": "model.neat.steamMopDock",
+      "footprint": [1, 1],
+      "price": 240,
+      "category": "kitchen",
+      "slots": 1,
+      "description": "A wall dock with a steam mop and refills. Mopping is oddly satisfying and leaves the home feeling spotless for hours.",
+      "interactions": [
+        {
+          "id": "mop",
+          "label": "Steam-mop the floors",
+          "anim": "clean",
+          "minutes": 30,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.15, "comfort": 0.1, "hygiene": -0.05 },
+          "tags": ["chores", "cleaning"],
+          "skills": { "dexterity": 0.05 },
+          "feeling": "neat.spotless"
+        }
+      ]
+    },
+    {
+      "id": "neat.laundryCenter",
+      "name": "Stacked laundry centre",
+      "model": "model.neat.laundryCenter",
+      "footprint": [2, 1],
+      "price": 780,
+      "category": "bathroom",
+      "slots": 1,
+      "description": "Washer, dryer and a folding counter. Fresh clothes help a little with hygiene; deft hands (Dexterity 4+) press linens so crisp the resident sleeps better that night.",
+      "interactions": [
+        {
+          "id": "laundry",
+          "label": "Wash and press the laundry",
+          "anim": "clean",
+          "minutes": 45,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "hygiene": 0.15, "fun": 0.15, "comfort": 0.05 },
+          "tags": ["chores", "cleaning"],
+          "skills": { "dexterity": 0.08 },
+          "skill": "dexterity",
+          "feeling": "neat.freshLinens",
+          "feelingMinSkill": 4
+        },
+        {
+          "id": "fold",
+          "label": "Practise precision folding",
+          "anim": "clean",
+          "minutes": 60,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.1 },
+          "tags": ["chores", "training"],
+          "skills": { "dexterity": 0.22, "handiness": 0.05 }
+        }
+      ]
+    },
+    {
+      "id": "neat.rainShowerTower",
+      "name": "Rainfall steam shower",
+      "model": "model.neat.rainShowerTower",
+      "footprint": [1, 1],
+      "price": 2400,
+      "category": "bathroom",
+      "slots": 1,
+      "description": "A ceiling rain head, steam jets and a teak bench. Cleans as well as a shower while soothing tired muscles, and leaves the resident squeaky clean: they stay fresh much longer.",
+      "interactions": [
+        {
+          "id": "steamShower",
+          "label": "Take a rainfall steam shower",
+          "anim": "shower",
+          "minutes": 25,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "hygiene": 1.0, "comfort": 0.25, "energy": 0.05 },
+          "tags": ["hygiene", "spa"],
+          "feeling": "neat.squeakyClean"
+        }
+      ]
+    },
+    {
+      "id": "neat.organizerDesk",
+      "name": "Label-and-sort organizer desk",
+      "model": "model.neat.organizerDesk",
+      "footprint": [2, 1],
+      "price": 650,
+      "category": "office",
+      "slots": 1,
+      "description": "Cubbies, labelled bins and a label maker. Sorting things is fun for tidy minds and sharpens the eye; balancing the household ledger builds Business.",
+      "interactions": [
+        {
+          "id": "sort",
+          "label": "Sort and label everything",
+          "anim": "write",
+          "minutes": 40,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.35, "comfort": 0.05 },
+          "tags": ["chores", "entertainment"],
+          "skills": { "perception": 0.08, "writing": 0.03 },
+          "feeling": "neat.orderly"
+        },
+        {
+          "id": "ledger",
+          "label": "Balance the household ledger",
+          "anim": "write",
+          "minutes": 60,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.05, "comfort": 0.1 },
+          "tags": ["training"],
+          "skills": { "business": 0.2, "perception": 0.06 }
+        }
+      ]
+    },
+    {
+      "id": "neat.robotVacuumDock",
+      "name": "Robot vacuum and dock",
+      "model": "model.neat.robotVacuumDock",
+      "footprint": [1, 1],
+      "price": 560,
+      "category": "living",
+      "slots": 1,
+      "description": "A self-emptying robot vacuum. Programming its route is a fun gadget puzzle; tech-savvy residents (Technology 3+) map it so well the home feels spotless.",
+      "interactions": [
+        {
+          "id": "program",
+          "label": "Program a cleaning route",
+          "anim": "type",
+          "minutes": 45,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.3 },
+          "tags": ["cleaning", "screen"],
+          "skills": { "technology": 0.1, "perception": 0.03 },
+          "skill": "technology",
+          "feeling": "neat.spotless",
+          "feelingMinSkill": 3
+        }
+      ]
+    },
+    {
+      "id": "neat.entryConsole",
+      "name": "Tidy entry console",
+      "model": "model.neat.entryConsole",
+      "footprint": [1, 1],
+      "price": 110,
+      "category": "decor",
+      "slots": 1,
+      "description": "A slim console with a shoe shelf, key tray and coat hooks. A quick tidy of the entryway is a small comfort for orderly residents.",
+      "interactions": [
+        {
+          "id": "tidy",
+          "label": "Tidy the entryway",
+          "anim": "clean",
+          "minutes": 10,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "comfort": 0.1, "fun": 0.05 },
+          "tags": ["chores", "cleaning"]
+        }
+      ]
+    }
+  ],
+  "feelings": [
+    {
+      "id": "neat.spotless",
+      "label": "Spotless home",
+      "emotion": "happy",
+      "mood": 0.08,
+      "hours": 6,
+      "effects": {
+        "needDecay": { "comfort": 0.85 },
+        "tagPreference": { "cleaning": 0.6, "lounge": 1.2 }
+      }
+    },
+    {
+      "id": "neat.freshLinens",
+      "label": "Crisp fresh linens",
+      "emotion": "relaxed",
+      "mood": 0.07,
+      "hours": 10,
+      "effects": { "needGain": { "energy": 1.2, "comfort": 1.15 } }
+    },
+    {
+      "id": "neat.squeakyClean",
+      "label": "Squeaky clean",
+      "emotion": "energized",
+      "mood": 0.1,
+      "hours": 6,
+      "effects": {
+        "needDecay": { "hygiene": 0.7 },
+        "tagAcceptance": { "friendly": 0.05 }
+      }
+    },
+    {
+      "id": "neat.orderly",
+      "label": "Everything in its place",
+      "emotion": "focused",
+      "mood": 0.06,
+      "hours": 4,
+      "effects": { "skillGain": { "perception": 1.15, "intelligence": 1.1, "business": 1.1 } }
+    }
+  ],
+  "traitPatches": {
+    "neat": {
+      "effects": {
+        "tagPreference": { "cleaning": 1.8, "spa": 1.2 },
+        "skillGain": { "dexterity": 1.1, "perception": 1.1 }
+      }
+    }
+  }
+}

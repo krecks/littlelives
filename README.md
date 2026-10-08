@@ -1,4 +1,4 @@
-# open-sims-wasm
+# Littlelives
 
 A life-simulation game that runs in the browser. The game logic is written in Rust and compiled to WebAssembly; rendering runs on the GPU through WebGPU, with a WebGL2 fallback. The interface is Svelte 5 with plain CSS. Desktop only.
 
@@ -27,24 +27,33 @@ pnpm dev          # builds the WASM module, then starts Vite on http://localhost
 
 ## Playing
 
-**New game:** create a neighbourhood (town size, neighbour households) → create your household (gender, who they're attracted to, looks, traits, perks, starting bonds) → choose a vacant house → move in. Everyone in town lives, works, socialises and falls in and out of love on their own; you control your household. Only the lot your selected Sim is on is drawn; the rest of the town keeps simulating in the background.
+**New game:** create a neighbourhood (town size, neighbour households) → create your household in the 3D household creator (drag to turn a resident, scroll to zoom to the face; gender, who they're attracted to, skin, hair, clothes, traits, perks, starting bonds) → choose a vacant house → move in. Everyone in town lives, works, socialises and falls in and out of love on their own; you control your household. Only the lot your selected resident is on is drawn; the rest of the town keeps simulating in the background.
 
-- **Jobs:** find one in the Sim panel's *Career* tab. Sims leave town for their shift, come home with pay (top bar), and get promoted when their performance bar fills. Mood when leaving for work drives performance.
-- **Daily rhythm:** time-of-day schedules make Sims sleep at night, wash and eat in the morning and socialise in the evening.
-- **Visits:** neighbours visit friends on their own. Open the town map (**M**) to send your Sim to visit anyone; the view follows them.
+- **Jobs (1000 of them):** 25 categories (journalism, detective work, fire & rescue, social media, IT, TV, mechanics, finance, …) × 4 tracks × 10 grades **A–J**. The grade sets pay per hour ($15/h at A up to $300/h at J) and the skill level the job expects. Open the job board from the *Career* tab, filter by category, grade or what your resident can take, and join any position you qualify for — up to two levels short is allowed *on probation*. Promotions need a full performance bar **and** the next grade's skills.
+- **Skills:** Intelligence, Strength, Endurance, Charisma, Creativity, Technology, Handiness, Cooking, Writing, Perception, Dexterity and Business (0–10). Work trains the job's skills; at home, residents practise with things you buy (treadmill, weight bench, chess table, computer desk, easel, mirror, workbench, telescope, piano, gourmet cooking, studying). Traits give starting skills and faster learning in some.
+- **Workweek:** the standard week is set by the job (mostly Mon–Fri). Skills change it: on probation residents work an extra day, two levels above the requirements a day less (*Flexible*), four levels above two days less (*Expert*). The weekly salary stays the same, so a shorter week pays more per shift.
+- **Money:** household funds are in dollars. Rent and bills are charged every Sunday at noon: rent depends on the lot size, and bills grow with the value of everything the household owns. Items cost nothing per use; only takeout, deliveries and similar purchases do. A household that can't pay goes into debt and its residents worry about money.
+- **Day and night:** Residents are active by day and sleep through the night (couples share a double bed), get up early for an early shift, eat and wash in the morning, socialise in the evening and use the bathroom before bed. Tiredness builds up faster when they stay up late.
+- **Buy mode (V or B):** time stands still while you shop and build. One catalog for everything on your lot. Furniture and training equipment cost money, and what you buy decides what your residents can do: point at an item to see the needs it fills (and how fast), the skills it trains, the feelings it can give, whether a skill makes it better (a skilled cook gets more out of the stove), any cost per use and how many residents fit. Filter by category, search, sort by price or show only what you can afford. Pick a favourite **style** (Modern, Cozy, Minimal) — looks never change price or quality. Click an owned object to upgrade, move, rotate, restyle or sell it (60% back).
+- **Upgrades:** instead of pricier versions, objects get better by upgrading. Upgrades are bought in Buy mode (click the object → *Upgrade to ★n*) and happen at once; each quality star makes everything the object gives 25% better (a better shower cleans faster, a better treadmill trains faster).
+- **Building (Buy mode → Build: Walls · Doors · Windows · Remove):** draw walls (click a corner, then another), put doors and windows into walls, and tear walls down on your own lot. Windows let light in but not residents. Draw a room's walls first, then add its door; only a resident or furniture can't be shut in.
+- **Visits:** neighbours visit friends on their own. Open the town map (**M**) to send your resident to visit anyone; the view follows them.
 
 | Input | Action |
 |---|---|
-| Left-click your Sim / avatar, Tab | Select a household member |
-| Left-click another Sim | Social menu (chat, flirt, argue, …) with success chances |
+| Left-click your resident / avatar, Tab | Select a household member |
+| Left-click another resident | Social menu (chat, flirt, argue, …) with success chances |
 | Left-click an object | Interaction menu |
 | Left-click the floor | Walk there |
 | Left-drag / right-drag / wheel | Rotate / pan / zoom |
 | Space, 0–3 | Pause, game speed |
-| W | Walls up / down |
+| W | Walls up → cutaway → down |
 | M | Town map (who's home, visiting) |
-| Esc | Pause menu (save, load, settings, quit) |
-| F3 | Performance overlay |
+| L / V | Live / Buy mode (B opens Buy mode on the build tools; V or B again goes back to Live) |
+| R, Delete | Rotate / sell the object in hand or selected (Buy mode) |
+| Esc | Steps back: put down what's in hand, leave the build tools, leave Buy mode — then the pause menu (save, load, settings, quit) |
+| F3 | Performance overlay (with *Save debug report*) |
+| F8 | Save a debug report: screenshot, game state and recent errors. With `pnpm dev` it goes to `debug-reports/<time>/` in the project; open `?debugReport=<time>` to load it with the same camera. Other builds download it as a file. |
 
 URL options: `?quality=low|medium|high|ultra`, `?renderer=webgl`, `?snapshot=0`, `?seed=42`, `?lot=starter`, `?pack=packs/my-art/manifest.json`.
 
@@ -74,7 +83,7 @@ Main thread                                   Sim worker
 
 **Performance rules**
 - The CPU runs the game; the GPU draws it. The main thread uploads one snapshot per tick and replays recorded GPU commands (WebGPU snapshot rendering).
-- Every object type is one draw call (thin instances); Sims are thin instances whose matrix buffer is updated once per frame.
+- Every object type is one draw call (thin instances); residents are thin instances whose matrix buffer is updated once per frame.
 - No allocations in the frame loop or the sim tick. The snapshot layout is defined once, in Rust.
 - The UI updates at about 10 Hz, never per frame.
 
@@ -104,7 +113,17 @@ Model conventions: 1 unit = 1 metre, origin at the footprint centre on the floor
 
 Everything gameplay-related is JSON in `web/public/content/`:
 
-- `base.json`: needs, genders, traits, perks, objects, **social interactions** (requirements, success chances, outcomes, animation), emotions, moodlets, bond presets, social rules, **careers** (levels, pay, hours, workdays, work effects), **daily schedule** windows, visit rules, starting funds, story-feed texts.
+- `base.json`: needs, genders, traits, perks, objects, **social interactions** (requirements, success chances, outcomes, animation), emotions, feelings, bond presets, social rules, **careers** (levels, pay, hours, workdays, work effects), **daily schedule** windows, visit rules, starting funds, story-feed texts.
 - `houses.json`: house layouts and the park, stamped onto town plots.
 
 Add an object to `content/base.json` (footprint, interactions, need effects, model key), add its model key to the manifest, and place it in a lot file under `content/lots/`. `cargo test` validates the shipped content (`crates/sim-core/tests/shipped_content.rs`).
+
+Pack authors: see [docs/content-packs.md](docs/content-packs.md). The look of the three visual styles is described in [docs/design/look.md](docs/design/look.md).
+
+## Licence
+
+The code is released under the [MIT licence](LICENSE). Third-party art keeps its own licence: everything listed in [`web/public/assets/CREDITS.md`](web/public/assets/CREDITS.md) is CC0.
+
+---
+
+Not affiliated with or endorsed by Electronic Arts. "The Sims" is a trademark of Electronic Arts Inc.

@@ -3,7 +3,7 @@
 </script>
 
 <div class="credits">
-  <p class="lead">open-sims-wasm is a life simulation built for the browser, with performance first.</p>
+  <p class="lead">Littlelives is a life simulation built for the browser, with performance first.</p>
   <dl>
     <dt>Simulation</dt>
     <dd>Rust compiled to WebAssembly, running in a Web Worker</dd>
@@ -15,6 +15,8 @@
     <dd>Inter by Rasmus Andersson (SIL Open Font License)</dd>
     <dt>Art</dt>
     <dd>Placeholder geometry and icons made for this project; all art is replaceable through the asset manifest</dd>
+    <dt>Licence</dt>
+    <dd>Code under the MIT licence; third-party art keeps its own licence (CC0)</dd>
   </dl>
   <p class="small">Not affiliated with or endorsed by Electronic Arts. "The Sims" is a trademark of Electronic Arts Inc.</p>
 </div>

@@ -9,9 +9,12 @@
  * - The environment (`.env`, prefiltered offline from a CC0 HDRI) lights everything with sky
  *   ambient and reflections; its intensity follows the time of day.
  *
+ * - House surfaces can carry `WallCutPlugin`: walls drop to stubs in the vertex shader when the
+ *   cutaway state says so (driven by a per-vertex attribute, see `geometry.ts`), at no CPU cost.
+ *
  * All materials are frozen once their textures are loaded. Changing the environment intensity
- * thaws them for a couple of frames so the new value reaches their uniform buffers (the renderer
- * re-records its WebGPU snapshot on lighting changes anyway).
+ * (or an emissive glow, via `touch`) thaws them for a couple of frames so the new value reaches
+ * their uniform buffers (the renderer re-records its WebGPU snapshot on lighting changes anyway).
  */
 
 import {
@@ -20,10 +23,17 @@ import {
   MaterialPluginBase,
   PBRMaterial,
   ShaderLanguage,
+  StandardMaterial,
   Texture,
+  Vector4,
+  type AbstractEngine,
+  type AbstractMesh,
   type Material,
+  type MaterialDefines,
   type Nullable,
   type Scene,
+  type SubMesh,
+  type UniformBuffer,
 } from '@babylonjs/core';
 import type { AssetRegistry } from '../../assets/registry';
 import type { MaterialEntry } from '../../assets/types';
@@ -82,6 +92,148 @@ class VertexTweaksPlugin extends MaterialPluginBase {
   }
 }
 
+/** Cutaway state shared by every wall material of a scene (set by the renderer). */
+export class WallCutState {
+  /** 1 where the camera looks along +x, -x, +z, -z (matches `LOOK` bits in geometry.ts). */
+  readonly look = new Vector4(0, 0, 0, 0);
+  /** x: all walls down (0/1); y: stub height in metres. */
+  readonly params = new Vector4(0, 0.35, 0, 0);
+}
+
+/**
+ * Lowers wall vertices in the vertex shader. Per vertex `wallCut` = [mask A, kind, mask B, 0]:
+ * the vertex is cut when the camera looks along a direction set in both masks (or all walls are
+ * down); kind 1 clamps it to the stub height, kind 2 hides it below the ground (window frames,
+ * lintels). Uniforms are bound per draw, so frozen materials still follow the state.
+ */
+class WallCutPlugin extends MaterialPluginBase {
+  constructor(
+    material: Material,
+    private readonly state: WallCutState,
+  ) {
+    super(material, 'WallCut', 210, { WALLCUT: false }, true, false);
+    this.registerForExtraEvents = true;
+    this._enable(true);
+  }
+
+  override getClassName(): string {
+    return 'WallCutPlugin';
+  }
+
+  override isCompatible(): boolean {
+    return true;
+  }
+
+  override prepareDefines(defines: MaterialDefines, _scene: Scene, mesh: AbstractMesh): void {
+    defines.WALLCUT = mesh.isVerticesDataPresent('wallCut');
+  }
+
+  override getAttributes(attributes: string[], _scene: Scene, mesh: AbstractMesh): void {
+    if (mesh.isVerticesDataPresent('wallCut')) attributes.push('wallCut');
+  }
+
+  override getUniforms(): { externalUniforms: string[] } {
+    return { externalUniforms: ['wallCutLook', 'wallCutParams'] };
+  }
+
+  override hardBindForSubMesh(_ubo: UniformBuffer, _scene: Scene, _engine: AbstractEngine, subMesh: SubMesh): void {
+    const effect = subMesh.effect;
+    if (!effect) return;
+    const { look, params } = this.state;
+    effect.setFloat4('wallCutLook', look.x, look.y, look.z, look.w);
+    effect.setFloat4('wallCutParams', params.x, params.y, params.z, params.w);
+  }
+
+  override getCustomCode(shaderType: string, shaderLanguage?: ShaderLanguage): Nullable<{ [pointName: string]: string }> {
+    if (shaderType !== 'vertex') return null;
+    if (shaderLanguage === ShaderLanguage.WGSL) {
+      return {
+        CUSTOM_VERTEX_DEFINITIONS: `
+#ifdef WALLCUT
+attribute wallCut: vec4f;
+uniform wallCutLook: vec4f;
+uniform wallCutParams: vec4f;
+#endif
+`,
+        CUSTOM_VERTEX_UPDATE_POSITION: `
+#ifdef WALLCUT
+{
+  let cutA = step(0.5, dot(floor(fract(vertexInputs.wallCut.x / vec4f(2.0, 4.0, 8.0, 16.0)) * 2.0), uniforms.wallCutLook));
+  let cutB = step(0.5, dot(floor(fract(vertexInputs.wallCut.z / vec4f(2.0, 4.0, 8.0, 16.0)) * 2.0), uniforms.wallCutLook));
+  if (max(uniforms.wallCutParams.x, cutA * cutB) > 0.5) {
+    if (vertexInputs.wallCut.y > 1.5) { positionUpdated.y = -2.0; }
+    else if (vertexInputs.wallCut.y > 0.5) { positionUpdated.y = min(positionUpdated.y, uniforms.wallCutParams.y); }
+  }
+}
+#endif
+`,
+      };
+    }
+    return {
+      CUSTOM_VERTEX_DEFINITIONS: `
+#ifdef WALLCUT
+attribute vec4 wallCut;
+uniform vec4 wallCutLook;
+uniform vec4 wallCutParams;
+#endif
+`,
+      CUSTOM_VERTEX_UPDATE_POSITION: `
+#ifdef WALLCUT
+{
+  float cutA = step(0.5, dot(floor(fract(wallCut.x / vec4(2.0, 4.0, 8.0, 16.0)) * 2.0), wallCutLook));
+  float cutB = step(0.5, dot(floor(fract(wallCut.z / vec4(2.0, 4.0, 8.0, 16.0)) * 2.0), wallCutLook));
+  if (max(wallCutParams.x, cutA * cutB) > 0.5) {
+    if (wallCut.y > 1.5) { positionUpdated.y = -2.0; }
+    else if (wallCut.y > 0.5) { positionUpdated.y = min(positionUpdated.y, wallCutParams.y); }
+  }
+}
+#endif
+`,
+    };
+  }
+}
+
+/**
+ * One material for every untextured opaque finish (matte, satin, gloss, metal, chrome, skin,
+ * hair): metalness and roughness come from the vertex colour's alpha (see `encodeFinish`), so a
+ * placeholder model with five finishes is one draw call instead of five.
+ */
+class PlainFinishPlugin extends MaterialPluginBase {
+  constructor(material: Material) {
+    super(material, 'PlainFinish', 220, undefined, true, true);
+  }
+
+  override getClassName(): string {
+    return 'PlainFinishPlugin';
+  }
+
+  override isCompatible(): boolean {
+    return true;
+  }
+
+  override getCustomCode(shaderType: string, shaderLanguage?: ShaderLanguage): Nullable<{ [pointName: string]: string }> {
+    if (shaderType !== 'fragment') return null;
+    if (shaderLanguage === ShaderLanguage.WGSL) {
+      const a = 'fragmentInputs.vColor.a';
+      return {
+        '!reflectivityBlock\\(\\s*uniforms\\.vReflectivityColor': `reflectivityBlock(vec4f(step(0.5, ${a}), clamp((${a} - 0.5 * step(0.5, ${a})) * 2.0, 0.03, 1.0), uniforms.vReflectivityColor.zw)`,
+      };
+    }
+    return {
+      '!reflectivityBlock\\(\\s*vReflectivityColor': 'reflectivityBlock(vec4(step(0.5, vColor.a), clamp((vColor.a - 0.5 * step(0.5, vColor.a)) * 2.0, 0.03, 1.0), vReflectivityColor.ba)',
+    };
+  }
+}
+
+/** Vertex-colour alpha for the plain finish: [0, 0.5) dielectric, [0.5, 1] metal; roughness scaled within. */
+export function encodeFinish(roughness: number, metallic: number): number {
+  const r = Math.min(0.999, Math.max(0, roughness)) * 0.5;
+  return metallic >= 0.5 ? 0.5 + r : r;
+}
+
+/** Point lights (interior lamps) a lit material must handle besides the sun and the sky. */
+const MAX_LIGHTS = 6;
+
 export interface SurfaceOptions {
   /** Multiply albedo by (sRGB) vertex / instance colours. */
   vertexColors?: boolean;
@@ -89,6 +241,8 @@ export interface SurfaceOptions {
   doubleSided?: boolean;
   /** Derive UVs from the XZ position (metres) instead of the mesh's own UVs. */
   planarUV?: boolean;
+  /** Follow the wall cutaway state (meshes need the `wallCut` attribute). */
+  cutaway?: boolean;
 }
 
 export class MaterialLibrary {
@@ -108,12 +262,20 @@ export class MaterialLibrary {
   private readonly lit = new Set<PBRMaterial>();
   private readonly thawed = new Set<PBRMaterial>();
   private refreezeFrames = 0;
+  private nearest = false;
+  private shadowMaterial: StandardMaterial | null = null;
+  /** Wall cutaway state read by every `cutaway` material. */
+  readonly wallCut = new WallCutState();
+
+  /** Called after thawed materials were frozen again (a WebGPU snapshot must re-record then). */
+  onRefrozen: (() => void) | null = null;
 
   private constructor(private readonly scene: Scene) {
     scene.onAfterRenderObservable.add(() => {
       if (this.refreezeFrames === 0 || --this.refreezeFrames > 0) return;
       for (const m of this.thawed) m.freeze();
       this.thawed.clear();
+      this.onRefrozen?.();
     });
   }
 
@@ -124,7 +286,7 @@ export class MaterialLibrary {
 
   /** A textured surface from a manifest `material` entry (walls, floors, roads, terrain). */
   surface(key: string, options: SurfaceOptions = {}): PBRMaterial {
-    const id = `${key}|${options.vertexColors ? 'vc' : ''}|${options.doubleSided ? '2s' : ''}|${options.planarUV ? 'xz' : ''}`;
+    const id = `${key}|${options.vertexColors ? 'vc' : ''}|${options.doubleSided ? '2s' : ''}|${options.planarUV ? 'xz' : ''}|${options.cutaway ? 'cut' : ''}`;
     let mat = this.cache.get(id);
     if (!mat) {
       const entry = this.assets?.get(key, 'material') ?? { type: 'material', color: '#DDDDDD' };
@@ -146,11 +308,74 @@ export class MaterialLibrary {
     return mat;
   }
 
+  /**
+   * Whether a finish is untextured and opaque (it can share the plain material), with its
+   * roughness and metalness.
+   */
+  finishInfo(key: string): { plain: boolean; roughness: number; metallic: number } {
+    const entry = (this.assets && this.assets.has(key, 'material') && this.assets.get(key, 'material')) || FALLBACK_FINISH;
+    return {
+      plain: !entry.texture && (entry.alpha ?? 1) >= 1,
+      roughness: entry.roughness ?? 0.8,
+      metallic: entry.metallic ?? 0,
+    };
+  }
+
+  /** The shared material for plain finishes (vertex colour alpha = encoded roughness/metalness). */
+  plainFinish(): PBRMaterial {
+    const id = 'finish|plain';
+    let mat = this.cache.get(id);
+    if (!mat) {
+      mat = this.create('material.finish.plain', { type: 'material', color: '#FFFFFF', roughness: 1, metallic: 0 }, { vertexColors: true });
+      new PlainFinishPlugin(mat);
+      this.cache.set(id, mat);
+    }
+    return mat;
+  }
+
   /** Adopts a material created elsewhere (e.g. by the glTF loader) into env updates and freezing. */
   adopt(material: Material | null): void {
     if (!(material instanceof PBRMaterial) || this.lit.has(material)) return;
+    material.maxSimultaneousLights = MAX_LIGHTS;
     this.lit.add(material);
     this.freezeWhenReady(material);
+  }
+
+  /**
+   * Unlit black with per-vertex alpha: soft contact shadows / ambient occlusion decals.
+   * Follows the wall cutaway like the walls it darkens.
+   */
+  contactShadow(): StandardMaterial {
+    if (this.shadowMaterial) return this.shadowMaterial;
+    const mat = (this.shadowMaterial = new StandardMaterial('contactShadow', this.scene));
+    mat.disableLighting = true;
+    mat.diffuseColor = Color3.Black();
+    mat.specularColor = Color3.Black();
+    mat.emissiveColor = Color3.Black();
+    mat.zOffset = -2;
+    mat.disableDepthWrite = true;
+    new WallCutPlugin(mat, this.wallCut);
+    return mat;
+  }
+
+  /** Re-uploads a frozen material's uniforms after a property change (e.g. emissive glow). */
+  touch(material: Material): void {
+    if (!(material instanceof PBRMaterial) || !material.isFrozen) return;
+    material.unfreeze();
+    this.thawed.add(material);
+    this.refreezeFrames = 3;
+  }
+
+  /** Nearest-neighbour texture filtering for a low-res retro look (applies to all surfaces). */
+  setNearest(on: boolean): void {
+    if (on === this.nearest) return;
+    this.nearest = on;
+    for (const tex of this.textures.values()) this.applySampling(tex);
+  }
+
+  private applySampling(tex: Texture): void {
+    tex.updateSamplingMode(this.nearest ? Texture.NEAREST_NEAREST_MIPLINEAR : Texture.TRILINEAR_SAMPLINGMODE);
+    tex.anisotropicFilteringLevel = this.nearest ? 1 : 8;
   }
 
   /** Loads a prefiltered `.env` environment; resolves (without throwing) even when it fails. */
@@ -224,7 +449,9 @@ export class MaterialLibrary {
     }
     mat.backFaceCulling = !options.doubleSided;
     if (options.doubleSided) mat.twoSidedLighting = true;
+    mat.maxSimultaneousLights = MAX_LIGHTS;
     if (options.vertexColors || options.planarUV) new VertexTweaksPlugin(mat, { srgbColors: options.vertexColors, planarUV: options.planarUV });
+    if (options.cutaway) new WallCutPlugin(mat, this.wallCut);
     this.lit.add(mat);
     this.freezeWhenReady(mat);
     return mat;
@@ -237,7 +464,7 @@ export class MaterialLibrary {
       tex = new Texture(url, this.scene, { invertY: false, samplingMode: Texture.TRILINEAR_SAMPLINGMODE, gammaSpace: srgb });
       tex.gammaSpace = srgb;
       tex.uScale = tex.vScale = scale;
-      tex.anisotropicFilteringLevel = 8;
+      this.applySampling(tex);
       this.textures.set(id, tex);
     }
     return tex;

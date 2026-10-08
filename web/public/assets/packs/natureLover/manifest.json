@@ -1,0 +1,8175 @@
+{
+  "version": 1,
+  "entries": {
+    "model.natureLover.veggieBed": {
+      "type": "model",
+      "placeholder": [
+        {
+          "shape": "box",
+          "size": [
+            1.84,
+            0.45,
+            0.84
+          ],
+          "at": [
+            0,
+            0.225,
+            0.0
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.012
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.76,
+            0.02,
+            0.76
+          ],
+          "at": [
+            0,
+            0.41,
+            0.0
+          ],
+          "color": "#5A4030",
+          "material": "material.finish.matte",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.07,
+            0.49,
+            0.07
+          ],
+          "at": [
+            -0.8918,
+            0.245,
+            -0.4018
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.07,
+            0.49,
+            0.07
+          ],
+          "at": [
+            -0.8918,
+            0.245,
+            0.4018
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.07,
+            0.49,
+            0.07
+          ],
+          "at": [
+            0.8918,
+            0.245,
+            -0.4018
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.07,
+            0.49,
+            0.07
+          ],
+          "at": [
+            0.8918,
+            0.245,
+            0.4018
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.86,
+            0.04,
+            0.05
+          ],
+          "at": [
+            0,
+            0.45,
+            -0.4214
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.86,
+            0.04,
+            0.05
+          ],
+          "at": [
+            0,
+            0.45,
+            0.4214
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.2,
+            0.13,
+            0.2
+          ],
+          "at": [
+            -0.7,
+            0.48,
+            0.22
+          ],
+          "color": "#9BCB5A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.2,
+            0.13,
+            0.2
+          ],
+          "at": [
+            -0.48,
+            0.48,
+            0.22
+          ],
+          "color": "#7FB84A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.2,
+            0.13,
+            0.2
+          ],
+          "at": [
+            -0.26,
+            0.48,
+            0.22
+          ],
+          "color": "#9BCB5A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.2,
+            0.13,
+            0.2
+          ],
+          "at": [
+            -0.04,
+            0.48,
+            0.22
+          ],
+          "color": "#7FB84A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.04,
+            0.03,
+            0.04
+          ],
+          "at": [
+            -0.72,
+            0.435,
+            -0.05
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.satin"
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.1,
+            0.16,
+            0.1
+          ],
+          "at": [
+            -0.72,
+            0.51,
+            -0.05
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "taper": 0.0,
+          "segments": 7
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.04,
+            0.03,
+            0.04
+          ],
+          "at": [
+            -0.59,
+            0.435,
+            -0.05
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.satin"
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.1,
+            0.16,
+            0.1
+          ],
+          "at": [
+            -0.59,
+            0.51,
+            -0.05
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "taper": 0.0,
+          "segments": 7
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.04,
+            0.03,
+            0.04
+          ],
+          "at": [
+            -0.46,
+            0.435,
+            -0.05
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.satin"
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.1,
+            0.16,
+            0.1
+          ],
+          "at": [
+            -0.46,
+            0.51,
+            -0.05
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "taper": 0.0,
+          "segments": 7
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.04,
+            0.03,
+            0.04
+          ],
+          "at": [
+            -0.33,
+            0.435,
+            -0.05
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.satin"
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.1,
+            0.16,
+            0.1
+          ],
+          "at": [
+            -0.33,
+            0.51,
+            -0.05
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "taper": 0.0,
+          "segments": 7
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.04,
+            0.03,
+            0.04
+          ],
+          "at": [
+            -0.2,
+            0.435,
+            -0.05
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.satin"
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.1,
+            0.16,
+            0.1
+          ],
+          "at": [
+            -0.2,
+            0.51,
+            -0.05
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "taper": 0.0,
+          "segments": 7
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.04,
+            0.03,
+            0.04
+          ],
+          "at": [
+            -0.07,
+            0.435,
+            -0.05
+          ],
+          "color": "#F28C28",
+          "material": "material.finish.satin"
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.1,
+            0.16,
+            0.1
+          ],
+          "at": [
+            -0.07,
+            0.51,
+            -0.05
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "taper": 0.0,
+          "segments": 7
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.02,
+            0.87,
+            0.02
+          ],
+          "at": [
+            0.3,
+            0.865,
+            -0.22
+          ],
+          "color": "#B08E66",
+          "material": "material.finish.wood",
+          "rotate": [
+            0.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.55,
+            0.3
+          ],
+          "at": [
+            0.3,
+            0.85,
+            -0.2
+          ],
+          "color": "#4F8A45",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.07,
+            0.07,
+            0.07
+          ],
+          "at": [
+            0.43,
+            0.67,
+            -0.2
+          ],
+          "color": "#D9483B",
+          "material": "material.finish.gloss",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.07,
+            0.07,
+            0.07
+          ],
+          "at": [
+            0.3348,
+            0.77,
+            -0.0747
+          ],
+          "color": "#D9483B",
+          "material": "material.finish.gloss",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.07,
+            0.07,
+            0.07
+          ],
+          "at": [
+            0.1886,
+            0.87,
+            -0.133
+          ],
+          "color": "#D9483B",
+          "material": "material.finish.gloss",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.07,
+            0.07,
+            0.07
+          ],
+          "at": [
+            0.2056,
+            0.97,
+            -0.2894
+          ],
+          "color": "#D9483B",
+          "material": "material.finish.gloss",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.07,
+            0.07,
+            0.07
+          ],
+          "at": [
+            0.3609,
+            1.07,
+            -0.3148
+          ],
+          "color": "#D9483B",
+          "material": "material.finish.gloss",
+          "segments": 10
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.02,
+            0.87,
+            0.02
+          ],
+          "at": [
+            0.68,
+            0.865,
+            -0.22
+          ],
+          "color": "#B08E66",
+          "material": "material.finish.wood",
+          "rotate": [
+            0.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.55,
+            0.3
+          ],
+          "at": [
+            0.68,
+            0.85,
+            -0.2
+          ],
+          "color": "#4F8A45",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.07,
+            0.07,
+            0.07
+          ],
+          "at": [
+            0.81,
+            0.67,
+            -0.2
+          ],
+          "color": "#D9483B",
+          "material": "material.finish.gloss",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.07,
+            0.07,
+            0.07
+          ],
+          "at": [
+            0.7148,
+            0.77,
+            -0.0747
+          ],
+          "color": "#D9483B",
+          "material": "material.finish.gloss",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.07,
+            0.07,
+            0.07
+          ],
+          "at": [
+            0.5686,
+            0.87,
+            -0.133
+          ],
+          "color": "#D9483B",
+          "material": "material.finish.gloss",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.07,
+            0.07,
+            0.07
+          ],
+          "at": [
+            0.5856,
+            0.97,
+            -0.2894
+          ],
+          "color": "#D9483B",
+          "material": "material.finish.gloss",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.07,
+            0.07,
+            0.07
+          ],
+          "at": [
+            0.7409,
+            1.07,
+            -0.3148
+          ],
+          "color": "#D9483B",
+          "material": "material.finish.gloss",
+          "segments": 10
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.34,
+            0.2,
+            0.3
+          ],
+          "at": [
+            0.5,
+            0.53,
+            0.18
+          ],
+          "color": "#5E8F4E",
+          "material": "material.finish.foliage",
+          "noise": 0.25
+        },
+        {
+          "shape": "capsule",
+          "size": [
+            0.07,
+            0.24,
+            0.07
+          ],
+          "at": [
+            0.45,
+            0.49,
+            0.3
+          ],
+          "color": "#4F7D3A",
+          "material": "material.finish.satin",
+          "rotate": [
+            0,
+            30,
+            80
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1,
+            0.16,
+            0.02
+          ],
+          "at": [
+            -0.85,
+            0.53,
+            0.38
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.matte",
+          "radius": 0.004
+        }
+      ]
+    },
+    "model.natureLover.pottingBench": {
+      "type": "model",
+      "placeholder": [
+        {
+          "shape": "box",
+          "size": [
+            1.76,
+            0.05,
+            0.6
+          ],
+          "at": [
+            0,
+            0.855,
+            -0.13
+          ],
+          "color": "#D9B98C",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.7,
+            0.03,
+            0.5
+          ],
+          "at": [
+            0,
+            0.22,
+            -0.15
+          ],
+          "color": "#C9A274",
+          "material": "material.finish.wood",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.76,
+            0.86,
+            0.04
+          ],
+          "at": [
+            0,
+            1.31,
+            -0.41
+          ],
+          "color": "#8FA88A",
+          "material": "material.finish.satin",
+          "radius": 0.012
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.76,
+            0.03,
+            0.18
+          ],
+          "at": [
+            0,
+            1.5,
+            -0.33
+          ],
+          "color": "#D9B98C",
+          "material": "material.finish.wood",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.06,
+            0.83,
+            0.06
+          ],
+          "at": [
+            -0.84,
+            0.415,
+            -0.39
+          ],
+          "color": "#8FA88A",
+          "material": "material.finish.satin",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.06,
+            0.83,
+            0.06
+          ],
+          "at": [
+            -0.84,
+            0.415,
+            0.12
+          ],
+          "color": "#8FA88A",
+          "material": "material.finish.satin",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.06,
+            0.83,
+            0.06
+          ],
+          "at": [
+            0.84,
+            0.415,
+            -0.39
+          ],
+          "color": "#8FA88A",
+          "material": "material.finish.satin",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.06,
+            0.83,
+            0.06
+          ],
+          "at": [
+            0.84,
+            0.415,
+            0.12
+          ],
+          "color": "#8FA88A",
+          "material": "material.finish.satin",
+          "radius": 0.01
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.13,
+            0.11,
+            0.13
+          ],
+          "at": [
+            -0.6,
+            1.57,
+            -0.33
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 16
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.084,
+            0.07,
+            0.084
+          ],
+          "at": [
+            -0.5692,
+            1.68,
+            -0.33
+          ],
+          "color": "#5E8F4E",
+          "material": "material.finish.foliage",
+          "noise": 0.22
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.084,
+            0.07,
+            0.084
+          ],
+          "at": [
+            -0.6227,
+            1.6968,
+            -0.3092
+          ],
+          "color": "#5E8F4E",
+          "material": "material.finish.foliage",
+          "noise": 0.22
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.11,
+            0.11,
+            0.11
+          ],
+          "at": [
+            -0.3,
+            1.57,
+            -0.33
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 16
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.084,
+            0.07,
+            0.084
+          ],
+          "at": [
+            -0.2834,
+            1.68,
+            -0.3041
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.22
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.084,
+            0.07,
+            0.084
+          ],
+          "at": [
+            -0.3298,
+            1.6968,
+            -0.3379
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.22
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.13,
+            0.11,
+            0.13
+          ],
+          "at": [
+            0.0,
+            1.57,
+            -0.33
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 16
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.084,
+            0.07,
+            0.084
+          ],
+          "at": [
+            -0.0128,
+            1.68,
+            -0.302
+          ],
+          "color": "#9BCB5A",
+          "material": "material.finish.foliage",
+          "noise": 0.22
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.084,
+            0.07,
+            0.084
+          ],
+          "at": [
+            -0.0095,
+            1.6968,
+            -0.3593
+          ],
+          "color": "#9BCB5A",
+          "material": "material.finish.foliage",
+          "noise": 0.22
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.11,
+            0.11,
+            0.11
+          ],
+          "at": [
+            0.3,
+            1.57,
+            -0.33
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 16
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.084,
+            0.07,
+            0.084
+          ],
+          "at": [
+            0.2695,
+            1.68,
+            -0.3257
+          ],
+          "color": "#5E8F4E",
+          "material": "material.finish.foliage",
+          "noise": 0.22
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.084,
+            0.07,
+            0.084
+          ],
+          "at": [
+            0.3195,
+            1.6968,
+            -0.3538
+          ],
+          "color": "#5E8F4E",
+          "material": "material.finish.foliage",
+          "noise": 0.22
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.13,
+            0.11,
+            0.13
+          ],
+          "at": [
+            0.6,
+            1.57,
+            -0.33
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 16
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.084,
+            0.07,
+            0.084
+          ],
+          "at": [
+            0.5799,
+            1.68,
+            -0.3533
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.22
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.084,
+            0.07,
+            0.084
+          ],
+          "at": [
+            0.6306,
+            1.6968,
+            -0.3264
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.22
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.02,
+            0.23,
+            0.02
+          ],
+          "at": [
+            -0.75,
+            1.115,
+            -0.385
+          ],
+          "color": "#6C7A89",
+          "material": "material.finish.metal",
+          "rotate": [
+            180.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.08,
+            0.14,
+            0.012
+          ],
+          "at": [
+            -0.75,
+            0.94,
+            -0.385
+          ],
+          "color": "#8A9096",
+          "material": "material.finish.metal",
+          "radius": 0.02
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.02,
+            0.23,
+            0.02
+          ],
+          "at": [
+            -0.6,
+            1.115,
+            -0.385
+          ],
+          "color": "#B08E66",
+          "material": "material.finish.wood",
+          "rotate": [
+            180.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.07,
+            0.12,
+            0.012
+          ],
+          "at": [
+            -0.6,
+            0.94,
+            -0.385
+          ],
+          "color": "#8A9096",
+          "material": "material.finish.metal",
+          "radius": 0.004
+        },
+        {
+          "shape": "torus",
+          "size": [
+            0.2,
+            0.025,
+            0.2
+          ],
+          "at": [
+            0.72,
+            1.18,
+            -0.385
+          ],
+          "color": "#3F7A45",
+          "material": "material.finish.satin",
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 18
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.5,
+            0.06,
+            0.3
+          ],
+          "at": [
+            -0.2,
+            0.91,
+            -0.12
+          ],
+          "color": "#3A3D41",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.08,
+            0.07,
+            0.08
+          ],
+          "at": [
+            -0.38,
+            0.96,
+            -0.19
+          ],
+          "color": "#9BCB5A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.08,
+            0.07,
+            0.08
+          ],
+          "at": [
+            -0.38,
+            0.96,
+            -0.06
+          ],
+          "color": "#7FB84A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.08,
+            0.07,
+            0.08
+          ],
+          "at": [
+            -0.26,
+            0.96,
+            -0.19
+          ],
+          "color": "#7FB84A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.08,
+            0.07,
+            0.08
+          ],
+          "at": [
+            -0.26,
+            0.96,
+            -0.06
+          ],
+          "color": "#9BCB5A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.08,
+            0.07,
+            0.08
+          ],
+          "at": [
+            -0.14,
+            0.96,
+            -0.19
+          ],
+          "color": "#9BCB5A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.08,
+            0.07,
+            0.08
+          ],
+          "at": [
+            -0.14,
+            0.96,
+            -0.06
+          ],
+          "color": "#7FB84A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.08,
+            0.07,
+            0.08
+          ],
+          "at": [
+            -0.02,
+            0.96,
+            -0.19
+          ],
+          "color": "#7FB84A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.08,
+            0.07,
+            0.08
+          ],
+          "at": [
+            -0.02,
+            0.96,
+            -0.06
+          ],
+          "color": "#9BCB5A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.2,
+            0.18,
+            0.2
+          ],
+          "at": [
+            0.25,
+            0.97,
+            -0.15
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 16
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.26,
+            0.3,
+            0.26
+          ],
+          "at": [
+            0.25,
+            1.18,
+            -0.15
+          ],
+          "color": "#7FB84A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.3,
+            1.28,
+            -0.08
+          ],
+          "color": "#F28DB2",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.2,
+            1.31,
+            -0.18
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.2,
+            0.18,
+            0.12
+          ],
+          "at": [
+            0.62,
+            0.97,
+            -0.08
+          ],
+          "color": "#8EA5A0",
+          "material": "material.finish.metal",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.42,
+              -0.5
+            ],
+            [
+              0.5,
+              -0.42
+            ],
+            [
+              0.5,
+              0.3
+            ],
+            [
+              0.38,
+              0.42
+            ],
+            [
+              0.3,
+              0.5
+            ],
+            [
+              0.0,
+              0.5
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.02,
+            0.2,
+            0.02
+          ],
+          "at": [
+            0.76,
+            1.02,
+            -0.08
+          ],
+          "color": "#8EA5A0",
+          "material": "material.finish.metal",
+          "rotate": [
+            53.13,
+            90.0,
+            0
+          ]
+        },
+        {
+          "shape": "torus",
+          "size": [
+            0.12,
+            0.02,
+            0.12
+          ],
+          "at": [
+            0.62,
+            1.08,
+            -0.08
+          ],
+          "color": "#8EA5A0",
+          "material": "material.finish.metal",
+          "rotate": [
+            90,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.32,
+            0.3,
+            0.26
+          ],
+          "at": [
+            -0.55,
+            0.385,
+            -0.16
+          ],
+          "color": "#D8C49C",
+          "material": "material.finish.fabric",
+          "radius": 0.1,
+          "rotate": [
+            0,
+            -12,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.32,
+            0.3,
+            0.26
+          ],
+          "at": [
+            -0.19,
+            0.385,
+            -0.16
+          ],
+          "color": "#CDB78C",
+          "material": "material.finish.fabric",
+          "radius": 0.1,
+          "rotate": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.32,
+            0.3,
+            0.26
+          ],
+          "at": [
+            0.17,
+            0.385,
+            -0.16
+          ],
+          "color": "#E2D2AE",
+          "material": "material.finish.fabric",
+          "radius": 0.1,
+          "rotate": [
+            0,
+            12,
+            0
+          ]
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.24,
+            0.16,
+            0.24
+          ],
+          "at": [
+            0.55,
+            0.315,
+            -0.12
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 16
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.22,
+            0.12,
+            0.22
+          ],
+          "at": [
+            0.55,
+            0.42,
+            -0.12
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 16
+        }
+      ]
+    },
+    "model.natureLover.birdFeeder": {
+      "type": "model",
+      "placeholder": [
+        {
+          "shape": "box",
+          "size": [
+            0.08,
+            1.5,
+            0.08
+          ],
+          "at": [
+            0,
+            0.75,
+            -0.05
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.012
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.36,
+            0.03,
+            0.3
+          ],
+          "at": [
+            0,
+            1.5,
+            -0.05
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.38,
+            0.03,
+            0.04
+          ],
+          "at": [
+            0,
+            1.53,
+            0.1
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.38,
+            0.03,
+            0.04
+          ],
+          "at": [
+            0,
+            1.53,
+            -0.2
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.26,
+            0.18,
+            0.2
+          ],
+          "at": [
+            0,
+            1.6,
+            -0.05
+          ],
+          "color": "#E8E0CF",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.32,
+            0.03,
+            0.17
+          ],
+          "at": [
+            0,
+            1.73,
+            0.02
+          ],
+          "color": "#5E7F9A",
+          "material": "material.finish.satin",
+          "radius": 0.008,
+          "rotate": [
+            30,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.32,
+            0.03,
+            0.17
+          ],
+          "at": [
+            0,
+            1.73,
+            -0.12
+          ],
+          "color": "#5E7F9A",
+          "material": "material.finish.satin",
+          "radius": 0.008,
+          "rotate": [
+            -30,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.06,
+            0.01,
+            0.06
+          ],
+          "at": [
+            0,
+            1.62,
+            0.052
+          ],
+          "color": "#3A3D41",
+          "material": "material.finish.matte",
+          "rotate": [
+            90,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.28,
+            0.02,
+            0.22
+          ],
+          "at": [
+            0,
+            1.52,
+            -0.05
+          ],
+          "color": "#C9A66B",
+          "material": "material.finish.matte",
+          "noise": 0.3
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.02,
+            0.211,
+            0.02
+          ],
+          "at": [
+            0.145,
+            1.31,
+            -0.05
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "rotate": [
+            84.56,
+            90.0,
+            0
+          ]
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.08,
+            0.28,
+            0.08
+          ],
+          "at": [
+            0.25,
+            1.13,
+            -0.05
+          ],
+          "color": "#E6F0F2",
+          "material": "material.finish.glass",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.42,
+              -0.5
+            ],
+            [
+              0.5,
+              -0.42
+            ],
+            [
+              0.5,
+              0.3
+            ],
+            [
+              0.38,
+              0.42
+            ],
+            [
+              0.3,
+              0.5
+            ],
+            [
+              0.0,
+              0.5
+            ]
+          ],
+          "segments": 12
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.06,
+            0.2,
+            0.06
+          ],
+          "at": [
+            0.25,
+            1.11,
+            -0.05
+          ],
+          "color": "#C9A66B",
+          "material": "material.finish.matte"
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.12,
+            0.015,
+            0.12
+          ],
+          "at": [
+            0.25,
+            0.985,
+            -0.05
+          ],
+          "color": "#5E7F9A",
+          "material": "material.finish.satin"
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.07,
+            0.06,
+            0.1
+          ],
+          "at": [
+            0.1,
+            1.55,
+            0.12
+          ],
+          "color": "#4F7FC4",
+          "material": "material.finish.satin",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.1,
+            1.595,
+            0.155
+          ],
+          "color": "#4F7FC4",
+          "material": "material.finish.satin",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.04,
+            0.05
+          ],
+          "at": [
+            0.1,
+            1.54,
+            0.14
+          ],
+          "color": "#D9733B",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.02,
+            0.03,
+            0.02
+          ],
+          "at": [
+            0.1,
+            1.595,
+            0.19
+          ],
+          "color": "#E8B34A",
+          "material": "material.finish.satin",
+          "taper": 0.0,
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 6
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.07,
+            0.06,
+            0.1
+          ],
+          "at": [
+            -0.12,
+            1.56,
+            0.11
+          ],
+          "color": "#8A6A4A",
+          "material": "material.finish.satin",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            -0.12,
+            1.605,
+            0.145
+          ],
+          "color": "#8A6A4A",
+          "material": "material.finish.satin",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.04,
+            0.05
+          ],
+          "at": [
+            -0.12,
+            1.55,
+            0.13
+          ],
+          "color": "#E2C8A0",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.02,
+            0.03,
+            0.02
+          ],
+          "at": [
+            -0.12,
+            1.605,
+            0.18
+          ],
+          "color": "#E8B34A",
+          "material": "material.finish.satin",
+          "taper": 0.0,
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 6
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.07,
+            0.06,
+            0.1
+          ],
+          "at": [
+            0.33,
+            1.0,
+            0.03
+          ],
+          "color": "#E8C23A",
+          "material": "material.finish.satin",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.33,
+            1.045,
+            0.065
+          ],
+          "color": "#E8C23A",
+          "material": "material.finish.satin",
+          "segments": 10
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.04,
+            0.05
+          ],
+          "at": [
+            0.33,
+            0.99,
+            0.05
+          ],
+          "color": "#E8C23A",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.02,
+            0.03,
+            0.02
+          ],
+          "at": [
+            0.33,
+            1.045,
+            0.1
+          ],
+          "color": "#E8B34A",
+          "material": "material.finish.satin",
+          "taper": 0.0,
+          "rotate": [
+            90,
+            0,
+            0
+          ],
+          "segments": 6
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.16,
+            0.14,
+            0.16
+          ],
+          "at": [
+            0.26,
+            0.1,
+            -0.05
+          ],
+          "color": "#5E8F4E",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.26,
+            0.19,
+            -0.05
+          ],
+          "color": "#F28DB2",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.16,
+            0.14,
+            0.16
+          ],
+          "at": [
+            0.1838,
+            0.1,
+            0.1338
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.1838,
+            0.19,
+            0.1338
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.16,
+            0.14,
+            0.16
+          ],
+          "at": [
+            0.0,
+            0.1,
+            0.21
+          ],
+          "color": "#5E8F4E",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.0,
+            0.19,
+            0.21
+          ],
+          "color": "#B8A1E3",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.16,
+            0.14,
+            0.16
+          ],
+          "at": [
+            -0.1838,
+            0.1,
+            0.1338
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            -0.1838,
+            0.19,
+            0.1338
+          ],
+          "color": "#FFFFFF",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.16,
+            0.14,
+            0.16
+          ],
+          "at": [
+            -0.26,
+            0.1,
+            -0.05
+          ],
+          "color": "#5E8F4E",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            -0.26,
+            0.19,
+            -0.05
+          ],
+          "color": "#F28DB2",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.16,
+            0.14,
+            0.16
+          ],
+          "at": [
+            -0.1838,
+            0.1,
+            -0.2338
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            -0.1838,
+            0.19,
+            -0.2338
+          ],
+          "color": "#F6C744",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.16,
+            0.14,
+            0.16
+          ],
+          "at": [
+            -0.0,
+            0.1,
+            -0.31
+          ],
+          "color": "#5E8F4E",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            -0.0,
+            0.19,
+            -0.31
+          ],
+          "color": "#B8A1E3",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.16,
+            0.14,
+            0.16
+          ],
+          "at": [
+            0.1838,
+            0.1,
+            -0.2338
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.05,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.1838,
+            0.19,
+            -0.2338
+          ],
+          "color": "#FFFFFF",
+          "material": "material.finish.satin",
+          "segments": 8
+        }
+      ]
+    },
+    "model.natureLover.gardenHammock": {
+      "type": "model",
+      "placeholder": [
+        {
+          "shape": "box",
+          "size": [
+            0.171,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.66,
+            0.8019,
+            -0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -44.06
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.171,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.66,
+            0.8019,
+            -0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -44.06
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.171,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.66,
+            0.8019,
+            -0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -44.06
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.171,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.66,
+            0.8019,
+            0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -44.06
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.171,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.66,
+            0.8019,
+            0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -44.06
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.171,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.66,
+            0.8019,
+            0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -44.06
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1571,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.54,
+            0.6964,
+            -0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -38.37
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1571,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.54,
+            0.6964,
+            -0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -38.37
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1571,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.54,
+            0.6964,
+            -0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -38.37
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1571,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.54,
+            0.6964,
+            0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -38.37
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1571,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.54,
+            0.6964,
+            0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -38.37
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1571,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.54,
+            0.6964,
+            0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -38.37
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1449,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.42,
+            0.6119,
+            -0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -31.62
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1449,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.42,
+            0.6119,
+            -0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -31.62
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1449,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.42,
+            0.6119,
+            -0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -31.62
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1449,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.42,
+            0.6119,
+            0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -31.62
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1449,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.42,
+            0.6119,
+            0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -31.62
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1449,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.42,
+            0.6119,
+            0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -31.62
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1351,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.3,
+            0.5486,
+            -0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -23.74
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1351,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.3,
+            0.5486,
+            -0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -23.74
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1351,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.3,
+            0.5486,
+            -0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -23.74
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1351,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.3,
+            0.5486,
+            0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -23.74
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1351,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.3,
+            0.5486,
+            0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -23.74
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1351,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.3,
+            0.5486,
+            0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -23.74
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1281,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.18,
+            0.5064,
+            -0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -14.78
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1281,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.18,
+            0.5064,
+            -0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -14.78
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1281,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.18,
+            0.5064,
+            -0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -14.78
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1281,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.18,
+            0.5064,
+            0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -14.78
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1281,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.18,
+            0.5064,
+            0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -14.78
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1281,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.18,
+            0.5064,
+            0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -14.78
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1245,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.06,
+            0.4853,
+            -0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -5.03
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1245,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.06,
+            0.4853,
+            -0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -5.03
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1245,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.06,
+            0.4853,
+            -0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -5.03
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1245,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.06,
+            0.4853,
+            0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -5.03
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1245,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.06,
+            0.4853,
+            0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -5.03
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1245,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            -0.06,
+            0.4853,
+            0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            -5.03
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1245,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.06,
+            0.4853,
+            -0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            5.03
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1245,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.06,
+            0.4853,
+            -0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            5.03
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1245,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.06,
+            0.4853,
+            -0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            5.03
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1245,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.06,
+            0.4853,
+            0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            5.03
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1245,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.06,
+            0.4853,
+            0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            5.03
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1245,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.06,
+            0.4853,
+            0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            5.03
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1281,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.18,
+            0.5064,
+            -0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            14.78
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1281,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.18,
+            0.5064,
+            -0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            14.78
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1281,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.18,
+            0.5064,
+            -0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            14.78
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1281,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.18,
+            0.5064,
+            0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            14.78
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1281,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.18,
+            0.5064,
+            0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            14.78
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1281,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.18,
+            0.5064,
+            0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            14.78
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1351,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.3,
+            0.5486,
+            -0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            23.74
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1351,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.3,
+            0.5486,
+            -0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            23.74
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1351,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.3,
+            0.5486,
+            -0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            23.74
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1351,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.3,
+            0.5486,
+            0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            23.74
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1351,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.3,
+            0.5486,
+            0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            23.74
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1351,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.3,
+            0.5486,
+            0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            23.74
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1449,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.42,
+            0.6119,
+            -0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            31.62
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1449,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.42,
+            0.6119,
+            -0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            31.62
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1449,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.42,
+            0.6119,
+            -0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            31.62
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1449,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.42,
+            0.6119,
+            0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            31.62
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1449,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.42,
+            0.6119,
+            0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            31.62
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1449,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.42,
+            0.6119,
+            0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            31.62
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1571,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.54,
+            0.6964,
+            -0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            38.37
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1571,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.54,
+            0.6964,
+            -0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            38.37
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1571,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.54,
+            0.6964,
+            -0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            38.37
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1571,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.54,
+            0.6964,
+            0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            38.37
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1571,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.54,
+            0.6964,
+            0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            38.37
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1571,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.54,
+            0.6964,
+            0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            38.37
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.171,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.66,
+            0.8019,
+            -0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            44.06
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.171,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.66,
+            0.8019,
+            -0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            44.06
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.171,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.66,
+            0.8019,
+            -0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            44.06
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.171,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.66,
+            0.8019,
+            0.0517
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            44.06
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.171,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.66,
+            0.8019,
+            0.155
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            44.06
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.171,
+            0.025,
+            0.1053
+          ],
+          "at": [
+            0.66,
+            0.8019,
+            0.2583
+          ],
+          "color": "#EDE4D3",
+          "material": "material.finish.fabric",
+          "radius": 0.004,
+          "rotate": [
+            0,
+            0,
+            44.06
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.7,
+            0.08,
+            0.1
+          ],
+          "at": [
+            0,
+            0.05,
+            0.0
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.02
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.08,
+            1.0577,
+            0.08
+          ],
+          "at": [
+            -0.76,
+            0.57,
+            0.0
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "rotate": [
+            15.35,
+            -90.0,
+            0
+          ],
+          "radius": 0.02
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1,
+            0.05,
+            0.62
+          ],
+          "at": [
+            -0.66,
+            0.035,
+            0.0
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.015
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.012,
+            0.3758,
+            0.012
+          ],
+          "at": [
+            -0.8,
+            0.94,
+            -0.15
+          ],
+          "color": "#D9CDB4",
+          "material": "material.finish.matte",
+          "rotate": [
+            115.2,
+            151.93,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.012,
+            0.3758,
+            0.012
+          ],
+          "at": [
+            -0.8,
+            0.94,
+            0.15
+          ],
+          "color": "#D9CDB4",
+          "material": "material.finish.matte",
+          "rotate": [
+            115.2,
+            28.07,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.04,
+            0.04,
+            0.66
+          ],
+          "at": [
+            -0.72,
+            0.86,
+            0.0
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.012
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.08,
+            1.0577,
+            0.08
+          ],
+          "at": [
+            0.76,
+            0.57,
+            0.0
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "rotate": [
+            15.35,
+            90.0,
+            0
+          ],
+          "radius": 0.02
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.1,
+            0.05,
+            0.62
+          ],
+          "at": [
+            0.66,
+            0.035,
+            0.0
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.015
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.012,
+            0.3758,
+            0.012
+          ],
+          "at": [
+            0.8,
+            0.94,
+            -0.15
+          ],
+          "color": "#D9CDB4",
+          "material": "material.finish.matte",
+          "rotate": [
+            115.2,
+            -151.93,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.012,
+            0.3758,
+            0.012
+          ],
+          "at": [
+            0.8,
+            0.94,
+            0.15
+          ],
+          "color": "#D9CDB4",
+          "material": "material.finish.matte",
+          "rotate": [
+            115.2,
+            -28.07,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.04,
+            0.04,
+            0.66
+          ],
+          "at": [
+            0.72,
+            0.86,
+            0.0
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.012
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.42,
+            0.12,
+            0.3
+          ],
+          "at": [
+            -0.55,
+            0.76,
+            0.0
+          ],
+          "color": "#E8B07A",
+          "material": "material.finish.fabric",
+          "rotate": [
+            0,
+            0,
+            -25
+          ],
+          "radius": 0.05
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.03,
+            0.2
+          ],
+          "at": [
+            0.35,
+            0.02,
+            0.32
+          ],
+          "color": "#9BCB5A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        }
+      ]
+    },
+    "model.natureLover.cedarShower": {
+      "type": "model",
+      "placeholder": [
+        {
+          "shape": "box",
+          "size": [
+            0.065,
+            1.9,
+            0.03
+          ],
+          "at": [
+            -0.41,
+            1.0,
+            -0.43
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.065,
+            1.9,
+            0.03
+          ],
+          "at": [
+            -0.336,
+            1.0,
+            -0.43
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.065,
+            1.9,
+            0.03
+          ],
+          "at": [
+            -0.262,
+            1.0,
+            -0.43
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.065,
+            1.9,
+            0.03
+          ],
+          "at": [
+            -0.188,
+            1.0,
+            -0.43
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.065,
+            1.9,
+            0.03
+          ],
+          "at": [
+            -0.114,
+            1.0,
+            -0.43
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.065,
+            1.9,
+            0.03
+          ],
+          "at": [
+            -0.04,
+            1.0,
+            -0.43
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.065,
+            1.9,
+            0.03
+          ],
+          "at": [
+            0.034,
+            1.0,
+            -0.43
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.065,
+            1.9,
+            0.03
+          ],
+          "at": [
+            0.108,
+            1.0,
+            -0.43
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.065,
+            1.9,
+            0.03
+          ],
+          "at": [
+            0.182,
+            1.0,
+            -0.43
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.065,
+            1.9,
+            0.03
+          ],
+          "at": [
+            0.256,
+            1.0,
+            -0.43
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.065,
+            1.9,
+            0.03
+          ],
+          "at": [
+            0.33,
+            1.0,
+            -0.43
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.065,
+            1.9,
+            0.03
+          ],
+          "at": [
+            0.404,
+            1.0,
+            -0.43
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.9,
+            0.065
+          ],
+          "at": [
+            -0.43,
+            1.0,
+            -0.35
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.9,
+            0.065
+          ],
+          "at": [
+            -0.43,
+            1.0,
+            -0.273
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.9,
+            0.065
+          ],
+          "at": [
+            -0.43,
+            1.0,
+            -0.196
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.9,
+            0.065
+          ],
+          "at": [
+            -0.43,
+            1.0,
+            -0.119
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.9,
+            0.065
+          ],
+          "at": [
+            -0.43,
+            1.0,
+            -0.042
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.9,
+            0.065
+          ],
+          "at": [
+            -0.43,
+            1.0,
+            0.035
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.9,
+            0.065
+          ],
+          "at": [
+            -0.43,
+            1.0,
+            0.112
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.9,
+            0.065
+          ],
+          "at": [
+            -0.43,
+            1.0,
+            0.189
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.9,
+            0.065
+          ],
+          "at": [
+            -0.43,
+            1.0,
+            0.266
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.9,
+            0.065
+          ],
+          "at": [
+            -0.43,
+            1.0,
+            0.343
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.9,
+            0.065
+          ],
+          "at": [
+            -0.43,
+            1.0,
+            0.42
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.9,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.0,
+            0.06,
+            -0.43
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.05,
+            0.86
+          ],
+          "at": [
+            -0.43,
+            0.06,
+            0.0
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.9,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0.0,
+            1.97,
+            -0.43
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.05,
+            0.86
+          ],
+          "at": [
+            -0.43,
+            1.97,
+            0.0
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.78,
+            0.03,
+            0.08
+          ],
+          "at": [
+            0.02,
+            0.05,
+            -0.33
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.78,
+            0.03,
+            0.08
+          ],
+          "at": [
+            0.02,
+            0.05,
+            -0.22
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.78,
+            0.03,
+            0.08
+          ],
+          "at": [
+            0.02,
+            0.05,
+            -0.11
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.78,
+            0.03,
+            0.08
+          ],
+          "at": [
+            0.02,
+            0.05,
+            0.0
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.78,
+            0.03,
+            0.08
+          ],
+          "at": [
+            0.02,
+            0.05,
+            0.11
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.78,
+            0.03,
+            0.08
+          ],
+          "at": [
+            0.02,
+            0.05,
+            0.22
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.78,
+            0.03,
+            0.08
+          ],
+          "at": [
+            0.02,
+            0.05,
+            0.33
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.06,
+            0.03,
+            0.74
+          ],
+          "at": [
+            -0.3,
+            0.02,
+            0.0
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.06,
+            0.03,
+            0.74
+          ],
+          "at": [
+            0.32,
+            0.02,
+            0.0
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.035,
+            2.0,
+            0.035
+          ],
+          "at": [
+            0.15,
+            1.05,
+            -0.39
+          ],
+          "color": "#C27A4A",
+          "material": "material.finish.metal",
+          "rotate": [
+            0.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.03,
+            0.29,
+            0.03
+          ],
+          "at": [
+            0.15,
+            2.05,
+            -0.245
+          ],
+          "color": "#C27A4A",
+          "material": "material.finish.metal",
+          "rotate": [
+            90.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.3,
+            0.03,
+            0.3
+          ],
+          "at": [
+            0.15,
+            2.02,
+            -0.08
+          ],
+          "color": "#C27A4A",
+          "material": "material.finish.metal",
+          "segments": 24
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.08,
+            0.04,
+            0.08
+          ],
+          "at": [
+            0.15,
+            1.1,
+            -0.36
+          ],
+          "color": "#C27A4A",
+          "material": "material.finish.metal",
+          "rotate": [
+            90,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.04,
+            0.4,
+            0.2
+          ],
+          "at": [
+            -0.4,
+            1.3,
+            0.25
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.fabric",
+          "radius": 0.02
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.14,
+            0.06,
+            0.1
+          ],
+          "at": [
+            -0.37,
+            1.0,
+            -0.2
+          ],
+          "color": "#B08E66",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.08,
+            0.04,
+            0.05
+          ],
+          "at": [
+            -0.36,
+            1.05,
+            -0.2
+          ],
+          "color": "#F2D6A0",
+          "material": "material.finish.satin",
+          "radius": 0.015
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.18,
+            0.16,
+            0.18
+          ],
+          "at": [
+            0.3,
+            0.08,
+            0.3
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 16
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.22,
+            0.36,
+            0.22
+          ],
+          "at": [
+            0.3,
+            0.36,
+            0.3
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.3
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.09,
+            0.05,
+            0.08
+          ],
+          "at": [
+            0.12,
+            0.03,
+            0.38
+          ],
+          "color": "#B8B4AE",
+          "material": "material.finish.satin",
+          "noise": 0.15
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.09,
+            0.05,
+            0.08
+          ],
+          "at": [
+            0.36,
+            0.03,
+            0.08
+          ],
+          "color": "#9EA0A6",
+          "material": "material.finish.satin",
+          "noise": 0.15
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.09,
+            0.05,
+            0.08
+          ],
+          "at": [
+            -0.2,
+            0.03,
+            0.38
+          ],
+          "color": "#CFC9C0",
+          "material": "material.finish.satin",
+          "noise": 0.15
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.09,
+            0.05,
+            0.08
+          ],
+          "at": [
+            0.36,
+            0.03,
+            -0.14
+          ],
+          "color": "#B8B4AE",
+          "material": "material.finish.satin",
+          "noise": 0.15
+        }
+      ]
+    },
+    "model.natureLover.mossTerrarium": {
+      "type": "model",
+      "placeholder": [
+        {
+          "shape": "lathe",
+          "size": [
+            0.34,
+            0.7,
+            0.34
+          ],
+          "at": [
+            0,
+            0.35,
+            -0.1
+          ],
+          "color": "#8A5E3C",
+          "material": "material.finish.wood",
+          "profile": [
+            [
+              0,
+              -0.5
+            ],
+            [
+              0.5,
+              -0.5
+            ],
+            [
+              0.45,
+              -0.42
+            ],
+            [
+              0.18,
+              -0.3
+            ],
+            [
+              0.13,
+              0.3
+            ],
+            [
+              0.3,
+              0.42
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0,
+              0.5
+            ]
+          ],
+          "segments": 24
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.4,
+            0.04,
+            0.4
+          ],
+          "at": [
+            0,
+            0.72,
+            -0.1
+          ],
+          "color": "#8A5E3C",
+          "material": "material.finish.wood",
+          "segments": 28
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.36,
+            0.04,
+            0.36
+          ],
+          "at": [
+            0,
+            0.76,
+            -0.1
+          ],
+          "color": "#5A4030",
+          "material": "material.finish.matte",
+          "segments": 24
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.38,
+            0.46,
+            0.38
+          ],
+          "at": [
+            0,
+            0.97,
+            -0.1
+          ],
+          "color": "#E1EEEC",
+          "material": "material.finish.glass",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.5,
+              -0.5
+            ],
+            [
+              0.5,
+              0.1
+            ],
+            [
+              0.42,
+              0.33
+            ],
+            [
+              0.25,
+              0.46
+            ],
+            [
+              0.0,
+              0.5
+            ]
+          ],
+          "segments": 28
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.05,
+            0.06
+          ],
+          "at": [
+            0,
+            1.22,
+            -0.1
+          ],
+          "color": "#E1EEEC",
+          "material": "material.finish.glass",
+          "segments": 10
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.1,
+            0.3
+          ],
+          "at": [
+            0,
+            0.8,
+            -0.1
+          ],
+          "color": "#4F8A3C",
+          "material": "material.finish.foliage",
+          "noise": 0.35
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.12,
+            0.08,
+            0.1
+          ],
+          "at": [
+            0.08,
+            0.83,
+            -0.05
+          ],
+          "color": "#B8B4AE",
+          "material": "material.finish.satin",
+          "noise": 0.2
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.1,
+            0.24,
+            0.1
+          ],
+          "at": [
+            -0.07,
+            0.94,
+            -0.12
+          ],
+          "color": "#4F8A45",
+          "material": "material.finish.foliage",
+          "taper": 0.0,
+          "segments": 7
+        },
+        {
+          "shape": "cone",
+          "size": [
+            0.07,
+            0.16,
+            0.07
+          ],
+          "at": [
+            0.06,
+            0.9,
+            -0.16
+          ],
+          "color": "#5E8F4E",
+          "material": "material.finish.foliage",
+          "taper": 0.0,
+          "segments": 7
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.025,
+            0.02,
+            0.025
+          ],
+          "at": [
+            -0.02,
+            0.84,
+            -0.0
+          ],
+          "color": "#E4572E",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.008,
+            0.03,
+            0.008
+          ],
+          "at": [
+            -0.02,
+            0.825,
+            -0.0
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "segments": 6
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.06,
+            0.16,
+            0.06
+          ],
+          "at": [
+            0.24,
+            0.8,
+            0.05
+          ],
+          "color": "#8EC6D8",
+          "material": "material.finish.gloss",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.42,
+              -0.5
+            ],
+            [
+              0.5,
+              -0.42
+            ],
+            [
+              0.5,
+              0.3
+            ],
+            [
+              0.38,
+              0.42
+            ],
+            [
+              0.3,
+              0.5
+            ],
+            [
+              0.0,
+              0.5
+            ]
+          ],
+          "segments": 12
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.04,
+            0.05,
+            0.03
+          ],
+          "at": [
+            0.24,
+            0.9,
+            0.05
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.4,
+            0.004,
+            0.3
+          ],
+          "at": [
+            0,
+            0.002,
+            0.25
+          ],
+          "color": "#7FA87A",
+          "material": "material.finish.matte",
+          "noise": 0.1
+        }
+      ]
+    },
+    "model.natureLover.glasshouse": {
+      "type": "model",
+      "url": "../../models/ph/fern_02.glb",
+      "fit": [
+        1.5,
+        0.5,
+        0.26
+      ],
+      "align": "centre",
+      "offset": [
+        0,
+        0.8,
+        -0.72
+      ],
+      "parts": [
+        {
+          "shape": "box",
+          "size": [
+            1.86,
+            0.12,
+            1.86
+          ],
+          "at": [
+            0,
+            0.06,
+            0
+          ],
+          "color": "#C9C2B4",
+          "material": "material.finish.satin",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.8,
+            0.012,
+            1.8
+          ],
+          "at": [
+            0,
+            0.126,
+            0
+          ],
+          "color": "#B8A88E",
+          "material": "material.finish.matte",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            2.0,
+            0.05
+          ],
+          "at": [
+            -0.9,
+            1.0,
+            -0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            2.0,
+            0.05
+          ],
+          "at": [
+            -0.9,
+            1.0,
+            0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            2.0,
+            0.05
+          ],
+          "at": [
+            0.9,
+            1.0,
+            -0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            2.0,
+            0.05
+          ],
+          "at": [
+            0.9,
+            1.0,
+            0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.86,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0,
+            2.0,
+            -0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.86,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0,
+            2.0,
+            0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.05,
+            1.86
+          ],
+          "at": [
+            -0.9,
+            2.0,
+            0
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.05,
+            1.86
+          ],
+          "at": [
+            0.9,
+            2.0,
+            0
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.05,
+            1.86
+          ],
+          "at": [
+            0,
+            2.45,
+            0
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.78,
+            1.85,
+            0.012
+          ],
+          "at": [
+            0,
+            1.05,
+            -0.9
+          ],
+          "color": "#DCEBEA",
+          "material": "material.finish.glass",
+          "radius": 0.003
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.012,
+            1.85,
+            1.78
+          ],
+          "at": [
+            -0.9,
+            1.05,
+            0
+          ],
+          "color": "#DCEBEA",
+          "material": "material.finish.glass",
+          "radius": 0.003
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.012,
+            1.85,
+            1.78
+          ],
+          "at": [
+            0.9,
+            1.05,
+            0
+          ],
+          "color": "#DCEBEA",
+          "material": "material.finish.glass",
+          "radius": 0.003
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.0332,
+            0.012,
+            1.82
+          ],
+          "at": [
+            -0.465,
+            2.225,
+            0
+          ],
+          "color": "#DCEBEA",
+          "material": "material.finish.glass",
+          "radius": 0.003,
+          "rotate": [
+            0,
+            0,
+            25.82
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.0332,
+            0.012,
+            1.82
+          ],
+          "at": [
+            0.465,
+            2.225,
+            0
+          ],
+          "color": "#DCEBEA",
+          "material": "material.finish.glass",
+          "radius": 0.003,
+          "rotate": [
+            0,
+            0,
+            -25.82
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            -0.9,
+            1.05,
+            -0.45
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            0.9,
+            1.05,
+            -0.45
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            -0.9,
+            1.05,
+            0.0
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            0.9,
+            1.05,
+            0.0
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            -0.9,
+            1.05,
+            0.45
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            0.9,
+            1.05,
+            0.45
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            -0.45,
+            1.05,
+            -0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            0.0,
+            1.05,
+            -0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            0.45,
+            1.05,
+            -0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.86,
+            0.04,
+            0.04
+          ],
+          "at": [
+            0,
+            0.95,
+            -0.89
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.4,
+            0.05,
+            0.42
+          ],
+          "at": [
+            0,
+            0.42,
+            -0.02
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.012
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.4,
+            0.3,
+            0.04
+          ],
+          "at": [
+            0,
+            0.66,
+            -0.25
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.012,
+          "rotate": [
+            -10,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.6,
+            0.04,
+            0.36
+          ],
+          "at": [
+            -0.5,
+            0.465,
+            -0.01
+          ],
+          "color": "#E8B07A",
+          "material": "material.finish.satin",
+          "radius": 0.015
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.6,
+            0.04,
+            0.36
+          ],
+          "at": [
+            0.5,
+            0.465,
+            -0.01
+          ],
+          "color": "#E8B07A",
+          "material": "material.finish.satin",
+          "radius": 0.015
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.3,
+            0.38
+          ],
+          "at": [
+            -0.64,
+            0.27,
+            -0.02
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.3,
+            0.38
+          ],
+          "at": [
+            0.64,
+            0.27,
+            -0.02
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.7,
+            0.04,
+            0.3
+          ],
+          "at": [
+            0,
+            0.78,
+            -0.72
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.04,
+            0.66,
+            0.26
+          ],
+          "at": [
+            -0.72,
+            0.45,
+            -0.72
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.04,
+            0.66,
+            0.26
+          ],
+          "at": [
+            0.72,
+            0.45,
+            -0.72
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.14,
+            0.12,
+            0.14
+          ],
+          "at": [
+            -0.32,
+            0.86,
+            -0.66
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.gloss",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.008,
+            0.261,
+            0.008
+          ],
+          "at": [
+            -0.31,
+            1.05,
+            -0.655
+          ],
+          "color": "#5C7A3A",
+          "material": "material.finish.matte",
+          "rotate": [
+            4.92,
+            63.43,
+            0
+          ]
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.05,
+            0.03
+          ],
+          "at": [
+            -0.29,
+            1.18,
+            -0.64
+          ],
+          "color": "#E88CC2",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.05,
+            0.03
+          ],
+          "at": [
+            -0.3,
+            1.1,
+            -0.635
+          ],
+          "color": "#E88CC2",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.14,
+            0.12,
+            0.14
+          ],
+          "at": [
+            0.18,
+            0.86,
+            -0.66
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.gloss",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.008,
+            0.261,
+            0.008
+          ],
+          "at": [
+            0.19,
+            1.05,
+            -0.655
+          ],
+          "color": "#5C7A3A",
+          "material": "material.finish.matte",
+          "rotate": [
+            4.92,
+            63.43,
+            0
+          ]
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.05,
+            0.03
+          ],
+          "at": [
+            0.21,
+            1.18,
+            -0.64
+          ],
+          "color": "#FFFFFF",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.05,
+            0.03
+          ],
+          "at": [
+            0.2,
+            1.1,
+            -0.635
+          ],
+          "color": "#FFFFFF",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.14,
+            0.12,
+            0.14
+          ],
+          "at": [
+            0.68,
+            0.86,
+            -0.66
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.gloss",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.008,
+            0.261,
+            0.008
+          ],
+          "at": [
+            0.69,
+            1.05,
+            -0.655
+          ],
+          "color": "#5C7A3A",
+          "material": "material.finish.matte",
+          "rotate": [
+            4.92,
+            63.43,
+            0
+          ]
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.05,
+            0.03
+          ],
+          "at": [
+            0.71,
+            1.18,
+            -0.64
+          ],
+          "color": "#C98BE0",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.05,
+            0.03
+          ],
+          "at": [
+            0.7,
+            1.1,
+            -0.635
+          ],
+          "color": "#C98BE0",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.3,
+            0.26,
+            0.3
+          ],
+          "at": [
+            -0.64,
+            0.26,
+            0.6
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 16
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            -0.53,
+            0.81,
+            0.6
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            0,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            -0.606,
+            0.81,
+            0.4954
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            72,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            -0.729,
+            0.81,
+            0.5353
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            144,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            -0.729,
+            0.81,
+            0.6647
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            216,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            -0.606,
+            0.81,
+            0.7046
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            288,
+            -25
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.04,
+            0.47,
+            0.04
+          ],
+          "at": [
+            -0.64,
+            0.615,
+            0.6
+          ],
+          "color": "#8A6A4A",
+          "material": "material.finish.wood",
+          "rotate": [
+            0.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.3,
+            0.26,
+            0.3
+          ],
+          "at": [
+            0.64,
+            0.26,
+            0.6
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 16
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            0.75,
+            0.81,
+            0.6
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            0,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            0.674,
+            0.81,
+            0.4954
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            72,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            0.551,
+            0.81,
+            0.5353
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            144,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            0.551,
+            0.81,
+            0.6647
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            216,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            0.674,
+            0.81,
+            0.7046
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            288,
+            -25
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.04,
+            0.47,
+            0.04
+          ],
+          "at": [
+            0.64,
+            0.615,
+            0.6
+          ],
+          "color": "#8A6A4A",
+          "material": "material.finish.wood",
+          "rotate": [
+            0.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.008,
+            0.28,
+            0.008
+          ],
+          "at": [
+            -0.68,
+            1.86,
+            -0.3
+          ],
+          "color": "#8A6A4A",
+          "material": "material.finish.matte",
+          "rotate": [
+            180.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.2,
+            0.14,
+            0.2
+          ],
+          "at": [
+            -0.68,
+            1.65,
+            -0.3
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.26,
+            0.26,
+            0.26
+          ],
+          "at": [
+            -0.68,
+            1.6,
+            -0.3
+          ],
+          "color": "#5E8F4E",
+          "material": "material.finish.foliage",
+          "noise": 0.35
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.008,
+            0.28,
+            0.008
+          ],
+          "at": [
+            0.68,
+            1.86,
+            -0.3
+          ],
+          "color": "#8A6A4A",
+          "material": "material.finish.matte",
+          "rotate": [
+            180.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.2,
+            0.14,
+            0.2
+          ],
+          "at": [
+            0.68,
+            1.65,
+            -0.3
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.26,
+            0.26,
+            0.26
+          ],
+          "at": [
+            0.68,
+            1.6,
+            -0.3
+          ],
+          "color": "#5E8F4E",
+          "material": "material.finish.foliage",
+          "noise": 0.35
+        }
+      ],
+      "placeholder": [
+        {
+          "shape": "box",
+          "size": [
+            1.86,
+            0.12,
+            1.86
+          ],
+          "at": [
+            0,
+            0.06,
+            0
+          ],
+          "color": "#C9C2B4",
+          "material": "material.finish.satin",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.8,
+            0.012,
+            1.8
+          ],
+          "at": [
+            0,
+            0.126,
+            0
+          ],
+          "color": "#B8A88E",
+          "material": "material.finish.matte",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            2.0,
+            0.05
+          ],
+          "at": [
+            -0.9,
+            1.0,
+            -0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            2.0,
+            0.05
+          ],
+          "at": [
+            -0.9,
+            1.0,
+            0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            2.0,
+            0.05
+          ],
+          "at": [
+            0.9,
+            1.0,
+            -0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            2.0,
+            0.05
+          ],
+          "at": [
+            0.9,
+            1.0,
+            0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.86,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0,
+            2.0,
+            -0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.86,
+            0.05,
+            0.05
+          ],
+          "at": [
+            0,
+            2.0,
+            0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.05,
+            1.86
+          ],
+          "at": [
+            -0.9,
+            2.0,
+            0
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.05,
+            1.86
+          ],
+          "at": [
+            0.9,
+            2.0,
+            0
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.05,
+            1.86
+          ],
+          "at": [
+            0,
+            2.45,
+            0
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.78,
+            1.85,
+            0.012
+          ],
+          "at": [
+            0,
+            1.05,
+            -0.9
+          ],
+          "color": "#DCEBEA",
+          "material": "material.finish.glass",
+          "radius": 0.003
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.012,
+            1.85,
+            1.78
+          ],
+          "at": [
+            -0.9,
+            1.05,
+            0
+          ],
+          "color": "#DCEBEA",
+          "material": "material.finish.glass",
+          "radius": 0.003
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.012,
+            1.85,
+            1.78
+          ],
+          "at": [
+            0.9,
+            1.05,
+            0
+          ],
+          "color": "#DCEBEA",
+          "material": "material.finish.glass",
+          "radius": 0.003
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.0332,
+            0.012,
+            1.82
+          ],
+          "at": [
+            -0.465,
+            2.225,
+            0
+          ],
+          "color": "#DCEBEA",
+          "material": "material.finish.glass",
+          "radius": 0.003,
+          "rotate": [
+            0,
+            0,
+            25.82
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.0332,
+            0.012,
+            1.82
+          ],
+          "at": [
+            0.465,
+            2.225,
+            0
+          ],
+          "color": "#DCEBEA",
+          "material": "material.finish.glass",
+          "radius": 0.003,
+          "rotate": [
+            0,
+            0,
+            -25.82
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            -0.9,
+            1.05,
+            -0.45
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            0.9,
+            1.05,
+            -0.45
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            -0.9,
+            1.05,
+            0.0
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            0.9,
+            1.05,
+            0.0
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            -0.9,
+            1.05,
+            0.45
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            0.9,
+            1.05,
+            0.45
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            -0.45,
+            1.05,
+            -0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            0.0,
+            1.05,
+            -0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.03,
+            1.85,
+            0.03
+          ],
+          "at": [
+            0.45,
+            1.05,
+            -0.9
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.86,
+            0.04,
+            0.04
+          ],
+          "at": [
+            0,
+            0.95,
+            -0.89
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.satin",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.4,
+            0.05,
+            0.42
+          ],
+          "at": [
+            0,
+            0.42,
+            -0.02
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.012
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.4,
+            0.3,
+            0.04
+          ],
+          "at": [
+            0,
+            0.66,
+            -0.25
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.012,
+          "rotate": [
+            -10,
+            0,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.6,
+            0.04,
+            0.36
+          ],
+          "at": [
+            -0.5,
+            0.465,
+            -0.01
+          ],
+          "color": "#E8B07A",
+          "material": "material.finish.satin",
+          "radius": 0.015
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.6,
+            0.04,
+            0.36
+          ],
+          "at": [
+            0.5,
+            0.465,
+            -0.01
+          ],
+          "color": "#E8B07A",
+          "material": "material.finish.satin",
+          "radius": 0.015
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.3,
+            0.38
+          ],
+          "at": [
+            -0.64,
+            0.27,
+            -0.02
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.3,
+            0.38
+          ],
+          "at": [
+            0.64,
+            0.27,
+            -0.02
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            1.7,
+            0.04,
+            0.3
+          ],
+          "at": [
+            0,
+            0.78,
+            -0.72
+          ],
+          "color": "#C27C4E",
+          "material": "material.finish.wood",
+          "radius": 0.008
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.04,
+            0.66,
+            0.26
+          ],
+          "at": [
+            -0.72,
+            0.45,
+            -0.72
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.04,
+            0.66,
+            0.26
+          ],
+          "at": [
+            0.72,
+            0.45,
+            -0.72
+          ],
+          "color": "#A3653E",
+          "material": "material.finish.wood",
+          "radius": 0.006
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.14,
+            0.12,
+            0.14
+          ],
+          "at": [
+            -0.32,
+            0.86,
+            -0.66
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.gloss",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.008,
+            0.261,
+            0.008
+          ],
+          "at": [
+            -0.31,
+            1.05,
+            -0.655
+          ],
+          "color": "#5C7A3A",
+          "material": "material.finish.matte",
+          "rotate": [
+            4.92,
+            63.43,
+            0
+          ]
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.05,
+            0.03
+          ],
+          "at": [
+            -0.29,
+            1.18,
+            -0.64
+          ],
+          "color": "#E88CC2",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.05,
+            0.03
+          ],
+          "at": [
+            -0.3,
+            1.1,
+            -0.635
+          ],
+          "color": "#E88CC2",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.14,
+            0.12,
+            0.14
+          ],
+          "at": [
+            0.18,
+            0.86,
+            -0.66
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.gloss",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.008,
+            0.261,
+            0.008
+          ],
+          "at": [
+            0.19,
+            1.05,
+            -0.655
+          ],
+          "color": "#5C7A3A",
+          "material": "material.finish.matte",
+          "rotate": [
+            4.92,
+            63.43,
+            0
+          ]
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.05,
+            0.03
+          ],
+          "at": [
+            0.21,
+            1.18,
+            -0.64
+          ],
+          "color": "#FFFFFF",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.05,
+            0.03
+          ],
+          "at": [
+            0.2,
+            1.1,
+            -0.635
+          ],
+          "color": "#FFFFFF",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.14,
+            0.12,
+            0.14
+          ],
+          "at": [
+            0.68,
+            0.86,
+            -0.66
+          ],
+          "color": "#F2F2F0",
+          "material": "material.finish.gloss",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.008,
+            0.261,
+            0.008
+          ],
+          "at": [
+            0.69,
+            1.05,
+            -0.655
+          ],
+          "color": "#5C7A3A",
+          "material": "material.finish.matte",
+          "rotate": [
+            4.92,
+            63.43,
+            0
+          ]
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.05,
+            0.03
+          ],
+          "at": [
+            0.71,
+            1.18,
+            -0.64
+          ],
+          "color": "#C98BE0",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "sphere",
+          "size": [
+            0.06,
+            0.05,
+            0.03
+          ],
+          "at": [
+            0.7,
+            1.1,
+            -0.635
+          ],
+          "color": "#C98BE0",
+          "material": "material.finish.satin",
+          "segments": 8
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.3,
+            0.26,
+            0.3
+          ],
+          "at": [
+            -0.64,
+            0.26,
+            0.6
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 16
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            -0.53,
+            0.81,
+            0.6
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            0,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            -0.606,
+            0.81,
+            0.4954
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            72,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            -0.729,
+            0.81,
+            0.5353
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            144,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            -0.729,
+            0.81,
+            0.6647
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            216,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            -0.606,
+            0.81,
+            0.7046
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            288,
+            -25
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.04,
+            0.47,
+            0.04
+          ],
+          "at": [
+            -0.64,
+            0.615,
+            0.6
+          ],
+          "color": "#8A6A4A",
+          "material": "material.finish.wood",
+          "rotate": [
+            0.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.3,
+            0.26,
+            0.3
+          ],
+          "at": [
+            0.64,
+            0.26,
+            0.6
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 16
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            0.75,
+            0.81,
+            0.6
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            0,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            0.674,
+            0.81,
+            0.4954
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            72,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            0.551,
+            0.81,
+            0.5353
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            144,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            0.551,
+            0.81,
+            0.6647
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            216,
+            -25
+          ]
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.3,
+            0.05,
+            0.13
+          ],
+          "at": [
+            0.674,
+            0.81,
+            0.7046
+          ],
+          "color": "#78A85A",
+          "material": "material.finish.foliage",
+          "noise": 0.2,
+          "rotate": [
+            0,
+            288,
+            -25
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.04,
+            0.47,
+            0.04
+          ],
+          "at": [
+            0.64,
+            0.615,
+            0.6
+          ],
+          "color": "#8A6A4A",
+          "material": "material.finish.wood",
+          "rotate": [
+            0.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.008,
+            0.28,
+            0.008
+          ],
+          "at": [
+            -0.68,
+            1.86,
+            -0.3
+          ],
+          "color": "#8A6A4A",
+          "material": "material.finish.matte",
+          "rotate": [
+            180.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.2,
+            0.14,
+            0.2
+          ],
+          "at": [
+            -0.68,
+            1.65,
+            -0.3
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.26,
+            0.26,
+            0.26
+          ],
+          "at": [
+            -0.68,
+            1.6,
+            -0.3
+          ],
+          "color": "#5E8F4E",
+          "material": "material.finish.foliage",
+          "noise": 0.35
+        },
+        {
+          "shape": "cylinder",
+          "size": [
+            0.008,
+            0.28,
+            0.008
+          ],
+          "at": [
+            0.68,
+            1.86,
+            -0.3
+          ],
+          "color": "#8A6A4A",
+          "material": "material.finish.matte",
+          "rotate": [
+            180.0,
+            0.0,
+            0
+          ]
+        },
+        {
+          "shape": "lathe",
+          "size": [
+            0.2,
+            0.14,
+            0.2
+          ],
+          "at": [
+            0.68,
+            1.65,
+            -0.3
+          ],
+          "color": "#C7744F",
+          "material": "material.finish.satin",
+          "profile": [
+            [
+              0.0,
+              -0.5
+            ],
+            [
+              0.36,
+              -0.5
+            ],
+            [
+              0.5,
+              0.36
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.45,
+              0.5
+            ],
+            [
+              0.33,
+              -0.38
+            ],
+            [
+              0.0,
+              -0.38
+            ]
+          ],
+          "segments": 14
+        },
+        {
+          "shape": "blob",
+          "size": [
+            0.26,
+            0.26,
+            0.26
+          ],
+          "at": [
+            0.68,
+            1.6,
+            -0.3
+          ],
+          "color": "#5E8F4E",
+          "material": "material.finish.foliage",
+          "noise": 0.35
+        }
+      ]
+    }
+  }
+}

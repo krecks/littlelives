@@ -6,7 +6,7 @@
  * - world structure (geometry, placements) only when it changes.
  */
 
-import init, { Game, snapshot_layout } from './wasm-pkg/sim_wasm.js';
+import init, { Game } from './wasm-pkg/sim_wasm.js';
 import type { FromWorker, GameSource, MeshArrays, ToWorker, WorldStructure } from './protocol';
 import { createSharedSnapshot, SharedSnapshotWriter, type SnapshotLayout } from './snapshot';
 
@@ -52,12 +52,12 @@ scope.onmessage = (e) => {
 
 async function start(content: string, source: GameSource): Promise<void> {
   memory = (await init()).memory;
-  const layout: SnapshotLayout = JSON.parse(snapshot_layout());
   game = 'save' in source ? Game.fromSave(content, source.save) : new Game(content, source.lot, source.seed);
+  const layout: SnapshotLayout = JSON.parse(game.snapshot_layout());
 
   const shared = typeof SharedArrayBuffer !== 'undefined' && self.crossOriginIsolated ? createSharedSnapshot(layout) : null;
   writer = shared ? new SharedSnapshotWriter(shared, layout.capacity) : null;
-  scope.postMessage({ type: 'ready', layout, shared });
+  scope.postMessage({ type: 'ready', layout, shared, catalog: JSON.parse(game.catalog()) });
 
   publish();
   postUi();

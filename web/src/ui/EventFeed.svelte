@@ -1,5 +1,7 @@
 <script lang="ts">
+  import type { SocialEvent } from '../core/protocol';
   import Icon from './Icon.svelte';
+  import { money } from './format';
   import { services } from './services';
   import { game } from './state.svelte';
 
@@ -19,26 +21,37 @@
     promoted: 'icon.ui.career',
     missedWork: 'icon.ui.career',
     visited: 'icon.ui.home',
+    paidRent: 'icon.ui.funds',
+    rentDebt: 'icon.ui.funds',
+    upgraded: 'icon.ui.upgrade',
   };
+  const iconFor = (e: SocialEvent) =>
+    e.kind === 'skillUp' ? (services.content.skills[e.skill ?? -1]?.icon ?? 'icon.ui.skills') : (icons[e.kind] ?? 'icon.need.social');
   const tone = (kind: string) =>
     ['crush', 'firstKiss', 'startedDating'].includes(kind)
       ? 'love'
-      : ['becameEnemies', 'brokeUp', 'fight', 'jealous', 'proposalRejected', 'missedWork'].includes(kind)
+      : ['becameEnemies', 'brokeUp', 'fight', 'jealous', 'proposalRejected', 'missedWork', 'rentDebt'].includes(kind)
         ? 'bad'
         : 'good';
 
   const name = (id: number | undefined) => game.roster.find((s) => s.id === id)?.name ?? 'Someone';
-  function text(kind: string, a: number, b: number, c?: number): string {
-    const template = services.content.eventTexts[kind] ?? '{a} and {b}';
-    return template.replace('{a}', name(a)).replace('{b}', name(b)).replace('{c}', name(c));
+  function text(e: SocialEvent): string {
+    const template = services.content.eventTexts[e.kind] ?? '{a} and {b}';
+    return template
+      .replace('{a}', name(e.a))
+      .replace('{b}', name(e.b))
+      .replace('{c}', name(e.c))
+      .replace('{n}', String(e.n ?? ''))
+      .replace('{money}', money(e.n ?? 0))
+      .replace('{skill}', services.content.skills[e.skill ?? -1]?.label ?? '');
   }
 </script>
 
 <ol class="feed" aria-live="polite">
   {#each game.feed as f (f.event.id)}
     <li class={tone(f.event.kind)}>
-      <span class="icon"><Icon name={icons[f.event.kind] ?? 'icon.need.social'} size={16} /></span>
-      {text(f.event.kind, f.event.a, f.event.b, f.event.c)}
+      <span class="icon"><Icon name={iconFor(f.event)} size={16} /></span>
+      {text(f.event)}
     </li>
   {/each}
 </ol>

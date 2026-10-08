@@ -65,9 +65,9 @@
         </div>
         <ul>
           {#each residents as s (s.id)}
-            {@const look = info(s.id)?.appearance}
+            {@const who = info(s.id)}
             <li>
-              {#if look}<span class="face"><SimPreview appearance={look} size={60} animate={false} /></span>{/if}
+              {#if who}<span class="face"><SimPreview appearance={who.appearance} gender={who.gender} id={who.id} size={30} /></span>{/if}
               <span class="who"><b>{s.name}</b><span class="muted">{status(s)}{s.job ? ` · ${s.job.title}` : ''}</span></span>
             </li>
           {/each}

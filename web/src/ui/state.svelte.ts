@@ -1,6 +1,6 @@
 /** Reactive UI state. Written by the game layer at ~10 Hz, read by components. */
 
-import type { HouseholdInfo, PlotInfo, RelationshipView, SimInfo, SimView, SocialEvent, SocialOption } from '../core/protocol';
+import type { Catalog, HouseholdInfo, ObjectPlacement, PlotInfo, RelationshipView, SimInfo, SimView, SocialEvent, SocialOption } from '../core/protocol';
 import type { RenderStats, WallMode } from '../render/types';
 
 export interface MenuState {
@@ -9,7 +9,20 @@ export interface MenuState {
   /** Canvas-relative CSS pixels. */
   x: number;
   y: number;
-  items: { label: string; index: number }[];
+  /** `cost` is charged when chosen (shown, and checked against funds). */
+  items: { label: string; index: number; disabled?: boolean; cost?: number }[];
+}
+
+/** Buy mode covers furniture and building (walls, doors, windows). */
+export type GameMode = 'live' | 'buy';
+export type BuildTool = 'wall' | 'door' | 'window' | 'remove';
+
+/** An object being placed in buy mode: a new purchase, or an owned object being moved. */
+export interface Placing {
+  def: string;
+  rot: number;
+  /** Set when moving an object the household already owns. */
+  objectId: number | null;
 }
 
 export interface SocialMenuState {
@@ -35,6 +48,8 @@ class GameState {
   minute = $state(480);
   speed = $state(1);
   /** Replaced wholesale on each update; raw avoids deep proxies. */
+  /** A debug report is being saved. */
+  debugSaving = $state(false);
   sims = $state.raw<SimView[]>([]);
   /** Static per-Sim info (appearance, traits) from the world structure. */
   roster = $state.raw<SimInfo[]>([]);
@@ -48,10 +63,29 @@ class GameState {
   townOpen = $state(false);
   weekday = $state(0);
   funds = $state(0);
+  /** Weekly rent of the player's home (null if none is charged). */
+  rent = $state<number | null>(null);
+  /** Weekly bills of the player's home: they grow with what the household owns. */
+  bills = $state<number | null>(null);
+  /** The household's favourite object style (index into content styles). */
+  householdStyle = $state(0);
+  /** Careers and build/buy rules from the simulation. */
+  catalog = $state.raw<Catalog | null>(null);
+  objects = $state.raw<ObjectPlacement[]>([]);
+  mode = $state<GameMode>('live');
+  placing = $state.raw<Placing | null>(null);
+  /** Owned object picked in buy mode. */
+  buySelection = $state<number | null>(null);
+  /** Buy mode's build tool; null while the furniture catalog is in use. */
+  buildTool = $state<BuildTool | null>(null);
+  /** Wall being drawn: its first corner, and the cost of the preview. */
+  buildStart = $state.raw<{ x: number; z: number } | null>(null);
+  buildCost = $state(0);
+  jobBoardOpen = $state(false);
   /** Plot currently shown. */
   viewPlot = $state<number | null>(null);
   selected = $state(0);
-  wallMode = $state<WallMode>('down');
+  wallMode = $state<WallMode>('cutaway');
   menu = $state.raw<MenuState | null>(null);
   perfOpen = $state(false);
   stats = $state.raw<RenderStats | null>(null);
@@ -77,10 +111,23 @@ class GameState {
     this.selected = 0;
     this.day = 1;
     this.minute = 480;
+    this.mode = 'live';
+    this.placing = null;
+    this.buySelection = null;
+    this.buildTool = null;
+    this.buildStart = null;
+    this.jobBoardOpen = false;
+    this.objects = [];
+    this.catalog = null;
   }
 }
 
 export const game = new GameState();
+
+/** Walls up → cutaway → down → up (the W key and the top-bar button). */
+export function nextWallMode(mode: WallMode): WallMode {
+  return mode === 'up' ? 'cutaway' : mode === 'cutaway' ? 'down' : 'up';
+}
 
 let toastId = 0;
 export function toast(text: string, ms = 3500): void {

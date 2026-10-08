@@ -1,4 +1,4 @@
-//! The lot: a tile grid with walls and doors on tile edges.
+//! The lot: a tile grid with walls, doors and windows on tile edges.
 //!
 //! Coordinates: tile `(x, z)` covers `[x, x+1] × [z, z+1]` in metres (1 tile = 1 m).
 //! Horizontal edges lie on the line `z = const` and run along x; vertical edges
@@ -14,7 +14,22 @@ use crate::Error;
 pub enum Edge {
     Open,
     Wall,
+    /// A wall with a doorway: Sims walk through, but it still separates rooms.
     Door,
+    /// A wall with a window: blocks walking and separates rooms like a wall.
+    Window,
+}
+
+impl Edge {
+    /// Whether Sims can't cross this edge.
+    pub fn blocks(self) -> bool {
+        matches!(self, Edge::Wall | Edge::Window)
+    }
+
+    /// Whether a wall stands on this edge (plain, or with a door or window in it).
+    pub fn is_wall(self) -> bool {
+        self != Edge::Open
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -36,6 +51,9 @@ pub struct LotFile {
     pub walls: Vec<[u16; 4]>,
     #[serde(default)]
     pub doors: Vec<DoorRaw>,
+    /// Windows, like doors: each must sit on a wall.
+    #[serde(default)]
+    pub windows: Vec<DoorRaw>,
     #[serde(default)]
     pub objects: Vec<PlacementRaw>,
     #[serde(default)]
@@ -97,6 +115,7 @@ pub struct BondRaw {
     pub preset: String,
 }
 
+/// A door or window on the wall edge at `(x, z)` (see `Axis`).
 #[derive(Debug, Deserialize)]
 pub struct DoorRaw {
     pub x: u16,
@@ -135,6 +154,9 @@ pub struct SimSpawn {
     pub traits: Vec<String>,
     #[serde(default)]
     pub perks: Vec<String>,
+    /// Starting skill levels by id (on top of what traits give).
+    #[serde(default)]
+    pub skills: std::collections::HashMap<String, f32>,
     pub x: f32,
     pub z: f32,
 }
@@ -186,19 +208,21 @@ impl Lot {
                 )));
             }
         }
-        for door in &file.doors {
+        let openings = file.doors.iter().map(|d| (d, Edge::Door, "door"));
+        let openings = openings.chain(file.windows.iter().map(|w| (w, Edge::Window, "window")));
+        for (door, kind, name) in openings {
             let (x, z) = (door.x as usize, door.z as usize);
             let current = match door.axis {
                 Axis::X if x < w && z <= d => lot.h_edge(x, z),
                 Axis::Z if x <= w && z < d => lot.v_edge(x, z),
-                _ => return Err(Error::new(format!("door at {x},{z} is out of bounds"))),
+                _ => return Err(Error::new(format!("{name} at {x},{z} is out of bounds"))),
             };
             if current != Edge::Wall {
-                return Err(Error::new(format!("door at {x},{z} is not on a wall")));
+                return Err(Error::new(format!("{name} at {x},{z} is not on a wall")));
             }
             match door.axis {
-                Axis::X => lot.set_h(x, z, Edge::Door),
-                Axis::Z => lot.set_v(x, z, Edge::Door),
+                Axis::X => lot.set_h(x, z, kind),
+                Axis::Z => lot.set_v(x, z, kind),
             }
         }
         lot.compute_rooms();
@@ -271,7 +295,7 @@ impl Lot {
 
     /// Whether a Sim can walk across the edge between two orthogonally adjacent tiles.
     pub fn edge_walkable(&self, ax: i32, az: i32, bx: i32, bz: i32) -> bool {
-        self.in_bounds(bx, bz) && self.edge_between(ax, az, bx, bz) != Edge::Wall
+        self.in_bounds(bx, bz) && !self.edge_between(ax, az, bx, bz).blocks()
     }
 
     pub fn room_at(&self, x: i32, z: i32) -> u16 {
@@ -286,7 +310,7 @@ impl Lot {
         &self.rooms
     }
 
-    /// Flood-fills rooms. Doors separate rooms; any area touching the lot border is outdoors.
+    /// Flood-fills rooms. Doors and windows separate rooms; any area touching the lot border is outdoors.
     pub fn compute_rooms(&mut self) {
         const UNSET: u16 = u16::MAX;
         self.rooms.fill(UNSET);
@@ -337,7 +361,8 @@ mod tests {
         let file: LotFile = serde_json::from_str(
             r#"{"width":10,"depth":10,
                 "walls":[[2,2,8,2],[2,8,8,8],[2,2,2,8],[8,2,8,8],[5,2,5,8]],
-                "doors":[{"x":3,"z":2,"axis":"x"},{"x":5,"z":4,"axis":"z"}]}"#,
+                "doors":[{"x":3,"z":2,"axis":"x"},{"x":5,"z":4,"axis":"z"}],
+                "windows":[{"x":6,"z":2,"axis":"x"},{"x":5,"z":6,"axis":"z"}]}"#,
         )
         .unwrap();
         Lot::from_file(&file).unwrap()
@@ -360,5 +385,28 @@ mod tests {
         assert!(!lot.edge_walkable(4, 1, 4, 2));
         assert!(lot.edge_walkable(3, 1, 3, 2));
         assert!(lot.edge_walkable(4, 4, 5, 4));
+    }
+
+    #[test]
+    fn windows_block_walking_and_separate_rooms() {
+        let lot = boxed_lot();
+        assert_eq!(lot.h_edge(6, 2), Edge::Window);
+        assert_eq!(lot.v_edge(5, 6), Edge::Window);
+        // Outside to inside through the window, and between the rooms through the inner one.
+        assert!(!lot.edge_walkable(6, 1, 6, 2));
+        assert!(!lot.edge_walkable(4, 6, 5, 6));
+        // The rooms stay closed: a window doesn't join them or let the outdoors in.
+        assert_ne!(lot.room_at(4, 6), lot.room_at(5, 6));
+        assert_ne!(lot.room_at(6, 2), OUTDOORS);
+    }
+
+    #[test]
+    fn windows_need_a_wall() {
+        let file: LotFile = serde_json::from_str(
+            r#"{"width":6,"depth":6,"walls":[[1,1,4,1]],"windows":[{"x":4,"z":1,"axis":"x"}]}"#,
+        )
+        .unwrap();
+        let err = Lot::from_file(&file).unwrap_err();
+        assert!(err.to_string().contains("window"), "{err}");
     }
 }

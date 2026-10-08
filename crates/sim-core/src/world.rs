@@ -4,11 +4,11 @@ use std::collections::VecDeque;
 use std::f32::consts::FRAC_PI_2;
 
 use crate::clock::{MAX_SPEED, TICKS_PER_STEP};
-use crate::content::{Content, MAX_NEEDS, Modifiers, Pose};
+use crate::content::{Content, MAX_NEEDS, MAX_SKILLS, MAX_SLOTS, Modifiers, Pose, TagMask};
 use crate::lot::{BondRaw, Lot, LotFile, SimSpawn};
 use crate::path::NavGrid;
 use crate::rng::Rng;
-use crate::social::{self, ActiveMoodlet, EventLog, Prefer, Relationships};
+use crate::social::{self, ActiveFeeling, EventLog, Prefer, Relationships};
 use crate::{Command, Error, MINUTES_PER_TICK, TICKS_PER_SECOND, ai, conversation};
 
 pub const MAX_SIMS: usize = 64;
@@ -32,11 +32,75 @@ pub struct ObjectInstance {
     pub z: i32,
     /// Facing: 0 = +z, 1 = +x, 2 = -z, 3 = -x.
     pub rot: u8,
-    /// Sim currently using or walking to this object.
-    pub user: Option<u32>,
+    /// Sims using or walking to this object, one per slot.
+    pub users: [Option<u32>; MAX_SLOTS],
+    /// Upgrade level: higher quality objects satisfy needs and teach skills faster.
+    pub quality: u8,
+    /// Index into `Content::styles` (visual only).
+    pub style: u8,
+    /// Money put into this object (price plus upgrades), for resale.
+    pub value: i64,
 }
 
 impl ObjectInstance {
+    pub fn users(&self) -> impl Iterator<Item = u32> + '_ {
+        self.users.iter().flatten().copied()
+    }
+
+    pub fn in_use(&self) -> bool {
+        self.users.iter().any(Option::is_some)
+    }
+
+    /// Whether `sim` can use this object (it has a free slot, or `sim` already holds one).
+    pub fn can_use(&self, sim: u32, slots: u8) -> bool {
+        self.users[..slots as usize]
+            .iter()
+            .any(|u| u.is_none_or(|u| u == sim))
+    }
+
+    pub fn has_free_slot(&self, slots: u8) -> bool {
+        self.users[..slots as usize].iter().any(Option::is_none)
+    }
+
+    fn slot_of(&self, sim: u32) -> Option<usize> {
+        self.users.iter().position(|u| *u == Some(sim))
+    }
+
+    /// Takes a slot for `sim` (keeps the one it already has).
+    fn reserve(&mut self, sim: u32, slots: u8) -> bool {
+        if self.slot_of(sim).is_some() {
+            return true;
+        }
+        match self.users[..slots as usize]
+            .iter()
+            .position(Option::is_none)
+        {
+            Some(i) => {
+                self.users[i] = Some(sim);
+                true
+            }
+            None => false,
+        }
+    }
+
+    fn release(&mut self, sim: u32) {
+        for u in &mut self.users {
+            if *u == Some(sim) {
+                *u = None;
+            }
+        }
+    }
+
+    /// Where a Sim sits or lies in `slot`: spread across the object's width.
+    pub fn slot_position(&self, content: &Content, slot: usize) -> [f32; 2] {
+        let def = &content.objects[self.def];
+        let c = self.centre(content);
+        let n = def.slots.max(1) as f32;
+        let offset = (slot as f32 - (n - 1.0) / 2.0) * def.footprint[0] as f32 / n;
+        let yaw = self.yaw();
+        // Local +x (the object's right) after rotation.
+        [c[0] + yaw.cos() * offset, c[1] - yaw.sin() * offset]
+    }
     /// Rotated footprint `(x extent, z extent)`.
     pub fn size(&self, content: &Content) -> (i32, i32) {
         let [w, d] = content.objects[self.def].footprint;
@@ -70,7 +134,7 @@ impl ObjectInstance {
         }
     }
 
-    fn tiles(&self, content: &Content) -> impl Iterator<Item = (i32, i32)> + use<> {
+    pub(crate) fn tiles(&self, content: &Content) -> impl Iterator<Item = (i32, i32)> + use<> {
         let (w, d) = self.size(content);
         let (x0, z0) = (self.x, self.z);
         (0..d).flat_map(move |dz| (0..w).map(move |dx| (x0 + dx, z0 + dz)))
@@ -134,7 +198,7 @@ pub struct Activity {
     pub task: Task,
     pub phase: Phase,
     /// Tags of the interaction or social being performed (for "busy" checks and autonomy).
-    pub tags: u32,
+    pub tags: TagMask,
 }
 
 #[derive(Debug)]
@@ -150,12 +214,18 @@ pub struct Sim {
     pub traits: Vec<String>,
     pub perks: Vec<String>,
     /// Combined effect of traits and perks.
+    pub base_mods: Modifiers,
+    /// Effective modifiers: `base_mods` combined with the effects of active feelings.
     pub mods: Modifiers,
+    /// Feelings (defs, sorted) whose effects are folded into `mods`.
+    pub(crate) buffs: Vec<usize>,
+    /// Money the household owes for interactions started this tick (settled by `life::update`).
+    pub(crate) pending_spend: i64,
     pub pos: [f32; 2],
     pub yaw: f32,
     pub pose: Pose,
     pub needs: [f32; MAX_NEEDS],
-    pub moodlets: Vec<ActiveMoodlet>,
+    pub feelings: Vec<ActiveFeeling>,
     /// Set while another Sim is talking to this one.
     pub engaged_with: Option<u32>,
     pub(crate) gender_ix: Option<usize>,
@@ -171,6 +241,12 @@ pub struct Sim {
     pub visiting: Option<crate::life::Visit>,
     /// Set by Work/Visit/GoHome tasks; handled by `life::update`.
     pub(crate) transition: Option<crate::life::Transition>,
+    /// Skill levels, `0..=max_level` (the whole number is the level shown to players).
+    pub skills: [f32; MAX_SKILLS],
+    /// Skills that reached a new level this tick (bitmask), reported by `life::update`.
+    pub(crate) skill_ups: u32,
+    /// Grows while practising and fades otherwise, so Sims don't train for hours on end.
+    pub(crate) practice_fatigue: f32,
 }
 
 impl Sim {
@@ -196,16 +272,43 @@ impl Sim {
         self.queue.iter()
     }
 
-    /// Needs average plus trait and moodlet effects, 0..1.
+    /// Needs average plus trait and feeling effects, 0..1.
     pub fn mood(&self, content: &Content) -> f32 {
         let n = content.needs.len();
         let needs = self.needs[..n].iter().sum::<f32>() / n as f32;
-        (needs + self.mods.mood + social::moodlet_mood(&self.moodlets, &content.moodlets))
+        (needs + self.mods.mood + social::feeling_mood(&self.feelings, &content.feelings))
             .clamp(0.0, 1.0)
     }
 
     pub fn emotion(&self, content: &Content) -> Option<usize> {
-        social::dominant_emotion(&self.moodlets, &content.moodlets)
+        social::dominant_emotion(&self.feelings, &content.feelings)
+    }
+
+    /// Recomputes `mods` when the set of active feelings with effects has changed.
+    pub(crate) fn refresh_buffs(&mut self, content: &Content) {
+        let defs = &content.feelings;
+        let mut active = self
+            .feelings
+            .iter()
+            .filter(|m| defs[m.def].effects.is_some());
+        if active.clone().count() == self.buffs.len() && active.all(|m| self.buffs.contains(&m.def))
+        {
+            return;
+        }
+        self.buffs.clear();
+        self.buffs.extend(
+            self.feelings
+                .iter()
+                .filter(|m| defs[m.def].effects.is_some())
+                .map(|m| m.def),
+        );
+        self.buffs.sort_unstable();
+        self.mods = self.base_mods.clone();
+        for &m in &self.buffs {
+            if let Some(e) = &defs[m].effects {
+                self.mods.combine(e);
+            }
+        }
     }
 
     pub fn attracted_to(&self, other: &Sim) -> bool {
@@ -294,6 +397,8 @@ pub struct Household {
     pub player: bool,
     /// Money earned from jobs.
     pub funds: i64,
+    /// Preferred object style for purchases (index into `Content::styles`).
+    pub style: u8,
 }
 
 /// Per-tick snapshot of other Sims, so each Sim can reason about the others
@@ -346,6 +451,7 @@ pub(crate) struct Ctx<'a> {
     pub exits: &'a [[f32; 2]],
     pub autonomy: bool,
     pub hour: f32,
+    pub tick: u64,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -389,6 +495,7 @@ impl World {
                 plot: None,
                 player: true,
                 funds: starting_funds,
+                style: 0,
             }]
         } else {
             lot_file
@@ -401,6 +508,7 @@ impl World {
                     plot: h.plot,
                     player: h.player,
                     funds: h.funds.unwrap_or(starting_funds),
+                    style: 0,
                 })
                 .collect()
         };
@@ -418,7 +526,7 @@ impl World {
             world.place_object(&p.def, p.x, p.z, p.rot)?;
         }
         if lot_file.sims.len() > MAX_SIMS {
-            return Err(Error::new(format!("at most {MAX_SIMS} Sims per town")));
+            return Err(Error::new(format!("at most {MAX_SIMS} residents per town")));
         }
         for s in &lot_file.sims {
             world.spawn_sim(s)?;
@@ -469,27 +577,59 @@ impl World {
             .content
             .object_index(def_id)
             .ok_or_else(|| Error::new(format!("unknown object '{def_id}'")))?;
+        let value = self.content.objects[def].price.unwrap_or(0);
+        self.place(def, x, z, rot, 0, 0, value)
+    }
+
+    /// Checks that object `def` fits at `x, z, rot`: inside the lot, on free tiles, facing a tile on the lot.
+    pub(crate) fn check_fit(
+        &self,
+        def: usize,
+        x: i32,
+        z: i32,
+        rot: u8,
+    ) -> Result<ObjectInstance, Error> {
         let obj = ObjectInstance {
             id: self.objects.len() as u32,
             def,
             x,
             z,
             rot: rot % 4,
-            user: None,
+            users: [None; MAX_SLOTS],
+            quality: 0,
+            style: 0,
+            value: 0,
         };
+        let name = &self.content.objects[def].id;
         for (tx, tz) in obj.tiles(&self.content) {
             if !self.lot.in_bounds(tx, tz) || self.blocked[self.lot.tile_index(tx, tz)] {
                 return Err(Error::new(format!(
-                    "'{def_id}' at {x},{z} overlaps or leaves the lot"
+                    "'{name}' at {x},{z} overlaps or leaves the lot"
                 )));
             }
         }
         let (fx, fz) = obj.front_tile(&self.content);
         if !self.lot.in_bounds(fx, fz) {
-            return Err(Error::new(format!(
-                "'{def_id}' at {x},{z} faces off the lot"
-            )));
+            return Err(Error::new(format!("'{name}' at {x},{z} faces off the lot")));
         }
+        Ok(obj)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn place(
+        &mut self,
+        def: usize,
+        x: i32,
+        z: i32,
+        rot: u8,
+        style: u8,
+        quality: u8,
+        value: i64,
+    ) -> Result<u32, Error> {
+        let mut obj = self.check_fit(def, x, z, rot)?;
+        obj.style = style;
+        obj.quality = quality.min(self.content.object_rules.max_quality);
+        obj.value = value;
         for (tx, tz) in obj.tiles(&self.content) {
             let i = self.lot.tile_index(tx, tz);
             self.blocked[i] = true;
@@ -504,10 +644,10 @@ impl World {
     pub fn spawn_sim(&mut self, spawn: &SimSpawn) -> Result<u32, Error> {
         let SimSpawn { name, x, z, .. } = spawn;
         if !self.lot.in_bounds(x.floor() as i32, z.floor() as i32) {
-            return Err(Error::new(format!("Sim '{name}' spawns off the lot")));
+            return Err(Error::new(format!("resident '{name}' spawns off the lot")));
         }
         if self.sims.len() >= MAX_SIMS {
-            return Err(Error::new(format!("at most {MAX_SIMS} Sims per town")));
+            return Err(Error::new(format!("at most {MAX_SIMS} residents per town")));
         }
         if spawn.household as usize >= self.households.len() {
             return Err(Error::new(format!(
@@ -555,6 +695,23 @@ impl World {
                 })
             }
         };
+        // Traits give a head start; explicit levels win; anyone placed in a job has the skills for it.
+        let mut skills = content.starting_skills(&spawn.traits);
+        for (id, level) in &spawn.skills {
+            let s = content
+                .skill_index(id)
+                .ok_or_else(|| Error::new(format!("{name}: unknown skill '{id}'")))?;
+            skills[s] = *level;
+        }
+        if let Some(j) = &job {
+            for &(s, level) in &content.careers[j.career].levels[j.level].requires {
+                skills[s] = skills[s].max(level);
+            }
+        }
+        let max = content.skill_rules.max_level;
+        for s in &mut skills {
+            *s = s.clamp(0.0, max);
+        }
 
         let mut needs = [0.0; MAX_NEEDS];
         for n in needs.iter_mut().take(self.content.needs.len()) {
@@ -568,12 +725,15 @@ impl World {
             attracted_to,
             traits: spawn.traits.clone(),
             perks: spawn.perks.clone(),
+            base_mods: mods.clone(),
             mods,
+            buffs: Vec::new(),
+            pending_spend: 0,
             pos: [*x, *z],
             yaw: 0.0,
             pose: Pose::Stand,
             needs,
-            moodlets: Vec::new(),
+            feelings: Vec::new(),
             engaged_with: None,
             gender_ix,
             attraction,
@@ -585,6 +745,9 @@ impl World {
             away_until: None,
             visiting: None,
             transition: None,
+            skills,
+            skill_ups: 0,
+            practice_fatigue: 0.0,
         });
         self.relationships.grow(self.sims.len());
         Ok(self.sims.len() as u32 - 1)
@@ -620,7 +783,7 @@ impl World {
                 .ok_or_else(|| Error::new(format!("unknown bond preset '{}'", bond.preset)))?;
             if bond.a >= n || bond.b >= n || bond.a == bond.b {
                 return Err(Error::new(format!(
-                    "bond {}-{} refers to unknown Sims",
+                    "bond {}-{} refers to unknown residents",
                     bond.a, bond.b
                 )));
             }
@@ -631,7 +794,7 @@ impl World {
                         .is_some_and(|p| p != bond.a && p != bond.b)
                 })
             {
-                return Err(Error::new("a Sim can only have one partner"));
+                return Err(Error::new("a resident can only have one partner"));
             }
             self.relationships.bond(bond.a, bond.b, preset);
         }
@@ -691,6 +854,7 @@ impl World {
                 exits,
                 autonomy: *autonomy,
                 hour,
+                tick,
             };
             for sim in sims.iter_mut() {
                 step_sim(sim, &ctx, objects, rng);
@@ -700,7 +864,10 @@ impl World {
         crate::life::update(self);
 
         for s in &mut self.sims {
-            s.moodlets.retain(|m| m.expires > tick);
+            s.feelings.retain(|m| m.expires > tick);
+            if self.content.buff_feelings {
+                s.refresh_buffs(&self.content);
+            }
         }
         if tick.is_multiple_of(TICKS_PER_DAY) {
             self.relationships.decay(&self.content.social_rules);
@@ -725,9 +892,17 @@ impl World {
                     .objects
                     .get(object as usize)
                     .ok_or_else(|| Error::new(format!("unknown object {object}")))?;
-                if interaction >= self.content.objects[obj.def].interactions.len() {
+                let Some(inter) = self.content.objects[obj.def].interactions.get(interaction)
+                else {
                     return Err(Error::new(format!(
                         "object {object} has no interaction {interaction}"
+                    )));
+                };
+                let household = self.sim(sim)?.household as usize;
+                if !affordable(inter.cost, self.households[household].funds) {
+                    return Err(Error::new(format!(
+                        "not enough money: {} costs {}",
+                        inter.label, inter.cost
                     )));
                 }
                 self.enqueue(
@@ -763,19 +938,31 @@ impl World {
                 }
                 self.enqueue(sim, TaskKind::Social { target, social })?;
             }
-            Command::JoinCareer { sim, career } => {
-                if career >= self.content.careers.len() {
-                    return Err(Error::new(format!("unknown career {career}")));
-                }
+            Command::JoinCareer { sim, career, level } => {
+                let def = self
+                    .content
+                    .careers
+                    .get(career)
+                    .ok_or_else(|| Error::new(format!("unknown career {career}")))?;
+                let position = def
+                    .levels
+                    .get(level)
+                    .ok_or_else(|| Error::new(format!("{} has no level {level}", def.label)))?;
                 let s = self
                     .sims
                     .get_mut(sim as usize)
-                    .ok_or_else(|| Error::new(format!("unknown Sim {sim}")))?;
+                    .ok_or_else(|| Error::new(format!("unknown resident {sim}")))?;
+                if !crate::life::can_join(&self.content, position, &s.skills) {
+                    return Err(Error::new(format!(
+                        "{} doesn't have the skills to be a {} yet",
+                        s.name, position.title
+                    )));
+                }
                 // Starting today doesn't count: the first shift is tomorrow's.
                 let today = crate::clock::day(self.tick);
                 s.job = Some(crate::life::Job {
                     career,
-                    level: 0,
+                    level,
                     performance: 0.0,
                     last_shift_day: today,
                     shift_mood: 0.5,
@@ -784,7 +971,7 @@ impl World {
             Command::QuitCareer { sim } => {
                 self.sims
                     .get_mut(sim as usize)
-                    .ok_or_else(|| Error::new(format!("unknown Sim {sim}")))?
+                    .ok_or_else(|| Error::new(format!("unknown resident {sim}")))?
                     .job = None;
             }
             Command::Visit { sim, plot } => {
@@ -794,6 +981,31 @@ impl World {
                 self.enqueue(sim, TaskKind::Visit { plot })?;
             }
             Command::GoHome { sim } => self.enqueue(sim, TaskKind::GoHome)?,
+            Command::Buy {
+                sim,
+                object,
+                at,
+                style,
+            } => {
+                self.buy(sim, &object, at, style)?;
+            }
+            Command::Sell { sim, object } => self.sell(sim, object)?,
+            Command::MoveObject {
+                sim,
+                object,
+                x,
+                z,
+                rot,
+            } => self.move_object(sim, object, x, z, rot)?,
+            Command::Restyle { sim, object, style } => self.restyle(sim, object, style)?,
+            Command::SetStyle { sim, style } => {
+                let h = self.home_of(sim)?.0;
+                self.households[h].style = self.check_style(style)?;
+            }
+            Command::Upgrade { sim, object } => {
+                self.upgrade(sim, object)?;
+            }
+            Command::Build { sim, edits } => self.build(sim, &edits)?,
             Command::Cancel { sim, index } => {
                 let World {
                     sims,
@@ -803,7 +1015,7 @@ impl World {
                 } = self;
                 let s = sims
                     .get_mut(sim as usize)
-                    .ok_or_else(|| Error::new(format!("unknown Sim {sim}")))?;
+                    .ok_or_else(|| Error::new(format!("unknown resident {sim}")))?;
                 let offset = (s.current.is_some() || s.engaged_with.is_some()) as usize;
                 if index < offset {
                     if s.current.is_some() {
@@ -822,14 +1034,14 @@ impl World {
     fn sim(&self, id: u32) -> Result<&Sim, Error> {
         self.sims
             .get(id as usize)
-            .ok_or_else(|| Error::new(format!("unknown Sim {id}")))
+            .ok_or_else(|| Error::new(format!("unknown resident {id}")))
     }
 
     fn enqueue(&mut self, sim: u32, kind: TaskKind) -> Result<(), Error> {
         let s = self
             .sims
             .get_mut(sim as usize)
-            .ok_or_else(|| Error::new(format!("unknown Sim {sim}")))?;
+            .ok_or_else(|| Error::new(format!("unknown resident {sim}")))?;
         if s.queue.len() >= MAX_QUEUE {
             return Err(Error::new("action queue is full"));
         }
@@ -841,10 +1053,123 @@ impl World {
     }
 }
 
+/// Whether a household with `funds` can pay `cost` (free things are always affordable).
+pub fn affordable(cost: i64, funds: i64) -> bool {
+    cost <= 0 || funds >= cost
+}
+
+/// Hour a Sim gets up today: the usual time, or earlier for an early shift.
+fn wake_hour(sim: &Sim, ctx: &Ctx) -> f32 {
+    let rhythm = &ctx.content.day_rhythm;
+    let leave = sim
+        .job
+        .as_ref()
+        .and_then(|job| crate::life::shift_today(ctx.content, job, &sim.skills, ctx.tick));
+    match leave {
+        Some((leave, ..)) if leave > ctx.tick => (crate::clock::hour(leave)
+            - rhythm.wake_before_work_minutes / 60.0)
+            .clamp(0.0, rhythm.wake_hour),
+        _ => rhythm.wake_hour,
+    }
+}
+
+/// Whether it is night for this Sim (time to be in bed).
+fn is_night(sim: &Sim, ctx: &Ctx) -> bool {
+    let rhythm = &ctx.content.day_rhythm;
+    if ctx.hour >= rhythm.bed_hour {
+        return true;
+    }
+    if ctx.hour >= rhythm.wake_hour {
+        return false;
+    }
+    rhythm.is_night(ctx.hour, wake_hour(sim, ctx))
+}
+
+/// Target skill levels for the Sim's job: what probation and the next promotion need.
+fn job_goals(sim: &Sim, content: &Content) -> [f32; MAX_SKILLS] {
+    let mut goals = [0.0f32; MAX_SKILLS];
+    if let Some(job) = &sim.job {
+        let levels = &content.careers[job.career].levels;
+        for level in levels[job.level..].iter().take(2) {
+            for &(s, l) in &level.requires {
+                goals[s] = goals[s].max(l);
+            }
+        }
+    }
+    goals
+}
+
+/// How much an idle Sim wants to practise with `inter` (0 when needs come first).
+fn training_interest(sim: &Sim, content: &Content, inter: &crate::content::Interaction) -> f32 {
+    let rules = &content.skill_rules;
+    let lowest = sim.needs[..content.needs.len()]
+        .iter()
+        .copied()
+        .fold(1.0f32, f32::min);
+    if lowest < 0.35 {
+        return 0.0;
+    }
+    let goals = job_goals(sim, content);
+    let mut best = 0.0f32;
+    for (s, &gain) in inter.skill_gain.iter().enumerate() {
+        if gain <= 0.0 || sim.skills[s] >= rules.max_level {
+            continue;
+        }
+        let mut want = rules.interest * sim.mods.skill_gain[s];
+        if goals[s] > sim.skills[s] {
+            want += rules.goal_interest;
+        }
+        best = best.max(want);
+    }
+    best * lowest / (1.0 + sim.practice_fatigue)
+}
+
+/// Adds practice to a skill and notes a new level.
+pub(crate) fn practise(sim: &mut Sim, content: &Content, skill: usize, per_hour: f32) {
+    let rules = &content.skill_rules;
+    let before = sim.skills[skill];
+    let gain = rules.gain(
+        per_hour * sim.mods.skill_gain[skill],
+        MINUTES_PER_TICK / 60.0,
+        before,
+    );
+    let after = (before + gain).min(rules.max_level);
+    sim.skills[skill] = after;
+    if after.floor() > before.floor() {
+        sim.skill_ups |= 1 << skill;
+    }
+}
+
 fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut Rng) {
     let content = ctx.content;
+    let rhythm = &content.day_rhythm;
+    let asleep = sim
+        .current
+        .as_ref()
+        .is_some_and(|a| a.tags & rhythm.sleep_tags != 0 && matches!(a.phase, Phase::Using { .. }));
+    let night = !asleep && rhythm.sleep_tags != 0 && is_night(sim, ctx);
+    let practising = sim.current.as_ref().is_some_and(|a| {
+        matches!(a.phase, Phase::Using { .. })
+            && matches!(a.task.kind, TaskKind::Use { object, interaction }
+                if content.objects[objects[object as usize].def].interactions[interaction].trains_skills())
+    });
+    let skill_rules = &content.skill_rules;
+    sim.practice_fatigue = if practising {
+        sim.practice_fatigue + skill_rules.fatigue_per_hour * MINUTES_PER_TICK / 60.0
+    } else {
+        (sim.practice_fatigue - skill_rules.fatigue_recovery_per_hour * MINUTES_PER_TICK / 60.0)
+            .max(0.0)
+    };
     for (n, def) in content.needs.iter().enumerate() {
-        let decay = def.decay_per_minute * sim.mods.need_decay[n] * MINUTES_PER_TICK;
+        let rhythm_factor = if asleep {
+            rhythm.asleep_decay[n]
+        } else if night {
+            rhythm.night_decay[n]
+        } else {
+            1.0
+        };
+        let decay =
+            def.decay_per_minute * sim.mods.need_decay[n] * rhythm_factor * MINUTES_PER_TICK;
         sim.needs[n] = (sim.needs[n] - decay).max(0.0);
     }
 
@@ -882,7 +1207,7 @@ fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
         }
     }
 
-    progress(sim, content, objects);
+    progress(sim, ctx, objects);
 }
 
 /// What a Sim may use on a plot: everything at home or in public places; as a guest,
@@ -923,7 +1248,7 @@ fn pick_autonomous(
     let emotion = sim.emotion(content).map(|e| &content.emotions[e].mods);
     let schedule = content.schedule_at(ctx.hour);
     // Traits, the current emotion and the time of day all bias what feels right.
-    let feel = |tags: u32| {
+    let feel = |tags: TagMask| {
         sim.mods.preference(tags)
             * emotion.map_or(1.0, |m| m.preference(tags))
             * schedule.preference(tags)
@@ -932,7 +1257,12 @@ fn pick_autonomous(
     let here = ctx.briefs[me].plot;
     let mut candidates: Vec<(f32, Choice)> = Vec::new();
 
-    for obj in objects.iter().filter(|o| o.user.is_none()) {
+    let object_rules = &content.object_rules;
+    let funds = ctx.households[sim.household as usize].funds - sim.pending_spend;
+    for obj in objects
+        .iter()
+        .filter(|o| o.has_free_slot(content.objects[o.def].slots))
+    {
         let allowed = access(ctx, sim, ctx.object_plot[obj.id as usize]);
         if allowed == Access::None {
             continue;
@@ -942,10 +1272,18 @@ fn pick_autonomous(
         for (i, inter) in content.objects[obj.def].interactions.iter().enumerate() {
             if !inter.autonomous
                 || (allowed == Access::Guest && inter.tags & content.social_rules.busy_tags != 0)
+                || !affordable(inter.cost, funds)
             {
                 continue;
             }
-            let s = ai::score(needs, inter, distance) * feel(inter.tags);
+            // Better objects and more skilled Sims get more out of it, and know it.
+            let boost = object_rules.quality_factor(obj.quality)
+                * inter.skill_factor(&content.skill_rules, &sim.skills);
+            let mut s = ai::score_gains(needs, &inter.total_gain.map(|g| g * boost), distance);
+            if inter.trains_skills() && allowed == Access::Full {
+                s += training_interest(sim, content, inter) * boost / (1.0 + distance * 0.08);
+            }
+            let s = s * feel(inter.tags);
             if s > MIN_AUTONOMY_SCORE {
                 candidates.push((s, Choice::Object(obj.id, i)));
             }
@@ -1061,7 +1399,7 @@ fn start_task(sim: &mut Sim, task: Task, ctx: &Ctx, objects: &mut [ObjectInstanc
             let Some(obj) = objects.get(object as usize) else {
                 return;
             };
-            if obj.user.is_some_and(|u| u != sim.id) {
+            if !obj.can_use(sim.id, content.objects[obj.def].slots) {
                 return;
             }
             let t = obj.front_tile(content);
@@ -1119,7 +1457,10 @@ fn start_task(sim: &mut Sim, task: Task, ctx: &Ctx, objects: &mut [ObjectInstanc
         return;
     };
     if let TaskKind::Use { object, .. } = task.kind {
-        objects[object as usize].user = Some(sim.id);
+        let obj = &mut objects[object as usize];
+        if !obj.reserve(sim.id, content.objects[obj.def].slots) {
+            return;
+        }
     }
     sim.pose = Pose::Stand;
     sim.current = Some(Activity {
@@ -1150,7 +1491,8 @@ pub(crate) fn route(
     Some(waypoints)
 }
 
-fn progress(sim: &mut Sim, content: &Content, objects: &mut [ObjectInstance]) {
+fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance]) {
+    let content = ctx.content;
     let Some(act) = sim.current.as_mut() else {
         return;
     };
@@ -1175,30 +1517,20 @@ fn progress(sim: &mut Sim, content: &Content, objects: &mut [ObjectInstance]) {
                 }
             }
             if *next >= waypoints.len() {
-                arrive(sim, content, objects);
+                arrive(sim, ctx, objects);
             }
             false
         }
         Phase::Using { elapsed } => {
-            let TaskKind::Use {
-                object,
-                interaction,
-            } = act.task.kind
-            else {
-                unreachable!("only Use tasks have a Using phase")
-            };
-            let inter = &content.objects[objects[object as usize].def].interactions[interaction];
             *elapsed += MINUTES_PER_TICK;
-            let (mut any_gain, mut satisfied) = (false, true);
-            for n in 0..content.needs.len() {
-                let g = inter.gain_per_minute[n] * sim.mods.need_gain[n];
-                if g > 0.0 {
-                    any_gain = true;
-                    sim.needs[n] = (sim.needs[n] + g * MINUTES_PER_TICK).min(1.0);
-                    satisfied &= sim.needs[n] >= 0.999;
-                }
+            let elapsed = *elapsed;
+            match act.task.kind {
+                TaskKind::Use {
+                    object,
+                    interaction,
+                } => use_object(sim, ctx, &objects[object as usize], interaction, elapsed),
+                _ => unreachable!("only Use tasks have a Using phase"),
             }
-            *elapsed >= inter.minutes || (any_gain && satisfied)
         }
         // Conversations are driven by `conversation::update`, which sees both Sims.
         Phase::Waiting { .. } | Phase::Conversing { .. } => false,
@@ -1208,7 +1540,70 @@ fn progress(sim: &mut Sim, content: &Content, objects: &mut [ObjectInstance]) {
     }
 }
 
-fn arrive(sim: &mut Sim, content: &Content, objects: &[ObjectInstance]) {
+/// One tick of using an object. Returns whether the Sim is done.
+fn use_object(
+    sim: &mut Sim,
+    ctx: &Ctx,
+    obj: &ObjectInstance,
+    interaction: usize,
+    elapsed: f32,
+) -> bool {
+    let content = ctx.content;
+    let inter = &content.objects[obj.def].interactions[interaction];
+    // Quality and skill scale what the Sim gets out of it (not what it costs).
+    let boost = content.object_rules.quality_factor(obj.quality)
+        * inter.skill_factor(&content.skill_rules, &sim.skills);
+    let (mut any_gain, mut satisfied, mut urgent) = (false, true, false);
+    for n in 0..content.needs.len() {
+        let g = inter.gain_per_minute[n];
+        if g > 0.0 {
+            any_gain = true;
+            let g = g * sim.mods.need_gain[n] * boost;
+            sim.needs[n] = (sim.needs[n] + g * MINUTES_PER_TICK).min(1.0);
+            satisfied &= sim.needs[n] >= 0.999;
+        } else {
+            if g < 0.0 {
+                // Costs (a workout makes you hungry and sweaty).
+                sim.needs[n] = (sim.needs[n] + g * MINUTES_PER_TICK).max(0.0);
+            }
+            urgent |= sim.needs[n] < 0.08;
+        }
+    }
+    for s in 0..content.skills.len() {
+        if inter.skill_gain[s] > 0.0 {
+            practise(sim, content, s, inter.skill_gain[s] * boost);
+        }
+    }
+    let done = if inter.tags & content.day_rhythm.sleep_tags != 0 && is_night(sim, ctx) {
+        // A night's sleep lasts until morning unless another need gets urgent.
+        urgent
+    } else {
+        // Workouts and other draining activities stop before they empty a need.
+        let drained = urgent && inter.total_gain.iter().any(|&g| g < 0.0);
+        elapsed >= inter.minutes || (any_gain && satisfied) || drained
+    };
+    if done && let Some(m) = inter.earns_feeling(elapsed, &sim.skills) {
+        social::add_feeling(&mut sim.feelings, m, &content.feelings, ctx.tick);
+    }
+    done
+}
+
+fn arrive(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance]) {
+    let content = ctx.content;
+    // Paid on arrival; if the money ran out on the way, never mind.
+    if let Some(TaskKind::Use {
+        object,
+        interaction,
+    }) = sim.current.as_ref().map(|a| a.task.kind)
+    {
+        let cost = content.objects[objects[object as usize].def].interactions[interaction].cost;
+        let funds = ctx.households[sim.household as usize].funds - sim.pending_spend;
+        if !affordable(cost, funds) {
+            end_activity(sim, content, objects);
+            return;
+        }
+        sim.pending_spend += cost.max(0);
+    }
     let Some(act) = sim.current.as_mut() else {
         return;
     };
@@ -1234,7 +1629,7 @@ fn arrive(sim: &mut Sim, content: &Content, objects: &[ObjectInstance]) {
             if inter.pose == Pose::Stand {
                 sim.yaw = (c[0] - sim.pos[0]).atan2(c[1] - sim.pos[1]);
             } else {
-                sim.pos = c;
+                sim.pos = obj.slot_position(content, obj.slot_of(sim.id).unwrap_or(0));
                 sim.yaw = obj.yaw();
             }
             sim.pose = inter.pose;
@@ -1248,9 +1643,7 @@ pub(crate) fn end_activity(sim: &mut Sim, content: &Content, objects: &mut [Obje
         && let TaskKind::Use { object, .. } = act.task.kind
     {
         let obj = &mut objects[object as usize];
-        if obj.user == Some(sim.id) {
-            obj.user = None;
-        }
+        obj.release(sim.id);
         if sim.pose != Pose::Stand {
             let (fx, fz) = obj.front_tile(content);
             sim.pos = [fx as f32 + 0.5, fz as f32 + 0.5];
@@ -1321,7 +1714,7 @@ mod tests {
         run_ticks(&mut w, TICKS_PER_SECOND * 30);
         let s = &w.sims[0];
         assert_eq!(s.pose, Pose::Lie);
-        assert_eq!(w.objects[1].user, Some(0));
+        assert_eq!(w.objects[1].users().next(), Some(0));
         assert!(s.needs[1] > 0.1);
     }
 
@@ -1335,9 +1728,9 @@ mod tests {
         })
         .unwrap();
         run_ticks(&mut w, 2);
-        assert_eq!(w.objects[1].user, Some(0));
+        assert_eq!(w.objects[1].users().next(), Some(0));
         w.apply(Command::Cancel { sim: 0, index: 0 }).unwrap();
-        assert_eq!(w.objects[1].user, None);
+        assert!(!w.objects[1].in_use());
         assert_eq!(w.sims[0].pose, Pose::Stand);
     }
 
@@ -1372,7 +1765,7 @@ mod tests {
         let mut w = World::from_json(CONTENT, lot, 1).unwrap();
         w.sims[0].needs[0] = 0.0;
         run_ticks(&mut w, TICKS_PER_SECOND * 60);
-        assert_eq!(w.objects[0].user, None);
+        assert!(!w.objects[0].in_use());
         assert!(w.sims[0].pos[0] > 10.0, "stayed home");
     }
 }

@@ -1,4 +1,5 @@
-//! Daily life: work shifts, pay and promotions, and households visiting each other.
+//! Daily life: work shifts, pay and promotions, rent and bills, interaction costs, and households
+//! visiting each other.
 //!
 //! Runs as a world-level phase after Sims and conversations each tick, so it can
 //! move Sims between "at home", "travelling" and "away at work", pay households,
@@ -8,16 +9,16 @@ use serde::{Deserialize, Serialize};
 
 use crate::MINUTES_PER_TICK;
 use crate::clock;
-use crate::content::{Content, MAX_NEEDS};
+use crate::content::{CareerLevel, Content, MAX_NEEDS, MAX_SKILLS, WorkweekRule};
 use crate::social::{self, EventKind};
-use crate::world::{Task, TaskKind, World, end_activity};
+use crate::world::{Task, TaskKind, World, end_activity, practise};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Job {
     pub career: usize,
     pub level: usize,
-    /// 0..100; a full bar earns a promotion.
+    /// 0..100; a full bar earns a promotion (once the skills are there too).
     pub performance: f32,
     /// Last day a shift was worked or missed (so each day counts once).
     pub last_shift_day: u32,
@@ -33,7 +34,7 @@ pub struct Visit {
     pub until: u64,
 }
 
-/// A change in where a Sim is, raised by tasks and handled by `life::update`.
+/// A change in where a Sim is (or what it finished), raised by tasks and handled by `life::update`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Transition {
     /// Reached the town exit: the shift starts.
@@ -44,11 +45,81 @@ pub enum Transition {
     Home,
 }
 
+/// Skill levels above (+) or below (-) what a job level asks for; the weakest skill counts.
+pub fn skill_fit(level: &CareerLevel, skills: &[f32; MAX_SKILLS]) -> f32 {
+    level
+        .requires
+        .iter()
+        .map(|&(s, need)| skills[s].floor() - need)
+        .fold(None, |m: Option<f32>, f| Some(m.map_or(f, |m| m.min(f))))
+        .unwrap_or(0.0)
+}
+
+/// The workweek rule for a fit (probation, standard, flexible...).
+pub fn workweek_rule(content: &Content, fit: f32) -> Option<&WorkweekRule> {
+    content
+        .career_rules
+        .workweek
+        .iter()
+        .rev()
+        .find(|r| r.fit <= fit)
+}
+
+/// Adds days after the last workday, or drops days from the end of the week (at least one stays).
+pub fn adjust_days(days: u8, delta: i8) -> u8 {
+    let mut days = days & 0x7f;
+    if delta > 0 {
+        for _ in 0..delta {
+            let last = (0..7).rev().find(|d| days & (1 << d) != 0).unwrap_or(0);
+            if let Some(d) = (1..7)
+                .map(|k| (last + k) % 7)
+                .find(|d| days & (1 << d) == 0)
+            {
+                days |= 1 << d;
+            }
+        }
+    } else {
+        for _ in 0..-delta {
+            if days.count_ones() <= 1 {
+                break;
+            }
+            let last = (0..7).rev().find(|d| days & (1 << d) != 0).unwrap_or(0);
+            days &= !(1 << last);
+        }
+    }
+    days
+}
+
+/// This Sim's workdays for its job: the standard week, shortened or lengthened by skill.
+pub fn work_days(content: &Content, job: &Job, skills: &[f32; MAX_SKILLS]) -> u8 {
+    let level = &content.careers[job.career].levels[job.level];
+    let delta = workweek_rule(content, skill_fit(level, skills)).map_or(0, |r| r.days);
+    adjust_days(level.days, delta)
+}
+
+/// Pay for one shift. The weekly salary is fixed, so a shorter week pays more per shift.
+pub fn shift_pay(content: &Content, job: &Job, skills: &[f32; MAX_SKILLS]) -> i64 {
+    let level = &content.careers[job.career].levels[job.level];
+    let standard = level.days.count_ones().max(1) as i64;
+    let actual = work_days(content, job, skills).count_ones().max(1) as i64;
+    (level.pay * standard + actual / 2) / actual
+}
+
+/// Whether a Sim with `skills` may take `level` (probation allows a small shortfall).
+pub fn can_join(content: &Content, level: &CareerLevel, skills: &[f32; MAX_SKILLS]) -> bool {
+    skill_fit(level, skills) >= -content.career_rules.probation_levels
+}
+
 /// Today's shift for a job as `(leave, start, end)` ticks, if today is a workday.
-pub fn shift_today(content: &Content, job: &Job, tick: u64) -> Option<(u64, u64, u64)> {
+pub fn shift_today(
+    content: &Content,
+    job: &Job,
+    skills: &[f32; MAX_SKILLS],
+    tick: u64,
+) -> Option<(u64, u64, u64)> {
     let level = &content.careers[job.career].levels[job.level];
     let day = clock::day(tick);
-    if level.days & (1 << clock::weekday(day)) == 0 {
+    if work_days(content, job, skills) & (1 << clock::weekday(day)) == 0 {
         return None;
     }
     let start = clock::tick_at(day, level.start_hour * 60.0)?;
@@ -65,16 +136,21 @@ pub(crate) fn update(w: &mut World) {
     let day = clock::day(tick);
     let hour = clock::hour(tick);
     for i in 0..w.sims.len() {
+        // Interactions started this tick are paid from the Sim's own household (guests too).
+        let spend = std::mem::take(&mut w.sims[i].pending_spend);
+        w.households[w.sims[i].household as usize].funds -= spend;
         if let Some(transition) = w.sims[i].transition.take() {
             apply_transition(w, i, transition);
         }
         if w.sims[i].away_until.is_some() {
             at_work(w, i);
-            continue;
+        } else {
+            schedule_work(w, i, day);
+            end_visit_if_due(w, i, hour);
         }
-        schedule_work(w, i, day);
-        end_visit_if_due(w, i, hour);
+        report_skill_ups(w, i);
     }
+    charge_rent(w, day);
 }
 
 /// Leave for work when it's time; count a shift as missed if the Sim never left.
@@ -93,15 +169,15 @@ fn schedule_work(w: &mut World, i: usize, day: u32) {
     if job.last_shift_day == day {
         return;
     }
-    let Some((leave, start, _)) = shift_today(content, job, tick) else {
+    let Some((leave, start, _)) = shift_today(content, job, &sim.skills, tick) else {
         return;
     };
     let late = start + ticks(content.career_rules.late_minutes);
     if tick > late {
         job.last_shift_day = day;
         job.performance = (job.performance - content.career_rules.missed_penalty).max(0.0);
-        if let Some(m) = content.career_rules.missed_moodlet {
-            social::add_moodlet(&mut sim.moodlets, m, &content.moodlets, tick);
+        if let Some(m) = content.career_rules.missed_feeling {
+            social::add_feeling(&mut sim.feelings, m, &content.feelings, tick);
         }
         events.push(tick, EventKind::MissedWork, i, i, None);
         return;
@@ -131,8 +207,9 @@ fn apply_transition(w: &mut World, i: usize, transition: Transition) {
             let content = &w.content;
             let mood = w.sims[i].mood(content);
             let sim = &mut w.sims[i];
+            let skills = sim.skills;
             let Some(job) = sim.job.as_mut() else { return };
-            let Some((_, start, end)) = shift_today(content, job, tick) else {
+            let Some((_, start, end)) = shift_today(content, job, &skills, tick) else {
                 return;
             };
             job.last_shift_day = clock::day(tick);
@@ -167,7 +244,7 @@ fn apply_transition(w: &mut World, i: usize, transition: Transition) {
     }
 }
 
-/// Off the map at work: needs change, then come home with pay and maybe a promotion.
+/// Off the map at work: needs change and skills grow, then come home with pay and maybe a promotion.
 fn at_work(w: &mut World, i: usize) {
     let tick = w.tick;
     let World {
@@ -178,7 +255,7 @@ fn at_work(w: &mut World, i: usize) {
         ..
     } = w;
     let sim = &mut sims[i];
-    let Some(job) = sim.job.as_mut() else {
+    let Some(job) = sim.job.clone() else {
         sim.away_until = None;
         return;
     };
@@ -188,20 +265,36 @@ fn at_work(w: &mut World, i: usize) {
     for n in 0..MAX_NEEDS.min(content.needs.len()) {
         sim.needs[n] = (sim.needs[n] + career.work_effects[n] * per_tick).clamp(0.0, 1.0);
     }
+    for &(skill, weight) in &career.skills {
+        practise(
+            sim,
+            content,
+            skill,
+            content.skill_rules.work_gain_per_hour * weight,
+        );
+    }
     if sim.away_until.is_some_and(|until| tick < until) {
         return;
     }
     sim.away_until = None;
-    households[sim.household as usize].funds += level.pay;
+    households[sim.household as usize].funds += shift_pay(content, &job, &sim.skills);
     let rules = &content.career_rules;
-    job.performance =
-        (job.performance + rules.performance_per_shift + (job.shift_mood - 0.5) * 30.0)
-            .clamp(0.0, 100.0);
-    if job.performance >= 100.0 && job.level + 1 < career.levels.len() {
+    let fit = skill_fit(level, &sim.skills).clamp(-3.0, 3.0);
+    let job = sim.job.as_mut().expect("checked above");
+    job.performance = (job.performance
+        + rules.performance_per_shift
+        + (job.shift_mood - 0.5) * 30.0
+        + fit * rules.performance_per_fit)
+        .clamp(0.0, 100.0);
+    // A promotion needs a full bar and the skills for the next level.
+    if job.performance >= 100.0
+        && let Some(next) = career.levels.get(job.level + 1)
+        && skill_fit(next, &sim.skills) >= 0.0
+    {
         job.level += 1;
         job.performance = 0.0;
-        if let Some(m) = rules.promotion_moodlet {
-            social::add_moodlet(&mut sim.moodlets, m, &content.moodlets, tick);
+        if let Some(m) = rules.promotion_feeling {
+            social::add_feeling(&mut sim.feelings, m, &content.feelings, tick);
         }
         events.push(tick, EventKind::Promoted, i, i, None);
     }
@@ -209,6 +302,77 @@ fn at_work(w: &mut World, i: usize) {
         kind: TaskKind::GoHome,
         directed: false,
     });
+}
+
+/// Story events for new skill levels (player households only, to keep the feed readable).
+fn report_skill_ups(w: &mut World, i: usize) {
+    let sim = &mut w.sims[i];
+    let mut ups = std::mem::take(&mut sim.skill_ups);
+    if ups == 0 || !w.households[sim.household as usize].player {
+        return;
+    }
+    while ups != 0 {
+        let s = ups.trailing_zeros() as usize;
+        ups &= ups - 1;
+        let level = sim.skills[s].floor() as i64;
+        w.events
+            .push_detail(w.tick, EventKind::SkillUp, i, Some(level), Some(s));
+    }
+}
+
+/// What household `h` pays each week: `(rent, bills)`, or `None` if it has no home or
+/// nothing is charged. Bills grow with the value of everything the household owns.
+pub fn weekly_costs(w: &World, h: usize) -> Option<(i64, i64)> {
+    let rent = w.content.rent.as_ref()?;
+    let plot = w.households.get(h)?.plot?;
+    let p = &w.plots[plot as usize];
+    let home_value: i64 = w
+        .objects
+        .iter()
+        .zip(&w.object_plot)
+        .filter(|(_, on)| **on == Some(plot))
+        .map(|(o, _)| o.value)
+        .sum();
+    Some((rent.amount(p.w * p.d), rent.bills(home_value)))
+}
+
+/// Weekly rent and bills; households that can't cover them go into debt and worry about it
+/// every day.
+fn charge_rent(w: &mut World, day: u32) {
+    let Some(rent) = w.content.rent.clone() else {
+        return;
+    };
+    if clock::tick_at(day, rent.hour * 60.0) != Some(w.tick) {
+        return;
+    }
+    let tick = w.tick;
+    let due = clock::weekday(day) == rent.weekday;
+    for h in 0..w.households.len() {
+        let Some(member) = w.sims.iter().position(|s| s.household as usize == h) else {
+            continue;
+        };
+        if due && let Some((rent, bills)) = weekly_costs(w, h) {
+            let amount = rent + bills;
+            let household = &mut w.households[h];
+            let kind = if household.funds >= amount {
+                EventKind::PaidRent
+            } else {
+                EventKind::RentDebt
+            };
+            household.funds -= amount;
+            if household.player {
+                w.events.push_detail(tick, kind, member, Some(amount), None);
+            }
+        }
+        if w.households[h].funds < 0
+            && let Some(m) = rent.debt_feeling
+        {
+            let World { sims, content, .. } = &mut *w;
+            for s in sims.iter_mut().filter(|s| s.household as usize == h) {
+                social::add_feeling(&mut s.feelings, m, &content.feelings, tick);
+            }
+        }
+    }
 }
 
 /// Guests go home when the visit is over, it's late, or they need something.
@@ -246,13 +410,13 @@ mod tests {
     const CONTENT: &str = r#"{
         "needs":[{"id":"hunger","label":"Hunger","decayPerHour":0.02},{"id":"social","label":"Social","decayPerHour":0.02}],
         "objects":[{"id":"chair","name":"Chair","interactions":[{"id":"sit","label":"Sit","minutes":30,"effects":{"social":0.01},"tags":["lounge"]}]}],
-        "moodlets":[{"id":"promoted","label":"Promoted","mood":0.2,"hours":24}],
+        "feelings":[{"id":"promoted","label":"Promoted","mood":0.2,"hours":24}],
         "socials":[{"id":"chat","label":"Chat","minutes":10,"tags":["social"],"acceptance":{"base":1.0},"needs":{"social":0.3}}],
         "bondPresets":{"friends":{"friendship":60}},
         "careers":[{"id":"office","label":"Office","workEffects":{"hunger":-0.2},"levels":[
             {"title":"Intern","pay":100,"start":9,"hours":4,"days":[0,1,2,3,4,5,6]},
             {"title":"Clerk","pay":200,"start":9,"hours":4,"days":[0,1,2,3,4,5,6]}]}],
-        "careerRules":{"promotionMoodlet":"promoted","performancePerShift":60},
+        "careerRules":{"promotionFeeling":"promoted","performancePerShift":60},
         "visits":{"needs":{"social":0.5},"hours":2,"minFriendship":10,"earliestHour":0,"latestHour":24},
         "economy":{"startingFunds":500}}"#;
 
@@ -362,8 +526,20 @@ mod tests {
         let mut w = World::from_json(CONTENT, TOWN, 1).unwrap();
         w.apply(Command::QuitCareer { sim: 0 }).unwrap();
         assert!(w.sims[0].job.is_none());
-        w.apply(Command::JoinCareer { sim: 1, career: 0 }).unwrap();
+        w.apply(Command::JoinCareer {
+            sim: 1,
+            career: 0,
+            level: 0,
+        })
+        .unwrap();
         assert_eq!(w.sims[1].job.as_ref().unwrap().level, 0);
-        assert!(w.apply(Command::JoinCareer { sim: 1, career: 9 }).is_err());
+        assert!(
+            w.apply(Command::JoinCareer {
+                sim: 1,
+                career: 9,
+                level: 0
+            })
+            .is_err()
+        );
     }
 }

@@ -59,6 +59,12 @@ mod tests {
             pose: Pose::Stand,
             autonomous: true,
             tags: 0,
+            skill_gain: [0.0; crate::content::MAX_SKILLS],
+            cost: 0,
+            skill: None,
+            feeling: None,
+            feeling_min_skill: 0.0,
+            anim: None,
         }
     }
 

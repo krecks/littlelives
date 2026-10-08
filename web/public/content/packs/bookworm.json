@@ -1,0 +1,212 @@
+{
+  "$comment": "Bookworm pack: reading nooks, a rare-books library wall, a writer's bureau, a tea trolley and a fireside reading lounge. Bookworms already love 'reading'; this pack adds 'cozy' (comfortable reading spots) and 'study' (deep research and drafting) so they seek out these items, and gives them ways to look after comfort, hunger and social while they read. See docs/personalities/bookworm.md.",
+  "objects": [
+    {
+      "id": "bookworm.readingNook",
+      "name": "Window-seat reading nook",
+      "model": "model.bookworm.readingNook",
+      "footprint": [2, 1],
+      "price": 850,
+      "category": "living",
+      "slots": 1,
+      "description": "A cushioned window seat between two little bookcases: reading here is fun and comfortable at the same time.",
+      "interactions": [
+        {
+          "id": "curlUp",
+          "label": "Curl up with a novel",
+          "anim": "read",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": { "fun": 0.55, "comfort": 0.5 },
+          "tags": ["reading", "entertainment", "cozy", "lounge"],
+          "skills": { "intelligence": 0.08, "writing": 0.03 }
+        }
+      ]
+    },
+    {
+      "id": "bookworm.libraryWall",
+      "name": "Rare-books library wall",
+      "model": "model.bookworm.libraryWall",
+      "footprint": [2, 1],
+      "price": 1250,
+      "category": "office",
+      "slots": 1,
+      "description": "Floor-to-ceiling shelves of rare editions with a rolling ladder. Trains Intelligence; scholars (Intelligence 4+) come away with a eureka moment.",
+      "interactions": [
+        {
+          "id": "research",
+          "label": "Research a rare tome",
+          "anim": "read",
+          "minutes": 60,
+          "effects": { "fun": 0.1 },
+          "tags": ["reading", "training", "study"],
+          "skills": { "intelligence": 0.24, "writing": 0.06 },
+          "skill": "intelligence",
+          "feeling": "bookworm.eureka",
+          "feelingMinSkill": 4
+        },
+        {
+          "id": "browse",
+          "label": "Browse the rare editions",
+          "anim": "read",
+          "minutes": 45,
+          "effects": { "fun": 0.48 },
+          "tags": ["reading", "entertainment"],
+          "skills": { "intelligence": 0.1, "perception": 0.04 }
+        }
+      ]
+    },
+    {
+      "id": "bookworm.writingBureau",
+      "name": "Writer's bureau",
+      "model": "model.bookworm.writingBureau",
+      "footprint": [1, 1],
+      "price": 700,
+      "category": "office",
+      "slots": 1,
+      "description": "A roll-top bureau with a mechanical typewriter. Trains Writing; skilled writers (Writing 5+) hit a creative flow.",
+      "interactions": [
+        {
+          "id": "draft",
+          "label": "Draft a manuscript",
+          "anim": "write",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": { "fun": 0.15, "comfort": 0.05 },
+          "tags": ["training", "creative", "study"],
+          "skills": { "writing": 0.23, "creativity": 0.06 },
+          "skill": "writing",
+          "feeling": "bookworm.wordsFlowing",
+          "feelingMinSkill": 5
+        },
+        {
+          "id": "letter",
+          "label": "Write a letter to a friend",
+          "anim": "write",
+          "minutes": 30,
+          "pose": "sit",
+          "effects": { "social": 0.18, "fun": 0.08 },
+          "tags": ["creative", "cozy"],
+          "skills": { "writing": 0.08, "charisma": 0.04 },
+          "skill": "writing"
+        }
+      ]
+    },
+    {
+      "id": "bookworm.teaTrolley",
+      "name": "Book-club tea trolley",
+      "model": "model.bookworm.teaTrolley",
+      "footprint": [1, 1],
+      "price": 240,
+      "category": "kitchen",
+      "slots": 1,
+      "description": "Loose-leaf tea and biscuits on wheels ($4 a pot): a quick comfort-and-nibble break that makes the next book even more inviting.",
+      "interactions": [
+        {
+          "id": "brew",
+          "label": "Brew a pot of tea",
+          "anim": "drink",
+          "minutes": 20,
+          "effects": { "comfort": 0.2, "energy": 0.06, "hunger": 0.06 },
+          "tags": ["food", "lounge", "cozy"],
+          "skill": "cooking",
+          "feeling": "bookworm.teaAndPages"
+        }
+      ]
+    },
+    {
+      "id": "bookworm.firesideLounge",
+      "name": "Fireside reading lounge",
+      "model": "model.bookworm.firesideLounge",
+      "footprint": [2, 2],
+      "price": 2800,
+      "category": "living",
+      "slots": 2,
+      "description": "A stone hearth flanked by two wing chairs. Reading by the fire restores comfort and fun together and leaves a warm glow that improves sleep for hours.",
+      "interactions": [
+        {
+          "id": "readByFire",
+          "label": "Read by the fire",
+          "anim": "read",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": { "comfort": 0.8, "fun": 0.6 },
+          "tags": ["reading", "entertainment", "lounge", "cozy"],
+          "skills": { "intelligence": 0.06 },
+          "feeling": "bookworm.firesideGlow"
+        },
+        {
+          "id": "readAloud",
+          "label": "Read aloud by the fire",
+          "anim": "read",
+          "minutes": 45,
+          "pose": "sit",
+          "effects": { "social": 0.25, "fun": 0.35, "comfort": 0.3 },
+          "tags": ["reading", "cozy"],
+          "skills": { "charisma": 0.06, "writing": 0.04 },
+          "feeling": "bookworm.firesideGlow"
+        }
+      ]
+    },
+    {
+      "id": "bookworm.bedsideStack",
+      "name": "Bedside book stack",
+      "model": "model.bookworm.bedsideStack",
+      "footprint": [1, 1],
+      "price": 90,
+      "category": "bedroom",
+      "slots": 1,
+      "description": "A nightstand piled with half-finished books and a warm lamp: one more chapter before bed.",
+      "interactions": [
+        {
+          "id": "chapter",
+          "label": "Read one more chapter",
+          "anim": "read",
+          "minutes": 20,
+          "effects": { "fun": 0.2, "comfort": 0.05 },
+          "tags": ["reading", "entertainment", "cozy"],
+          "skills": { "intelligence": 0.06 }
+        }
+      ]
+    }
+  ],
+  "feelings": [
+    {
+      "id": "bookworm.eureka",
+      "label": "Eureka!",
+      "emotion": "focused",
+      "mood": 0.1,
+      "hours": 4,
+      "effects": { "skillGain": { "intelligence": 1.3, "writing": 1.15 }, "tagPreference": { "study": 1.4 } }
+    },
+    {
+      "id": "bookworm.wordsFlowing",
+      "label": "Words are flowing",
+      "emotion": "inspired",
+      "mood": 0.1,
+      "hours": 4,
+      "effects": { "skillGain": { "writing": 1.3, "creativity": 1.2 } }
+    },
+    {
+      "id": "bookworm.firesideGlow",
+      "label": "Fireside glow",
+      "emotion": "relaxed",
+      "mood": 0.08,
+      "hours": 6,
+      "effects": { "needGain": { "energy": 1.2, "comfort": 1.15 } }
+    },
+    {
+      "id": "bookworm.teaAndPages",
+      "label": "Tea and pages",
+      "emotion": "happy",
+      "mood": 0.06,
+      "hours": 3,
+      "effects": { "needDecay": { "comfort": 0.85 }, "tagPreference": { "reading": 1.2 } }
+    }
+  ],
+  "traitPatches": {
+    "bookworm": {
+      "effects": { "tagPreference": { "cozy": 1.6, "study": 1.8 } }
+    }
+  }
+}

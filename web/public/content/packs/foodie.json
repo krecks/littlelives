@@ -1,0 +1,245 @@
+{
+  "$comment": "Foodie pack: kitchen and garden items for residents who live to eat. Quick paid nibbles soften the foodie's faster hunger, a cookbook lectern and herb garden train and inspire Cooking, and the premium pizza oven and chef's island reward skilled cooks with feelings that keep them full and learning. Check with: cargo run -q -p sim-core --example check_pack -- web/public/content/packs/foodie.json",
+  "objects": [
+    {
+      "id": "foodie.herbGarden",
+      "name": "Windowsill herb garden",
+      "model": "model.foodie.herbGarden",
+      "footprint": [1, 1],
+      "price": 140,
+      "category": "decor",
+      "slots": 1,
+      "description": "Basil, thyme and rosemary within arm's reach. Tending it leaves residents eager to cook and learning Cooking faster for a few hours.",
+      "interactions": [
+        {
+          "id": "tendHerbs",
+          "label": "Tend the herbs",
+          "anim": "garden",
+          "minutes": 20,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.15, "comfort": 0.05 },
+          "tags": ["chores", "nature", "garden"],
+          "skills": { "cooking": 0.06, "handiness": 0.04 },
+          "feeling": "foodie.freshHerbs"
+        }
+      ]
+    },
+    {
+      "id": "foodie.deliPantry",
+      "name": "Deli pantry",
+      "model": "model.foodie.deliPantry",
+      "footprint": [1, 1],
+      "price": 320,
+      "category": "kitchen",
+      "slots": 1,
+      "description": "Cured meats, aged cheese and good bread on hand: fast, slightly better bites for a few dollars each, perfect for a resident who is always peckish.",
+      "interactions": [
+        {
+          "id": "nibble",
+          "label": "Grab a gourmet nibble",
+          "anim": "eat",
+          "minutes": 10,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "hunger": 0.35, "fun": 0.05 },
+          "tags": ["food"]
+        },
+        {
+          "id": "cheeseBoard",
+          "label": "Put together a cheese board",
+          "anim": "eat",
+          "minutes": 25,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "hunger": 0.55, "fun": 0.1, "comfort": 0.05 },
+          "tags": ["food", "lounge"],
+          "skills": { "cooking": 0.06 }
+        }
+      ]
+    },
+    {
+      "id": "foodie.espressoBar",
+      "name": "Espresso bar",
+      "model": "model.foodie.espressoBar",
+      "footprint": [1, 1],
+      "price": 450,
+      "category": "kitchen",
+      "slots": 1,
+      "description": "A proper lever machine on its own cart. A quick shot perks a resident up and slows their tiredness for a few hours; practising latte art builds steady hands.",
+      "interactions": [
+        {
+          "id": "espresso",
+          "label": "Pull an espresso",
+          "anim": "drink",
+          "minutes": 10,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "energy": 0.05, "fun": 0.05 },
+          "tags": ["food", "lounge"],
+          "feeling": "foodie.caffeinated"
+        },
+        {
+          "id": "latteArt",
+          "label": "Practise latte art",
+          "anim": "drink",
+          "minutes": 30,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.1, "energy": 0.04 },
+          "tags": ["food", "training"],
+          "skills": { "dexterity": 0.12, "cooking": 0.08 }
+        }
+      ]
+    },
+    {
+      "id": "foodie.cookbookLectern",
+      "name": "Cookbook lectern",
+      "model": "model.foodie.cookbookLectern",
+      "footprint": [1, 1],
+      "price": 280,
+      "category": "kitchen",
+      "slots": 1,
+      "description": "A stand of well-thumbed cookbooks. Studying recipes trains Cooking without burning a thing; leafing through food magazines is pure fun for food lovers.",
+      "interactions": [
+        {
+          "id": "studyRecipes",
+          "label": "Study recipes",
+          "anim": "read",
+          "minutes": 60,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.1 },
+          "tags": ["reading", "training", "cooking"],
+          "skills": { "cooking": 0.22, "writing": 0.05 }
+        },
+        {
+          "id": "foodMagazines",
+          "label": "Leaf through food magazines",
+          "anim": "read",
+          "minutes": 45,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.45 },
+          "tags": ["entertainment", "reading"],
+          "skills": { "cooking": 0.06 }
+        }
+      ]
+    },
+    {
+      "id": "foodie.pizzaOven",
+      "name": "Wood-fired pizza oven",
+      "model": "model.foodie.pizzaOven",
+      "footprint": [2, 1],
+      "price": 1400,
+      "category": "outdoor",
+      "slots": 2,
+      "description": "A brick dome for blistered crusts. Pizza gets better with Cooking skill, and good cooks (Cooking 4+) pull out a perfect pie that keeps them full and sociable; two residents can bake together.",
+      "interactions": [
+        {
+          "id": "bakePizza",
+          "label": "Bake a wood-fired pizza",
+          "anim": "cook",
+          "minutes": 50,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "hunger": 0.85, "fun": 0.2 },
+          "tags": ["food", "cooking", "outdoors", "party"],
+          "skills": { "cooking": 0.15, "creativity": 0.03 },
+          "skill": "cooking",
+          "feeling": "foodie.perfectCrust",
+          "feelingMinSkill": 4
+        },
+        {
+          "id": "warmUp",
+          "label": "Warm up by the oven",
+          "anim": "relax",
+          "minutes": 30,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "comfort": 0.3, "fun": 0.1 },
+          "tags": ["outdoors", "lounge"]
+        }
+      ]
+    },
+    {
+      "id": "foodie.chefsIsland",
+      "name": "Chef's island",
+      "model": "model.foodie.chefsIsland",
+      "footprint": [2, 1],
+      "price": 3200,
+      "category": "kitchen",
+      "slots": 2,
+      "description": "Marble-topped island with an induction hob and two bar stools. A multi-course tasting menu feeds, entertains and trains; master cooks (Cooking 6+) feel a culinary triumph that boosts their learning for hours.",
+      "interactions": [
+        {
+          "id": "tastingMenu",
+          "label": "Cook a tasting menu",
+          "anim": "cook",
+          "minutes": 80,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "hunger": 0.95, "fun": 0.3, "comfort": 0.1 },
+          "tags": ["food", "cooking"],
+          "skills": { "cooking": 0.24, "creativity": 0.06 },
+          "skill": "cooking",
+          "feeling": "foodie.culinaryTriumph",
+          "feelingMinSkill": 6
+        },
+        {
+          "id": "barBite",
+          "label": "Grab a bite at the bar",
+          "anim": "eat",
+          "minutes": 20,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "hunger": 0.45, "comfort": 0.15 },
+          "tags": ["food", "lounge"]
+        }
+      ]
+    }
+  ],
+  "feelings": [
+    {
+      "id": "foodie.freshHerbs",
+      "label": "Fresh herbs",
+      "emotion": "inspired",
+      "mood": 0.06,
+      "hours": 4,
+      "effects": { "skillGain": { "cooking": 1.15 }, "tagPreference": { "cooking": 1.3 } }
+    },
+    {
+      "id": "foodie.caffeinated",
+      "label": "Fresh espresso",
+      "emotion": "energized",
+      "mood": 0.05,
+      "hours": 3,
+      "effects": { "needDecay": { "energy": 0.85 } }
+    },
+    {
+      "id": "foodie.perfectCrust",
+      "label": "Perfect crust",
+      "emotion": "happy",
+      "mood": 0.1,
+      "hours": 5,
+      "effects": { "needDecay": { "hunger": 0.8 }, "needGain": { "social": 1.2 } }
+    },
+    {
+      "id": "foodie.culinaryTriumph",
+      "label": "Culinary triumph",
+      "emotion": "inspired",
+      "mood": 0.14,
+      "hours": 8,
+      "effects": {
+        "skillGain": { "cooking": 1.25, "creativity": 1.15 },
+        "needDecay": { "hunger": 0.85 },
+        "tagPreference": { "cooking": 1.3 }
+      }
+    }
+  ],
+  "traitPatches": {
+    "foodie": {
+      "effects": { "tagPreference": { "garden": 1.4, "party": 1.3 } }
+    }
+  }
+}

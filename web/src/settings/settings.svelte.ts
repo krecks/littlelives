@@ -4,11 +4,14 @@
  */
 
 import { QUALITY, type QualitySettings } from '../render/quality';
+import { VISUAL_STYLES, type VisualStyle } from '../render/styles';
 
 export type QualityPreset = keyof typeof QUALITY;
 
 export interface Settings {
   quality: QualityPreset;
+  /** Look of the world: `classic` (warm stylised realism), `bright` (clean, pastel), `retro`. Applies live. */
+  visualStyle: VisualStyle;
   renderer: 'auto' | 'webgl';
   /** Fraction of native resolution, 0.5..1. */
   resolutionScale: number;
@@ -27,10 +30,12 @@ export interface Settings {
 
 export const RESTART_KEYS: readonly (keyof Settings)[] = ['quality', 'renderer', 'ambientOcclusion'];
 
+// Legacy key from the project's old name; kept so saves survive (and settings with them).
 const STORAGE_KEY = 'open-sims-wasm.settings';
 
 export const DEFAULT_SETTINGS: Settings = {
   quality: 'high',
+  visualStyle: 'classic',
   renderer: 'auto',
   resolutionScale: 1,
   bloom: QUALITY.high.bloom,
@@ -48,7 +53,9 @@ export const DEFAULT_SETTINGS: Settings = {
 function load(): Settings {
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Partial<Settings>;
-    return { ...DEFAULT_SETTINGS, ...stored };
+    const merged = { ...DEFAULT_SETTINGS, ...stored };
+    if (!VISUAL_STYLES.includes(merged.visualStyle)) merged.visualStyle = DEFAULT_SETTINGS.visualStyle;
+    return merged;
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
@@ -89,5 +96,6 @@ export function qualityFromSettings(s: Settings, params: URLSearchParams): Quali
     tiltShift: s.tiltShift,
     ambientOcclusion: params.has('quality') ? preset.ambientOcclusion : s.ambientOcclusion,
     snapshotRendering: preset.snapshotRendering && params.get('snapshot') !== '0',
+    visualStyle: (VISUAL_STYLES as readonly string[]).includes(params.get('style') ?? '') ? (params.get('style') as VisualStyle) : s.visualStyle,
   };
 }

@@ -1,11 +1,13 @@
 //! Save games: a versioned, content-independent snapshot of the world.
 //!
-//! Objects, traits, perks, needs, interactions, moodlets and careers are stored by id
+//! Objects, traits, perks, needs, interactions, feelings and careers are stored by id
 //! (not index), so saves survive content changes; anything that no longer exists is
 //! dropped on load. In-progress activities restart from the beginning on load.
 //!
 //! Version history: 1 = single household; 2 = town (households, plots), relationships,
-//! moodlets, gender and attraction; 3 = jobs, funds, visits, exits. Older files load.
+//! feelings, gender and attraction; 3 = jobs, funds, visits, exits; 4 = skills, object
+//! quality/style/value, household style. Older files load. Saves written before feelings
+//! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -19,7 +21,7 @@ use crate::social::{self, Relationship};
 use crate::world::{Household, Plot, Task, TaskKind, World};
 use crate::{Error, MINUTES_PER_TICK, clock::MAX_SPEED};
 
-pub const SAVE_VERSION: u32 = 3;
+pub const SAVE_VERSION: u32 = 4;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -49,7 +51,7 @@ pub struct SaveFile {
 pub struct LotSave {
     pub width: usize,
     pub depth: usize,
-    /// One character per edge: `0` open, `1` wall, `2` door.
+    /// One character per edge: `0` open, `1` wall, `2` door, `3` window.
     pub h_edges: String,
     pub v_edges: String,
 }
@@ -60,6 +62,13 @@ pub struct ObjectSave {
     pub x: i32,
     pub z: i32,
     pub rot: u8,
+    #[serde(default)]
+    pub quality: u8,
+    #[serde(default)]
+    pub style: u8,
+    /// Money put into it; defaults to the price.
+    #[serde(default)]
+    pub value: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -80,7 +89,11 @@ pub struct SimSave {
     /// Sorted so identical worlds produce identical save files.
     pub needs: BTreeMap<String, f32>,
     #[serde(default)]
-    pub moodlets: Vec<MoodletSave>,
+    #[serde(alias = "moodlets")] // key before the moodlet → feeling rename
+    pub feelings: Vec<FeelingSave>,
+    /// Skill levels by id (sorted). Missing in old saves: traits decide.
+    #[serde(default)]
+    pub skills: BTreeMap<String, f32>,
     #[serde(default)]
     pub job: Option<JobSave>,
     /// Minutes left at work, if away.
@@ -104,7 +117,7 @@ pub struct JobSave {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MoodletSave {
+pub struct FeelingSave {
     pub id: String,
     pub minutes_left: f32,
 }
@@ -135,6 +148,11 @@ pub enum TaskSave {
     GoHome {
         directed: bool,
     },
+    /// Old saves only (upgrades are instant now); dropped on load.
+    Upgrade {
+        #[allow(dead_code)]
+        object: u32,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -144,6 +162,8 @@ pub struct HouseholdSave {
     pub player: bool,
     #[serde(default)]
     pub funds: Option<i64>,
+    #[serde(default)]
+    pub style: u8,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -180,6 +200,9 @@ impl World {
                 x: o.x,
                 z: o.z,
                 rot: o.rot,
+                quality: o.quality,
+                style: o.style,
+                value: Some(o.value),
             })
             .collect();
         let sims = self
@@ -201,11 +224,11 @@ impl World {
                     .chain(s.queue())
                     .map(|t| self.task_save(t))
                     .collect();
-                let moodlets = s
-                    .moodlets
+                let feelings = s
+                    .feelings
                     .iter()
-                    .map(|m| MoodletSave {
-                        id: content.moodlets[m.def].id.clone(),
+                    .map(|m| FeelingSave {
+                        id: content.feelings[m.def].id.clone(),
                         minutes_left: minutes_left(m.expires),
                     })
                     .collect();
@@ -225,7 +248,13 @@ impl World {
                         .enumerate()
                         .map(|(i, n)| (n.id.clone(), s.needs[i]))
                         .collect(),
-                    moodlets,
+                    feelings,
+                    skills: content
+                        .skills
+                        .iter()
+                        .enumerate()
+                        .map(|(i, k)| (k.id.clone(), s.skills[i]))
+                        .collect(),
                     job: s.job.as_ref().map(|j| JobSave {
                         career: content.careers[j.career].id.clone(),
                         level: j.level,
@@ -278,6 +307,7 @@ impl World {
                     plot: h.plot,
                     player: h.player,
                     funds: Some(h.funds),
+                    style: h.style,
                 })
                 .collect(),
             plots: self
@@ -351,6 +381,7 @@ impl World {
                 plot: None,
                 player: true,
                 funds: starting_funds,
+                style: 0,
             }]
         } else {
             save.households
@@ -362,6 +393,7 @@ impl World {
                     plot: h.plot,
                     player: h.player,
                     funds: h.funds.unwrap_or(starting_funds),
+                    style: h.style,
                 })
                 .collect()
         };
@@ -369,7 +401,17 @@ impl World {
         // Keep object ids stable: a removed object type would shift ids, so tasks are remapped.
         let mut object_ids = HashMap::new();
         for (i, o) in save.objects.iter().enumerate() {
-            match world.place_object(&o.def, o.x, o.z, o.rot) {
+            let placed = match world.content.object_index(&o.def) {
+                Some(def) => {
+                    let value = o
+                        .value
+                        .unwrap_or(world.content.objects[def].price.unwrap_or(0));
+                    let style = world.check_style(o.style).unwrap_or(0);
+                    world.place(def, o.x, o.z, o.rot, style, o.quality, value)
+                }
+                None => world.place_object(&o.def, o.x, o.z, o.rot),
+            };
+            match placed {
                 Ok(id) => {
                     object_ids.insert(i as u32, id);
                 }
@@ -387,6 +429,7 @@ impl World {
                 appearance: s.appearance.clone(),
                 traits: s.traits.clone(),
                 perks: s.perks.clone(),
+                skills: Default::default(),
                 x: s.pos[0],
                 z: s.pos[1],
             };
@@ -408,10 +451,15 @@ impl World {
                     .unwrap_or(0.75)
                     .clamp(0.0, 1.0);
             }
-            for m in &s.moodlets {
-                if let Some(def) = content.moodlet_index(&m.id) {
-                    let expires = after(m.minutes_left.min(content.moodlets[def].minutes));
-                    sim.moodlets.push(social::ActiveMoodlet { def, expires });
+            for m in &s.feelings {
+                if let Some(def) = content.feeling_index(&m.id) {
+                    let expires = after(m.minutes_left.min(content.feelings[def].minutes));
+                    sim.feelings.push(social::ActiveFeeling { def, expires });
+                }
+            }
+            for (i, skill) in content.skills.iter().enumerate() {
+                if let Some(&v) = s.skills.get(&skill.id) {
+                    sim.skills[i] = v.clamp(0.0, content.skill_rules.max_level);
                 }
             }
             sim.job = s.job.as_ref().and_then(|j| {
@@ -496,6 +544,8 @@ impl World {
                         kind: TaskKind::GoHome,
                         directed: *directed,
                     },
+                    // Upgrades used to be a Sim task; they are instant purchases now.
+                    TaskSave::Upgrade { .. } => continue,
                 };
                 sim.queue.push_back(task);
             }
@@ -512,6 +562,10 @@ impl World {
                     world.relationships.set_chemistry(a, b, r.chemistry);
                 }
             }
+        }
+        // Buffs from saved feelings apply straight away.
+        for sim in &mut world.sims {
+            sim.refresh_buffs(&world.content);
         }
         // Spawning consumed random numbers; restore the saved stream.
         world.rng = Rng::new(save.rng);
@@ -561,6 +615,7 @@ fn encode(edges: &[Edge]) -> String {
             Edge::Open => '0',
             Edge::Wall => '1',
             Edge::Door => '2',
+            Edge::Window => '3',
         })
         .collect()
 }
@@ -571,6 +626,7 @@ fn decode(s: &str) -> Result<Vec<Edge>, Error> {
             '0' => Ok(Edge::Open),
             '1' => Ok(Edge::Wall),
             '2' => Ok(Edge::Door),
+            '3' => Ok(Edge::Window),
             _ => Err(Error::new("corrupt lot edges in save")),
         })
         .collect()
@@ -586,7 +642,7 @@ mod tests {
           {"id":"fridge","name":"Fridge","interactions":[{"id":"snack","label":"Snack","minutes":10,"effects":{"hunger":0.4}}]},
           {"id":"bed","name":"Bed","footprint":[2,2],"interactions":[{"id":"sleep","label":"Sleep","minutes":480,"pose":"lie","effects":{"energy":1.0}}]}],
         "genders":[{"id":"female","label":"Female"},{"id":"male","label":"Male"}],
-        "moodlets":[{"id":"happy","label":"Happy","mood":0.1,"hours":3}],
+        "feelings":[{"id":"happy","label":"Happy","mood":0.1,"hours":3}],
         "bondPresets":{"friends":{"friendship":60}},
         "traits":[{"id":"lazy","label":"Lazy","effects":{"walkSpeed":0.8}}]}"#;
 
@@ -607,7 +663,7 @@ mod tests {
         })
         .unwrap();
         w.apply(Command::SetAutonomy { enabled: false }).unwrap();
-        crate::social::add_moodlet(&mut w.sims[0].moodlets, 0, &w.content.moodlets, w.tick);
+        crate::social::add_feeling(&mut w.sims[0].feelings, 0, &w.content.feelings, w.tick);
         for _ in 0..137 {
             w.tick_once();
         }
@@ -625,7 +681,7 @@ mod tests {
         assert_eq!(loaded.sims[0].attracted_to, ["male"]);
         assert_eq!(loaded.sims[0].appearance["body"], "#fff");
         assert!((loaded.sims[0].mods.walk_speed - 0.8).abs() < 1e-6);
-        assert_eq!(loaded.sims[0].moodlets.len(), 1);
+        assert_eq!(loaded.sims[0].feelings.len(), 1);
         assert_eq!(loaded.relationships.get(0, 1), w.relationships.get(0, 1));
         assert_eq!(
             loaded.relationships.chemistry(0, 1),
@@ -682,6 +738,36 @@ mod tests {
     }
 
     #[test]
+    fn old_upgrade_tasks_are_dropped_on_load() {
+        let w = World::from_json(CONTENT, LOT, 3).unwrap();
+        let json = w.save_json().replacen(
+            r#""tasks":[]"#,
+            r#""tasks":[{"type":"upgrade","object":1},{"type":"moveTo","x":2.5,"z":2.5,"directed":true}]"#,
+            1,
+        );
+        let loaded = World::from_save_json(CONTENT, &json).unwrap();
+        assert_eq!(loaded.sims[0].queue().count(), 1, "only the move is kept");
+    }
+
+    #[test]
+    fn saves_with_moodlets_still_load() {
+        // Saves written before the moodlet → feeling rename store `moodlets` per Sim.
+        let mut w = World::from_json(CONTENT, LOT, 3).unwrap();
+        crate::social::add_feeling(&mut w.sims[0].feelings, 0, &w.content.feelings, w.tick);
+        let mut saved: serde_json::Value = serde_json::from_str(&w.save_json()).unwrap();
+        let sim = saved["sims"][0].as_object_mut().unwrap();
+        let feelings = sim.remove("feelings").expect("new saves write `feelings`");
+        assert_eq!(feelings[0]["id"], "happy");
+        sim.insert("moodlets".into(), feelings);
+        let loaded = World::from_save_json(CONTENT, &saved.to_string()).unwrap();
+        assert_eq!(loaded.sims[0].feelings.len(), 1);
+        assert_eq!(
+            loaded.content.feelings[loaded.sims[0].feelings[0].def].id,
+            "happy"
+        );
+    }
+
+    #[test]
     fn version_one_saves_still_load() {
         let v1 = r#"{"version":1,"tick":10,"speed":1,"autonomy":true,"rng":5,
             "lot":{"width":4,"depth":4,"hEdges":"00000000000000000000","vEdges":"00000000000000000000"},
@@ -690,5 +776,23 @@ mod tests {
         let w = World::from_save_json(CONTENT, v1).unwrap();
         assert_eq!(w.sims[0].gender, "female", "defaults to the first gender");
         assert_eq!(w.sims[0].attracted_to.len(), 2);
+    }
+
+    #[test]
+    fn windows_survive_saving() {
+        let lot = LOT.replacen(
+            r#""doors":"#,
+            r#""windows":[{"x":6,"z":8,"axis":"z"}],"doors":"#,
+            1,
+        );
+        let w = World::from_json(CONTENT, &lot, 3).unwrap();
+        assert_eq!(w.lot.v_edge(6, 8), crate::lot::Edge::Window);
+        let json = w.save_json();
+        let saved: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(saved["lot"]["vEdges"].as_str().unwrap().contains('3'));
+        let loaded = World::from_save_json(CONTENT, &json).unwrap();
+        assert_eq!(loaded.lot.v_edge(6, 8), crate::lot::Edge::Window);
+        assert_eq!(loaded.lot.v_edge(6, 4), crate::lot::Edge::Door);
+        assert_eq!(loaded.save_json(), json);
     }
 }

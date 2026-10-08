@@ -7,8 +7,17 @@ import type { AssetRegistry } from '../assets/registry';
 import type { Content } from '../content/content';
 import type { FrameState } from '../core/bridge';
 import type { WorldStructure } from '../core/protocol';
+import type { Appearance } from '../game/household';
+import type { VisualStyle } from './styles';
 
-export type WallMode = 'up' | 'down';
+export type { VisualStyle } from './styles';
+
+/**
+ * `up`: full walls and roofs. `cutaway`: walls between the camera and the rooms behind them
+ * drop to stubs (done in the vertex shader, follows the camera). `down`: all walls are stubs.
+ * Roofs are only drawn with walls up.
+ */
+export type WallMode = 'up' | 'cutaway' | 'down';
 
 /** Tile rectangle of the lot being shown. */
 export interface ViewRect {
@@ -16,6 +25,14 @@ export interface ViewRect {
   z: number;
   w: number;
   d: number;
+}
+
+/** An orbit camera pose: angles in radians, distance and target in metres. */
+export interface CameraPose {
+  alpha: number;
+  beta: number;
+  radius: number;
+  target: [number, number, number];
 }
 
 export interface RenderStats {
@@ -47,6 +64,65 @@ export interface LiveRenderOptions {
   /** Fraction of native resolution, 0.5..1. */
   resolutionScale: number;
   cameraSensitivity: number;
+  /** Look of the world (lighting, sky, post-processing); omitted = unchanged. */
+  visualStyle?: VisualStyle;
+}
+
+/** Translucent preview of an object being placed in buy mode. */
+export interface PlacementGhost {
+  /** Asset key of the model (style variant already resolved by the caller, or a base key). */
+  model: string;
+  /** Min corner (tiles) of the rotated footprint `w`×`d`. */
+  x: number;
+  z: number;
+  /** Quarter turns 0..3, same convention as placed objects. */
+  rot: number;
+  w: number;
+  d: number;
+  valid: boolean;
+}
+
+/**
+ * Wall-tool preview segment. An `h` edge at (x, z) runs from (x, z) to (x + 1, z) in world
+ * metres; a `v` edge from (x, z) to (x, z + 1). `open` marks an existing wall for removal.
+ */
+export interface EdgePreview {
+  axis: 'h' | 'v';
+  x: number;
+  z: number;
+  kind: 'wall' | 'door' | 'window' | 'open';
+}
+
+/** A camera shot of the town overview (menus). */
+export interface TownShot {
+  /** World rectangle (metres) to keep in view. */
+  focus: ViewRect;
+  /** Screen area (canvas CSS pixels) to frame the focus into; default: the whole canvas. */
+  frame?: { left: number; top: number; right: number; bottom: number };
+  /** Orbit angle around the focus (as the game camera's alpha); omitted keeps the current one. */
+  alpha?: number;
+  /** Tilt from straight down (radians). */
+  beta?: number;
+  /** Above 1 frames tighter than a fit (the focus may overflow the frame). */
+  zoom?: number;
+  /** Slow orbit, radians per second. */
+  drift?: number;
+  /** Gentle back-and-forth around `alpha` (radians either way, about a minute per swing). */
+  sway?: number;
+  /** Glide time in seconds; 0 cuts. Default 1.2. */
+  duration?: number;
+  /** Time of day for the light (minute of the day), eased in over the glide; omitted keeps it. */
+  minute?: number;
+}
+
+/** Which lots of the overview glow (plot ids). */
+export interface LotHighlight {
+  hover: number | null;
+  selected: number | null;
+  /** Lots drawn as available (e.g. for sale). */
+  marked: readonly number[];
+  /** Faint outlines around every lot. */
+  outlines: boolean;
 }
 
 export interface Renderer {
@@ -70,10 +146,21 @@ export interface Renderer {
   setHoverTile(tile: { x: number; z: number } | null): void;
   setSelectedSim(id: number | null): void;
   setWallMode(mode: WallMode): void;
+  /** Switches the visual style live (also possible through `configure`). */
+  setVisualStyle(style: VisualStyle): void;
+  /** Build/buy mode: object placement preview (null hides it). Cheap; call on every pointer move. */
+  setPlacementGhost(ghost: PlacementGhost | null): void;
+  /** Build mode: wall/door/removal preview segments; `valid` tints them. Cheap; call on every pointer move. */
+  setEdgePreview(edges: readonly EdgePreview[], valid: boolean): void;
+  /** Build/buy mode: subtle tile grid over a tile rectangle (null hides it). */
+  setBuildGrid(rect: ViewRect | null): void;
   stats(): RenderStats;
   configure(options: LiveRenderOptions): void;
   /** Small JPEG data URL of the current view, or null if capture isn't possible. */
   captureThumbnail(width: number, height: number): Promise<string | null>;
+  /** The game camera's pose (debug reports), and putting it back. */
+  cameraPose(): CameraPose;
+  setCameraPose(pose: CameraPose): void;
   /**
    * Sets the per-frame callback (runs before each frame is drawn) and starts drawing.
    * The renderer outlives game sessions: its engine and compiled shaders are reused.
@@ -87,5 +174,84 @@ export interface Renderer {
   setIdleOrbit(on: boolean): void;
   /** Removes the current world (end of a session); cached meshes and the landscape are kept. */
   clear(): void;
+  /**
+   * Menus: draws an overview of `world` (every lot as a dressed shell, no interiors or Sims) in
+   * place of the game world, which stays loaded, hidden, and can keep building meanwhile.
+   * Lighting is fixed at `minute` of the day. Resolves once the overview is built.
+   */
+  showTown(world: WorldStructure, minute: number): Promise<void>;
+  /**
+   * Back to the game world (the overview is kept for the next menu). With `glide` > 0 the camera
+   * first flies from the overview into the game's view (seconds); resolves when it is shown.
+   */
+  hideTown(glide?: number): Promise<void>;
+  /** Whether the overview is on screen. */
+  readonly townShown: boolean;
+  /** Overview camera: glides to (or with `cut`, jumps to) a shot. */
+  setTownShot(shot: TownShot, cut?: boolean): void;
+  /** Overview camera: user orbit (radians) and zoom factor on top of the shot. */
+  nudgeTown(dAlpha: number, zoom: number): void;
+  setLotHighlight(highlight: LotHighlight): void;
+  /** Runs each overview frame after the camera moved, before drawing (to pin labels); null removes it. */
+  onTownFrame(fn: (() => void) | null): void;
   dispose(): void;
+}
+
+// --- Sim previews (household-creator stage and portraits; `render/preview`) --------------------
+
+/** What a Sim looks like: everything a preview or portrait is drawn from. */
+export interface SimLook {
+  gender: string;
+  appearance: Appearance;
+  /**
+   * The Sim's id in a running game. Sims from older saves have no garments in their appearance;
+   * the game then derives them from the id, and so do portraits.
+   */
+  id?: number;
+}
+
+/**
+ * Short reactions on the household-creator stage: `hello` (a wave), `cheer` (randomized: a wave and a
+ * big smile), `admire` (a look at the new look), or `trait:<id>` (a trait's typical expression or
+ * gesture; unknown traits get a friendly nod).
+ */
+export type StageReaction = 'hello' | 'cheer' | 'admire' | `trait:${string}`;
+
+/** The live 3D household-creator stage (a transparent canvas filling its host element). */
+export interface SimStage {
+  /** Shows a Sim; appearance changes restyle it without restarting its animation. */
+  show(look: SimLook): void;
+  react(reaction: StageReaction): void;
+  /** Framing: 0 = full body .. 1 = face (animated). */
+  zoomTo(zoom: number): void;
+  /** Called when the framing target changes (wheel, double-click, `zoomTo`). */
+  onZoom: ((zoom: number) => void) | null;
+  /** Removes the canvas; the preview engine is released when nothing else needs it. */
+  detach(): void;
+}
+
+/** Garments a body can wear (character part names), for the creator's choices. */
+export interface Wardrobe {
+  tops: string[];
+  bottoms: string[];
+  shoes: string[];
+  /** Whether the body has facial hair. */
+  beard: boolean;
+}
+
+/**
+ * 3D Sim previews from the in-game character pipeline: the household-creator stage and cached
+ * head-and-shoulders portraits. One small engine serves both; it exists only while a stage is
+ * attached or portraits are being rendered.
+ */
+export interface SimPreviews {
+  /** Attaches the stage to `host`; null when 3D characters are unavailable. */
+  stage(host: HTMLElement): Promise<SimStage | null>;
+  /** Portrait image URL (cached by look; batched). Null when 3D characters are unavailable. */
+  portrait(look: SimLook): Promise<string | null>;
+  /** The cached portrait URL, if there is one already. */
+  cachedPortrait(look: SimLook): string | null;
+  /** Renders portraits ahead of time (e.g. everyone in a game being prepared). */
+  prefetch(looks: readonly SimLook[]): void;
+  wardrobe(gender: string): Promise<Wardrobe | null>;
 }

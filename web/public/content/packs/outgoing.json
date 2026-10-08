@@ -1,0 +1,208 @@
+{
+  "$comment": "Outgoing pack: places to gather, perform and party, plus a way to stay connected when nobody is home. Adds tags 'party' and 'music' (shared vocabulary). See docs/personalities/outgoing.md.",
+  "objects": [
+    {
+      "id": "outgoing.partyBar",
+      "name": "Home party bar",
+      "model": "model.outgoing.partyBar",
+      "footprint": [2, 1],
+      "price": 1150,
+      "category": "kitchen",
+      "slots": 2,
+      "description": "A two-stool bar where everyone ends up: mixing drinks is fun, gets better with Charisma, and charming hosts (Charisma 4+) become the life of the party.",
+      "interactions": [
+        {
+          "id": "mixDrinks",
+          "label": "Mix drinks for everyone",
+          "anim": "drink",
+          "minutes": 30,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.32, "hunger": 0.08, "social": 0.04, "bladder": -0.08 },
+          "tags": ["party", "entertainment"],
+          "skills": { "charisma": 0.06 },
+          "skill": "charisma",
+          "feeling": "outgoing.lifeOfTheParty",
+          "feelingMinSkill": 4
+        },
+        {
+          "id": "soda",
+          "label": "Grab a fizzy soda",
+          "anim": "drink",
+          "minutes": 10,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "hunger": 0.1, "fun": 0.05, "bladder": -0.04 },
+          "tags": ["food", "party"]
+        }
+      ]
+    },
+    {
+      "id": "outgoing.conversationSectional",
+      "name": "Conversation sectional",
+      "model": "model.outgoing.conversationSectional",
+      "footprint": [2, 2],
+      "price": 1350,
+      "category": "living",
+      "slots": 2,
+      "description": "A deep L-shaped sofa built for long evenings with friends: comfier than a plain sofa and a little fun to hang out on.",
+      "interactions": [
+        {
+          "id": "hangOut",
+          "label": "Hang out",
+          "anim": "relax",
+          "minutes": 30,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "comfort": 0.7, "fun": 0.08 },
+          "tags": ["rest", "lounge", "party"]
+        }
+      ]
+    },
+    {
+      "id": "outgoing.karaokeStage",
+      "name": "Karaoke stage",
+      "model": "model.outgoing.karaokeStage",
+      "footprint": [2, 1],
+      "price": 680,
+      "category": "hobbies",
+      "slots": 2,
+      "description": "Two mics and a lyrics screen: practising songs builds Charisma, and a confident singer (Charisma 5+) brings the house down.",
+      "interactions": [
+        {
+          "id": "practise",
+          "label": "Practise a song",
+          "anim": "sing",
+          "minutes": 60,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.3 },
+          "tags": ["training", "music"],
+          "skills": { "charisma": 0.22, "creativity": 0.05 }
+        },
+        {
+          "id": "perform",
+          "label": "Belt out a showstopper",
+          "anim": "sing",
+          "minutes": 30,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.35, "social": 0.05, "energy": -0.04 },
+          "tags": ["music", "party", "entertainment"],
+          "skills": { "charisma": 0.08 },
+          "skill": "charisma",
+          "feeling": "outgoing.showstopper",
+          "feelingMinSkill": 5
+        }
+      ]
+    },
+    {
+      "id": "outgoing.videoCallNook",
+      "name": "Video-call corner",
+      "model": "model.outgoing.videoCallNook",
+      "footprint": [1, 1],
+      "price": 360,
+      "category": "office",
+      "slots": 1,
+      "description": "A little desk with a ring light for calling friends: tops up Social when nobody is home (slower than a real chat).",
+      "interactions": [
+        {
+          "id": "call",
+          "label": "Video-call a friend",
+          "anim": "phone",
+          "minutes": 30,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "social": 0.3, "fun": 0.08 },
+          "tags": ["screen", "entertainment"],
+          "feeling": "outgoing.caughtUp"
+        }
+      ]
+    },
+    {
+      "id": "outgoing.danceFloor",
+      "name": "Light-up dance floor",
+      "model": "model.outgoing.danceFloor",
+      "footprint": [2, 2],
+      "price": 3400,
+      "category": "hobbies",
+      "slots": 2,
+      "description": "Glowing tiles and a mirror ball: dancing is great fun with company, builds a little Endurance and Dexterity, and leaves a party glow that keeps loneliness away.",
+      "interactions": [
+        {
+          "id": "dance",
+          "label": "Dance the night away",
+          "anim": "dance",
+          "minutes": 45,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.6, "social": 0.12, "energy": -0.08, "hygiene": -0.06 },
+          "tags": ["party", "music", "entertainment"],
+          "skills": { "endurance": 0.06, "dexterity": 0.06 },
+          "feeling": "outgoing.partyGlow"
+        }
+      ]
+    },
+    {
+      "id": "outgoing.photoWall",
+      "name": "Party photo wall",
+      "model": "model.outgoing.photoWall",
+      "footprint": [1, 1],
+      "price": 120,
+      "category": "decor",
+      "slots": 1,
+      "description": "A board of snapshots and string lights: a quick look at good times takes the edge off loneliness.",
+      "interactions": [
+        {
+          "id": "reminisce",
+          "label": "Look at party photos",
+          "anim": "look",
+          "minutes": 15,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": { "fun": 0.08, "social": 0.06 },
+          "tags": ["party"]
+        }
+      ]
+    }
+  ],
+  "feelings": [
+    {
+      "id": "outgoing.lifeOfTheParty",
+      "label": "Life of the party",
+      "emotion": "happy",
+      "mood": 0.1,
+      "hours": 5,
+      "effects": { "needDecay": { "social": 0.8 }, "tagSuccess": { "friendly": 0.08 }, "skillGain": { "charisma": 1.15 } }
+    },
+    {
+      "id": "outgoing.showstopper",
+      "label": "Showstopper",
+      "emotion": "inspired",
+      "mood": 0.09,
+      "hours": 4,
+      "effects": { "skillGain": { "charisma": 1.2, "creativity": 1.15 }, "tagAcceptance": { "friendly": 0.05 } }
+    },
+    {
+      "id": "outgoing.partyGlow",
+      "label": "Party glow",
+      "emotion": "energized",
+      "mood": 0.1,
+      "hours": 4,
+      "effects": { "needDecay": { "social": 0.75 }, "needGain": { "fun": 1.15, "social": 1.15 } }
+    },
+    {
+      "id": "outgoing.caughtUp",
+      "label": "Caught up with friends",
+      "emotion": "happy",
+      "mood": 0.05,
+      "hours": 3,
+      "effects": { "needDecay": { "social": 0.85 } }
+    }
+  ],
+  "traitPatches": {
+    "outgoing": {
+      "effects": { "tagPreference": { "party": 1.8, "music": 1.4 } }
+    }
+  }
+}

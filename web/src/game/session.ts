@@ -9,11 +9,17 @@ import { Content } from '../content/content';
 import { SimBridge } from '../core/bridge';
 import type { GameSource, WorldStructure } from '../core/protocol';
 import { AUTOSAVE_ID, readSave, writeSave, type SaveRecord } from '../persistence/saves';
+import { recentLog } from '../debug/log';
+import { deliverReport, gpuInfo, takePendingPose, type DebugReport } from '../debug/report';
+import { plainState } from '../debug/snapshot.svelte';
+import { createSimPreviews } from '../render/preview';
 import type { Renderer } from '../render/types';
-import type { Settings } from '../settings/settings.svelte';
+import { settings as liveSettings, type Settings } from '../settings/settings.svelte';
 import { services, type GameControls } from '../ui/services';
-import { game, toast } from '../ui/state.svelte';
+import { game, nextWallMode, toast } from '../ui/state.svelte';
+import { saveDebugReport } from '../ui/debugReport';
 import { BubbleLayer } from './bubbles';
+import { BuildBuyInput } from './buildmode';
 import type { HouseholdDraft } from './household';
 import { PointerInput } from './input';
 import { assembleTown, loadTemplates, type NeighbourhoodDraft } from './town';
@@ -43,8 +49,8 @@ export interface GameSession {
   readonly ready: Promise<void>;
   /** Unpauses the game and attaches input. */
   reveal(): void;
-  /** Ends the session; the renderer is kept for the next one. */
-  dispose(): void;
+  /** Ends the session; resolves once it has let go of the renderer, which is kept for the next one. */
+  dispose(): Promise<void>;
 }
 
 /** Shared, immutable data: loaded once per page. */
@@ -58,6 +64,7 @@ export function loadGameData(): Promise<{ content: Content; assets: AssetRegistr
   ]).then(([content, assets]) => {
     services.content = content;
     services.assets = assets;
+    services.previews = createSimPreviews({ assets, emotions: content.emotions.map((e) => e.id), backend: () => liveSettings.renderer });
     return { content, assets };
   });
   return shared;
@@ -92,6 +99,9 @@ export async function startSession(
   bridge.send({ type: 'setSpeed', speed: 0 });
   let resumeSpeed: number | null = null;
   let revealed = false;
+  let disposed = false;
+  /** The scene build in progress; disposing waits for it so it can't add to the next session's scene. */
+  let building: Promise<unknown> = Promise.resolve();
   let markReady: () => void = () => {};
   const ready = new Promise<void>((resolve) => (markReady = resolve));
 
@@ -101,14 +111,20 @@ export async function startSession(
   let viewPlot: number | null = null;
   let lastEvent = -1;
   const bubbles = new BubbleLayer(overlay, renderer, content, assets);
+  const buildBuy = new BuildBuyInput(renderer, content, assets, (command) => bridge.send(command));
+  game.catalog = bridge.catalog;
   /** Sims the player controls. */
   const playerSims = () => game.roster.filter((s) => game.households[s.household]?.player).map((s) => s.id);
   let speedBeforeMenu: number | null = null;
+  /** Buy mode pauses the game; the speed to restore when leaving it. */
+  let speedBeforeBuy: number | null = null;
   let autosaveTimer: ReturnType<typeof setInterval> | undefined;
   let autosaveMinutes = -1;
 
   const controls: GameControls = {
     setSpeed(speed) {
+      // Time stands still in Buy mode.
+      if (game.mode === 'buy') return;
       if (speed > 0) lastSpeed = speed;
       bridge.send({ type: 'setSpeed', speed });
     },
@@ -121,8 +137,8 @@ export async function startSession(
       game.socialMenu = null;
       renderer.setSelectedSim(id);
     },
-    joinCareer(career) {
-      bridge.send({ type: 'joinCareer', sim: game.selected, career });
+    joinCareer(career, level) {
+      bridge.send({ type: 'joinCareer', sim: game.selected, career, level });
     },
     quitCareer() {
       bridge.send({ type: 'quitCareer', sim: game.selected });
@@ -136,10 +152,12 @@ export async function startSession(
       game.townOpen = false;
     },
     socialize(target, social) {
+      if (game.mode !== 'live') return;
       bridge.send({ type: 'social', sim: game.selected, target, social });
       game.socialMenu = null;
     },
     useObject(objectId, interaction) {
+      if (game.mode !== 'live') return;
       bridge.send({ type: 'use', sim: game.selected, object: objectId, interaction });
       game.menu = null;
     },
@@ -158,13 +176,130 @@ export async function startSession(
       game.menu = null;
       game.pauseMenu = true;
     },
+    setMode(mode) {
+      if (game.mode === mode) return;
+      buildBuy.cancel();
+      game.mode = mode;
+      if (mode === 'live') game.buildTool = null;
+      game.menu = null;
+      game.socialMenu = null;
+      // Buy mode pauses the game (and closes Live-only panels); leaving it restores the speed.
+      if (mode === 'buy') {
+        speedBeforeBuy = game.speed;
+        bridge.send({ type: 'setSpeed', speed: 0 });
+        game.townOpen = false;
+        game.jobBoardOpen = false;
+      } else if (speedBeforeBuy !== null) {
+        if (speedBeforeBuy > 0) lastSpeed = speedBeforeBuy;
+        bridge.send({ type: 'setSpeed', speed: speedBeforeBuy });
+        speedBeforeBuy = null;
+      }
+      // Building happens at home, with the walls down so the floor plan is visible.
+      const home = buildBuy.home();
+      if (mode !== 'live' && home) {
+        if (viewPlot !== home.id) showPlot(home.id);
+        controls.setWallMode('down');
+      }
+      buildBuy.modeChanged();
+    },
+    startPlacing(def) {
+      dropBuildTool();
+      game.buySelection = null;
+      game.placing = { def, rot: game.placing?.rot ?? 0, objectId: null };
+    },
+    startMoving(objectId) {
+      const obj = game.objects.find((o) => o.id === objectId);
+      if (!obj) return;
+      dropBuildTool();
+      game.buySelection = null;
+      game.placing = { def: obj.def, rot: obj.rot, objectId };
+    },
+    rotatePlacing() {
+      if (game.mode !== 'buy') return;
+      if (game.placing) game.placing = { ...game.placing, rot: (game.placing.rot + 1) % 4 };
+      else if (game.buySelection !== null) {
+        const obj = game.objects.find((o) => o.id === game.buySelection);
+        if (obj) bridge.send({ type: 'moveObject', sim: game.selected, object: obj.id, x: obj.x, z: obj.z, rot: (obj.rot + 1) % 4 });
+      }
+    },
+    cancelPlacing() {
+      buildBuy.cancel();
+    },
+    sell(objectId) {
+      if (game.mode !== 'buy') return;
+      bridge.send({ type: 'sell', sim: game.selected, object: objectId });
+      game.buySelection = null;
+      game.menu = null;
+    },
+    restyle(objectId, style) {
+      bridge.send({ type: 'restyle', sim: game.selected, object: objectId, style });
+    },
+    setHouseholdStyle(style) {
+      bridge.send({ type: 'setStyle', sim: game.selected, style });
+      game.householdStyle = style;
+    },
+    /** Buy mode: buy the next quality level (instant). */
+    upgrade(objectId) {
+      if (game.mode !== 'buy') return;
+      bridge.send({ type: 'upgrade', sim: game.selected, object: objectId });
+      game.menu = null;
+    },
+    setBuildTool(tool) {
+      if (tool !== null && game.mode !== 'buy') controls.setMode('buy');
+      // Building and furniture placement are exclusive: picking one drops the other.
+      game.placing = null;
+      game.buySelection = null;
+      game.buildTool = tool;
+      game.buildStart = null;
+      buildBuy.clearPreviews();
+    },
+    build(edits) {
+      bridge.send({ type: 'build', sim: game.selected, edits });
+    },
+    async debugReport(note) {
+      const scale = Math.min(window.devicePixelRatio || 1, 2);
+      const [save, screenshot, gpu] = await Promise.all([
+        bridge.requestSave(),
+        renderer.captureThumbnail(Math.round(canvas.clientWidth * scale), Math.round(canvas.clientHeight * scale)),
+        gpuInfo(),
+      ]);
+      // Everything the HUD shows, minus the (large, static) catalog.
+      const ui = plainState(game, ['catalog']);
+      const report: DebugReport = {
+        note,
+        createdAt: new Date().toISOString(),
+        url: location.href,
+        userAgent: navigator.userAgent,
+        screen: { width: window.innerWidth, height: window.innerHeight, pixelRatio: window.devicePixelRatio || 1 },
+        gpu,
+        renderer: renderer.stats(),
+        settings: plainState(liveSettings),
+        camera: renderer.cameraPose(),
+        ui: { ...ui, viewPlot },
+        log: recentLog(),
+        saveMeta: { id: 'debug', name: 'Debug report', household, members: game.sims.map((x) => x.name), day: game.day, minute: game.minute, savedAt: Date.now(), autosave: false },
+      };
+      return deliverReport({ report, save, screenshot });
+    },
   };
   services.controls = controls;
+  // `?debug`: drive the game from the console / test harness.
+  if (params.has('debug')) Object.assign(window, { __controls: controls });
+  /** Leaves the build tools for the furniture catalog. */
+  function dropBuildTool() {
+    if (game.buildTool === null) return;
+    game.buildTool = null;
+    game.buildStart = null;
+    buildBuy.clearPreviews();
+  }
   game.sharedMemory = bridge.sharedMemory;
   game.household = household;
 
-  bridge.onError((message) => toast(message));
+  bridge.onError((message) => {
+    if (!disposed) toast(message);
+  });
   bridge.onUi((ui) => {
+    if (disposed) return;
     // The first snapshot carries the speed the game was saved at.
     resumeSpeed ??= ui.speed > 0 ? ui.speed : 1;
     game.day = ui.day;
@@ -172,7 +307,11 @@ export async function startSession(
     game.speed = ui.speed;
     game.sims = ui.sims;
     game.weekday = ui.weekday;
-    game.funds = ui.households.find((h) => game.households[h.id]?.player)?.funds ?? 0;
+    const mine = ui.households.find((h) => game.households[h.id]?.player);
+    game.funds = mine?.funds ?? 0;
+    game.rent = mine?.rent ?? null;
+    game.bills = mine?.bills ?? null;
+    game.householdStyle = mine?.style ?? 0;
     game.relationships = ui.relationships;
     // The view follows the selected Sim to whichever lot they're on.
     const selected = ui.sims.find((s) => s.id === game.selected);
@@ -186,10 +325,17 @@ export async function startSession(
     if (ui.events.length) lastEvent = ui.events[ui.events.length - 1].id;
   });
   bridge.onWorld((w) => {
+    if (disposed) return;
     world = w;
+    buildBuy.setStructure(w);
+    game.objects = w.objects;
+    if (game.buySelection !== null && !w.objects.some((o) => o.id === game.buySelection)) game.buySelection = null;
     game.roster = w.sims;
     game.households = w.households;
     game.plots = w.plots;
+    // Portraits for the HUD, the household first (drawn once, cached by look).
+    const mineFirst = [...w.sims].sort((a, b) => Number(!!w.households[b.household]?.player) - Number(!!w.households[a.household]?.player));
+    services.previews.prefetch(mineFirst.map((s) => ({ gender: s.gender, appearance: s.appearance, id: s.id })));
     if (!focused) {
       focused = true;
       const first = playerSims()[0];
@@ -199,8 +345,9 @@ export async function startSession(
       if (home != null && w.plots[home]) return showPlot(home);
     }
     const plot = viewPlot === null ? null : w.plots[viewPlot];
-    renderer
-      .setWorld(w, plot ? { x: plot.x, z: plot.z, w: plot.w, d: plot.d } : null)
+    const build = renderer.setWorld(w, plot ? { x: plot.x, z: plot.z, w: plot.w, d: plot.d } : null);
+    building = build.catch(() => {});
+    build
       .then(() => renderer.framesRendered(WARM_FRAMES))
       .then(markReady)
       .catch((err) => toast(`Rendering failed: ${err}`));
@@ -242,8 +389,14 @@ export async function startSession(
   const openMenu = (objectId: number, x: number, y: number) => {
     const placement = world?.objects.find((o) => o.id === objectId);
     const def = placement && content.object(placement.def);
-    if (!def || def.interactions.length === 0) return;
-    game.menu = { objectId, title: def.name, x, y, items: def.interactions.map((it, index) => ({ label: it.label, index })) };
+    if (!placement || !def) return;
+    // Paid interactions show their price; the pie menu greys them out when funds run short.
+    const items: { label: string; index: number; disabled?: boolean; cost?: number }[] = def.interactions.map((it, index) =>
+      it.cost ? { label: it.label, index, cost: it.cost } : { label: it.label, index },
+    );
+    // Upgrades are bought in Buy mode, not from here.
+    if (items.length === 0) return;
+    game.menu = { objectId, title: placement.quality ? `${def.name} ${'★'.repeat(placement.quality)}` : def.name, x, y, items };
   };
 
   let pointer: PointerInput | null = null;
@@ -252,6 +405,11 @@ export async function startSession(
       if (game.pauseMenu) return;
       game.menu = null;
       game.socialMenu = null;
+      if (game.mode !== 'live') {
+        const hit = renderer.pick(x, y);
+        buildBuy.click(hit.ground, hit.objectId);
+        return;
+      }
       const sim = simAt(x, y);
       if (sim !== null && sim !== game.selected) {
         game.socialMenu = { target: sim, x, y, options: null };
@@ -270,9 +428,11 @@ export async function startSession(
     hover(x, y) {
       const g = renderer.pick(x, y).ground;
       renderer.setHoverTile(g && inLot(g.x, g.z) && !game.pauseMenu ? { x: Math.floor(g.x), z: Math.floor(g.z) } : null);
+      if (game.mode !== 'live') buildBuy.hover(g && inLot(g.x, g.z) ? g : null);
     },
     leave() {
       renderer.setHoverTile(null);
+      buildBuy.clearPreviews();
     },
   });
 
@@ -280,6 +440,11 @@ export async function startSession(
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
     if (e.key === 'Escape') {
       if (game.townOpen) return void (game.townOpen = false);
+      if (game.jobBoardOpen) return void (game.jobBoardOpen = false);
+      // Step back: drop what's in hand, then leave the build tools, then Buy mode.
+      if (buildBuy.cancel()) return;
+      if (game.mode === 'buy' && game.buildTool !== null) return controls.setBuildTool(null);
+      if (game.mode !== 'live') return controls.setMode('live');
       if (game.menu || game.socialMenu) return controls.closeMenu();
       game.pauseMenu = !game.pauseMenu;
       return;
@@ -296,15 +461,38 @@ export async function startSession(
         return controls.setSpeed(Number(e.key));
       case 'm':
       case 'M':
-        game.townOpen = !game.townOpen;
+        if (game.mode === 'live') game.townOpen = !game.townOpen;
         return;
       case 'w':
       case 'W':
-        return controls.setWallMode(game.wallMode === 'up' ? 'down' : 'up');
+        return controls.setWallMode(nextWallMode(game.wallMode));
+      case 'F8':
+        e.preventDefault();
+        void saveDebugReport();
+        return;
       case 'F3':
         e.preventDefault();
         game.perfOpen = !game.perfOpen;
         return;
+      case 'r':
+      case 'R':
+        return controls.rotatePlacing();
+      case 'Delete':
+      case 'Backspace':
+        if (game.mode === 'buy' && game.buySelection !== null) controls.sell(game.buySelection);
+        return;
+      // B and V both toggle Buy mode; B opens it on the build tools, V on the catalog.
+      case 'b':
+      case 'B':
+        if (game.mode === 'buy') return controls.setMode('live');
+        controls.setMode('buy');
+        return controls.setBuildTool('wall');
+      case 'v':
+      case 'V':
+        return controls.setMode(game.mode === 'buy' ? 'live' : 'buy');
+      case 'l':
+      case 'L':
+        return controls.setMode('live');
       case 'Tab': {
         e.preventDefault();
         const ids = playerSims();
@@ -332,6 +520,9 @@ export async function startSession(
       if (revealed) return;
       revealed = true;
       renderer.setIdleOrbit(false);
+      // A loaded debug report shows the view it was captured from.
+      const pose = takePendingPose();
+      if (pose) renderer.setCameraPose(pose);
       pointer = attachPointer();
       window.addEventListener('keydown', onKey);
       bridge.send({ type: 'setSpeed', speed: resumeSpeed ?? 1 });
@@ -355,7 +546,13 @@ export async function startSession(
       return id;
     },
     applySettings(s) {
-      renderer.configure({ bloom: s.bloom, tiltShift: s.tiltShift, resolutionScale: s.resolutionScale, cameraSensitivity: s.cameraSensitivity });
+      renderer.configure({
+        bloom: s.bloom,
+        tiltShift: s.tiltShift,
+        resolutionScale: s.resolutionScale,
+        cameraSensitivity: s.cameraSensitivity,
+        visualStyle: s.visualStyle,
+      });
       bridge.send({ type: 'setAutonomy', enabled: s.autonomy });
       game.perfOpen = s.showFps;
       if (s.autosaveMinutes !== autosaveMinutes) {
@@ -378,12 +575,14 @@ export async function startSession(
         speedBeforeMenu = null;
       }
     },
-    dispose() {
+    async dispose() {
+      disposed = true;
       clearInterval(statsTimer);
       clearInterval(autosaveTimer);
       window.removeEventListener('keydown', onKey);
       pointer?.dispose();
       bubbles.dispose();
+      await building;
       renderer.clear();
       bridge.dispose();
     },
@@ -403,6 +602,15 @@ export async function startSession(
       },
       stats: () => renderer.stats(),
       view: () => viewPlot,
+      project(x: number, y: number, z: number) {
+        const out = { x: 0, y: 0 };
+        return renderer.project(x, y, z, out) ? out : null;
+      },
+      home: () => buildBuy.home(),
+      /** Sim-clock minute of the newest snapshot (changes when one arrives). */
+      snapshotMinute: () => bridge.latest()[bridge.layout.header.minute],
+      renderer,
+      structure: () => ({ walls: world?.walls?.length ?? 0, openings: world?.openings?.map((o) => o.kind) ?? [], funds: game.funds }),
       townFile: () => ('lot' in source ? source.lot : null),
       sims: () =>
         game.sims.map((x) => {

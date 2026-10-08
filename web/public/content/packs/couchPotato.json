@@ -1,0 +1,229 @@
+{
+  "$comment": "Couch Potato pack: things a resident who loves the TV and the sofa wants at home. A home cinema, a game console that rewards practice, a recliner, a snack fridge that saves the walk to the kitchen, a fitness game that gets them moving, and a lava lamp. Adds the shared tags 'gaming' and 'cozy'. Design note: docs/personalities/couchPotato.md",
+  "feelings": [
+    {
+      "id": "couchPotato.movieNight",
+      "label": "Movie night afterglow",
+      "emotion": "relaxed",
+      "mood": 0.1,
+      "hours": 6,
+      "effects": { "needGain": { "comfort": 1.2, "energy": 1.1 }, "needDecay": { "fun": 0.85 } }
+    },
+    {
+      "id": "couchPotato.highScore",
+      "label": "New high score",
+      "emotion": "happy",
+      "mood": 0.08,
+      "hours": 4,
+      "effects": { "skillGain": { "dexterity": 1.25, "technology": 1.15 }, "tagPreference": { "gaming": 1.3 } }
+    },
+    {
+      "id": "couchPotato.gotMoving",
+      "label": "Actually got moving",
+      "emotion": "energized",
+      "mood": 0.06,
+      "hours": 4,
+      "effects": { "walkSpeed": 1.12, "needDecay": { "comfort": 0.85 }, "tagPreference": { "fitness": 1.2 } }
+    },
+    {
+      "id": "couchPotato.snug",
+      "label": "Snug as a bug",
+      "emotion": "relaxed",
+      "mood": 0.05,
+      "hours": 3,
+      "effects": { "needDecay": { "comfort": 0.8 } }
+    }
+  ],
+  "objects": [
+    {
+      "id": "couchPotato.cinemaWall",
+      "name": "Grand cinema wall",
+      "model": "model.couchPotato.cinemaWall",
+      "footprint": [2, 1],
+      "price": 2900,
+      "category": "living",
+      "slots": 2,
+      "description": "A huge screen with surround sound for two. A movie marathon tops up fun and comfort and leaves residents relaxed for the evening, so they lounge and sleep better.",
+      "interactions": [
+        {
+          "id": "marathon",
+          "label": "Rent a movie marathon",
+          "anim": "watch",
+          "minutes": 90,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.95, "comfort": 0.4, "social": 0.1 },
+          "tags": ["entertainment", "screen", "cozy"],
+          "cost": 6,
+          "feeling": "couchPotato.movieNight"
+        },
+        {
+          "id": "channelSurf",
+          "label": "Channel surf",
+          "anim": "watch",
+          "minutes": 60,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.85, "comfort": 0.1 },
+          "tags": ["entertainment", "screen"]
+        }
+      ]
+    },
+    {
+      "id": "couchPotato.gameConsole",
+      "name": "Pixel Arcade console",
+      "model": "model.couchPotato.gameConsole",
+      "footprint": [1, 1],
+      "price": 520,
+      "category": "hobbies",
+      "slots": 2,
+      "description": "A games console on its own screen with two controllers. Better players (Dexterity) have more fun, and from Dexterity 4 they set high scores that make them learn faster.",
+      "interactions": [
+        {
+          "id": "play",
+          "label": "Play video games",
+          "anim": "play",
+          "minutes": 60,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.65, "social": 0.05 },
+          "tags": ["entertainment", "screen", "gaming"],
+          "skills": { "dexterity": 0.08, "technology": 0.04 },
+          "skill": "dexterity",
+          "feeling": "couchPotato.highScore",
+          "feelingMinSkill": 4
+        },
+        {
+          "id": "speedrun",
+          "label": "Practise speedruns",
+          "anim": "play",
+          "minutes": 60,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.15 },
+          "tags": ["training", "gaming", "screen"],
+          "skills": { "dexterity": 0.22, "perception": 0.06 }
+        }
+      ]
+    },
+    {
+      "id": "couchPotato.recliner",
+      "name": "Cloud Nine power recliner",
+      "model": "model.couchPotato.recliner",
+      "footprint": [1, 1],
+      "price": 780,
+      "category": "living",
+      "slots": 1,
+      "description": "A deep power recliner with a footrest. Reclining keeps residents comfy for hours, and it's good for a quick doze.",
+      "interactions": [
+        {
+          "id": "recline",
+          "label": "Kick back",
+          "anim": "relax",
+          "minutes": 40,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "comfort": 0.85, "fun": 0.05 },
+          "tags": ["rest", "lounge", "cozy"],
+          "feeling": "couchPotato.snug"
+        },
+        {
+          "id": "doze",
+          "label": "Doze off",
+          "anim": "nap",
+          "minutes": 45,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "energy": 0.15, "comfort": 0.2 },
+          "tags": ["rest", "nap"]
+        }
+      ]
+    },
+    {
+      "id": "couchPotato.snackFridge",
+      "name": "Sofa-side snack fridge",
+      "model": "model.couchPotato.snackFridge",
+      "footprint": [1, 1],
+      "price": 260,
+      "category": "kitchen",
+      "slots": 1,
+      "description": "A small fridge that sits next to the sofa, with a door screen for ordering food. Snacks within reach, and takeout so nobody has to cook (it costs money).",
+      "interactions": [
+        {
+          "id": "snack",
+          "label": "Grab a couch snack",
+          "anim": "eat",
+          "minutes": 10,
+          "autonomous": true,
+          "effects": { "hunger": 0.3, "fun": 0.05 },
+          "tags": ["food", "cozy"]
+        },
+        {
+          "id": "takeout",
+          "label": "Order takeout",
+          "anim": "eat",
+          "minutes": 40,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "hunger": 0.8, "fun": 0.1 },
+          "tags": ["food"],
+          "cost": 12
+        }
+      ]
+    },
+    {
+      "id": "couchPotato.fitnessGame",
+      "name": "Living-room workout game",
+      "model": "model.couchPotato.fitnessGame",
+      "footprint": [1, 1],
+      "price": 450,
+      "category": "fitness",
+      "slots": 1,
+      "description": "A motion-sensing workout game with a mat and a screen. It builds Endurance with more fun and less sweat than a treadmill, and afterwards residents move faster.",
+      "interactions": [
+        {
+          "id": "workout",
+          "label": "Play a workout game",
+          "anim": "exercise",
+          "minutes": 45,
+          "autonomous": true,
+          "effects": { "fun": 0.3, "energy": -0.15, "hygiene": -0.15 },
+          "tags": ["fitness", "training", "gaming"],
+          "skills": { "endurance": 0.2, "strength": 0.05 },
+          "feeling": "couchPotato.gotMoving"
+        }
+      ]
+    },
+    {
+      "id": "couchPotato.lavaLamp",
+      "name": "Lava glow lamp",
+      "model": "model.couchPotato.lavaLamp",
+      "footprint": [1, 1],
+      "price": 90,
+      "category": "decor",
+      "slots": 1,
+      "description": "Slow, glowing blobs of wax on a little side table. Watching them is a cheap bit of fun and comfort.",
+      "interactions": [
+        {
+          "id": "zoneOut",
+          "label": "Zone out",
+          "anim": "relax",
+          "minutes": 20,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": { "fun": 0.15, "comfort": 0.1 },
+          "tags": ["lounge", "cozy"]
+        }
+      ]
+    }
+  ],
+  "traitPatches": {
+    "couchPotato": {
+      "effects": {
+        "tagPreference": { "gaming": 1.6, "cozy": 1.5 },
+        "skillGain": { "dexterity": 1.1 }
+      },
+      "startingSkills": { "dexterity": 1 }
+    }
+  }
+}

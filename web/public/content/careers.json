@@ -1,0 +1,922 @@
+{
+  "$comment": "Career catalog: 25 categories x 4 tracks x 10 grades (A-J) = 1000 positions. Grade sets pay per hour and required skill level; track skill weights scale the requirement (required = round(grade.skillLevel * weight)).",
+  "grades": [
+    { "id": "A", "label": "Entry", "payPerHour": 15, "skillLevel": 0 },
+    { "id": "B", "label": "Junior", "payPerHour": 22, "skillLevel": 1 },
+    { "id": "C", "label": "Associate", "payPerHour": 32, "skillLevel": 2 },
+    { "id": "D", "label": "Professional", "payPerHour": 46, "skillLevel": 3 },
+    { "id": "E", "label": "Experienced", "payPerHour": 65, "skillLevel": 4 },
+    { "id": "F", "label": "Senior", "payPerHour": 90, "skillLevel": 5 },
+    { "id": "G", "label": "Lead", "payPerHour": 125, "skillLevel": 6 },
+    { "id": "H", "label": "Manager", "payPerHour": 170, "skillLevel": 7 },
+    { "id": "I", "label": "Director", "payPerHour": 230, "skillLevel": 8 },
+    { "id": "J", "label": "Top of the field", "payPerHour": 300, "skillLevel": 10 }
+  ],
+  "careerCategories": [
+    {
+      "id": "journalism",
+      "label": "Journalism",
+      "icon": "icon.career.journalism",
+      "description": "Chase stories, check facts and keep the public informed.",
+      "payFactor": 0.95,
+      "shift": { "start": 9, "hours": 8, "days": [0, 1, 2, 3, 4] },
+      "workEffects": { "hunger": -0.2, "energy": -0.3, "fun": -0.05, "social": 0.15 },
+      "tracks": [
+        {
+          "id": "journalism.print",
+          "label": "Print Reporting",
+          "skills": { "writing": 1, "perception": 0.6, "charisma": 0.3 },
+          "titles": ["Copy Runner", "Editorial Assistant", "Staff Writer", "Beat Reporter", "Feature Writer", "Investigative Reporter", "Section Editor", "Managing Editor", "Executive Editor", "Editor-in-Chief"]
+        },
+        {
+          "id": "journalism.broadcast",
+          "label": "Broadcast News",
+          "skills": { "charisma": 1, "writing": 0.6, "perception": 0.3 },
+          "shift": { "start": 5, "hours": 8, "days": [0, 1, 2, 3, 4] },
+          "titles": ["Newsroom Runner", "Production Assistant", "Field Producer", "Correspondent", "Weekend Anchor", "Chief Correspondent", "Morning Anchor", "Evening News Anchor", "News Director", "Prime-Time Network Anchor"]
+        },
+        {
+          "id": "journalism.photo",
+          "label": "Photojournalism",
+          "skills": { "perception": 1, "creativity": 0.6, "endurance": 0.3 },
+          "titles": ["Photo Desk Assistant", "Freelance Stringer", "Staff Photographer", "News Photographer", "Feature Photographer", "Conflict Photographer", "Photo Editor", "Director of Photography", "Head of Visual Journalism", "Award-Winning Photojournalist"]
+        },
+        {
+          "id": "journalism.digital",
+          "label": "Digital Media",
+          "skills": { "technology": 1, "writing": 0.7, "business": 0.3 },
+          "titles": ["Social Media Intern", "Content Assistant", "Web Producer", "Digital Reporter", "Audience Editor", "Data Journalist", "Head of Digital", "Digital Managing Editor", "Chief Digital Officer", "Media Startup Founder"]
+        }
+      ]
+    },
+    {
+      "id": "detective",
+      "label": "Detective & Police",
+      "icon": "icon.career.detective",
+      "description": "Keep the streets safe and crack the cases nobody else can.",
+      "payFactor": 1.0,
+      "shift": { "start": 7, "hours": 9, "days": [0, 1, 2, 3, 4] },
+      "workEffects": { "hunger": -0.25, "energy": -0.35, "hygiene": -0.15, "social": 0.1 },
+      "tracks": [
+        {
+          "id": "detective.patrol",
+          "label": "Patrol & Investigation",
+          "skills": { "perception": 1, "strength": 0.6, "charisma": 0.3 },
+          "titles": ["Police Cadet", "Patrol Officer", "Police Constable", "Detective", "Detective Sergeant", "Detective Inspector", "Detective Chief Inspector", "Superintendent", "Deputy Chief of Police", "Chief of Police"]
+        },
+        {
+          "id": "detective.forensics",
+          "label": "Forensics",
+          "skills": { "intelligence": 1, "perception": 0.8 },
+          "titles": ["Lab Assistant", "Evidence Technician", "Crime Scene Technician", "Forensic Analyst", "Crime Scene Investigator", "Forensic Scientist", "Lead Forensic Examiner", "Crime Lab Supervisor", "Forensic Services Director", "Chief Medical Examiner"]
+        },
+        {
+          "id": "detective.private",
+          "label": "Private Investigation",
+          "skills": { "perception": 1, "charisma": 0.6, "dexterity": 0.3 },
+          "shift": { "start": 10, "hours": 8, "days": [1, 2, 3, 4, 5] },
+          "titles": ["Office Assistant", "Process Server", "Surveillance Operative", "Licensed Investigator", "Insurance Fraud Investigator", "Senior Investigator", "Lead Investigator", "Agency Partner", "Agency Owner", "Legendary Private Eye"]
+        },
+        {
+          "id": "detective.cybercrime",
+          "label": "Cybercrime",
+          "skills": { "technology": 1, "intelligence": 0.7, "perception": 0.4 },
+          "titles": ["Digital Evidence Clerk", "Cybercrime Trainee", "Digital Forensics Technician", "Cybercrime Investigator", "Online Fraud Specialist", "Digital Forensics Examiner", "Cyber Task Force Lead", "Cybercrime Unit Commander", "Head of National Cyber Unit", "Cybercrime Bureau Director"]
+        }
+      ]
+    },
+    {
+      "id": "firefighter",
+      "label": "Fire & Rescue",
+      "icon": "icon.career.firefighter",
+      "description": "Run toward danger to fight fires and save lives.",
+      "payFactor": 0.95,
+      "shift": { "start": 8, "hours": 12, "days": [0, 2, 4, 6] },
+      "workEffects": { "hunger": -0.35, "energy": -0.45, "hygiene": -0.4, "fun": 0.05, "social": 0.1 },
+      "tracks": [
+        {
+          "id": "firefighter.firefighting",
+          "label": "Firefighting",
+          "skills": { "strength": 1, "endurance": 0.8 },
+          "titles": ["Fire Cadet", "Probationary Firefighter", "Firefighter", "Engine Driver", "Lieutenant", "Captain", "Battalion Chief", "Deputy Fire Chief", "Fire Chief", "Fire Commissioner"]
+        },
+        {
+          "id": "firefighter.paramedic",
+          "label": "Paramedic",
+          "skills": { "dexterity": 1, "intelligence": 0.6, "endurance": 0.4 },
+          "titles": ["First Aid Volunteer", "Emergency Medical Responder", "Emergency Medical Technician", "Advanced EMT", "Paramedic", "Critical Care Paramedic", "Flight Paramedic", "EMS Supervisor", "EMS Operations Chief", "Director of Emergency Medical Services"]
+        },
+        {
+          "id": "firefighter.rescue",
+          "label": "Search & Rescue",
+          "skills": { "endurance": 1, "strength": 0.7, "perception": 0.4 },
+          "titles": ["Rescue Volunteer", "Rescue Trainee", "Rescue Technician", "Rope Rescue Specialist", "Swiftwater Rescuer", "Urban Search & Rescue Specialist", "Rescue Team Leader", "Rescue Squad Captain", "Regional Rescue Coordinator", "National Rescue Commander"]
+        },
+        {
+          "id": "firefighter.investigation",
+          "label": "Fire Investigation",
+          "skills": { "perception": 1, "intelligence": 0.7 },
+          "shift": { "start": 9, "hours": 8, "days": [0, 1, 2, 3, 4] },
+          "titles": ["Fire Safety Clerk", "Trainee Fire Inspector", "Fire Inspector", "Fire Investigator", "Arson Investigator", "Senior Arson Investigator", "Lead Fire Investigator", "Deputy Fire Marshal", "Fire Marshal", "State Fire Marshal"]
+        }
+      ]
+    },
+    {
+      "id": "influencer",
+      "label": "Social Media",
+      "icon": "icon.career.influencer",
+      "description": "Build an audience online and turn likes into a living.",
+      "payFactor": 0.9,
+      "shift": { "start": 11, "hours": 6, "days": [0, 1, 2, 3, 4, 5] },
+      "workEffects": { "hunger": -0.15, "energy": -0.2, "comfort": 0.05, "fun": 0.2, "social": 0.2 },
+      "tracks": [
+        {
+          "id": "influencer.lifestyle",
+          "label": "Lifestyle Vlogging",
+          "skills": { "charisma": 1, "creativity": 0.7, "technology": 0.3 },
+          "titles": ["Aspiring Vlogger", "Hobby Blogger", "Micro-Influencer", "Lifestyle Vlogger", "Brand Ambassador", "Rising Star Creator", "Verified Creator", "Lifestyle Mogul", "Media Personality", "Global Superstar"]
+        },
+        {
+          "id": "influencer.gaming",
+          "label": "Gaming Streams",
+          "skills": { "dexterity": 1, "charisma": 0.6, "technology": 0.4 },
+          "shift": { "start": 20, "hours": 5, "days": [0, 2, 3, 4, 5] },
+          "titles": ["Newbie Streamer", "Hobby Streamer", "Affiliate Streamer", "Partnered Streamer", "Community Favorite", "Esports Caster", "Featured Streamer", "Pro Streamer", "Streaming Icon", "Gaming Legend"]
+        },
+        {
+          "id": "influencer.beauty",
+          "label": "Beauty & Fashion Content",
+          "skills": { "creativity": 1, "charisma": 0.7 },
+          "titles": ["Makeup Enthusiast", "Beauty Blogger", "Tutorial Creator", "Beauty Vlogger", "Sponsored Creator", "Trendsetter", "Beauty Guru", "Brand Collaborator", "Cosmetics Line Founder", "Beauty Icon"]
+        },
+        {
+          "id": "influencer.podcast",
+          "label": "Podcasting",
+          "skills": { "writing": 1, "charisma": 0.7, "technology": 0.3 },
+          "titles": ["Podcast Assistant", "Audio Editor", "Indie Podcaster", "Podcast Co-Host", "Podcast Host", "Interview Host", "Network Podcaster", "Chart-Topping Host", "Podcast Network Founder", "Podcasting Legend"]
+        }
+      ]
+    },
+    {
+      "id": "it",
+      "label": "IT & Software",
+      "icon": "icon.career.it",
+      "description": "Build, run and protect the software the world depends on.",
+      "payFactor": 1.25,
+      "shift": { "start": 9, "hours": 8, "days": [0, 1, 2, 3, 4] },
+      "workEffects": { "hunger": -0.2, "energy": -0.3, "comfort": -0.05, "fun": -0.1, "social": -0.05 },
+      "tracks": [
+        {
+          "id": "it.software",
+          "label": "Software Development",
+          "skills": { "technology": 1, "intelligence": 0.7, "creativity": 0.3 },
+          "titles": ["Coding Intern", "Junior Developer", "Software Developer", "Software Engineer", "Senior Software Engineer", "Staff Engineer", "Principal Engineer", "Engineering Manager", "VP of Engineering", "Chief Technology Officer"]
+        },
+        {
+          "id": "it.support",
+          "label": "IT Support & Networks",
+          "skills": { "handiness": 1, "technology": 0.7, "charisma": 0.3 },
+          "titles": ["Helpdesk Intern", "Helpdesk Technician", "Desktop Support Specialist", "Network Technician", "Systems Administrator", "Network Engineer", "Infrastructure Lead", "IT Manager", "Head of IT Operations", "Chief Information Officer"]
+        },
+        {
+          "id": "it.security",
+          "label": "Cybersecurity",
+          "skills": { "technology": 1, "perception": 0.7, "intelligence": 0.4 },
+          "titles": ["Security Intern", "SOC Analyst", "Security Analyst", "Penetration Tester", "Security Engineer", "Threat Hunter", "Red Team Lead", "Security Manager", "Director of Security", "Chief Information Security Officer"]
+        },
+        {
+          "id": "it.data",
+          "label": "Data & AI",
+          "skills": { "intelligence": 1, "technology": 0.8 },
+          "titles": ["Data Intern", "Data Analyst", "Business Intelligence Analyst", "Data Scientist", "Machine Learning Engineer", "Senior Data Scientist", "AI Research Lead", "Head of Data Science", "VP of Artificial Intelligence", "Chief AI Officer"]
+        }
+      ]
+    },
+    {
+      "id": "tv",
+      "label": "TV & Film",
+      "icon": "icon.career.tv",
+      "description": "Make the shows and movies everyone talks about.",
+      "payFactor": 1.1,
+      "shift": { "start": 10, "hours": 9, "days": [0, 1, 2, 3, 4] },
+      "workEffects": { "hunger": -0.25, "energy": -0.35, "fun": 0.15, "social": 0.15 },
+      "tracks": [
+        {
+          "id": "tv.acting",
+          "label": "Acting",
+          "skills": { "charisma": 1, "creativity": 0.6, "endurance": 0.3 },
+          "titles": ["Extra", "Background Actor", "Bit Part Actor", "Supporting Actor", "Character Actor", "Series Regular", "Leading Actor", "Box Office Draw", "Award-Winning Actor", "Hollywood Legend"]
+        },
+        {
+          "id": "tv.directing",
+          "label": "Directing",
+          "skills": { "creativity": 1, "business": 0.6, "charisma": 0.4 },
+          "titles": ["Production Runner", "Script Supervisor", "Second Assistant Director", "First Assistant Director", "Short Film Director", "TV Episode Director", "Feature Film Director", "Showrunner", "Acclaimed Auteur", "Oscar-Winning Director"]
+        },
+        {
+          "id": "tv.camera",
+          "label": "Camera & Production",
+          "skills": { "dexterity": 1, "technology": 0.6, "perception": 0.4 },
+          "titles": ["Grip Trainee", "Camera Loader", "Focus Puller", "Camera Operator", "Steadicam Operator", "Gaffer", "Second Unit Cinematographer", "Director of Photography", "Head of Production", "Studio Production Chief"]
+        },
+        {
+          "id": "tv.presenting",
+          "label": "TV Presenting",
+          "skills": { "charisma": 1, "intelligence": 0.5 },
+          "shift": { "start": 17, "hours": 6, "days": [0, 1, 2, 3, 4] },
+          "titles": ["Studio Floor Assistant", "Audience Warm-Up Host", "Local Weather Presenter", "Regional Presenter", "Game Show Host", "Daytime Host", "Prime-Time Presenter", "Late-Night Talk Show Host", "Network Star Host", "Television Icon"]
+        }
+      ]
+    },
+    {
+      "id": "mechanics",
+      "label": "Mechanics & Engineering",
+      "icon": "icon.career.mechanics",
+      "description": "Design, build and fix the machines that keep things moving.",
+      "payFactor": 1.05,
+      "shift": { "start": 7.5, "hours": 8, "days": [0, 1, 2, 3, 4] },
+      "workEffects": { "hunger": -0.3, "energy": -0.35, "hygiene": -0.3, "fun": 0.05 },
+      "tracks": [
+        {
+          "id": "mechanics.car",
+          "label": "Car Mechanics",
+          "skills": { "handiness": 1, "technology": 0.5, "strength": 0.3 },
+          "titles": ["Workshop Apprentice", "Lube Technician", "Tire & Brake Technician", "Auto Mechanic", "Diagnostic Technician", "Master Mechanic", "Shop Foreman", "Service Manager", "Garage Owner", "Motorsport Chief Mechanic"]
+        },
+        {
+          "id": "mechanics.engineering",
+          "label": "Mechanical Engineering",
+          "skills": { "intelligence": 1, "handiness": 0.6, "technology": 0.4 },
+          "titles": ["Engineering Intern", "Drafting Technician", "Graduate Engineer", "Mechanical Engineer", "Design Engineer", "Senior Mechanical Engineer", "Lead Engineer", "Engineering Manager", "Director of Engineering", "Chief Engineer"]
+        },
+        {
+          "id": "mechanics.electronics",
+          "label": "Electronics",
+          "skills": { "technology": 1, "handiness": 0.7, "dexterity": 0.3 },
+          "titles": ["Electronics Apprentice", "Assembly Technician", "Repair Technician", "Electronics Technician", "Circuit Designer", "Embedded Systems Engineer", "Hardware Lead", "Electronics Lab Manager", "Head of Hardware", "Chief Hardware Architect"]
+        },
+        {
+          "id": "mechanics.aerospace",
+          "label": "Aerospace",
+          "skills": { "intelligence": 1, "technology": 0.7, "dexterity": 0.3 },
+          "titles": ["Hangar Assistant", "Aircraft Maintenance Trainee", "Avionics Technician", "Aerospace Engineer", "Propulsion Engineer", "Flight Systems Engineer", "Spacecraft Design Lead", "Aerospace Program Manager", "Director of Space Programs", "Chief Rocket Scientist"]
+        }
+      ]
+    },
+    {
+      "id": "finance",
+      "label": "Finance & Banking",
+      "icon": "icon.career.finance",
+      "description": "Manage money, markets and the deals that move them.",
+      "payFactor": 1.3,
+      "shift": { "start": 8.5, "hours": 9, "days": [0, 1, 2, 3, 4] },
+      "workEffects": { "hunger": -0.2, "energy": -0.35, "comfort": 0.05, "fun": -0.15, "social": 0.05 },
+      "tracks": [
+        {
+          "id": "finance.banking",
+          "label": "Retail Banking",
+          "skills": { "business": 1, "charisma": 0.6 },
+          "titles": ["Bank Teller Trainee", "Bank Teller", "Customer Service Banker", "Personal Banker", "Loan Officer", "Relationship Manager", "Assistant Branch Manager", "Branch Manager", "Regional Banking Director", "Bank President"]
+        },
+        {
+          "id": "finance.investment",
+          "label": "Investment Banking",
+          "skills": { "business": 1, "intelligence": 0.7, "endurance": 0.3 },
+          "shift": { "start": 8, "hours": 11, "days": [0, 1, 2, 3, 4, 5] },
+          "titles": ["Summer Analyst", "Investment Analyst", "Investment Associate", "Vice President", "Senior Vice President", "Executive Director", "Managing Director", "Head of Mergers & Acquisitions", "Global Head of Investment Banking", "Investment Bank CEO"]
+        },
+        {
+          "id": "finance.accounting",
+          "label": "Accounting & Audit",
+          "skills": { "intelligence": 1, "business": 0.6, "perception": 0.3 },
+          "titles": ["Bookkeeping Clerk", "Accounts Assistant", "Staff Accountant", "Certified Accountant", "Senior Auditor", "Audit Manager", "Financial Controller", "Audit Partner", "Finance Director", "Chief Financial Officer"]
+        },
+        {
+          "id": "finance.trading",
+          "label": "Trading & Markets",
+          "skills": { "perception": 1, "business": 0.7, "intelligence": 0.3 },
+          "shift": { "start": 7, "hours": 10, "days": [0, 1, 2, 3, 4] },
+          "titles": ["Trading Desk Assistant", "Trade Support Analyst", "Junior Trader", "Equity Trader", "Derivatives Trader", "Portfolio Manager", "Head Trader", "Hedge Fund Partner", "Chief Investment Officer", "Hedge Fund Founder"]
+        }
+      ]
+    },
+    {
+      "id": "medicine",
+      "label": "Medicine & Care",
+      "icon": "icon.career.medicine",
+      "description": "Diagnose, treat and care for patients when they need it most.",
+      "payFactor": 1.3,
+      "shift": { "start": 7, "hours": 9, "days": [0, 1, 2, 3, 4] },
+      "workEffects": { "hunger": -0.25, "energy": -0.4, "hygiene": -0.15, "fun": -0.05, "social": 0.1 },
+      "tracks": [
+        {
+          "id": "medicine.general",
+          "label": "General Practice",
+          "skills": { "intelligence": 1, "charisma": 0.6 },
+          "titles": ["Medical Student", "Foundation Doctor", "Resident Physician", "General Practitioner", "Family Physician", "Senior Physician", "Attending Physician", "Head of Department", "Chief Medical Officer", "Surgeon General"]
+        },
+        {
+          "id": "medicine.surgery",
+          "label": "Surgery",
+          "skills": { "dexterity": 1, "intelligence": 0.8 },
+          "titles": ["Surgical Assistant", "Surgical Intern", "Surgical Resident", "Chief Resident", "Surgical Fellow", "Surgeon", "Attending Surgeon", "Neurosurgeon", "Chief of Surgery", "World-Renowned Surgeon"]
+        },
+        {
+          "id": "medicine.nursing",
+          "label": "Nursing",
+          "skills": { "endurance": 1, "charisma": 0.6, "dexterity": 0.3 },
+          "shift": { "start": 6, "hours": 12, "days": [0, 2, 4] },
+          "titles": ["Care Assistant", "Student Nurse", "Licensed Practical Nurse", "Registered Nurse", "Charge Nurse", "Clinical Nurse Specialist", "Nurse Practitioner", "Nurse Manager", "Director of Nursing", "Chief Nursing Officer"]
+        },
+        {
+          "id": "medicine.psychology",
+          "label": "Psychology & Therapy",
+          "skills": { "perception": 1, "intelligence": 0.6, "charisma": 0.4 },
+          "shift": { "start": 10, "hours": 8, "days": [0, 1, 2, 3, 4] },
+          "titles": ["Research Assistant", "Psychology Graduate", "Assistant Psychologist", "Counselor", "Licensed Therapist", "Clinical Psychologist", "Consultant Psychologist", "Head of Psychology", "Director of Mental Health Services", "Eminent Psychologist"]
+        }
+      ]
+    },
+    {
+      "id": "culinary",
+      "label": "Culinary",
+      "icon": "icon.career.culinary",
+      "description": "Cook, bake and mix your way to culinary fame.",
+      "payFactor": 0.9,
+      "shift": { "start": 15, "hours": 9, "days": [1, 2, 3, 4, 5] },
+      "workEffects": { "hunger": 0.1, "energy": -0.4, "hygiene": -0.3, "comfort": -0.1, "social": 0.05 },
+      "tracks": [
+        {
+          "id": "culinary.chef",
+          "label": "Restaurant Kitchen",
+          "skills": { "cooking": 1, "dexterity": 0.6, "endurance": 0.3 },
+          "titles": ["Dishwasher", "Kitchen Porter", "Prep Cook", "Line Cook", "Station Chef", "Sous Chef", "Head Chef", "Executive Chef", "Celebrity Chef", "Culinary Legend"]
+        },
+        {
+          "id": "culinary.pastry",
+          "label": "Pastry & Baking",
+          "skills": { "cooking": 1, "creativity": 0.6, "dexterity": 0.4 },
+          "shift": { "start": 5, "hours": 8, "days": [1, 2, 3, 4, 5] },
+          "titles": ["Bakery Assistant", "Apprentice Baker", "Baker", "Pastry Cook", "Cake Decorator", "Pastry Chef", "Head Pastry Chef", "Executive Pastry Chef", "Patisserie Owner", "World Pastry Champion"]
+        },
+        {
+          "id": "culinary.foodWriting",
+          "label": "Food Writing",
+          "skills": { "writing": 1, "cooking": 0.6, "perception": 0.3 },
+          "shift": { "start": 11, "hours": 6, "days": [0, 1, 2, 3, 4] },
+          "titles": ["Recipe Tester", "Food Blog Writer", "Restaurant Reviewer", "Cookbook Contributor", "Food Columnist", "Restaurant Critic", "Cookbook Author", "Food Magazine Editor", "Culinary Television Judge", "Legendary Food Critic"]
+        },
+        {
+          "id": "culinary.mixology",
+          "label": "Bartending & Mixology",
+          "skills": { "dexterity": 1, "charisma": 0.6, "cooking": 0.3 },
+          "shift": { "start": 18, "hours": 7, "days": [2, 3, 4, 5, 6] },
+          "titles": ["Barback", "Bar Assistant", "Bartender", "Cocktail Bartender", "Head Bartender", "Mixologist", "Bar Manager", "Beverage Director", "Cocktail Bar Owner", "World-Class Mixologist"]
+        }
+      ]
+    },
+    {
+      "id": "arts",
+      "label": "Arts & Design",
+      "icon": "icon.career.arts",
+      "description": "Turn ideas into images, objects and designs people love.",
+      "payFactor": 0.85,
+      "shift": { "start": 10, "hours": 7, "days": [0, 1, 2, 3, 4] },
+      "workEffects": { "hunger": -0.2, "energy": -0.2, "comfort": 0.05, "fun": 0.2, "social": -0.05 },
+      "tracks": [
+        {
+          "id": "arts.painting",
+          "label": "Painting & Fine Art",
+          "skills": { "creativity": 1, "dexterity": 0.6 },
+          "titles": ["Art Student", "Street Sketcher", "Portrait Painter", "Exhibiting Artist", "Commissioned Artist", "Gallery-Represented Artist", "Acclaimed Painter", "Art Fair Headliner", "Museum-Collected Master", "Living Legend of Art"]
+        },
+        {
+          "id": "arts.graphic",
+          "label": "Graphic Design",
+          "skills": { "creativity": 1, "technology": 0.6, "business": 0.3 },
+          "titles": ["Design Intern", "Production Artist", "Graphic Designer", "Visual Designer", "Brand Designer", "Senior Designer", "Art Director", "Creative Director", "Executive Creative Director", "Chief Creative Officer"]
+        },
+        {
+          "id": "arts.sculpture",
+          "label": "Sculpture & Crafts",
+          "skills": { "handiness": 1, "creativity": 0.7, "strength": 0.3 },
+          "titles": ["Workshop Assistant", "Craft Apprentice", "Woodcarver", "Ceramicist", "Sculptor", "Studio Sculptor", "Public Art Sculptor", "Studio Master", "Monument Sculptor", "Master Sculptor"]
+        },
+        {
+          "id": "arts.photography",
+          "label": "Photography",
+          "skills": { "perception": 1, "creativity": 0.7, "technology": 0.3 },
+          "titles": ["Photo Assistant", "Event Photographer", "Portrait Photographer", "Wedding Photographer", "Commercial Photographer", "Fashion Photographer", "Exhibiting Photographer", "Studio Owner", "Magazine Photo Director", "Iconic Photographer"]
+        }
+      ]
+    },
+    {
+      "id": "music",
+      "label": "Music",
+      "icon": "icon.career.music",
+      "description": "Write, play and produce music that gets stuck in people's heads.",
+      "payFactor": 0.95,
+      "shift": { "start": 14, "hours": 6, "days": [1, 2, 3, 4, 5] },
+      "workEffects": { "hunger": -0.2, "energy": -0.25, "fun": 0.3, "social": 0.15 },
+      "tracks": [
+        {
+          "id": "music.performance",
+          "label": "Band Performance",
+          "skills": { "charisma": 1, "creativity": 0.6, "dexterity": 0.4 },
+          "shift": { "start": 19, "hours": 5, "days": [2, 3, 4, 5, 6] },
+          "titles": ["Busker", "Open-Mic Performer", "Bar Band Musician", "Touring Musician", "Opening Act", "Indie Hit Maker", "Headline Act", "Arena Rock Star", "Hall of Fame Inductee", "Global Superstar"]
+        },
+        {
+          "id": "music.classical",
+          "label": "Classical Music",
+          "skills": { "dexterity": 1, "intelligence": 0.5, "creativity": 0.3 },
+          "titles": ["Music Student", "Conservatory Graduate", "Substitute Player", "Orchestra Section Player", "Chamber Musician", "Principal Player", "Concertmaster", "Guest Soloist", "Principal Conductor", "Maestro"]
+        },
+        {
+          "id": "music.composition",
+          "label": "Composition & Songwriting",
+          "skills": { "creativity": 1, "writing": 0.7, "technology": 0.3 },
+          "titles": ["Jingle Writer", "Lyricist", "Staff Songwriter", "Game Music Composer", "TV Score Composer", "Hit Songwriter", "Film Score Composer", "Composer-in-Residence", "Award-Winning Composer", "Legendary Composer"]
+        },
+        {
+          "id": "music.production",
+          "label": "Producing & DJing",
+          "skills": { "technology": 1, "creativity": 0.6, "charisma": 0.3 },
+          "shift": { "start": 21, "hours": 6, "days": [3, 4, 5] },
+          "titles": ["Studio Runner", "Assistant Engineer", "Bedroom Producer", "Club DJ", "Mixing Engineer", "Resident DJ", "Record Producer", "Festival Headliner DJ", "Superstar Producer", "Record Label Mogul"]
+        }
+      ]
+    },
+    {
+      "id": "education",
+      "label": "Education",
+      "icon": "icon.career.education",
+      "description": "Teach, inspire and shape the minds of the next generation.",
+      "payFactor": 0.95,
+      "shift": { "start": 8, "hours": 8, "days": [0, 1, 2, 3, 4] },
+      "workEffects": { "hunger": -0.2, "energy": -0.35, "fun": 0.05, "social": 0.2 },
+      "tracks": [
+        {
+          "id": "education.primary",
+          "label": "Primary Teaching",
+          "skills": { "charisma": 1, "endurance": 0.6, "creativity": 0.3 },
+          "titles": ["Classroom Volunteer", "Teaching Assistant", "Student Teacher", "Primary Teacher", "Year Group Lead", "Special Needs Coordinator", "Deputy Head Teacher", "Head Teacher", "School District Superintendent", "Education Commissioner"]
+        },
+        {
+          "id": "education.secondary",
+          "label": "Secondary Teaching",
+          "skills": { "intelligence": 1, "charisma": 0.6 },
+          "titles": ["Tutor", "Substitute Teacher", "Trainee Teacher", "Subject Teacher", "Head of Year", "Head of Department", "Assistant Principal", "Vice Principal", "Principal", "Executive Principal"]
+        },
+        {
+          "id": "education.university",
+          "label": "University & Academia",
+          "skills": { "writing": 1, "intelligence": 0.8 },
+          "shift": { "start": 10, "hours": 7, "days": [0, 1, 2, 3, 4] },
+          "titles": ["Graduate Teaching Assistant", "Doctoral Researcher", "Postdoctoral Fellow", "Lecturer", "Senior Lecturer", "Associate Professor", "Professor", "Department Chair", "Dean of Faculty", "University Chancellor"]
+        },
+        {
+          "id": "education.vocational",
+          "label": "Vocational Instruction",
+          "skills": { "handiness": 1, "charisma": 0.6, "endurance": 0.3 },
+          "titles": ["Workshop Helper", "Trainee Instructor", "Skills Instructor", "Vocational Teacher", "Apprenticeship Assessor", "Senior Instructor", "Training Program Lead", "Head of Vocational Studies", "Technical College Principal", "National Skills Director"]
+        }
+      ]
+    },
+    {
+      "id": "science",
+      "label": "Science & Research",
+      "icon": "icon.career.science",
+      "description": "Ask big questions and run the experiments that answer them.",
+      "payFactor": 1.15,
+      "shift": { "start": 9, "hours": 8, "days": [0, 1, 2, 3, 4] },
+      "workEffects": { "hunger": -0.25, "energy": -0.3, "hygiene": -0.05, "fun": 0.05, "social": -0.05 },
+      "tracks": [
+        {
+          "id": "science.biology",
+          "label": "Biology & Genetics",
+          "skills": { "intelligence": 1, "perception": 0.6 },
+          "titles": ["Lab Intern", "Lab Technician", "Research Assistant", "Biologist", "Geneticist", "Senior Research Scientist", "Principal Investigator", "Lab Director", "Research Institute Director", "Nobel Laureate"]
+        },
+        {
+          "id": "science.chemistry",
+          "label": "Chemistry",
+          "skills": { "intelligence": 1, "dexterity": 0.6, "perception": 0.3 },
+          "titles": ["Lab Glassware Assistant", "Lab Analyst", "Analytical Chemist", "Research Chemist", "Synthetic Chemist", "Senior Chemist", "Lead Formulation Scientist", "R&D Manager", "Director of Chemical Research", "Chief Science Officer"]
+        },
+        {
+          "id": "science.astronomy",
+          "label": "Physics & Astronomy",
+          "skills": { "perception": 1, "intelligence": 0.8, "technology": 0.4 },
+          "titles": ["Observatory Volunteer", "Telescope Operator", "Research Assistant", "Astrophysicist", "Staff Astronomer", "Senior Research Physicist", "Principal Scientist", "Observatory Director", "Space Agency Science Chief", "Renowned Cosmologist"]
+        },
+        {
+          "id": "science.field",
+          "label": "Field Research",
+          "skills": { "endurance": 1, "perception": 0.7, "intelligence": 0.4 },
+          "shift": { "start": 6, "hours": 10, "days": [0, 1, 2, 3, 4, 5] },
+          "titles": ["Field Volunteer", "Field Assistant", "Field Technician", "Field Researcher", "Expedition Scientist", "Senior Field Scientist", "Expedition Leader", "Research Station Chief", "Director of Field Research", "Legendary Explorer"]
+        }
+      ]
+    },
+    {
+      "id": "law",
+      "label": "Law",
+      "icon": "icon.career.law",
+      "description": "Argue cases, draft contracts and uphold the rule of law.",
+      "payFactor": 1.3,
+      "shift": { "start": 9, "hours": 9, "days": [0, 1, 2, 3, 4] },
+      "workEffects": { "hunger": -0.2, "energy": -0.35, "comfort": 0.05, "fun": -0.15, "social": 0.1 },
+      "tracks": [
+        {
+          "id": "law.corporate",
+          "label": "Corporate Law",
+          "skills": { "business": 1, "writing": 0.6, "intelligence": 0.4 },
+          "titles": ["Legal Intern", "Paralegal", "Trainee Lawyer", "Associate Attorney", "Senior Associate", "Of Counsel", "Partner", "Equity Partner", "Managing Partner", "Name Partner"]
+        },
+        {
+          "id": "law.criminal",
+          "label": "Criminal Defense",
+          "skills": { "charisma": 1, "intelligence": 0.6, "perception": 0.4 },
+          "titles": ["Court Clerk", "Legal Aid Assistant", "Public Defender", "Defense Attorney", "Trial Lawyer", "Lead Trial Counsel", "Criminal Law Partner", "Celebrity Defense Attorney", "Head of the Criminal Bar", "Legendary Trial Lawyer"]
+        },
+        {
+          "id": "law.judiciary",
+          "label": "Prosecution & Judiciary",
+          "skills": { "intelligence": 1, "perception": 0.6, "writing": 0.3 },
+          "titles": ["Court Intern", "Legal Researcher", "Assistant Prosecutor", "Prosecutor", "Senior Prosecutor", "District Attorney", "Magistrate", "Judge", "Appeals Court Judge", "Supreme Court Justice"]
+        },
+        {
+          "id": "law.contracts",
+          "label": "Contracts & Intellectual Property",
+          "skills": { "writing": 1, "intelligence": 0.6, "business": 0.3 },
+          "titles": ["Legal Secretary", "Contracts Assistant", "Contracts Paralegal", "Contracts Lawyer", "Intellectual Property Attorney", "Patent Attorney", "IP Practice Lead", "Head of Legal", "Chief Legal Officer", "Distinguished Legal Scholar"]
+        }
+      ]
+    },
+    {
+      "id": "retail",
+      "label": "Retail & Sales",
+      "icon": "icon.career.retail",
+      "description": "Sell, stock and run the shops where everyone spends.",
+      "payFactor": 0.8,
+      "shift": { "start": 10, "hours": 8, "days": [1, 2, 3, 4, 5] },
+      "workEffects": { "hunger": -0.2, "energy": -0.3, "comfort": -0.1, "fun": -0.05, "social": 0.15 },
+      "tracks": [
+        {
+          "id": "retail.store",
+          "label": "Store Operations",
+          "skills": { "business": 1, "charisma": 0.5, "endurance": 0.3 },
+          "titles": ["Stock Clerk", "Cashier", "Sales Associate", "Key Holder", "Shift Supervisor", "Assistant Store Manager", "Store Manager", "District Manager", "Regional Retail Director", "Retail Chain CEO"]
+        },
+        {
+          "id": "retail.sales",
+          "label": "Sales",
+          "skills": { "charisma": 1, "business": 0.7 },
+          "shift": { "start": 9, "hours": 8, "days": [0, 1, 2, 3, 4] },
+          "titles": ["Telemarketer", "Sales Trainee", "Sales Representative", "Account Executive", "Key Account Manager", "Sales Team Lead", "Sales Manager", "Regional Sales Director", "VP of Sales", "Chief Revenue Officer"]
+        },
+        {
+          "id": "retail.merchandising",
+          "label": "Visual Merchandising",
+          "skills": { "creativity": 1, "perception": 0.5, "handiness": 0.3 },
+          "titles": ["Display Assistant", "Merchandising Associate", "Window Dresser", "Visual Merchandiser", "Store Display Designer", "Visual Merchandising Lead", "Visual Merchandising Manager", "Head of Store Design", "Brand Experience Director", "Global Visual Director"]
+        },
+        {
+          "id": "retail.logistics",
+          "label": "Warehouse & Logistics",
+          "skills": { "strength": 1, "endurance": 0.7 },
+          "shift": { "start": 6, "hours": 8, "days": [0, 1, 2, 3, 4, 5] },
+          "titles": ["Warehouse Picker", "Order Packer", "Forklift Operator", "Inventory Controller", "Warehouse Team Leader", "Shift Manager", "Warehouse Manager", "Distribution Center Manager", "Head of Logistics", "Supply Chain Director"]
+        }
+      ]
+    },
+    {
+      "id": "trades",
+      "label": "Construction & Trades",
+      "icon": "icon.career.trades",
+      "description": "Build homes, wire buildings and craft things that last.",
+      "payFactor": 1.0,
+      "shift": { "start": 7, "hours": 8, "days": [0, 1, 2, 3, 4] },
+      "workEffects": { "hunger": -0.35, "energy": -0.4, "hygiene": -0.35, "comfort": -0.1, "social": 0.05 },
+      "tracks": [
+        {
+          "id": "trades.carpentry",
+          "label": "Carpentry",
+          "skills": { "handiness": 1, "strength": 0.6, "dexterity": 0.3 },
+          "titles": ["Carpentry Helper", "Carpentry Apprentice", "Joiner", "Carpenter", "Finish Carpenter", "Master Carpenter", "Carpentry Foreman", "Site Supervisor", "Construction Manager", "Master Builder"]
+        },
+        {
+          "id": "trades.electrical",
+          "label": "Electrical Work",
+          "skills": { "handiness": 1, "intelligence": 0.5, "dexterity": 0.3 },
+          "titles": ["Electrician's Helper", "Apprentice Electrician", "Wiring Installer", "Journeyman Electrician", "Licensed Electrician", "Master Electrician", "Electrical Foreman", "Electrical Contractor", "Electrical Project Director", "Electrical Contracting Magnate"]
+        },
+        {
+          "id": "trades.construction",
+          "label": "Heavy Construction",
+          "skills": { "strength": 1, "endurance": 0.7, "handiness": 0.3 },
+          "titles": ["Site Laborer", "Hod Carrier", "Bricklayer", "Concrete Finisher", "Crane Operator", "Heavy Equipment Operator", "Site Foreman", "Site Manager", "Construction Director", "Construction Magnate"]
+        },
+        {
+          "id": "trades.architecture",
+          "label": "Architecture",
+          "skills": { "creativity": 1, "intelligence": 0.6, "technology": 0.3 },
+          "shift": { "start": 9, "hours": 8, "days": [0, 1, 2, 3, 4] },
+          "titles": ["Architecture Intern", "CAD Drafter", "Architectural Assistant", "Project Architect", "Licensed Architect", "Senior Architect", "Lead Architect", "Associate Principal", "Principal Architect", "Starchitect"]
+        }
+      ]
+    },
+    {
+      "id": "sports",
+      "label": "Sports & Fitness",
+      "icon": "icon.career.sports",
+      "description": "Train hard, compete and help others get in shape.",
+      "payFactor": 1.0,
+      "shift": { "start": 8, "hours": 6, "days": [0, 1, 2, 3, 4, 5] },
+      "workEffects": { "hunger": -0.4, "energy": -0.45, "hygiene": -0.4, "fun": 0.2, "social": 0.1 },
+      "tracks": [
+        {
+          "id": "sports.athlete",
+          "label": "Professional Athlete",
+          "skills": { "endurance": 1, "strength": 0.7, "dexterity": 0.3 },
+          "titles": ["Youth Prospect", "Amateur Athlete", "Reserve Player", "Rookie Pro", "Starting Player", "Team Regular", "Team Captain", "All-Star Athlete", "Olympic Champion", "Sports Legend"]
+        },
+        {
+          "id": "sports.coaching",
+          "label": "Coaching",
+          "skills": { "charisma": 1, "perception": 0.6, "endurance": 0.3 },
+          "titles": ["Volunteer Coach", "Youth Coach", "Assistant Coach", "Position Coach", "Academy Head Coach", "Head Coach", "Technical Director", "National Team Coach", "Sports Director", "Hall of Fame Coach"]
+        },
+        {
+          "id": "sports.fitness",
+          "label": "Personal Training",
+          "skills": { "strength": 1, "charisma": 0.6 },
+          "shift": { "start": 6, "hours": 8, "days": [0, 1, 2, 3, 4, 5] },
+          "titles": ["Gym Receptionist", "Gym Floor Assistant", "Fitness Instructor", "Personal Trainer", "Strength Coach", "Master Trainer", "Gym Manager", "Celebrity Trainer", "Fitness Brand Founder", "Fitness Empire Mogul"]
+        },
+        {
+          "id": "sports.physio",
+          "label": "Sports Medicine & Physio",
+          "skills": { "dexterity": 1, "intelligence": 0.6, "strength": 0.3 },
+          "shift": { "start": 9, "hours": 8, "days": [0, 1, 2, 3, 4] },
+          "titles": ["Sports Massage Trainee", "Massage Therapist", "Athletic Trainer", "Physiotherapist", "Sports Physiotherapist", "Rehabilitation Specialist", "Head Physio", "Club Medical Director", "Head of Sports Medicine", "Olympic Team Physician"]
+        }
+      ]
+    },
+    {
+      "id": "military",
+      "label": "Military",
+      "icon": "icon.career.military",
+      "description": "Serve with discipline on land, at sea and in the air.",
+      "payFactor": 1.0,
+      "shift": { "start": 6, "hours": 10, "days": [0, 1, 2, 3, 4] },
+      "workEffects": { "hunger": -0.4, "energy": -0.45, "hygiene": -0.35, "fun": -0.1, "social": 0.1 },
+      "tracks": [
+        {
+          "id": "military.army",
+          "label": "Army",
+          "skills": { "strength": 1, "endurance": 0.8 },
+          "titles": ["Recruit", "Private", "Corporal", "Sergeant", "Staff Sergeant", "Lieutenant", "Captain", "Major", "Colonel", "General"]
+        },
+        {
+          "id": "military.navy",
+          "label": "Navy",
+          "skills": { "endurance": 1, "handiness": 0.5, "perception": 0.3 },
+          "titles": ["Seaman Recruit", "Seaman", "Petty Officer", "Chief Petty Officer", "Ensign", "Lieutenant", "Lieutenant Commander", "Commander", "Captain", "Admiral"]
+        },
+        {
+          "id": "military.airForce",
+          "label": "Air Force",
+          "skills": { "dexterity": 1, "perception": 0.7, "intelligence": 0.3 },
+          "titles": ["Airman Basic", "Flight Cadet", "Pilot Officer", "Flying Officer", "Flight Lieutenant", "Squadron Leader", "Wing Commander", "Group Captain", "Air Commodore", "Air Chief Marshal"]
+        },
+        {
+          "id": "military.intelligence",
+          "label": "Military Intelligence",
+          "skills": { "intelligence": 1, "perception": 0.7, "technology": 0.3 },
+          "shift": { "start": 8, "hours": 9, "days": [0, 1, 2, 3, 4] },
+          "titles": ["Intelligence Recruit", "Signals Operator", "Intelligence Analyst", "Cryptanalyst", "Field Intelligence Officer", "Counterintelligence Officer", "Intelligence Section Chief", "Head of Station", "Director of Military Intelligence", "Spymaster"]
+        }
+      ]
+    },
+    {
+      "id": "politics",
+      "label": "Politics & Government",
+      "icon": "icon.career.politics",
+      "description": "Win votes, write policy and run the country.",
+      "payFactor": 1.05,
+      "shift": { "start": 9, "hours": 9, "days": [0, 1, 2, 3, 4] },
+      "workEffects": { "hunger": -0.2, "energy": -0.3, "fun": -0.05, "social": 0.25 },
+      "tracks": [
+        {
+          "id": "politics.elected",
+          "label": "Elected Office",
+          "skills": { "charisma": 1, "business": 0.6, "writing": 0.3 },
+          "titles": ["Campaign Volunteer", "Canvasser", "Campaign Aide", "City Councillor", "Mayor", "State Representative", "Senator", "Governor", "Vice President", "President"]
+        },
+        {
+          "id": "politics.civilService",
+          "label": "Civil Service",
+          "skills": { "writing": 1, "intelligence": 0.6, "business": 0.3 },
+          "titles": ["Administrative Clerk", "Policy Assistant", "Policy Officer", "Policy Analyst", "Senior Policy Advisor", "Head of Unit", "Deputy Director", "Director-General", "Permanent Secretary", "Cabinet Secretary"]
+        },
+        {
+          "id": "politics.diplomacy",
+          "label": "Diplomacy",
+          "skills": { "charisma": 1, "intelligence": 0.6, "perception": 0.3 },
+          "titles": ["Embassy Intern", "Consular Assistant", "Attaché", "Third Secretary", "Second Secretary", "First Secretary", "Counsellor", "Deputy Chief of Mission", "Ambassador", "Foreign Minister"]
+        },
+        {
+          "id": "politics.campaign",
+          "label": "Campaign Strategy",
+          "skills": { "business": 1, "perception": 0.6, "charisma": 0.3 },
+          "titles": ["Phone Bank Volunteer", "Field Organizer", "Press Assistant", "Speechwriter", "Communications Director", "Deputy Campaign Manager", "Campaign Manager", "Chief Strategist", "Chief of Staff", "Political Kingmaker"]
+        }
+      ]
+    },
+    {
+      "id": "transport",
+      "label": "Transport & Aviation",
+      "icon": "icon.career.transport",
+      "description": "Move people and goods safely by road and by air.",
+      "payFactor": 1.05,
+      "shift": { "start": 6, "hours": 9, "days": [0, 1, 2, 3, 4, 5] },
+      "workEffects": { "hunger": -0.3, "energy": -0.35, "comfort": -0.15, "fun": -0.05 },
+      "tracks": [
+        {
+          "id": "transport.pilot",
+          "label": "Airline Pilot",
+          "skills": { "dexterity": 1, "perception": 0.7, "technology": 0.3 },
+          "titles": ["Flight School Student", "Flight Instructor", "Charter Pilot", "Regional First Officer", "First Officer", "Senior First Officer", "Captain", "Training Captain", "Chief Pilot", "Director of Flight Operations"]
+        },
+        {
+          "id": "transport.cabinCrew",
+          "label": "Cabin Crew",
+          "skills": { "charisma": 1, "endurance": 0.5 },
+          "titles": ["Cabin Crew Trainee", "Flight Attendant", "Senior Flight Attendant", "Lead Flight Attendant", "Purser", "Chief Purser", "Cabin Crew Instructor", "Cabin Service Manager", "Head of Cabin Crew", "Director of In-Flight Services"]
+        },
+        {
+          "id": "transport.driving",
+          "label": "Driving & Haulage",
+          "skills": { "endurance": 1, "perception": 0.6 },
+          "shift": { "start": 5, "hours": 10, "days": [0, 1, 2, 3, 4] },
+          "titles": ["Delivery Rider", "Courier", "Van Driver", "Bus Driver", "Truck Driver", "Long-Haul Trucker", "Fleet Supervisor", "Transport Manager", "Logistics Director", "Trucking Company Owner"]
+        },
+        {
+          "id": "transport.airTraffic",
+          "label": "Air Traffic Control",
+          "skills": { "perception": 1, "intelligence": 0.6, "endurance": 0.3 },
+          "shift": { "start": 7, "hours": 8, "days": [0, 1, 2, 3, 4] },
+          "titles": ["Control Tower Assistant", "Flight Data Assistant", "Air Traffic Control Trainee", "Tower Controller", "Approach Controller", "Radar Controller", "Senior Controller", "Watch Supervisor", "Air Traffic Manager", "National Air Traffic Director"]
+        }
+      ]
+    },
+    {
+      "id": "nature",
+      "label": "Agriculture & Nature",
+      "icon": "icon.career.nature",
+      "description": "Grow food, tend gardens and look after the wild outdoors.",
+      "payFactor": 0.85,
+      "shift": { "start": 6, "hours": 9, "days": [0, 1, 2, 3, 4, 5] },
+      "workEffects": { "hunger": -0.35, "energy": -0.4, "hygiene": -0.35, "comfort": -0.05, "fun": 0.1 },
+      "tracks": [
+        {
+          "id": "nature.farming",
+          "label": "Farming",
+          "skills": { "strength": 1, "handiness": 0.5, "endurance": 0.4 },
+          "titles": ["Farmhand", "Harvest Worker", "Tractor Driver", "Herd Manager", "Farm Supervisor", "Tenant Farmer", "Farm Owner", "Estate Manager", "Agribusiness Director", "Agricultural Tycoon"]
+        },
+        {
+          "id": "nature.ranger",
+          "label": "Park Ranger",
+          "skills": { "perception": 1, "endurance": 0.6 },
+          "shift": { "start": 8, "hours": 8, "days": [2, 3, 4, 5, 6] },
+          "titles": ["Trail Volunteer", "Seasonal Ranger", "Park Ranger", "Wildlife Officer", "Senior Ranger", "Conservation Officer", "District Ranger", "Park Superintendent", "Regional Parks Director", "National Parks Chief"]
+        },
+        {
+          "id": "nature.horticulture",
+          "label": "Gardening & Horticulture",
+          "skills": { "creativity": 1, "handiness": 0.6, "endurance": 0.3 },
+          "shift": { "start": 7, "hours": 8, "days": [0, 1, 2, 3, 4] },
+          "titles": ["Garden Helper", "Groundskeeper", "Gardener", "Horticulturist", "Landscape Gardener", "Head Gardener", "Landscape Designer", "Estate Gardens Manager", "Botanical Garden Director", "Celebrated Garden Designer"]
+        },
+        {
+          "id": "nature.veterinary",
+          "label": "Veterinary Care",
+          "skills": { "dexterity": 1, "intelligence": 0.7 },
+          "shift": { "start": 8, "hours": 9, "days": [0, 1, 2, 3, 4] },
+          "titles": ["Kennel Assistant", "Animal Care Assistant", "Veterinary Nurse", "Veterinary Technician", "Veterinary Intern", "Veterinarian", "Veterinary Surgeon", "Practice Owner", "Zoo Chief Veterinarian", "Head of Veterinary Medicine"]
+        }
+      ]
+    },
+    {
+      "id": "hospitality",
+      "label": "Hospitality & Tourism",
+      "icon": "icon.career.hospitality",
+      "description": "Welcome guests, plan events and make every trip memorable.",
+      "payFactor": 0.85,
+      "shift": { "start": 12, "hours": 8, "days": [2, 3, 4, 5, 6] },
+      "workEffects": { "hunger": -0.25, "energy": -0.35, "comfort": -0.1, "fun": 0.05, "social": 0.2 },
+      "tracks": [
+        {
+          "id": "hospitality.hotel",
+          "label": "Hotel Management",
+          "skills": { "business": 1, "charisma": 0.6 },
+          "titles": ["Bellhop", "Front Desk Agent", "Concierge", "Guest Relations Officer", "Front Office Supervisor", "Front Office Manager", "Assistant General Manager", "Hotel General Manager", "Regional Hotel Director", "Hotel Chain Owner"]
+        },
+        {
+          "id": "hospitality.tourGuide",
+          "label": "Tour Guiding",
+          "skills": { "charisma": 1, "endurance": 0.5, "perception": 0.3 },
+          "shift": { "start": 9, "hours": 8, "days": [3, 4, 5, 6] },
+          "titles": ["Tour Assistant", "Walking Tour Guide", "Museum Guide", "Licensed Tour Guide", "Multilingual Guide", "Expedition Guide", "Tour Leader", "Tour Operations Manager", "Tour Company Director", "Travel Company Founder"]
+        },
+        {
+          "id": "hospitality.events",
+          "label": "Event Planning",
+          "skills": { "creativity": 1, "business": 0.6, "charisma": 0.3 },
+          "titles": ["Event Assistant", "Event Coordinator", "Wedding Planner", "Event Planner", "Senior Event Planner", "Event Manager", "Festival Producer", "Head of Events", "Events Agency Director", "Celebrity Event Mogul"]
+        },
+        {
+          "id": "hospitality.cruise",
+          "label": "Cruise Ship Crew",
+          "skills": { "endurance": 1, "charisma": 0.6, "handiness": 0.3 },
+          "shift": { "start": 8, "hours": 10, "days": [0, 1, 2, 3, 4, 5] },
+          "titles": ["Deckhand", "Cabin Steward", "Activities Host", "Shore Excursion Guide", "Guest Services Officer", "Entertainment Manager", "Assistant Cruise Director", "Cruise Director", "Fleet Hotel Director", "Cruise Line Executive"]
+        }
+      ]
+    },
+    {
+      "id": "fashion",
+      "label": "Beauty & Fashion",
+      "icon": "icon.career.fashion",
+      "description": "Style looks, design clothes and set the trends.",
+      "payFactor": 0.95,
+      "shift": { "start": 10, "hours": 8, "days": [1, 2, 3, 4, 5] },
+      "workEffects": { "hunger": -0.2, "energy": -0.25, "hygiene": 0.05, "fun": 0.1, "social": 0.15 },
+      "tracks": [
+        {
+          "id": "fashion.design",
+          "label": "Fashion Design",
+          "skills": { "creativity": 1, "dexterity": 0.6, "business": 0.3 },
+          "titles": ["Sewing Room Assistant", "Pattern Cutter", "Assistant Designer", "Fashion Designer", "Collection Designer", "Head Designer", "Design Director", "Creative Director", "Fashion House Founder", "Fashion Icon"]
+        },
+        {
+          "id": "fashion.modeling",
+          "label": "Modeling",
+          "skills": { "charisma": 1, "endurance": 0.5, "creativity": 0.3 },
+          "titles": ["Model Hopeful", "Catalogue Model", "Commercial Model", "Runway Model", "Editorial Model", "Campaign Model", "Cover Model", "Face of the Brand", "Supermodel", "Fashion Legend"]
+        },
+        {
+          "id": "fashion.hairMakeup",
+          "label": "Hair & Makeup",
+          "skills": { "dexterity": 1, "creativity": 0.7, "charisma": 0.3 },
+          "titles": ["Salon Assistant", "Shampoo Technician", "Trainee Stylist", "Hair Stylist", "Color Specialist", "Session Stylist", "Salon Manager", "Backstage Key Artist", "Celebrity Stylist", "Beauty Empire Founder"]
+        },
+        {
+          "id": "fashion.styling",
+          "label": "Styling & Buying",
+          "skills": { "perception": 1, "business": 0.6, "creativity": 0.4 },
+          "titles": ["Showroom Assistant", "Wardrobe Assistant", "Personal Shopper", "Assistant Buyer", "Fashion Stylist", "Fashion Buyer", "Head Buyer", "Trend Forecaster", "Fashion Director", "Fashion Magazine Editor-in-Chief"]
+        }
+      ]
+    },
+    {
+      "id": "business",
+      "label": "Business & Marketing",
+      "icon": "icon.career.business",
+      "description": "Lead teams, launch brands and grow companies.",
+      "payFactor": 1.15,
+      "shift": { "start": 9, "hours": 8, "days": [0, 1, 2, 3, 4] },
+      "workEffects": { "hunger": -0.2, "energy": -0.3, "fun": -0.1, "social": 0.15 },
+      "tracks": [
+        {
+          "id": "business.marketing",
+          "label": "Marketing",
+          "skills": { "creativity": 1, "business": 0.6, "writing": 0.3 },
+          "titles": ["Marketing Intern", "Marketing Assistant", "Marketing Coordinator", "Marketing Specialist", "Brand Manager", "Senior Brand Manager", "Marketing Manager", "Head of Marketing", "VP of Marketing", "Chief Marketing Officer"]
+        },
+        {
+          "id": "business.management",
+          "label": "Management & Strategy",
+          "skills": { "business": 1, "intelligence": 0.6, "charisma": 0.4 },
+          "titles": ["Office Intern", "Management Trainee", "Business Analyst", "Project Manager", "Strategy Consultant", "Operations Manager", "General Manager", "Vice President", "Chief Operating Officer", "Chief Executive Officer"]
+        },
+        {
+          "id": "business.entrepreneur",
+          "label": "Entrepreneurship",
+          "skills": { "business": 1, "charisma": 0.6, "creativity": 0.3 },
+          "shift": { "start": 8, "hours": 10, "days": [0, 1, 2, 3, 4, 5] },
+          "titles": ["Side Hustler", "Market Stall Trader", "Small Business Owner", "Startup Founder", "Funded Founder", "Scale-Up CEO", "Serial Entrepreneur", "Unicorn Founder", "Venture Capitalist", "Business Tycoon"]
+        },
+        {
+          "id": "business.pr",
+          "label": "Public Relations",
+          "skills": { "writing": 1, "charisma": 0.7 },
+          "titles": ["PR Intern", "PR Assistant", "Press Officer", "Account Executive", "Communications Specialist", "Account Director", "Head of Communications", "Communications Director", "PR Agency Partner", "Chief Communications Officer"]
+        }
+      ]
+    }
+  ]
+}

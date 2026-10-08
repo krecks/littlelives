@@ -1,5 +1,7 @@
 /** Rendering quality presets. Desktop-only targets; `high` is the default. */
 
+import type { VisualStyle } from './styles';
+
 export interface QualitySettings {
   shadowMapSize: number;
   msaaSamples: number;
@@ -9,6 +11,8 @@ export interface QualitySettings {
   tiltShift: boolean;
   /** WebGPU only: record draw commands once and replay them each frame. */
   snapshotRendering: boolean;
+  /** Initial visual style (changeable live with `Renderer.setVisualStyle`). Default `classic`. */
+  visualStyle?: VisualStyle;
 }
 
 export const QUALITY: Record<'low' | 'medium' | 'high' | 'ultra', QualitySettings> = {

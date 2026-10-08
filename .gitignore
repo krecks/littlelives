@@ -3,3 +3,4 @@ node_modules
 /web/dist
 /web/src/core/wasm-pkg
 .DS_Store
+/debug-reports

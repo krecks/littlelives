@@ -1,3 +1,5 @@
+import { services } from './services';
+
 export function clock(minute: number, h24 = true): string {
   const m = Math.floor(minute);
   const hours = Math.floor(m / 60);
@@ -20,4 +22,21 @@ export function timeAgo(timestamp: number): string {
   if (s < 3600) return `${Math.floor(s / 60)} min ago`;
   if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
   return new Date(timestamp).toLocaleDateString();
+}
+
+/** Money in the content's currency, e.g. "$1,250" or "-$40". */
+export function money(amount: number): string {
+  const symbol = services.content?.economy.currency ?? '$';
+  return `${amount < 0 ? '-' : ''}${symbol}${Math.abs(Math.round(amount)).toLocaleString()}`;
+}
+
+export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/** "Mon–Fri", "Mon Wed Fri", "Every day". */
+export function dayList(days: readonly number[]): string {
+  if (days.length === 7) return 'Every day';
+  const sorted = [...days].sort((a, b) => a - b);
+  const contiguous = sorted.every((d, i) => i === 0 || d === sorted[i - 1] + 1);
+  if (contiguous && sorted.length > 2) return `${WEEKDAYS[sorted[0]]}–${WEEKDAYS[sorted[sorted.length - 1]]}`;
+  return sorted.map((d) => WEEKDAYS[d]).join(' ');
 }

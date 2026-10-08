@@ -23,6 +23,7 @@ export interface SaveRecord extends SaveMeta {
 
 export const AUTOSAVE_ID = 'autosave';
 
+// Legacy key from the project's old name; kept so saves survive.
 const DB_NAME = 'open-sims-wasm';
 const STORE = 'saves';
 

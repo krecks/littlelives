@@ -4,6 +4,8 @@
 use serde::Serialize;
 
 use crate::clock;
+use crate::content::Content;
+use crate::life;
 use crate::lot::Edge;
 use crate::social::SocialEvent;
 use crate::world::{Phase, Task, TaskKind, World};
@@ -26,9 +28,15 @@ struct UiState<'a> {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct FundsView {
     id: u32,
     funds: i64,
+    /// Weekly rent for this household's home, if rent is charged.
+    rent: Option<i64>,
+    /// Weekly bills, which grow with what the household owns.
+    bills: Option<i64>,
+    style: u8,
 }
 
 #[derive(Serialize)]
@@ -42,7 +50,7 @@ struct SimView<'a> {
     needs: &'a [f32],
     mood: f32,
     emotion: Option<&'a str>,
-    moodlets: Vec<MoodletView<'a>>,
+    feelings: Vec<FeelingView<'a>>,
     actions: Vec<ActionView>,
     /// Plot the Sim is on (None on the street or at work).
     plot: Option<u32>,
@@ -50,28 +58,79 @@ struct SimView<'a> {
     away_until: Option<f32>,
     visiting: Option<u32>,
     job: Option<JobView<'a>>,
+    /// Skill levels in content order.
+    skills: &'a [f32],
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct JobView<'a> {
+    /// Index into the career catalog.
+    index: usize,
     career: &'a str,
     career_label: &'a str,
+    category: Option<&'a str>,
     title: &'a str,
     level: usize,
     levels: usize,
+    grade: Option<&'a str>,
+    grade_label: Option<&'a str>,
     performance: f32,
+    /// Pay per shift on this Sim's schedule.
     pay: i64,
+    pay_per_hour: f32,
+    weekly_pay: i64,
     start_hour: f32,
     hours: f32,
-    /// Weekday indices, 0 = Monday.
+    /// This Sim's workdays (0 = Monday), after skill adjustments.
     days: Vec<u8>,
+    standard_days: Vec<u8>,
+    /// Probation / standard / flexible...
+    workweek: Option<&'a str>,
+    /// Skill levels above (+) or below (-) the requirements.
+    fit: f32,
+    requires: Vec<Requirement<'a>>,
+    next: Option<NextLevel<'a>>,
     next_title: Option<&'a str>,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct MoodletView<'a> {
+struct NextLevel<'a> {
+    title: &'a str,
+    grade: Option<&'a str>,
+    pay_per_hour: f32,
+    requires: Vec<Requirement<'a>>,
+}
+
+#[derive(Serialize)]
+struct Requirement<'a> {
+    skill: &'a str,
+    level: f32,
+    have: f32,
+}
+
+fn weekdays(mask: u8) -> Vec<u8> {
+    (0..7).filter(|d| mask & (1 << d) != 0).collect()
+}
+
+fn requirements<'a>(
+    content: &'a Content,
+    req: &[(usize, f32)],
+    skills: &[f32],
+) -> Vec<Requirement<'a>> {
+    req.iter()
+        .map(|&(s, level)| Requirement {
+            skill: &content.skills[s].id,
+            level,
+            have: skills[s].floor(),
+        })
+        .collect()
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FeelingView<'a> {
     id: &'a str,
     label: &'a str,
     mood: f32,
@@ -187,13 +246,13 @@ pub fn ui_state_json(world: &World) -> String {
             }
             actions.extend(s.current().map(|a| action(&a.task, Some(&a.phase))));
             actions.extend(s.queue().map(|t| action(t, None)));
-            let moodlets = s
-                .moodlets
+            let feelings = s
+                .feelings
                 .iter()
                 .map(|m| {
-                    let def = &content.moodlets[m.def];
+                    let def = &content.feelings[m.def];
                     let left = m.expires.saturating_sub(world.tick) as f32 * MINUTES_PER_TICK;
-                    MoodletView {
+                    FeelingView {
                         id: &def.id,
                         label: &def.label,
                         mood: def.mood,
@@ -204,18 +263,39 @@ pub fn ui_state_json(world: &World) -> String {
             let job = s.job.as_ref().map(|j| {
                 let career = &content.careers[j.career];
                 let level = &career.levels[j.level];
+                let grade = level.grade.map(|g| &content.grades[g]);
+                let fit = life::skill_fit(level, &s.skills);
+                let next = career.levels.get(j.level + 1);
                 JobView {
+                    index: j.career,
                     career: &career.id,
                     career_label: &career.label,
+                    category: career
+                        .category
+                        .map(|c| content.career_categories[c].id.as_str()),
                     title: &level.title,
                     level: j.level,
                     levels: career.levels.len(),
+                    grade: grade.map(|g| g.id.as_str()),
+                    grade_label: grade.map(|g| g.label.as_str()),
                     performance: j.performance,
-                    pay: level.pay,
+                    pay: life::shift_pay(content, j, &s.skills),
+                    pay_per_hour: level.pay as f32 / level.hours,
+                    weekly_pay: level.pay * level.days.count_ones() as i64,
                     start_hour: level.start_hour,
                     hours: level.hours,
-                    days: (0..7).filter(|d| level.days & (1 << d) != 0).collect(),
-                    next_title: career.levels.get(j.level + 1).map(|l| l.title.as_str()),
+                    days: weekdays(life::work_days(content, j, &s.skills)),
+                    standard_days: weekdays(level.days),
+                    workweek: life::workweek_rule(content, fit).map(|r| r.label.as_str()),
+                    fit,
+                    requires: requirements(content, &level.requires, &s.skills),
+                    next: next.map(|n| NextLevel {
+                        title: &n.title,
+                        grade: n.grade.map(|g| content.grades[g].id.as_str()),
+                        pay_per_hour: n.pay as f32 / n.hours,
+                        requires: requirements(content, &n.requires, &s.skills),
+                    }),
+                    next_title: next.map(|l| l.title.as_str()),
                 }
             });
             let (x, z) = s.tile();
@@ -228,7 +308,7 @@ pub fn ui_state_json(world: &World) -> String {
                 needs: &s.needs[..n],
                 mood: s.mood(content),
                 emotion: s.emotion(content).map(|e| content.emotions[e].id.as_str()),
-                moodlets,
+                feelings,
                 actions,
                 plot: if s.away_until.is_some() {
                     None
@@ -238,6 +318,7 @@ pub fn ui_state_json(world: &World) -> String {
                 away_until: s.away_until.map(clock::minute_of_day),
                 visiting: s.visiting.map(|v| v.plot),
                 job,
+                skills: &s.skills[..content.skills.len()],
             }
         })
         .collect();
@@ -274,9 +355,16 @@ pub fn ui_state_json(world: &World) -> String {
         households: world
             .households
             .iter()
-            .map(|h| FundsView {
-                id: h.id,
-                funds: h.funds,
+            .enumerate()
+            .map(|(i, h)| {
+                let costs = life::weekly_costs(world, i);
+                FundsView {
+                    id: h.id,
+                    funds: h.funds,
+                    rent: costs.map(|c| c.0),
+                    bills: costs.map(|c| c.1),
+                    style: h.style,
+                }
             })
             .collect(),
         relationships,
@@ -297,7 +385,56 @@ struct StructureView<'a> {
     plots: Vec<PlotView<'a>>,
     exits: &'a [[f32; 2]],
     rooms: &'a [u16],
+    /// Every edge with a wall on it (plain walls, and walls with a door or window).
+    walls: Vec<EdgeView>,
+    /// Doors and windows (also listed in `walls`).
+    openings: Vec<OpeningView>,
     meta: &'a serde_json::Value,
+}
+
+/// A wall edge: `h` runs from `(x, z)` to `(x + 1, z)`, `v` from `(x, z)` to `(x, z + 1)`.
+#[derive(Serialize)]
+struct EdgeView {
+    axis: &'static str,
+    x: usize,
+    z: usize,
+}
+
+#[derive(Serialize)]
+struct OpeningView {
+    axis: &'static str,
+    x: usize,
+    z: usize,
+    kind: &'static str,
+}
+
+/// Wall edges and openings (doors, windows) of the whole lot, in grid order.
+fn wall_edges(lot: &crate::lot::Lot) -> (Vec<EdgeView>, Vec<OpeningView>) {
+    let mut walls = Vec::new();
+    let mut openings = Vec::new();
+    let mut add = |axis: &'static str, x: usize, z: usize, e: Edge| {
+        if !e.is_wall() {
+            return;
+        }
+        walls.push(EdgeView { axis, x, z });
+        let kind = match e {
+            Edge::Door => "door",
+            Edge::Window => "window",
+            _ => return,
+        };
+        openings.push(OpeningView { axis, x, z, kind });
+    };
+    for z in 0..=lot.depth {
+        for x in 0..lot.width {
+            add("h", x, z, lot.h_edge(x, z));
+        }
+    }
+    for z in 0..lot.depth {
+        for x in 0..=lot.width {
+            add("v", x, z, lot.v_edge(x, z));
+        }
+    }
+    (walls, openings)
 }
 
 #[derive(Serialize)]
@@ -310,6 +447,10 @@ struct ObjectView<'a> {
     rot: u8,
     w: i32,
     d: i32,
+    quality: u8,
+    style: u8,
+    /// What selling it returns (None if it can't be sold).
+    sell_value: Option<i64>,
 }
 
 #[derive(Serialize)]
@@ -391,6 +532,11 @@ pub fn structure_json(world: &World) -> String {
                 rot: o.rot,
                 w,
                 d,
+                quality: o.quality,
+                style: o.style,
+                sell_value: content.objects[o.def]
+                    .price
+                    .map(|_| (o.value as f32 * content.object_rules.resale).round() as i64),
             }
         })
         .collect();
@@ -433,6 +579,7 @@ pub fn structure_json(world: &World) -> String {
             house: house_bounds(world, p.x, p.z, p.x + p.w, p.z + p.d),
         })
         .collect();
+    let (walls, openings) = wall_edges(&world.lot);
     serde_json::to_string(&StructureView {
         version: world.structure_version(),
         width: world.lot.width,
@@ -443,6 +590,8 @@ pub fn structure_json(world: &World) -> String {
         plots,
         exits: &world.exits,
         rooms: world.lot.rooms(),
+        walls,
+        openings,
         meta: &world.meta,
     })
     .expect("structure serializes")
@@ -474,4 +623,152 @@ pub fn social_options_json(world: &World, actor: usize, target: usize) -> String
         })
         .collect();
     serde_json::to_string(&options).expect("options serialize")
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CatalogView<'a> {
+    grades: Vec<GradeView<'a>>,
+    categories: Vec<&'a str>,
+    careers: Vec<CareerView<'a>>,
+    workweek: Vec<WorkweekView<'a>>,
+    probation_levels: f32,
+    max_skill: f32,
+    object_rules: ObjectRulesView,
+    build: BuildView,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GradeView<'a> {
+    id: &'a str,
+    label: &'a str,
+    pay_per_hour: f32,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CareerView<'a> {
+    id: &'a str,
+    label: &'a str,
+    /// Category id.
+    category: Option<&'a str>,
+    /// Skill ids practised at work.
+    skills: Vec<&'a str>,
+    levels: Vec<LevelView<'a>>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LevelView<'a> {
+    title: &'a str,
+    grade: Option<&'a str>,
+    pay: i64,
+    start: f32,
+    hours: f32,
+    days: Vec<u8>,
+    /// `[skill id, level]`.
+    requires: Vec<(&'a str, f32)>,
+}
+
+#[derive(Serialize)]
+struct WorkweekView<'a> {
+    fit: f32,
+    days: i8,
+    label: &'a str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ObjectRulesView {
+    max_quality: u8,
+    quality_bonus: f32,
+    upgrade_cost: f32,
+    resale: f32,
+}
+
+#[derive(Serialize)]
+struct BuildView {
+    wall: i64,
+    door: i64,
+    window: i64,
+    remove: i64,
+}
+
+/// Every career with all its levels, expanded from the content (sent to the UI once).
+pub fn catalog_json(content: &Content) -> String {
+    let careers = content
+        .careers
+        .iter()
+        .map(|c| CareerView {
+            id: &c.id,
+            label: &c.label,
+            category: c.category.map(|i| content.career_categories[i].id.as_str()),
+            skills: c
+                .skills
+                .iter()
+                .map(|&(s, _)| content.skills[s].id.as_str())
+                .collect(),
+            levels: c
+                .levels
+                .iter()
+                .map(|l| LevelView {
+                    title: &l.title,
+                    grade: l.grade.map(|g| content.grades[g].id.as_str()),
+                    pay: l.pay,
+                    start: l.start_hour,
+                    hours: l.hours,
+                    days: weekdays(l.days),
+                    requires: l
+                        .requires
+                        .iter()
+                        .map(|&(s, v)| (content.skills[s].id.as_str(), v))
+                        .collect(),
+                })
+                .collect(),
+        })
+        .collect();
+    let rules = &content.object_rules;
+    serde_json::to_string(&CatalogView {
+        grades: content
+            .grades
+            .iter()
+            .map(|g| GradeView {
+                id: &g.id,
+                label: &g.label,
+                pay_per_hour: g.pay_per_hour,
+            })
+            .collect(),
+        categories: content
+            .career_categories
+            .iter()
+            .map(|c| c.id.as_str())
+            .collect(),
+        careers,
+        workweek: content
+            .career_rules
+            .workweek
+            .iter()
+            .map(|w| WorkweekView {
+                fit: w.fit,
+                days: w.days,
+                label: &w.label,
+            })
+            .collect(),
+        probation_levels: content.career_rules.probation_levels,
+        max_skill: content.skill_rules.max_level,
+        object_rules: ObjectRulesView {
+            max_quality: rules.max_quality,
+            quality_bonus: rules.quality_bonus,
+            upgrade_cost: rules.upgrade_cost,
+            resale: rules.resale,
+        },
+        build: BuildView {
+            wall: content.build.wall,
+            door: content.build.door,
+            window: content.build.window,
+            remove: content.build.remove,
+        },
+    })
+    .expect("catalog serializes")
 }

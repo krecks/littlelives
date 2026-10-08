@@ -20,11 +20,20 @@ export interface SnapshotLayout {
     social: number;
     outcome: number;
     partner: number;
+    /** Conversation animation: index into sim-core's `social::ANIMATIONS` + 1 ('talk', 'laugh', ...), 0 = none. */
     anim: number;
     emotion: number;
     role: number;
     away: number;
+    /** Object instance id (as in `WorldStructure.objects`) the Sim is using or walking to use, -1 = none. */
+    object: number;
+    /** Index into `actions` while using an object (not while walking to it) or talking, -1 = none. */
+    action: number;
+    /** Mood 0..1 (missing in older layouts). */
+    mood?: number;
   };
+  /** Animation tags from content (`animations` in base.json), named by `sim.action`. */
+  actions: string[];
 }
 
 export const Pose = { Stand: 0, Sit: 1, Lie: 2 } as const;

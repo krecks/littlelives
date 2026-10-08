@@ -1,0 +1,394 @@
+{
+  "$comment": "Kind pack: giving, baking for others, handmade gifts and a welcoming home. New tags: charity (acts of giving) and cozy (shared vocabulary). Warm-hearted feelings make friendly socials land better. Check with: cargo run -q -p sim-core --example check_pack -- web/public/content/packs/kind.json",
+  "feelings": [
+    {
+      "id": "kind.warmHeart",
+      "label": "Warm heart",
+      "emotion": "happy",
+      "mood": 0.08,
+      "hours": 6,
+      "effects": {
+        "needGain": {
+          "social": 1.15
+        },
+        "tagSuccess": {
+          "friendly": 0.06
+        },
+        "tagAcceptance": {
+          "friendly": 0.04
+        },
+        "tagPreference": {
+          "charity": 0.5
+        }
+      }
+    },
+    {
+      "id": "kind.bakedWithLove",
+      "label": "Baked with love",
+      "emotion": "happy",
+      "mood": 0.1,
+      "hours": 6,
+      "effects": {
+        "needDecay": {
+          "hunger": 0.85
+        },
+        "needGain": {
+          "social": 1.2
+        },
+        "tagSuccess": {
+          "friendly": 0.1
+        },
+        "tagPreference": {
+          "charity": 0.6
+        }
+      }
+    },
+    {
+      "id": "kind.handmadeGift",
+      "label": "Made something for someone",
+      "emotion": "inspired",
+      "mood": 0.07,
+      "hours": 5,
+      "effects": {
+        "skillGain": {
+          "dexterity": 1.15,
+          "creativity": 1.15
+        },
+        "tagAcceptance": {
+          "friendly": 0.05
+        }
+      }
+    },
+    {
+      "id": "kind.cozyTogether",
+      "label": "Cosy and cared for",
+      "emotion": "relaxed",
+      "mood": 0.08,
+      "hours": 8,
+      "effects": {
+        "needGain": {
+          "energy": 1.2,
+          "comfort": 1.15
+        },
+        "tagSuccess": {
+          "friendly": 0.04
+        }
+      }
+    }
+  ],
+  "objects": [
+    {
+      "id": "kind.neighbourlyOven",
+      "name": "Neighbourly baking counter",
+      "model": "model.kind.neighbourlyOven",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 950,
+      "category": "kitchen",
+      "slots": 1,
+      "description": "A roomy counter and oven for baking pies and treats to share; better bakers feed the family better, and Cooking 4+ bakes leave residents glowing and extra charming.",
+      "interactions": [
+        {
+          "id": "familyPie",
+          "label": "Bake a family pie",
+          "anim": "cook",
+          "minutes": 50,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": {
+            "hunger": 0.8,
+            "fun": 0.1
+          },
+          "tags": [
+            "food",
+            "cooking"
+          ],
+          "skills": {
+            "cooking": 0.1
+          },
+          "skill": "cooking"
+        },
+        {
+          "id": "treatsToShare",
+          "label": "Bake treats for the neighbours",
+          "anim": "cook",
+          "minutes": 60,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": {
+            "hunger": 0.3,
+            "fun": 0.2,
+            "social": 0.05
+          },
+          "tags": [
+            "food",
+            "cooking",
+            "training",
+            "charity"
+          ],
+          "skills": {
+            "cooking": 0.22,
+            "charisma": 0.05
+          },
+          "skill": "cooking",
+          "feeling": "kind.bakedWithLove",
+          "feelingMinSkill": 4
+        }
+      ]
+    },
+    {
+      "id": "kind.givingJar",
+      "name": "Community giving jar",
+      "model": "model.kind.givingJar",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 60,
+      "category": "decor",
+      "slots": 1,
+      "description": "A glass jar on a little stand for spare change to good causes; each gift costs a few dollars and leaves a warm heart that makes friendly chats go better.",
+      "interactions": [
+        {
+          "id": "donate",
+          "label": "Give to a good cause",
+          "anim": "idle",
+          "minutes": 8,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": {
+            "fun": 0.06,
+            "social": 0.08,
+            "comfort": 0.03
+          },
+          "tags": [
+            "charity"
+          ],
+          "cost": 8,
+          "feeling": "kind.warmHeart"
+        }
+      ]
+    },
+    {
+      "id": "kind.knittingRocker",
+      "name": "Gift-knitting rocker",
+      "model": "model.kind.knittingRocker",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 420,
+      "category": "hobbies",
+      "slots": 1,
+      "description": "A cushioned rocking chair with a yarn basket for knitting gifts; trains Dexterity, and at Dexterity 3+ each finished piece inspires the knitter.",
+      "interactions": [
+        {
+          "id": "knitGift",
+          "label": "Knit a gift",
+          "anim": "tinker",
+          "minutes": 60,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": {
+            "comfort": 0.25,
+            "fun": 0.25
+          },
+          "tags": [
+            "training",
+            "creative",
+            "cozy",
+            "charity"
+          ],
+          "skills": {
+            "dexterity": 0.22,
+            "creativity": 0.05
+          },
+          "skill": "dexterity",
+          "feeling": "kind.handmadeGift",
+          "feelingMinSkill": 3
+        },
+        {
+          "id": "rock",
+          "label": "Rock gently",
+          "anim": "relax",
+          "minutes": 20,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": {
+            "comfort": 0.45
+          },
+          "tags": [
+            "lounge",
+            "cozy"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kind.welcomeTeaTable",
+      "name": "Welcome tea table",
+      "model": "model.kind.welcomeTeaTable",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 700,
+      "category": "living",
+      "slots": 2,
+      "description": "A low table with two cushions and an always-warm teapot where two residents share tea and talk; charming hosts (Charisma 2+) come away warm-hearted.",
+      "interactions": [
+        {
+          "id": "shareTea",
+          "label": "Share a pot of tea",
+          "anim": "drink",
+          "minutes": 30,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": {
+            "comfort": 0.3,
+            "social": 0.2,
+            "energy": 0.06
+          },
+          "tags": [
+            "food",
+            "lounge",
+            "cozy"
+          ],
+          "skills": {
+            "charisma": 0.06
+          },
+          "skill": "charisma",
+          "feeling": "kind.warmHeart",
+          "feelingMinSkill": 2
+        }
+      ]
+    },
+    {
+      "id": "kind.songbirdFeeder",
+      "name": "Songbird feeding station",
+      "model": "model.kind.songbirdFeeder",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 140,
+      "category": "outdoor",
+      "slots": 1,
+      "description": "A post-mounted feeder and bird bath; filling it with seed is a small daily kindness, and watching the visitors sharpens Perception.",
+      "interactions": [
+        {
+          "id": "refill",
+          "label": "Fill the feeder",
+          "anim": "garden",
+          "minutes": 10,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": {
+            "fun": 0.1,
+            "comfort": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "outdoors",
+            "charity"
+          ],
+          "skills": {
+            "perception": 0.05
+          },
+          "feeling": "kind.warmHeart"
+        },
+        {
+          "id": "watchBirds",
+          "label": "Watch the songbirds",
+          "anim": "look",
+          "minutes": 30,
+          "pose": "stand",
+          "autonomous": true,
+          "effects": {
+            "fun": 0.22,
+            "comfort": 0.08
+          },
+          "tags": [
+            "entertainment",
+            "nature",
+            "outdoors"
+          ],
+          "skills": {
+            "perception": 0.08
+          }
+        }
+      ]
+    },
+    {
+      "id": "kind.hearthSettee",
+      "name": "Hearthside quilted settee",
+      "model": "model.kind.hearthSettee",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 2600,
+      "category": "living",
+      "slots": 2,
+      "description": "A deep, quilt-draped settee with its own warm glow, made for two; curling up here comforts, connects and leaves residents cosy enough to sleep better for hours.",
+      "interactions": [
+        {
+          "id": "curlUp",
+          "label": "Curl up by the hearth",
+          "anim": "relax",
+          "minutes": 45,
+          "pose": "sit",
+          "autonomous": true,
+          "effects": {
+            "comfort": 0.8,
+            "social": 0.12,
+            "fun": 0.1
+          },
+          "tags": [
+            "rest",
+            "lounge",
+            "cozy"
+          ],
+          "feeling": "kind.cozyTogether"
+        },
+        {
+          "id": "quiltNap",
+          "label": "Nap under the quilt",
+          "anim": "nap",
+          "minutes": 60,
+          "pose": "lie",
+          "autonomous": true,
+          "effects": {
+            "energy": 0.25,
+            "comfort": 0.3
+          },
+          "tags": [
+            "rest",
+            "nap",
+            "cozy"
+          ]
+        }
+      ]
+    }
+  ],
+  "traitPatches": {
+    "kind": {
+      "effects": {
+        "tagPreference": {
+          "charity": 1.8,
+          "cozy": 1.3
+        },
+        "skillGain": {
+          "charisma": 1.1,
+          "cooking": 1.05
+        }
+      },
+      "startingSkills": {
+        "cooking": 1
+      }
+    }
+  }
+}

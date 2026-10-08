@@ -146,7 +146,7 @@ for i in range(14):
 M['model.flowerbed'] = fb
 
 # Deciduous tree, ~5.5 m before random scaling.
-LEAF = ['#5A7A33', '#66873A', '#526F2F', '#6E8F40', '#5E7E35']
+LEAF = ['#6A8E3A', '#78A044', '#5F8236', '#82A84A', '#6E933E']
 tree = [
     cyl([0.36, 2.9, 0.36], [0, 1.45, 0], '#D9D2C8', 'bark', taper=0.5, segments=10),
     cyl([0.12, 1.5, 0.12], [0.45, 3.0, 0.1], '#D9D2C8', 'bark', taper=0.4, segments=6, rotate=[0, 0, -38]),
@@ -159,16 +159,16 @@ for size, at, c in [
     tree.append(part('blob', size, at, LEAF[c], 'foliage', noise=0.24))
 M['model.tree'] = tree
 
-NEEDLE = ['#34522F', '#3B5B33', '#426439', '#304C2C']
+NEEDLE = ['#3E6236', '#466B3B', '#4E7542', '#3A5A34']
 pine = [cyl([0.3, 2.0, 0.3], [0, 1.0, 0], '#D2C6B8', 'bark', taper=0.6, segments=8)]
 for i, (d, h, y) in enumerate([(2.7, 2.0, 1.9), (2.2, 1.9, 3.0), (1.75, 1.8, 4.0), (1.25, 1.6, 4.9), (0.7, 1.3, 5.7)]):
     pine.append(part('cone', [d, h, d], [0, y, 0], NEEDLE[i % 4], 'foliage', segments=11))
 M['model.pine'] = pine
 
 M['model.bush'] = [
-    part('blob', [1.1, 0.8, 1.0], [0, 0.38, 0], '#587833', 'foliage', noise=0.22),
-    part('blob', [0.8, 0.65, 0.8], [0.32, 0.5, 0.15], '#64853A', 'foliage', noise=0.22),
-    part('blob', [0.7, 0.55, 0.7], [-0.3, 0.42, -0.2], '#506E2E', 'foliage', noise=0.22),
+    part('blob', [1.1, 0.8, 1.0], [0, 0.38, 0], '#689040', 'foliage', noise=0.22),
+    part('blob', [0.8, 0.65, 0.8], [0.32, 0.5, 0.15], '#76A046', 'foliage', noise=0.22),
+    part('blob', [0.7, 0.55, 0.7], [-0.3, 0.42, -0.2], '#5E8438', 'foliage', noise=0.22),
 ]
 M['model.rock'] = [
     part('blob', [1.0, 0.55, 0.85], [0, 0.16, 0], '#8E8A82', 'matte', noise=0.3),
@@ -196,45 +196,85 @@ for i in range(3):
 M['model.flowers'] = fl
 
 # ---- Characters --------------------------------------------------------------------------
-# Tint slots: body = outfit, skin, hair. Untinted parts (shoes, eyes) share one dark mesh.
-DARK = '#222226'
+# Stylised-realistic proportions (about 7 heads tall, slightly large head). Tint slots:
+# body = outfit (trousers are a darker vertex shade), skin, hair. Limbs carry a `bone` so the
+# renderer can swing them (pivots: hips y 0.9 / x ±0.09, knees y 0.48, shoulders y 1.36 /
+# x ±0.21, neck y 1.46). Parts are merged per (bone, tint, finish).
+DARK = '#2A2A2E'
 W = '#FFFFFF'
-PANTS = '#9A9AA2'
+PANTS = '#8E8E98'
+def sp(size, at, color, finish, **kw): return part('sphere', size, at, color, finish, **kw)
+def cap(size, at, color, finish, **kw): return part('capsule', size, at, color, finish, **kw)
 sim = [
-    # Trousers are a darker shade of the outfit colour (vertex colour x per-Sim tint).
-    part('capsule', [0.13, 0.84, 0.14], [-0.088, 0.46, 0], PANTS, 'fabric', tint='body'),    # legs
-    part('capsule', [0.13, 0.84, 0.14], [0.088, 0.46, 0], PANTS, 'fabric', tint='body'),
-    box([0.33, 0.18, 0.21], [0, 0.88, 0], PANTS, 'fabric', tint='body', radius=0.075),        # hips
-    box([0.36, 0.42, 0.22], [0, 1.12, 0], W, 'fabric', tint='body', radius=0.09),         # torso
-    box([0.43, 0.15, 0.21], [0, 1.31, -0.005], W, 'fabric', tint='body', radius=0.07),   # shoulders
-    part('capsule', [0.095, 0.6, 0.1], [-0.235, 1.06, -0.01], W, 'fabric', tint='body', rotate=[0, 0, -4]),  # arms
-    part('capsule', [0.095, 0.6, 0.1], [0.235, 1.06, -0.01], W, 'fabric', tint='body', rotate=[0, 0, 4]),
-    part('sphere', [0.08, 0.1, 0.06], [-0.255, 0.74, 0], W, 'skin', tint='skin'),        # hands
-    part('sphere', [0.08, 0.1, 0.06], [0.255, 0.74, 0], W, 'skin', tint='skin'),
-    cyl([0.1, 0.12, 0.1], [0, 1.42, 0], W, 'skin', tint='skin'),                          # neck
-    part('sphere', [0.19, 0.235, 0.215], [0, 1.585, 0.005], W, 'skin', tint='skin', segments=16),  # head
-    part('sphere', [0.035, 0.045, 0.04], [0, 1.575, 0.11], W, 'skin', tint='skin', segments=6),    # nose
-    part('sphere', [0.04, 0.06, 0.04], [-0.096, 1.585, 0], W, 'skin', tint='skin', segments=6),    # ears
-    part('sphere', [0.04, 0.06, 0.04], [0.096, 1.585, 0], W, 'skin', tint='skin', segments=6),
-    box([0.1, 0.075, 0.25], [-0.088, 0.037, 0.035], DARK, 'satin', radius=0.03),           # shoes
-    box([0.1, 0.075, 0.25], [0.088, 0.037, 0.035], DARK, 'satin', radius=0.03),
-    part('sphere', [0.022, 0.026, 0.012], [-0.038, 1.61, 0.1], '#1A1A1C', 'satin', segments=6),  # eyes
-    part('sphere', [0.022, 0.026, 0.012], [0.038, 1.61, 0.1], '#1A1A1C', 'satin', segments=6),
+    # Body (no bone): hips, waist, chest, shoulders, neck.
+    box([0.31, 0.19, 0.2], [0, 0.93, 0], PANTS, 'fabric', tint='body', radius=0.08),
+    box([0.29, 0.2, 0.18], [0, 1.07, 0.0], W, 'fabric', tint='body', radius=0.085),
+    box([0.35, 0.24, 0.215], [0, 1.24, 0.0], W, 'fabric', tint='body', radius=0.1),
+    box([0.41, 0.1, 0.19], [0, 1.355, -0.005], W, 'fabric', tint='body', radius=0.05),
+    cyl([0.085, 0.12, 0.085], [0, 1.44, 0.0], W, 'skin', tint='skin', segments=14),
+    # Head bone: skull, jaw, nose, ears, eyes, brows, mouth.
+    sp([0.2, 0.235, 0.215], [0, 1.6, 0.0], W, 'skin', tint='skin', segments=20, bone='head'),
+    sp([0.165, 0.13, 0.17], [0, 1.535, 0.022], W, 'skin', tint='skin', segments=14, bone='head'),
+    sp([0.034, 0.05, 0.046], [0, 1.585, 0.112], W, 'skin', tint='skin', segments=8, bone='head'),
+    sp([0.035, 0.06, 0.04], [-0.099, 1.59, -0.005], W, 'skin', tint='skin', segments=8, bone='head'),
+    sp([0.035, 0.06, 0.04], [0.099, 1.59, -0.005], W, 'skin', tint='skin', segments=8, bone='head'),
+    sp([0.042, 0.028, 0.02], [-0.041, 1.618, 0.093], '#F2EEE8', 'satin', segments=10, bone='head'),
+    sp([0.042, 0.028, 0.02], [0.041, 1.618, 0.093], '#F2EEE8', 'satin', segments=10, bone='head'),
+    sp([0.022, 0.024, 0.012], [-0.041, 1.618, 0.102], '#3B2A20', 'gloss', segments=8, bone='head'),
+    sp([0.022, 0.024, 0.012], [0.041, 1.618, 0.102], '#3B2A20', 'gloss', segments=8, bone='head'),
+    box([0.05, 0.011, 0.018], [-0.043, 1.652, 0.097], W, 'hair', tint='hair', radius=0.005, rotate=[0, 0, 6], bone='head'),
+    box([0.05, 0.011, 0.018], [0.043, 1.652, 0.097], W, 'hair', tint='hair', radius=0.005, rotate=[0, 0, -6], bone='head'),
+    box([0.046, 0.011, 0.014], [0, 1.528, 0.098], '#B0605A', 'satin', radius=0.005, bone='head'),
 ]
+for side, bx in (('L', -1), ('R', 1)):
+    arm, leg, shin = 'arm' + side, 'leg' + side, 'shin' + side
+    sim += [
+        sp([0.11, 0.1, 0.11], [bx * 0.205, 1.345, 0], W, 'fabric', tint='body', segments=12, bone=arm),      # shoulder
+        cap([0.088, 0.32, 0.092], [bx * 0.222, 1.2, 0], W, 'fabric', tint='body', bone=arm, rotate=[0, 0, -bx * 3]),  # sleeve
+        cap([0.072, 0.29, 0.076], [bx * 0.232, 0.94, 0.012], W, 'skin', tint='skin', bone=arm, rotate=[0, 0, -bx * 2]),  # forearm
+        sp([0.066, 0.095, 0.045], [bx * 0.236, 0.765, 0.018], W, 'skin', tint='skin', segments=10, bone=arm),  # hand
+        cap([0.135, 0.47, 0.145], [bx * 0.09, 0.67, 0], PANTS, 'fabric', tint='body', bone=leg),           # thigh
+        cap([0.108, 0.44, 0.118], [bx * 0.09, 0.27, 0], PANTS, 'fabric', tint='body', bone=shin),          # shin
+        box([0.1, 0.075, 0.25], [bx * 0.09, 0.038, 0.035], DARK, 'satin', radius=0.032, bone=shin),       # shoe
+    ]
 M['model.sim'] = sim
-CAP = dict(tint='hair', material=F + 'satin')
+CAP = dict(tint='hair', material=F + 'hair', bone='head')
 def hair(shape, size, at, **kw):
     p = part(shape, size, at, W, **kw); p.update(CAP); return p
 M['model.hair.short'] = [
-    hair('blob', [0.205, 0.135, 0.23], [0, 1.66, -0.012], noise=0.08),
+    hair('blob', [0.215, 0.14, 0.236], [0, 1.67, -0.01], noise=0.07),
+    hair('box', [0.17, 0.05, 0.05], [0, 1.69, 0.085], radius=0.024, rotate=[-20, 0, 0]),
 ]
 M['model.hair.long'] = [
-    hair('blob', [0.21, 0.14, 0.235], [0, 1.66, -0.012], noise=0.08),
-    hair('box', [0.21, 0.36, 0.08], [0, 1.48, -0.085], radius=0.035),
+    hair('blob', [0.22, 0.15, 0.24], [0, 1.67, -0.01], noise=0.07),
+    hair('box', [0.215, 0.38, 0.09], [0, 1.5, -0.08], radius=0.04),
+    hair('box', [0.05, 0.26, 0.07], [-0.1, 1.56, 0.0], radius=0.022),
+    hair('box', [0.05, 0.26, 0.07], [0.1, 1.56, 0.0], radius=0.022),
 ]
 M['model.hair.bun'] = [
-    hair('blob', [0.205, 0.135, 0.23], [0, 1.66, -0.012], noise=0.06),
-    hair('sphere', [0.1, 0.1, 0.1], [0, 1.72, -0.11]),
+    hair('blob', [0.212, 0.135, 0.232], [0, 1.668, -0.01], noise=0.05),
+    hair('sphere', [0.105, 0.1, 0.1], [0, 1.73, -0.11]),
+]
+
+# ---- Selection marker ----------------------------------------------------------------------
+# A soft four-point sparkle star above the selected character: tall vertical rays, shorter
+# side rays, each a lathe with concave flanks easing into a fine tip, around a small round core.
+# Flat-ish (thin in z); the renderer turns it to face the camera, tints it by mood, and lets it
+# bob and pulse gently (no spin). Unlit. Origin at its centre.
+def ray(length, width, depth, rotate):
+    # Concave spike pointing up in unit space: r = 0.5 (1 - u)^1.6, eased into the tip.
+    prof = [[0.5 * (1 - u) ** 1.6, u - 0.5] for u in (0, 0.12, 0.25, 0.38, 0.5, 0.62, 0.74, 0.85)]
+    prof += [[0.012, 0.47], [0.0, 0.5]]
+    d = length / 2
+    at = {(0, 0, 0): [0, d, 0], (180, 0, 0): [0, -d, 0], (0, 0, 90): [-d, 0, 0], (0, 0, -90): [d, 0, 0]}[tuple(rotate)]
+    return part('lathe', [width, length, depth], at, W, segments=16, rotate=list(rotate),
+                profile=[[round(r, 4), round(y, 4)] for r, y in prof])
+M['model.marker'] = [
+    ray(0.17, 0.085, 0.05, (0, 0, 0)),       # top ray
+    ray(0.17, 0.085, 0.05, (180, 0, 0)),     # bottom ray (points at the character)
+    ray(0.115, 0.075, 0.045, (0, 0, 90)),    # side rays
+    ray(0.115, 0.075, 0.045, (0, 0, -90)),
+    part('sphere', [0.1, 0.1, 0.06], [0, 0, 0], W, segments=12),  # soft core
 ]
 
 out = {}

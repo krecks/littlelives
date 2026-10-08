@@ -1,4 +1,4 @@
-//! Social life: relationships, social interactions, moodlets and emotions.
+//! Social life: relationships, social interactions, feelings and emotions.
 //!
 //! Everything here is data-driven from the content file. Relationships are
 //! directional (A can have a crush on B without B feeling the same), and every
@@ -9,7 +9,7 @@ use std::collections::{HashMap, VecDeque};
 
 use serde::{Deserialize, Serialize};
 
-use crate::content::{MAX_NEEDS, Modifiers};
+use crate::content::{MAX_NEEDS, Modifiers, ModifiersRaw, TagMask};
 use crate::{Error, MINUTES_PER_TICK};
 
 /// Animation names the renderer understands, in snapshot code order (code = index + 1).
@@ -46,13 +46,15 @@ pub struct EmotionDef {
 }
 
 #[derive(Debug)]
-pub struct MoodletDef {
+pub struct FeelingDef {
     pub id: String,
     pub label: String,
     pub emotion: Option<usize>,
     /// Added to mood while active.
     pub mood: f32,
     pub minutes: f32,
+    /// Buff or debuff while active, folded into the Sim's modifiers (`Sim::mods`).
+    pub effects: Option<Modifiers>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
@@ -155,15 +157,15 @@ pub struct Outcome {
     /// Change to the target's feelings toward the actor.
     pub target_friendship: f32,
     pub target_romance: f32,
-    pub moodlet: Option<usize>,
-    pub target_moodlet: Option<usize>,
+    pub feeling: Option<usize>,
+    pub target_feeling: Option<usize>,
     /// Immediate need changes (may be negative, e.g. after a fight).
     pub needs: [f32; MAX_NEEDS],
     pub target_needs: [f32; MAX_NEEDS],
     pub effect: Effect,
     /// For fights.
-    pub winner_moodlet: Option<usize>,
-    pub loser_moodlet: Option<usize>,
+    pub winner_feeling: Option<usize>,
+    pub loser_feeling: Option<usize>,
 }
 
 #[derive(Debug)]
@@ -178,7 +180,7 @@ pub struct SocialDef {
     pub anim: u8,
     pub autonomous: bool,
     pub autonomy_weight: f32,
-    pub tags: u32,
+    pub tags: TagMask,
     pub requires: Requirements,
     pub acceptance: Acceptance,
     pub prefer: Prefer,
@@ -201,14 +203,14 @@ pub struct BondPreset {
 #[derive(Debug, Clone)]
 pub struct SocialRules {
     /// Interactions with these tags can't be interrupted by socials (sleeping, bathroom...).
-    pub busy_tags: u32,
-    pub romantic_tags: u32,
+    pub busy_tags: TagMask,
+    pub romantic_tags: TagMask,
     pub default_bond: Option<BondPreset>,
     pub jealousy_range: f32,
     pub jealousy_friendship: f32,
     pub jealousy_romance: f32,
-    pub jealousy_moodlet: Option<usize>,
-    pub heartbreak_moodlet: Option<usize>,
+    pub jealousy_feeling: Option<usize>,
+    pub heartbreak_feeling: Option<usize>,
     /// Daily drift toward neutral.
     pub friendship_decay: f32,
     pub romance_decay: f32,
@@ -221,12 +223,12 @@ pub(crate) struct EmotionRaw {
     pub id: String,
     pub label: String,
     #[serde(default)]
-    pub effects: crate::content::ModifiersRaw,
+    pub effects: ModifiersRaw,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct MoodletRaw {
+pub(crate) struct FeelingRaw {
     id: String,
     label: String,
     #[serde(default)]
@@ -234,6 +236,8 @@ pub(crate) struct MoodletRaw {
     #[serde(default)]
     mood: f32,
     hours: f32,
+    #[serde(default)]
+    effects: Option<ModifiersRaw>,
 }
 
 #[derive(Deserialize)]
@@ -277,13 +281,17 @@ struct OutcomeRaw {
     romance: f32,
     target_friendship: f32,
     target_romance: f32,
-    moodlet: Option<String>,
-    target_moodlet: Option<String>,
+    #[serde(alias = "moodlet")] // key before the moodlet → feeling rename
+    feeling: Option<String>,
+    #[serde(alias = "targetMoodlet")] // key before the moodlet → feeling rename
+    target_feeling: Option<String>,
     needs: HashMap<String, f32>,
     target_needs: HashMap<String, f32>,
     effect: Effect,
-    winner_moodlet: Option<String>,
-    loser_moodlet: Option<String>,
+    #[serde(alias = "winnerMoodlet")] // key before the moodlet → feeling rename
+    winner_feeling: Option<String>,
+    #[serde(alias = "loserMoodlet")] // key before the moodlet → feeling rename
+    loser_feeling: Option<String>,
 }
 
 #[derive(Deserialize, Default)]
@@ -295,8 +303,10 @@ pub(crate) struct SocialRulesRaw {
     jealousy_range: Option<f32>,
     jealousy_friendship: Option<f32>,
     jealousy_romance: Option<f32>,
-    jealousy_moodlet: Option<String>,
-    heartbreak_moodlet: Option<String>,
+    #[serde(alias = "jealousyMoodlet")] // key before the moodlet → feeling rename
+    jealousy_feeling: Option<String>,
+    #[serde(alias = "heartbreakMoodlet")] // key before the moodlet → feeling rename
+    heartbreak_feeling: Option<String>,
     friendship_decay: Option<f32>,
     romance_decay: Option<f32>,
 }
@@ -316,7 +326,8 @@ pub(crate) struct Indices<'a> {
     pub needs: &'a HashMap<&'a str, usize>,
     pub tags: &'a HashMap<&'a str, usize>,
     pub emotions: &'a HashMap<String, usize>,
-    pub moodlets: &'a HashMap<String, usize>,
+    pub feelings: &'a HashMap<String, usize>,
+    pub skills: &'a HashMap<&'a str, usize>,
 }
 
 fn find(index: &HashMap<String, usize>, key: &str, ctx: &str, kind: &str) -> Result<usize, Error> {
@@ -342,8 +353,8 @@ fn need_array(
     Ok(out)
 }
 
-fn tag_mask(tags: &[String], ix: &Indices, ctx: &str) -> Result<u32, Error> {
-    let mut mask = 0;
+fn tag_mask(tags: &[String], ix: &Indices, ctx: &str) -> Result<TagMask, Error> {
+    let mut mask: TagMask = 0;
     for t in tags {
         let i = ix
             .tags
@@ -354,14 +365,28 @@ fn tag_mask(tags: &[String], ix: &Indices, ctx: &str) -> Result<u32, Error> {
     Ok(mask)
 }
 
-fn opt_moodlet(id: &Option<String>, ix: &Indices, ctx: &str) -> Result<Option<usize>, Error> {
+fn opt_feeling(id: &Option<String>, ix: &Indices, ctx: &str) -> Result<Option<usize>, Error> {
     id.as_deref()
-        .map(|m| find(ix.moodlets, m, ctx, "moodlet"))
+        .map(|m| find(ix.feelings, m, ctx, "feeling"))
         .transpose()
 }
 
-pub(crate) fn parse_moodlet(raw: &MoodletRaw, ix: &Indices) -> Result<MoodletDef, Error> {
-    Ok(MoodletDef {
+pub(crate) fn parse_feeling(raw: &FeelingRaw, ix: &Indices) -> Result<FeelingDef, Error> {
+    let effects = raw
+        .effects
+        .as_ref()
+        .map(|e| crate::content::build_modifiers(e, ix, &raw.id))
+        .transpose()?;
+    if effects.as_ref().is_some_and(|e| e.mood != 0.0) {
+        return Err(Error::new(format!(
+            "{}: use the feeling's own `mood`, not effects.mood",
+            raw.id
+        )));
+    }
+    if raw.hours <= 0.0 {
+        return Err(Error::new(format!("{}: hours must be > 0", raw.id)));
+    }
+    Ok(FeelingDef {
         id: raw.id.clone(),
         label: raw.label.clone(),
         emotion: raw
@@ -371,10 +396,11 @@ pub(crate) fn parse_moodlet(raw: &MoodletRaw, ix: &Indices) -> Result<MoodletDef
             .transpose()?,
         mood: raw.mood,
         minutes: raw.hours * 60.0,
+        effects,
     })
 }
 
-pub(crate) fn moodlet_id(raw: &MoodletRaw) -> &str {
+pub(crate) fn feeling_id(raw: &FeelingRaw) -> &str {
     &raw.id
 }
 
@@ -384,13 +410,13 @@ fn parse_outcome(raw: &OutcomeRaw, ix: &Indices, ctx: &str) -> Result<Outcome, E
         romance: raw.romance,
         target_friendship: raw.target_friendship,
         target_romance: raw.target_romance,
-        moodlet: opt_moodlet(&raw.moodlet, ix, ctx)?,
-        target_moodlet: opt_moodlet(&raw.target_moodlet, ix, ctx)?,
+        feeling: opt_feeling(&raw.feeling, ix, ctx)?,
+        target_feeling: opt_feeling(&raw.target_feeling, ix, ctx)?,
         needs: need_array(&raw.needs, ix, ctx)?,
         target_needs: need_array(&raw.target_needs, ix, ctx)?,
         effect: raw.effect,
-        winner_moodlet: opt_moodlet(&raw.winner_moodlet, ix, ctx)?,
-        loser_moodlet: opt_moodlet(&raw.loser_moodlet, ix, ctx)?,
+        winner_feeling: opt_feeling(&raw.winner_feeling, ix, ctx)?,
+        loser_feeling: opt_feeling(&raw.loser_feeling, ix, ctx)?,
     })
 }
 
@@ -436,7 +462,7 @@ pub(crate) fn parse_rules(
     let mask = |tags: &[String]| {
         tags.iter()
             .filter_map(|t| ix.tags.get(t.as_str()))
-            .fold(0u32, |m, i| m | (1 << i))
+            .fold(0, |m: TagMask, i| m | (1 << i))
     };
     let default_bond = match &raw.default_bond {
         None => None,
@@ -453,8 +479,8 @@ pub(crate) fn parse_rules(
         jealousy_range: raw.jealousy_range.unwrap_or(8.0),
         jealousy_friendship: raw.jealousy_friendship.unwrap_or(-10.0),
         jealousy_romance: raw.jealousy_romance.unwrap_or(-15.0),
-        jealousy_moodlet: opt_moodlet(&raw.jealousy_moodlet, ix, "socialRules")?,
-        heartbreak_moodlet: opt_moodlet(&raw.heartbreak_moodlet, ix, "socialRules")?,
+        jealousy_feeling: opt_feeling(&raw.jealousy_feeling, ix, "socialRules")?,
+        heartbreak_feeling: opt_feeling(&raw.heartbreak_feeling, ix, "socialRules")?,
         friendship_decay: raw.friendship_decay.unwrap_or(1.5),
         romance_decay: raw.romance_decay.unwrap_or(3.0),
     })
@@ -469,8 +495,8 @@ impl SocialRules {
             jealousy_range: 8.0,
             jealousy_friendship: -10.0,
             jealousy_romance: -15.0,
-            jealousy_moodlet: None,
-            heartbreak_moodlet: None,
+            jealousy_feeling: None,
+            heartbreak_feeling: None,
             friendship_decay: 1.5,
             romance_decay: 3.0,
         }
@@ -582,10 +608,10 @@ impl Relationships {
     }
 }
 
-// ---- Moodlets ---------------------------------------------------------------------------
+// ---- Feelings ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ActiveMoodlet {
+pub struct ActiveFeeling {
     pub def: usize,
     pub expires: u64,
 }
@@ -594,24 +620,24 @@ pub fn minutes_to_ticks(minutes: f32) -> u64 {
     (minutes / MINUTES_PER_TICK).max(1.0) as u64
 }
 
-/// Adds a moodlet, or refreshes it if already active.
-pub fn add_moodlet(list: &mut Vec<ActiveMoodlet>, def: usize, defs: &[MoodletDef], tick: u64) {
+/// Adds a feeling, or refreshes it if already active.
+pub fn add_feeling(list: &mut Vec<ActiveFeeling>, def: usize, defs: &[FeelingDef], tick: u64) {
     let expires = tick + minutes_to_ticks(defs[def].minutes);
     match list.iter_mut().find(|m| m.def == def) {
         Some(m) => m.expires = m.expires.max(expires),
-        None => list.push(ActiveMoodlet { def, expires }),
+        None => list.push(ActiveFeeling { def, expires }),
     }
 }
 
-/// The emotion of the strongest active moodlet that has one.
-pub fn dominant_emotion(list: &[ActiveMoodlet], defs: &[MoodletDef]) -> Option<usize> {
+/// The emotion of the strongest active feeling that has one.
+pub fn dominant_emotion(list: &[ActiveFeeling], defs: &[FeelingDef]) -> Option<usize> {
     list.iter()
         .filter_map(|m| defs[m.def].emotion.map(|e| (defs[m.def].mood.abs(), e)))
         .max_by(|a, b| a.0.total_cmp(&b.0))
         .map(|(_, e)| e)
 }
 
-pub fn moodlet_mood(list: &[ActiveMoodlet], defs: &[MoodletDef]) -> f32 {
+pub fn feeling_mood(list: &[ActiveFeeling], defs: &[FeelingDef]) -> f32 {
     list.iter().map(|m| defs[m.def].mood).sum()
 }
 
@@ -636,6 +662,14 @@ pub enum EventKind {
     MissedWork,
     /// `a` came over to `b`'s home.
     Visited,
+    /// `a` reached level `n` in `skill`.
+    SkillUp,
+    /// `a`'s household paid `n` in rent and bills.
+    PaidRent,
+    /// `a`'s household couldn't cover the rent and bills (`n`) and is in debt.
+    RentDebt,
+    /// `a` upgraded something at home to quality `n`.
+    Upgraded,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -648,6 +682,12 @@ pub struct SocialEvent {
     /// Third party (e.g. who a jealous Sim saw their partner with).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub c: Option<u32>,
+    /// A number for the story (a level, an amount of money).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub n: Option<i64>,
+    /// Skill index, for skill events.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub skill: Option<u32>,
 }
 
 #[derive(Debug, Default)]
@@ -660,18 +700,46 @@ const EVENT_LOG_CAPACITY: usize = 40;
 
 impl EventLog {
     pub fn push(&mut self, tick: u64, kind: EventKind, a: usize, b: usize, c: Option<usize>) {
-        self.next_id += 1;
-        if self.events.len() == EVENT_LOG_CAPACITY {
-            self.events.pop_front();
-        }
-        self.events.push_back(SocialEvent {
-            id: self.next_id,
+        self.add(SocialEvent {
+            id: 0,
             tick,
             kind,
             a: a as u32,
             b: b as u32,
             c: c.map(|c| c as u32),
+            n: None,
+            skill: None,
         });
+    }
+
+    /// An event about one Sim, with a number and optionally a skill.
+    pub fn push_detail(
+        &mut self,
+        tick: u64,
+        kind: EventKind,
+        a: usize,
+        n: Option<i64>,
+        skill: Option<usize>,
+    ) {
+        self.add(SocialEvent {
+            id: 0,
+            tick,
+            kind,
+            a: a as u32,
+            b: a as u32,
+            c: None,
+            n,
+            skill: skill.map(|s| s as u32),
+        });
+    }
+
+    fn add(&mut self, mut event: SocialEvent) {
+        self.next_id += 1;
+        event.id = self.next_id;
+        if self.events.len() == EVENT_LOG_CAPACITY {
+            self.events.pop_front();
+        }
+        self.events.push_back(event);
     }
 
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &SocialEvent> {
