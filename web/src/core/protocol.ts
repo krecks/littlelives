@@ -257,6 +257,8 @@ export interface SimInfo {
   gone?: { why: 'died' | 'movedAway'; day: number };
   /** Bumped when someone new takes the slot. */
   generation?: number;
+  /** Life stage id (how they look: elders' hair greys). */
+  stage?: string;
 }
 
 /** Someone whose slot a newcomer took; story events name them with `FORMER | index`. */

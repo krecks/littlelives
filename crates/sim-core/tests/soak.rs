@@ -6,7 +6,7 @@
 
 mod common;
 
-use sim_core::social::EventKind;
+use sim_core::social::{EventKind, FORMER};
 use sim_core::world::TaskKind;
 use sim_core::{MINUTES_PER_TICK, World, clock, life};
 
@@ -88,7 +88,9 @@ fn check(w: &World) {
     for e in w.events.iter() {
         assert!(e.id > last, "event ids increase");
         last = e.id;
-        assert!((e.a as usize) < n && (e.b as usize) < n);
+        // A resident slot, or a former resident whose name is kept.
+        let known = |r: u32| if r & FORMER != 0 { ((r & !FORMER) as usize) < w.former.len() } else { (r as usize) < n };
+        assert!(known(e.a) && known(e.b) && e.c.is_none_or(known), "{e:?} names someone unknown");
     }
 }
 
@@ -299,4 +301,27 @@ fn a_town_lives_on_its_own_for_two_months() {
         let avg = stats[i].need_sum / stats[i].samples as f64;
         assert!(avg > 0.3, "{} lived badly: average needs {avg:.2}", s.name);
     }
+}
+
+/// A whole stretch of life at the normal pace (150 days: 75 years): people grow old, retire and
+/// die, children move out, partners move in, and newcomers fill the houses left empty.
+#[test]
+#[ignore = "long: run with --release -- --ignored"]
+fn a_town_over_a_lifetime() {
+    let (w, _) = run(150, 7, 3);
+    let here: Vec<_> = w.sims.iter().filter(|s| s.here()).collect();
+    let mut kinds: std::collections::BTreeMap<String, usize> = Default::default();
+    for e in w.events.iter() {
+        *kinds.entry(format!("{:?}", e.kind)).or_default() += 1;
+    }
+    eprintln!("after 150 days: {} residents here, {} slots, {} former names kept", here.len(), w.sims.len(), w.former.len());
+    eprintln!("ages: {:?}", here.iter().map(|s| s.age.floor() as u32).collect::<Vec<_>>());
+    let lived = w.households.iter().enumerate().filter(|(h, _)| here.iter().any(|s| s.household as usize == *h)).count();
+    eprintln!("households with someone: {lived} of {}", w.households.len());
+    eprintln!("story (last {} events): {kinds:?}", w.events.iter().count());
+    let broken: Vec<&str> = w.objects.iter().filter(|o| o.broken()).map(|o| w.content.objects[o.def].id.as_str()).collect();
+    eprintln!("broken now: {broken:?}");
+    assert!(here.len() >= 8, "the town doesn't empty out");
+    assert!(w.sims.len() <= sim_core::world::MAX_SIMS);
+    assert!(kinds.contains_key("Died") && kinds.contains_key("MovedIn"), "lives end and new ones begin");
 }

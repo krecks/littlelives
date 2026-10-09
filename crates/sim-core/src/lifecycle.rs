@@ -153,13 +153,14 @@ fn members(w: &World, h: usize) -> Vec<usize> {
     (0..w.sims.len()).filter(|&i| w.sims[i].here() && w.sims[i].household as usize == h).collect()
 }
 
-/// Beds (sleeping places) in the home on `plot`.
+/// Beds (sleeping places) in the home on `plot`, broken ones too (whoever lives there fixes
+/// them; a house whose only bed broke while empty would otherwise never be lived in again).
 fn beds(w: &World, plot: u32) -> usize {
     let sleep = w.content.day_rhythm.sleep_tags;
     w.objects
         .iter()
         .zip(&w.object_plot)
-        .filter(|(o, p)| **p == Some(plot) && !o.broken())
+        .filter(|(_, p)| **p == Some(plot))
         .filter(|(o, _)| w.content.objects[o.def].interactions.iter().any(|it| it.tags & sleep != 0))
         .map(|(o, _)| usize::from(w.content.objects[o.def].slots))
         .sum()
@@ -172,10 +173,11 @@ fn has_room(w: &World, h: usize, more: usize) -> bool {
     n <= w.content.rules.max_household && beds(w, plot) >= n
 }
 
-/// Whether a resident's household lets them move on their own (the player can say no).
+/// Whether a resident's household lets them move on their own (the player can say no). Being
+/// at work or out doesn't matter: they come back to the new home.
 fn may_move(w: &World, i: usize) -> bool {
     let s = &w.sims[i];
-    s.here() && s.away_until.is_none() && s.visiting.is_none() && (w.player_moves || !w.households[s.household as usize].player)
+    s.here() && (w.player_moves || !w.households[s.household as usize].player)
 }
 
 /// A house nobody lives in (not a park, not the player's home), with beds for `n`.
@@ -231,7 +233,8 @@ fn move_to(w: &mut World, i: usize, to: usize) {
     sim.household = to as u32;
     sim.clear_activity();
     sim.planner.run = None;
-    if let Some(pos) = arrive {
+    // At work they come back to the new home; otherwise they're there now.
+    if let Some(pos) = arrive.filter(|_| sim.away_until.is_none()) {
         sim.pos = pos;
     }
     w.structure_version += 1;

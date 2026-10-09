@@ -112,6 +112,8 @@ export interface LifeStageDef {
   from: number;
   /** The story's words when someone reaches it ("is an elder now"). */
   story?: string;
+  /** How far hair greys at this stage (0..1). */
+  greyHair?: number;
 }
 
 /** What a room is for, from the tags of what stands in it (sim-core `RoomKind`). */

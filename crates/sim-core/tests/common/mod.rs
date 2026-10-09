@@ -211,6 +211,10 @@ pub fn town(content: &str, seed: u64, player_size: usize) -> String {
                 json!({"name": format!("House {household}"), "plot": plot, "player": player}),
             );
             let first = sims.len();
+            // A couple shares the house when there are two adults, sometimes with a grown child.
+            let couple = size >= 2 && rng.next() < 0.6;
+            let family = couple && size >= 3 && rng.next() < 0.6;
+            let parents_age = 44.0 + rng.next() * 12.0;
             for m in 0..size {
                 let mut chosen: Vec<String> = Vec::new();
                 for _ in 0..2 {
@@ -227,21 +231,25 @@ pub fn town(content: &str, seed: u64, player_size: usize) -> String {
                     "traits": chosen,
                     "x": spawn[0], "z": spawn[1],
                 });
+                if family && m < 3 {
+                    sim["age"] = json!(if m < 2 { parents_age.floor() } else { (parents_age - 20.0 - rng.next() * 6.0).floor() });
+                }
                 if !player && !tracks.is_empty() && rng.next() < 0.75 {
                     let level = (rng.next().powi(2) * 6.0) as usize;
                     sim["job"] = json!({"career": tracks[rng.below(tracks.len())], "level": level});
                 }
                 sims.push(sim);
             }
-            // Housemates are close; a couple shares the house when there are two adults.
+            // Housemates are close; the couple are partners, and their grown child is family.
             for a in first..sims.len() {
                 for b in a + 1..sims.len() {
-                    let preset = if a == first && b == first + 1 && rng.next() < 0.6 {
-                        "partners"
+                    if couple && a == first && b == first + 1 {
+                        relationships.push(json!({"a": a, "b": b, "preset": "partners"}));
+                    } else if family && b == first + 2 && a < b {
+                        relationships.push(json!({"a": b, "b": a, "preset": "parent"}));
                     } else {
-                        "friends"
-                    };
-                    relationships.push(json!({"a": a, "b": b, "preset": preset}));
+                        relationships.push(json!({"a": a, "b": b, "preset": "friends"}));
+                    }
                 }
             }
         }

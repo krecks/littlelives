@@ -902,6 +902,9 @@ struct SimInfo<'a> {
     /// Bumped when someone new takes the slot.
     #[serde(skip_serializing_if = "is_zero_u32")]
     generation: u32,
+    /// Life stage (content `life.stages` id), for how they look.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stage: Option<&'a str>,
 }
 
 fn is_zero_u32(n: &u32) -> bool {
@@ -1012,6 +1015,7 @@ pub fn structure_json_with(world: &World, lot: bool) -> String {
             perks: &s.perks,
             gone: s.gone,
             generation: world.generations.get(s.id as usize).copied().unwrap_or(0),
+            stage: content.life.stages.get(content.life.stage(s.age)).map(|st| st.id.as_str()),
         })
         .collect();
     let households = world

@@ -3150,7 +3150,7 @@
     "stages": [
       {"id": "youngAdult", "label": "Young adult", "from": 18, "story": "is a young adult now"},
       {"id": "adult", "label": "Adult", "from": 30, "story": "is an adult now", "feeling": "grownUp"},
-      {"id": "elder", "label": "Elder", "from": 60, "story": "is an elder now", "feeling": "goldenYears",
+      {"id": "elder", "label": "Elder", "from": 60, "story": "is an elder now", "feeling": "goldenYears", "greyHair": 0.65,
        "effects": {"needDecay": {"energy": 1.2}, "walkSpeed": 0.85}}
     ]
   },

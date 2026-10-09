@@ -29,6 +29,17 @@ export interface Appearance {
   shoesColor?: string;
   /** Optional model key overriding `model.sim` (for future character models). */
   model?: string;
+  /** The hair colour before age greyed it (`hair` is what's shown). */
+  hairBase?: string;
+}
+
+/** `hex` mixed `amount` of the way towards silver. */
+export function greyed(hex: string, amount: number): string {
+  const n = parseInt(hex.replace('#', ''), 16);
+  if (!Number.isFinite(n) || amount <= 0) return hex;
+  const mix = (c: number) => Math.round(c + (0xc4 - c) * Math.min(1, amount));
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(mix);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
 
 export interface SimDraft {

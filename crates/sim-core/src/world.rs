@@ -2050,7 +2050,14 @@ fn pick_autonomous(
                 let distance = (fx as f32 + 0.5 - sim.pos[0]).hypot(fz as f32 + 0.5 - sim.pos[1]);
                 let level = rules.skill.map_or(0.0, |s| sim.skills[s]);
                 let (plan, floor) = crate::planner::tags_factor(content, sim, rules.tags);
-                let s = (rules.interest * (1.0 + level * 0.1) / (1.0 + distance * 0.08)).max(floor)
+                // More urgent the more they need what it gives (a broken toilet, bursting).
+                let urgency = content.objects[obj.def]
+                    .interactions
+                    .iter()
+                    .flat_map(|it| (0..content.needs.len()).filter(move |&n| it.total_gain[n] > 0.0))
+                    .map(|n| 1.0 - needs[n])
+                    .fold(0.0, f32::max);
+                let s = (rules.interest * (1.0 + level * 0.1) * (1.0 + 2.0 * urgency) / (1.0 + distance * 0.08)).max(floor)
                     * feel(rules.tags)
                     * plan;
                 if s > MIN_AUTONOMY_SCORE {
