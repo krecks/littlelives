@@ -1,6 +1,6 @@
 /** Relationship labels for the UI. Thresholds mirror `sim-core/src/social.rs`. */
 
-import type { RelationshipView } from '../core/protocol';
+import type { Kin, RelationshipView } from '../core/protocol';
 
 export function friendLabel(f: number, mutual: number): string {
   if (f <= -60) return 'Enemy';
@@ -31,4 +31,14 @@ export function chanceLabel(p: number): { text: string; tone: 'good' | 'warn' | 
   if (p >= 0.4) return { text: 'Maybe', tone: 'warn' };
   if (p > 0) return { text: 'Unlikely', tone: 'bad' };
   return { text: 'Not interested', tone: 'bad' };
+}
+
+/** What someone of `gender` is to the other in the family ("Mother", "Brother"). */
+export function kinLabel(kin: Kin | undefined, gender: string | undefined): string | null {
+  if (!kin) return null;
+  const female = gender === 'female';
+  const male = gender === 'male';
+  if (kin === 'parent') return female ? 'Mother' : male ? 'Father' : 'Parent';
+  if (kin === 'child') return female ? 'Daughter' : male ? 'Son' : 'Child';
+  return female ? 'Sister' : male ? 'Brother' : 'Sibling';
 }

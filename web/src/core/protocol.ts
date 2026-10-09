@@ -497,7 +497,12 @@ export interface RelationshipView {
   romance: number;
   partners: boolean;
   chemistry: number;
+  /** Family: what b is to a. */
+  kin?: Kin;
 }
+
+/** A family link: what one resident is to another. */
+export type Kin = 'parent' | 'child' | 'sibling';
 
 export interface SocialEvent {
   id: number;

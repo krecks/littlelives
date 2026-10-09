@@ -392,6 +392,9 @@ struct RelView {
     romance: f32,
     partners: bool,
     chemistry: f32,
+    /// What b is to a in the family.
+    #[serde(skip_serializing_if = "crate::social::Kin::is_none")]
+    kin: crate::social::Kin,
 }
 
 pub fn ui_state_json(world: &World) -> String {
@@ -589,6 +592,7 @@ pub fn ui_state_json(world: &World) -> String {
                     romance: r.romance,
                     partners: r.partners,
                     chemistry: rels.chemistry(a, b),
+                    kin: r.kin,
                 });
             }
         }

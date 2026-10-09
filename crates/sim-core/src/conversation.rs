@@ -38,10 +38,11 @@ pub fn social_allowed(
     target: &Sim,
     s: &SocialDef,
 ) -> bool {
+    let rel = rels.get(actor.id as usize, target.id as usize);
+    let romantic = s.tags & content.social_rules.romantic_tags != 0;
     actor.id != target.id
-        && s.requires
-            .allows(rels.get(actor.id as usize, target.id as usize))
-        && (s.tags & content.social_rules.romantic_tags == 0 || actor.attracted_to(target))
+        && s.requires.allows(rel)
+        && (!romantic || (actor.attracted_to(target) && rel.kin.is_none()))
 }
 
 /// Probability that `target` responds well to `actor` doing `s`.

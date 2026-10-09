@@ -4,7 +4,7 @@
   import Icon from './Icon.svelte';
   import { moodLabel, needColor } from './format';
   import SimPreview from './kit/SimPreview.svelte';
-  import { chemistryLabel, friendLabel, romanceLabel } from './relationship';
+  import { chemistryLabel, friendLabel, kinLabel, romanceLabel } from './relationship';
   import { services } from './services';
   import TodayTimeline from './planner/TodayTimeline.svelte';
   import { goalText } from './story';
@@ -134,12 +134,13 @@
         <ul class="people">
           {#each people as p (p.rel.b)}
             {@const romance = romanceLabel(p.rel)}
+            {@const family = kinLabel(p.rel.kin, p.who?.gender)}
             <li>
               <span class="mini">{@render face(p.rel.b, 30)}</span>
               <div class="person">
                 <span class="row">
                   <b>{p.who?.name}</b>
-                  <span class="status">{friendLabel(p.rel.friendship, p.back?.friendship ?? 0)}{romance ? ` · ${romance}` : ''}</span>
+                  <span class="status">{family ? `${family} · ` : ''}{friendLabel(p.rel.friendship, p.back?.friendship ?? 0)}{romance ? ` · ${romance}` : ''}</span>
                 </span>
                 <span class="track"><span class="mid"></span><span class="fill" class:neg={p.rel.friendship < 0} style="--v:{p.rel.friendship}"></span></span>
                 {#if p.rel.romance > 0}

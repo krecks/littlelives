@@ -1535,6 +1535,18 @@
     },
     "acquaintances": {
       "friendship": 10
+    },
+    "parent": {
+      "friendship": 50,
+      "kin": "parent"
+    },
+    "child": {
+      "friendship": 50,
+      "kin": "child"
+    },
+    "siblings": {
+      "friendship": 40,
+      "kin": "sibling"
     }
   },
   "socialRules": {

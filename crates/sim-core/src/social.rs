@@ -197,6 +197,8 @@ pub struct BondPreset {
     pub friendship: f32,
     pub romance: f32,
     pub partners: bool,
+    /// Family: what b is to a in a bond (a, b).
+    pub kin: Kin,
 }
 
 /// Global social settings.
@@ -514,6 +516,35 @@ pub struct Relationship {
     pub met: bool,
     pub partners: bool,
     pub kissed: bool,
+    /// Family: what the other one is to this one (`rel(a, b).kin == Parent`: b is a's parent).
+    #[serde(default, skip_serializing_if = "Kin::is_none")]
+    pub kin: Kin,
+}
+
+/// A family link (partners are `Relationship::partners`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Kin {
+    #[default]
+    None,
+    Parent,
+    Child,
+    Sibling,
+}
+
+impl Kin {
+    pub fn is_none(&self) -> bool {
+        *self == Kin::None
+    }
+
+    /// The same link seen from the other side.
+    pub fn inverse(self) -> Kin {
+        match self {
+            Kin::Parent => Kin::Child,
+            Kin::Child => Kin::Parent,
+            k => k,
+        }
+    }
 }
 
 /// An event reference with this bit set names a former resident (`World::former`, the rest of
@@ -581,15 +612,24 @@ impl Relationships {
         self.chemistry[b * self.n + a] = v;
     }
 
-    /// Applies a preset in both directions and marks the pair as having met.
+    /// Applies a preset in both directions and marks the pair as having met (family links
+    /// are kept unless the preset sets one).
     pub fn bond(&mut self, a: usize, b: usize, preset: &BondPreset) {
-        for (x, y) in [(a, b), (b, a)] {
+        for (x, y, kin) in [(a, b, preset.kin), (b, a, preset.kin.inverse())] {
             let r = self.get_mut(x, y);
             r.met = true;
             r.friendship = preset.friendship;
             r.romance = preset.romance;
             r.partners = preset.partners;
+            if !kin.is_none() {
+                r.kin = kin;
+            }
         }
+    }
+
+    /// What `b` is to `a` in the family.
+    pub fn kin(&self, a: usize, b: usize) -> Kin {
+        self.get(a, b).kin
     }
 
     /// Current partner of `a`, if any.

@@ -201,11 +201,23 @@ export function randomHousehold(
   for (let i = 0; i < size; i++) members.push(randomSim(content, assets, members.map((m) => m.name)));
   const bonds: Bond[] = [];
   // Two adults who are attracted to each other are often a couple.
-  const [a, b] = members;
-  if (a && b && a.attractedTo.includes(b.gender) && b.attractedTo.includes(a.gender) && Math.random() < 0.6) {
+  const [a, b, c] = members;
+  const adult = content.lifeStages[0]?.from ?? 18;
+  const couple = !!a && !!b && a.attractedTo.includes(b.gender) && b.attractedTo.includes(a.gender) && Math.random() < 0.6;
+  if (a && b && couple) {
     bonds.push({ a: a.uid, b: b.uid, preset: 'partners' });
     // Partners are close in age.
-    b.age = Math.max(content.lifeStages[0]?.from ?? 18, a.age + Math.floor(Math.random() * 9) - 4);
+    b.age = Math.max(adult, a.age + Math.floor(Math.random() * 9) - 4);
+    // Often with a grown child still at home.
+    const youngest = Math.min(a.age, b.age);
+    if (c && youngest - 20 >= adult && Math.random() < 0.6) {
+      c.age = Math.max(adult, youngest - 20 - Math.floor(Math.random() * 11));
+      bonds.push({ a: c.uid, b: a.uid, preset: 'parent' }, { a: c.uid, b: b.uid, preset: 'parent' });
+    }
+  } else if (a && b && Math.random() < 0.3) {
+    // Or two siblings.
+    b.age = Math.max(adult, a.age + Math.floor(Math.random() * 13) - 6);
+    bonds.push({ a: a.uid, b: b.uid, preset: 'siblings' });
   }
   const names = content.names.last.filter((n) => !avoidNames.includes(n));
   return { name: pick(names.length ? names : content.names.last), members, bonds };

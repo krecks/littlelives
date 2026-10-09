@@ -16,6 +16,7 @@
     type HouseholdDraft,
   } from '../../game/household';
   import type { Wardrobe } from '../../render/types';
+  import { kinLabel } from '../relationship';
   import Segmented from '../kit/Segmented.svelte';
   import SimStage from '../kit/SimStage.svelte';
   import { app } from '../app.svelte';
@@ -54,6 +55,9 @@
     bestFriends: 'Best friends',
     partners: 'Partners',
     rivals: 'Rivals',
+    parent: 'Parent',
+    child: 'Child',
+    siblings: 'Sibling',
   };
   const bondOptions = Object.keys(bondLabels)
     .filter((k) => content.bondPresets.includes(k))
@@ -177,8 +181,23 @@
     else sim.attractedTo.push(gender);
   }
 
+  /** The bond with `other` as seen from this resident (a parent's bond is the child's "child"). */
   function bondFor(other: string) {
-    return bondBetween(household, sim.uid, other)?.preset ?? 'roommates';
+    const bond = bondBetween(household, sim.uid, other);
+    if (!bond) return 'roommates';
+    if (bond.a === sim.uid) return bond.preset;
+    return bond.preset === 'parent' ? 'child' : bond.preset === 'child' ? 'parent' : bond.preset;
+  }
+
+  /** A family bond in words ("Leo is Finn's father"), with a heads-up when the ages don't fit. */
+  function familyNote(otherUid: string): { text: string; warn: boolean } | null {
+    const other = household.members.find((m) => m.uid === otherUid);
+    const preset = bondFor(otherUid);
+    const kin = preset === 'parent' ? 'parent' : preset === 'child' ? 'child' : preset === 'siblings' ? 'sibling' : null;
+    if (!other || !kin) return null;
+    const text = `${other.name || 'Unnamed'} is ${sim.name || 'this resident'}'s ${kinLabel(kin, other.gender)?.toLowerCase()}`;
+    const gap = kin === 'parent' ? other.age - sim.age : kin === 'child' ? sim.age - other.age : 0;
+    return { text: gap && gap < 16 ? `${text}, though only ${gap} years apart` : text, warn: !!gap && gap < 16 };
   }
 
   /** Partners who aren't attracted to each other's gender is allowed, but worth a heads-up. */
@@ -429,6 +448,10 @@
                 {/each}
               </div>
               {#if warning}<span class="hint small warn">{warning}</span>{/if}
+              {#if familyNote(other.uid)}
+                {@const note = familyNote(other.uid)!}
+                <span class="hint small" class:warn={note.warn}>{note.text}</span>
+              {/if}
             </div>
           {/each}
         {:else}
