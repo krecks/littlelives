@@ -4,6 +4,7 @@
    * they are and where they live; starting flies the camera into their lot, like Move in.
    */
   import { onMount } from 'svelte';
+  import { lookAtAge } from '../../game/household';
   import { menuScene } from '../../game/menuScene';
   import { houseTemplate, loadTemplates, type Templates } from '../../game/town';
   import { app } from '../app.svelte';
@@ -127,7 +128,7 @@
               {#each chosen.household.members as m (m.uid)}
                 {@const bond = partner(m.uid)}
                 <li>
-                  <span class="face"><SimPreview appearance={m.appearance} gender={m.gender} size={60} /></span>
+                  <span class="face"><SimPreview appearance={lookAtAge(services.content, m.appearance, m.age)} gender={m.gender} size={60} /></span>
                   <span class="who">
                     <b>{m.name}</b>
                     {#if bond}<span class="bond">{bond}</span>{/if}

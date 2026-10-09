@@ -27,7 +27,7 @@ import { Director } from './director';
 import { BuildBuyInput, editFeedback, type Picked } from './buildmode';
 import { styledModel } from '../ui/buy/catalog';
 import { play } from '../ui/sfx';
-import { greyed, householdBonds, householdSpawns, lookFromSeed, type HouseholdDraft } from './household';
+import { greyed, householdBonds, householdSpawns, lookFromSeed, lookOfStage, type HouseholdDraft } from './household';
 import { PointerInput } from './input';
 import { assembleTown, loadTemplates, type NeighbourhoodDraft } from './town';
 
@@ -644,8 +644,10 @@ export async function startSession(
     for (const s of w.sims) {
       const seed = (s.appearance as { seed?: number } | null)?.seed;
       if (typeof seed === 'number') s.appearance = lookFromSeed(assets, s.gender, seed);
-      // Age greys the hair (from the colour they started with).
-      const grey = content.lifeStages.find((st) => st.id === s.stage)?.greyHair ?? 0;
+      // Life stage: body and head size, and age greys the hair (from the colour they started with).
+      const stage = content.lifeStages.find((st) => st.id === s.stage);
+      if (s.appearance) s.appearance = lookOfStage(s.appearance, stage);
+      const grey = stage?.greyHair ?? 0;
       if (s.appearance?.hair) {
         const base = s.appearance.hairBase ?? s.appearance.hair;
         const hair = greyed(base, grey);

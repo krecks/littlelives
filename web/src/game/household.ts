@@ -1,7 +1,7 @@
 /** Household drafts from character creation, and turning them into Sims the simulation understands. */
 
 import type { AssetRegistry } from '../assets/registry';
-import type { Content } from '../content/content';
+import type { Content, LifeStageDef } from '../content/content';
 import { GARMENTS, pickOutfit } from '../render/babylon/characters/outfit';
 
 export const HAIR_STYLES = ['short', 'long', 'bun', 'none'] as const;
@@ -31,6 +31,10 @@ export interface Appearance {
   model?: string;
   /** The hair colour before age greyed it (`hair` is what's shown). */
   hairBase?: string;
+  /** Body and head size for the life stage (set when shown; children are small with big heads). */
+  stageScale?: number;
+  stageHead?: number;
+  stageStoop?: number;
 }
 
 /** `hex` mixed `amount` of the way towards silver. */
@@ -309,4 +313,19 @@ export function householdBonds(h: HouseholdDraft, firstIndex: number): { a: numb
   return h.bonds
     .filter((b) => h.members.some((m) => m.uid === b.a) && h.members.some((m) => m.uid === b.b))
     .map((b) => ({ a: index(b.a), b: index(b.b), preset: b.preset }));
+}
+
+/** A draft's look at `age`: the body and head size and stoop of that life stage. */
+export function lookAtAge(content: Content, appearance: Appearance, age: number): Appearance {
+  return lookOfStage(appearance, content.stageOf(age));
+}
+
+/** A look with a life stage's body and head size and stoop (none: as grown). */
+export function lookOfStage(appearance: Appearance, stage: LifeStageDef | undefined): Appearance {
+  const stageScale = stage?.scale;
+  const stageHead = stage?.head;
+  const stageStoop = stage?.stoop;
+  return stageScale === appearance.stageScale && stageHead === appearance.stageHead && stageStoop === appearance.stageStoop
+    ? appearance
+    : { ...appearance, stageScale, stageHead, stageStoop };
 }

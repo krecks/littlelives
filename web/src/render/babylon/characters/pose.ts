@@ -202,6 +202,8 @@ export interface Placement {
   qz: number;
   qw: number;
   scale: number;
+  /** Head (and face) size relative to the body, scaled about the head joint (children: > 1). */
+  head?: number;
 }
 
 /**
@@ -311,25 +313,33 @@ export function skin(
     }
   }
 
-  // Skinning matrices: K = [s * R(wq) | wt] * inverseBind (column-major).
+  // Skinning matrices: K = [s * R(wq) | wt] * inverseBind (column-major). The head and the face
+  // under it are scaled by `place.head` about the head joint.
+  const hs = place.head ?? 1;
+  const hj = set.head * 3;
+  const hx = wt[hj];
+  const hy = wt[hj + 1];
+  const hz = wt[hj + 2];
   for (let b = 0; b < NB; b++) {
     const o = b * 4;
+    const big = hs !== 1 && set.inHead[b] === 1;
+    const sb = big ? s * hs : s;
     const x = wq[o];
     const y = wq[o + 1];
     const z = wq[o + 2];
     const w = wq[o + 3];
-    const r00 = (1 - 2 * (y * y + z * z)) * s;
-    const r01 = 2 * (x * y - z * w) * s;
-    const r02 = 2 * (x * z + y * w) * s;
-    const r10 = 2 * (x * y + z * w) * s;
-    const r11 = (1 - 2 * (x * x + z * z)) * s;
-    const r12 = 2 * (y * z - x * w) * s;
-    const r20 = 2 * (x * z - y * w) * s;
-    const r21 = 2 * (y * z + x * w) * s;
-    const r22 = (1 - 2 * (x * x + y * y)) * s;
-    const t0 = wt[b * 3];
-    const t1 = wt[b * 3 + 1];
-    const t2 = wt[b * 3 + 2];
+    const r00 = (1 - 2 * (y * y + z * z)) * sb;
+    const r01 = 2 * (x * y - z * w) * sb;
+    const r02 = 2 * (x * z + y * w) * sb;
+    const r10 = 2 * (x * y + z * w) * sb;
+    const r11 = (1 - 2 * (x * x + z * z)) * sb;
+    const r12 = 2 * (y * z - x * w) * sb;
+    const r20 = 2 * (x * z - y * w) * sb;
+    const r21 = 2 * (y * z + x * w) * sb;
+    const r22 = (1 - 2 * (x * x + y * y)) * sb;
+    const t0 = big ? hx + (wt[b * 3] - hx) * hs : wt[b * 3];
+    const t1 = big ? hy + (wt[b * 3 + 1] - hy) * hs : wt[b * 3 + 1];
+    const t2 = big ? hz + (wt[b * 3 + 2] - hz) * hs : wt[b * 3 + 2];
     const m = b * 16;
     const d = offset + m;
     for (let c = 0; c < 4; c++) {

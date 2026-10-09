@@ -80,6 +80,8 @@ export interface CharacterSet {
   parents: Int32Array;
   bone: Record<string, number>;
   head: number;
+  /** 1 for the head bone and every bone under it (the face), else 0. */
+  inHead: Uint8Array;
   fps: number;
   sourcePelvis: [number, number, number];
   /** Rest pose (local rotations) of the animation skeleton. */
@@ -256,6 +258,7 @@ async function load(url: string): Promise<CharacterSet> {
     parents: Int32Array.from(rig.parents),
     bone,
     head: rig.head,
+    inHead: headBones(rig.parents, rig.head),
     fps: rig.fps,
     sourcePelvis: rig.sourcePelvis,
     sourceRestQ: Float32Array.from(rig.sourceRestQ),
@@ -264,4 +267,11 @@ async function load(url: string): Promise<CharacterSet> {
     hairTextures: rig.hairTextures,
     file,
   };
+}
+
+/** Marks the head bone and its descendants (parents come before children in the rig). */
+function headBones(parents: readonly number[], head: number): Uint8Array {
+  const out = new Uint8Array(parents.length);
+  for (let b = 0; b < parents.length; b++) out[b] = b === head || (parents[b] >= 0 && out[parents[b]] === 1) ? 1 : 0;
+  return out;
 }

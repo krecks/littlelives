@@ -3154,7 +3154,7 @@
       {"id": "teen", "label": "Teen", "from": 13, "school": true, "scale": 0.9, "head": 1.06, "story": "is a teenager now"},
       {"id": "youngAdult", "label": "Young adult", "from": 18, "adult": true, "story": "is a young adult now"},
       {"id": "adult", "label": "Adult", "from": 30, "story": "is an adult now", "feeling": "grownUp"},
-      {"id": "elder", "label": "Elder", "from": 60, "story": "is an elder now", "feeling": "goldenYears", "greyHair": 0.65,
+      {"id": "elder", "label": "Elder", "from": 60, "story": "is an elder now", "feeling": "goldenYears", "greyHair": 0.65, "stoop": 1,
        "effects": {"needDecay": {"energy": 1.2}, "walkSpeed": 0.85}}
     ]
   },

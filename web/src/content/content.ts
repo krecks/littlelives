@@ -121,6 +121,8 @@ export interface LifeStageDef {
   /** Body size and head size for the stage (renderer). */
   scale?: number;
   head?: number;
+  /** How much they stoop (0..1; elders). */
+  stoop?: number;
 }
 
 /** What a room is for, from the tags of what stands in it (sim-core `RoomKind`). */

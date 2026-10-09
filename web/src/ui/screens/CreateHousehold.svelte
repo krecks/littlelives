@@ -5,6 +5,7 @@
     ensureOutfit,
     HAIR_STYLES,
     householdProblems,
+    lookAtAge,
     palette,
     randomAge,
     randomFirstName,
@@ -247,7 +248,7 @@
       {#each household.members as m, i (i)}
         <div class="member" class:active={i === active}>
           <button class="pick" onclick={() => (active = i)}>
-            <span class="mini"><SimPreview appearance={m.appearance} gender={m.gender} size={44} /></span>
+            <span class="mini"><SimPreview appearance={lookAtAge(content, m.appearance, m.age)} gender={m.gender} size={44} /></span>
             <span class="meta">
               <b>{m.name || 'Unnamed'}</b>
               <span class="traits">
@@ -266,7 +267,7 @@
     </aside>
 
     <section class="stage">
-      <SimStage bind:this={stage} gender={sim.gender} appearance={sim.appearance} />
+      <SimStage bind:this={stage} gender={sim.gender} appearance={lookAtAge(content, sim.appearance, sim.age)} />
       <div class="nameplate glass">
         <h2>{sim.name || 'Unnamed'} <span>{household.name}</span></h2>
         {#if sim.traits.length || sim.perks.length}
@@ -440,7 +441,7 @@
             {@const warning = bondWarning(other.uid)}
             <div class="field bond">
               <div class="bond-head">
-                <span class="mini"><SimPreview appearance={other.appearance} gender={other.gender} size={36} /></span>
+                <span class="mini"><SimPreview appearance={lookAtAge(content, other.appearance, other.age)} gender={other.gender} size={36} /></span>
                 <b>{other.name || 'Unnamed'}</b>
               </div>
               <div class="bond-pick" role="radiogroup" aria-label="Bond with {other.name}">

@@ -422,6 +422,10 @@ interface SimRig {
   id: number;
   body: BodyData;
   scale: number;
+  /** Head size relative to the body (children's heads are bigger). */
+  head: number;
+  /** How much they stoop (elders), 0..1. */
+  stoop: number;
   seed: number;
   visible: boolean;
   /** Displayed position / yaw (smoothed). */
@@ -782,11 +786,15 @@ export class Characters {
       const day = outfitFor(outfitId, s.gender, s.appearance, body);
       for (const part of day.parts) if (body.parts.has(part)) push(`${body.name}:${part}`, s);
       const height = clampHeight(s.appearance?.height);
-      const scale = ((BASE_HEIGHT[body.name] ?? 1.72) / body.height) * height;
+      // Life stage: children are smaller, with bigger heads (the session sets these).
+      const stageScale = s.appearance?.stageScale ?? 1;
+      const scale = ((BASE_HEIGHT[body.name] ?? 1.72) / body.height) * height * stageScale;
       const rig: SimRig = {
         id: s.id,
         body,
         scale,
+        head: s.appearance?.stageHead ?? 1,
+        stoop: s.appearance?.stageStoop ?? 0,
         seed: hash(s.id + 17),
         visible: false,
         x: 0,
@@ -985,6 +993,7 @@ export class Characters {
       pl.y = 0;
       pl.z = g.z;
       pl.scale = rig.scale;
+      pl.head = rig.head;
       skin(set, rig.body, this.qA, this.pA, this.add, pl, this.scratch, this.data, this.row(i), this.headTmp);
       this.visible[i] = 1;
     });
@@ -1189,11 +1198,12 @@ export class Characters {
       pl.y = rootY;
       pl.z = rig.z + Math.cos(rig.yaw) * rootFwd;
       pl.scale = rig.scale;
+      pl.head = rig.head;
       skin(set, rig.body, this.qA, this.pA, this.add, pl, this.scratch, this.data, this.row(i), this.headTmp);
       this.writeBlanket(rig, i, pose, dt);
 
       // Head top (speech bubbles, selection marker): a little above the head joint.
-      const hs = rig.scale;
+      const hs = rig.scale * rig.head;
       this.heads[i * 3] = this.headTmp[0];
       this.heads[i * 3 + 1] = this.headTmp[1] + 0.26 * hs;
       this.heads[i * 3 + 2] = this.headTmp[2];
@@ -1580,9 +1590,10 @@ export class Characters {
 
     // Posture: the clips stand slightly hunched; Sims stand tall (and lean back when seated).
     if (pose !== Pose.Lie && this.force !== 'rest') {
-      addRotation(add, B.spine_03, 1, 0, 0, -0.09);
-      addRotation(add, B.neck_01, 1, 0, 0, -0.07);
-      addRotation(add, B.Head, 1, 0, 0, -0.07);
+      // (Elders a little less so: a stoop in the upper back, the head lifted to look ahead.)
+      addRotation(add, B.spine_03, 1, 0, 0, -0.09 + 0.2 * rig.stoop);
+      addRotation(add, B.neck_01, 1, 0, 0, -0.07 + 0.08 * rig.stoop);
+      addRotation(add, B.Head, 1, 0, 0, -0.07 - 0.12 * rig.stoop);
       // Arms closer to the body and a narrower stance than the clips' athletic ones.
       addRotation(add, B.upperarm_l, 0, 0, 1, 0.13);
       addRotation(add, B.upperarm_r, 0, 0, 1, -0.13);
