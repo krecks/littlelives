@@ -73,7 +73,7 @@ import type {
 } from '../types';
 import { createLighting, lightingAt } from './environment';
 import { buildFences } from './fences';
-import { HALF_WALL_HEIGHT, HouseBuilder, WALL_HEIGHT, WALL_STUB, type RoomLight } from './house';
+import { HALF_WALL_HEIGHT, HouseBuilder, houseObjectKey, placeLights, WALL_HEIGHT, WALL_STUB, type RoomLight, type RoomTiles } from './house';
 import { Street } from './street';
 import { MaterialLibrary } from './materials';
 import { buildModel, placementVariation, type ModelTemplate } from './models';
@@ -158,6 +158,19 @@ export class BabylonRenderer implements Renderer {
   private street!: Street;
 
   private worldMeshes: Mesh[] = [];
+  /**
+   * The viewed lot's streets, house and fences: rebuilt only when what they depend on changes
+   * (see `lotKey`), so buying, selling and moving furniture rebuild just the objects.
+   */
+  private lotMeshes: Mesh[] = [];
+  private lotKey = '';
+  /** Shadow casters of the cached house, and the garden templates its build uses. */
+  private lotCasters: Mesh[] = [];
+  private lotTemplates = new Set<string>();
+  /** Rooms of the cached house (where its lamps' and fills' lights go). */
+  private lotRooms: RoomTiles | null = null;
+  /** Meshes the room lights were last told to leave out (the landscape and sky). */
+  private lightExcluded = new Set<Mesh>();
   private onFrame: ((now: number) => void) | null = null;
   private active = false;
   private idleOrbit = false;
@@ -330,7 +343,6 @@ export class BabylonRenderer implements Renderer {
       windows: c.windowStyles,
       roofs: c.roofStyles,
       roofColors: c.roofColors,
-      lightOf: (def) => c.object(def)?.light,
     });
     this.street = new Street(scene, this.deps.assets, this.house);
     // Wind sway and tint variation for foliage materials (hooks them as the models load).
@@ -365,12 +377,30 @@ export class BabylonRenderer implements Renderer {
     if (this.townMode) this.warmFrames = WARM_WORLD_FRAMES;
   }
 
+  /** Everything the lot layer (streets, house, fences) is built from. */
+  private lotKeyOf(world: WorldStructure, view: ViewRect | null): string {
+    return JSON.stringify([
+      view,
+      world.width,
+      world.depth,
+      world.meta?.seed,
+      world.meta?.streets,
+      world.meta?.paths,
+      world.walls,
+      world.openings,
+      world.diagonals,
+      world.floors,
+      world.fences,
+      world.plots.map((p) => [p.house, p.roof]),
+      world.households.find((h) => h.player)?.plot,
+      houseObjectKey(world, view),
+    ]);
+  }
+
   private async buildWorld(world: WorldStructure, view: ViewRect | null): Promise<void> {
     const started = performance.now();
     for (const mesh of this.worldMeshes) mesh.dispose(false, false);
     this.worldMeshes = [];
-    this.roofs = [];
-    this.walls = this.wallsLow = null;
     this.placed = [];
     this.fx.clearPops();
     this.view = view;
@@ -390,10 +420,28 @@ export class BabylonRenderer implements Renderer {
     nature.landscape.refreshLawn(world);
     this.natureCasters = nature.casters;
     this.templatesInUse.clear();
-    this.buildStreets(world);
-    const houseCasters = this.buildLot(world);
-    const fences = buildFences(this.scene, world.fences ?? [], this.deps.content.fenceStyles);
-    if (fences) this.worldMeshes.push(fences);
+    const lotKey = this.lotKeyOf(world, view);
+    const lotBuilt = lotKey !== this.lotKey;
+    if (lotBuilt) {
+      for (const mesh of this.lotMeshes) mesh.dispose(false, false);
+      this.lotKey = lotKey;
+      this.roofs = [];
+      this.walls = this.wallsLow = null;
+      const before = new Set(this.templatesInUse);
+      this.buildStreets(world);
+      this.lotCasters = this.buildLot(world);
+      const fences = buildFences(this.scene, world.fences ?? [], this.deps.content.fenceStyles);
+      if (fences) this.worldMeshes.push(fences);
+      // What was just built belongs to the lot layer; objects follow in `worldMeshes`.
+      this.lotMeshes = this.worldMeshes;
+      this.worldMeshes = [];
+      this.lotTemplates = new Set([...this.templatesInUse].filter((k) => !before.has(k)));
+      for (const mesh of this.lotMeshes) mesh.freezeWorldMatrix();
+    } else {
+      for (const key of this.lotTemplates) this.templatesInUse.add(key);
+    }
+    const houseCasters = this.lotCasters;
+    this.placeRoomLights(world, view);
     const streetCasters = await this.street.build(world, this.view);
     await this.buildObjects(world);
     await this.buildSims(world);
@@ -403,7 +451,7 @@ export class BabylonRenderer implements Renderer {
     const notCasting = new Set(['floors', 'floorsTiled', 'floorsCarpet', 'floorsStone', 'streets', 'paths', 'contactShadows', 'objectShadows', 'windows', 'windowsInner', 'plinth', 'wallsTiled']);
     this.baseCasters = [
       ...new Set([
-        ...this.worldMeshes.filter((m) => !notCasting.has(m.name) && !m.name.startsWith('silhouette') && !houseCasters.includes(m)),
+        ...[...this.lotMeshes, ...this.worldMeshes].filter((m) => !notCasting.has(m.name) && !m.name.startsWith('silhouette') && !houseCasters.includes(m)),
         ...templates,
         // Sims' small details (eyes, brows) don't cast sun shadows.
         ...this.characters.casters(),
@@ -415,7 +463,7 @@ export class BabylonRenderer implements Renderer {
     for (const mesh of [...this.worldMeshes, ...templates]) mesh.freezeWorldMatrix();
     this.applyWallMode();
     this.lastLightMinute = -1;
-    if (this.debug) console.info(`[render] setWorld ${(performance.now() - started).toFixed(1)} ms`);
+    if (this.debug) console.info(`[render] setWorld ${(performance.now() - started).toFixed(1)} ms${lotBuilt ? '' : ' (lot kept)'}`);
   }
 
   update(frame: FrameState): void {
@@ -851,8 +899,13 @@ export class BabylonRenderer implements Renderer {
 
   clear(): void {
     this.pauseSnapshot();
-    for (const mesh of this.worldMeshes) mesh.dispose(false, false);
+    for (const mesh of [...this.worldMeshes, ...this.lotMeshes]) mesh.dispose(false, false);
     this.worldMeshes = [];
+    this.lotMeshes = [];
+    this.lotKey = '';
+    this.lotCasters = [];
+    this.lotTemplates.clear();
+    this.lotRooms = null;
     this.roofs = [];
     this.baseCasters = [];
     this.wallCasters = [];
@@ -1119,10 +1172,14 @@ export class BabylonRenderer implements Renderer {
       for (const mesh of n.meshes) mesh.layerMask = mask;
       all.push(...n.meshes);
     }
-    // Interior lamps never light the landscape (keeps its shaders simple).
-    const landscape = new Set(all);
-    for (const light of this.roomLights) {
-      light.excludedMeshes = [...new Set([...light.excludedMeshes.filter((m) => !m.isDisposed()), ...landscape, this.skyDome.mesh])];
+    // Interior lamps never light the landscape (keeps its shaders simple). Only when that
+    // changes: setting the lists marks every material dirty.
+    const landscape = new Set([...all, this.skyDome.mesh]);
+    if (landscape.size !== this.lightExcluded.size || [...landscape].some((m) => !this.lightExcluded.has(m))) {
+      this.lightExcluded = landscape;
+      for (const light of this.roomLights) {
+        light.excludedMeshes = [...new Set([...light.excludedMeshes.filter((m) => !m.isDisposed()), ...landscape])];
+      }
     }
     return set;
   }
@@ -1541,8 +1598,7 @@ export class BabylonRenderer implements Renderer {
       const wallMat = this.lotMaterial('material.wall');
       this.walls = this.meshFromArrays('walls', world.meshes.walls, wallMat);
       this.wallsLow = this.meshFromArrays('wallsLow', world.meshes.wallsLow, wallMat);
-      this.roomLightUse = [];
-      for (const light of this.roomLights) light.position.y = HIDDEN_Y;
+      this.lotRooms = null;
       return [];
     }
     this.worldMeshes.push(...built.meshes);
@@ -1551,13 +1607,19 @@ export class BabylonRenderer implements Renderer {
     for (const roof of built.roofs) void roof.material?.forceCompilationAsync(roof).catch(() => {});
     // Garden dressing split into species (hedges or mixed shrub borders, varied lot trees).
     for (const [key, items] of [...natureDecor('model.bush', built.shrubs), ...natureDecor('model.tree', built.trees, world, this.view)]) void this.placeDecor(key, items);
+    this.lotRooms = built.rooms;
+    return built.casters;
+  }
+
+  /** The household's lamps (then dim fills for rooms without one) on the interior lights. */
+  private placeRoomLights(world: WorldStructure, view: ViewRect | null): void {
+    const lights = this.lotRooms ? placeLights(world, view, this.lotRooms, (def) => this.deps.content.object(def)?.light) : [];
     this.roomLightUse = this.roomLights.map((light, i) => {
-      const l = built.lights[i];
+      const l = lights[i];
       if (l) light.position.set(l.x, l.y, l.z);
       else light.position.y = HIDDEN_Y;
       return l ?? null;
     });
-    return built.casters;
   }
 
   /** Garden dressing as thin instances of a cached template (`deco:` keys). */

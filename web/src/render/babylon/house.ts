@@ -90,8 +90,6 @@ export interface HouseLooks {
   windows: readonly WindowStyleDef[];
   roofs?: readonly RoofStyleDef[];
   roofColors?: readonly RoofColorDef[];
-  /** The light an object type gives, if it's a lamp. */
-  lightOf?: (def: string) => LampLight | undefined;
 }
 
 /** A roof's shape: gable, hip or flat, and the pitch (rise per run) of pitched ones. */
@@ -156,6 +154,34 @@ export interface RoomLight {
   power?: number;
 }
 
+/** Per room: indoor area in tiles and the sums of tile centres (x, z) weighted by area. */
+export type RoomTiles = ReadonlyMap<number, { n: number; sx: number; sz: number }>;
+
+/**
+ * The lights of the viewed house: every lamp (the biggest rooms' first, the garden's last),
+ * then a dim fill from the ceiling of each room without one. Cheap: run on every change.
+ */
+export function placeLights(world: WorldStructure, view: ViewRect | null, rooms: RoomTiles, lightOf: (def: string) => LampLight | undefined): RoomLight[] {
+  const W = world.width;
+  const inView = (x: number, z: number) => !view || (x >= view.x && z >= view.z && x < view.x + view.w && z < view.z + view.d);
+  const roomAt = (x: number, z: number) => (x >= 0 && z >= 0 && x < W && z < world.depth ? world.rooms[z * W + x] : 0);
+  const lamps: { x: number; z: number; room: number; light: LampLight }[] = [];
+  for (const o of world.objects) {
+    const light = inView(o.x, o.z) ? lightOf(o.def) : undefined;
+    if (light) lamps.push({ x: o.x + o.w / 2, z: o.z + o.d / 2, room: roomAt(o.x, o.z), light });
+  }
+  const areaOf = (r: number) => rooms.get(r)?.n ?? 0;
+  return [
+    ...lamps
+      .sort((a, b) => areaOf(b.room) - areaOf(a.room))
+      .map((l): RoomLight => ({ x: l.x, y: l.light.height ?? 1.55, z: l.z, area: areaOf(l.room), kind: 'lamp', range: l.light.range, power: l.light.intensity })),
+    ...[...rooms.entries()]
+      .filter(([r]) => !lamps.some((l) => l.room === r))
+      .sort((a, b) => b[1].n - a[1].n)
+      .map(([, t]): RoomLight => ({ x: t.sx / t.n, y: 2.45, z: t.sz / t.n, area: t.n, kind: 'fill' })),
+  ];
+}
+
 /** What a lamp object gives (content `light`). */
 export interface LampLight {
   range?: number;
@@ -169,8 +195,8 @@ export interface HouseBuild {
   casters: Mesh[];
   /** Roofs and gables: drawn only with walls up. */
   roofs: Mesh[];
-  /** Every lamp (largest rooms first, then the garden's), then a dim fill per room without one. */
-  lights: RoomLight[];
+  /** Indoor rooms of the viewed lot: tiles and their centre sums (for `placeLights`). */
+  rooms: RoomTiles;
   /** Garden dressing: shrubs along the foundation and trees on open lawn (x, z, scale, yaw). */
   shrubs: [number, number, number, number][];
   trees: [number, number, number, number][];
@@ -231,6 +257,36 @@ function hash(x: number, z: number, salt: number): number {
 
 function pick<T>(list: readonly T[], x: number, z: number, salt: number): T {
   return list[Math.floor(hash(x, z, salt) * list.length) % list.length];
+}
+
+/** Furniture that decides what a room is for (and so its automatic floor and wall look). */
+const ROOM_KIND_DEFS = new Set([...BATH, ...KITCHEN, ...BEDROOM, ...LIVING]);
+
+/**
+ * The objects `HouseBuilder.build` depends on, as a key: room-kind furniture, and
+ * whatever stands on the lot's tree spots; on a lot that isn't the player's home (it gets a
+ * garden border around its furniture) every object. Other objects can change without
+ * rebuilding the house.
+ */
+export function houseObjectKey(world: WorldStructure, view: ViewRect | null): string {
+  const inView = (x: number, z: number) => !view || (x >= view.x && z >= view.z && x < view.x + view.w && z < view.z + view.d);
+  const homeId = world.households?.find((h) => h.player)?.plot;
+  const home = homeId == null ? undefined : world.plots?.[homeId];
+  const isHome = !!view && !!home && home.x === view.x && home.z === view.z;
+  const spots = view
+    ? [
+        [view.x + 1, view.z + 1],
+        [view.x + view.w - 2, view.z + 1],
+        [view.x + 1, view.z + view.d - 2],
+        [view.x + view.w - 2, view.z + view.d - 2],
+      ]
+    : [];
+  const matters = (o: WorldStructure['objects'][number]) =>
+    !isHome || ROOM_KIND_DEFS.has(o.def) || spots.some(([sx, sz]) => sx >= o.x && sx < o.x + o.w && sz >= o.z && sz < o.z + o.d);
+  return world.objects
+    .filter((o) => inView(o.x, o.z) && matters(o))
+    .map((o) => `${o.def}@${o.x},${o.z},${o.w},${o.d}`)
+    .join(';');
 }
 
 /** Look of one house, chosen deterministically from its position. */
@@ -362,11 +418,7 @@ export class HouseBuilder {
     const shown = world.objects.filter((o) => inView(o.x, o.z));
     const occupied = new Set<number>();
     const roomDefs = new Map<number, Set<string>>();
-    const lamps: { x: number; z: number; room: number; light: LampLight }[] = [];
     for (const o of shown) {
-      // Lamps indoors and out (a garden lantern's room is 0).
-      const light = this.looks.lightOf?.(o.def);
-      if (light) lamps.push({ x: o.x + o.w / 2, z: o.z + o.d / 2, room: room(o.x, o.z), light });
       for (let z = o.z; z < o.z + o.d; z++) {
         for (let x = o.x; x < o.x + o.w; x++) {
           occupied.add(z * W + x);
@@ -429,18 +481,6 @@ export class HouseBuilder {
       const kind = kinds.get(r) ?? 'living';
       return pick(ROOM_WALLS[kind], sx + r, sz, 11 + r);
     };
-    // Lamps light the house (the biggest rooms' first, the garden's last); rooms without one
-    // get a dim fill from the ceiling if lights are left over.
-    const areaOf = (r: number) => roomTiles.get(r)?.n ?? 0;
-    const lights: RoomLight[] = [
-      ...lamps
-        .sort((a, b) => areaOf(b.room) - areaOf(a.room))
-        .map((l): RoomLight => ({ x: l.x, y: l.light.height ?? 1.55, z: l.z, area: areaOf(l.room), kind: 'lamp', range: l.light.range, power: l.light.intensity })),
-      ...[...roomTiles.entries()]
-        .filter(([r]) => !lamps.some((l) => l.room === r))
-        .sort((a, b) => b[1].n - a[1].n)
-        .map(([, t]): RoomLight => ({ x: t.sx / t.n, y: 2.45, z: t.sz / t.n, area: t.n, kind: 'fill' })),
-    ];
 
     // ---- geometry buckets (one draw call each) --------------------------------------
     const ext = new Geo().color(scheme.wall);
@@ -1051,7 +1091,7 @@ export class HouseBuilder {
     add(roof, 'roof', M.roof, { cut: false, cast: true, roof: true });
     add(roofTrim, 'roofTrim', M.trim, { cut: false, cast: true, roof: true });
     add(gables, 'gables', scheme.brick ? M.brick : M.siding, { cut: false, cast: true, roof: true });
-    return { meshes, casters, roofs, lights, shrubs, trees };
+    return { meshes, casters, roofs, rooms: roomTiles, shrubs, trees };
   }
 
   /**
