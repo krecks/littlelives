@@ -369,6 +369,11 @@ impl Sim {
         self.pose = Pose::Stand;
     }
 
+    /// Grown up (may work, fall in love, move, have children).
+    pub fn adult(&self, content: &Content) -> bool {
+        content.life.adult(self.age)
+    }
+
     /// Still in town (not dead or moved away).
     pub fn here(&self) -> bool {
         self.gone.is_none()
@@ -949,8 +954,10 @@ impl World {
             .filter(|(_, g)| attracted_to.contains(&g.id))
             .fold(0u32, |m, (i, _)| m | (1 << i));
 
+        let young = !content.life.adult(spawn.age.unwrap_or(content.life.start_age[0]));
         let job = match &spawn.job {
             None => None,
+            Some(_) if young => None,
             Some(j) => {
                 let career = content
                     .career_index(&j.career)
@@ -1146,6 +1153,12 @@ impl World {
         }
         if bonds.iter().any(|b| b.a >= sims.len() || b.b >= sims.len()) {
             return Err(Error::new("a bond refers to someone who isn't moving in"));
+        }
+        let life = &self.content.life;
+        let grown_up = |s: &SimSpawn| s.age.is_none_or(|a| life.adult(a));
+        let adult_at_home = self.sims.iter().any(|s| s.here() && s.household as usize == h && s.adult(&self.content));
+        if !adult_at_home && !sims.iter().any(grown_up) {
+            return Err(Error::new("children need a grown-up to live with"));
         }
         // Newcomers may take slots of people who are gone, so a failure restores all of it.
         let before = (
@@ -1647,7 +1660,9 @@ impl World {
                     .levels
                     .get(level)
                     .ok_or_else(|| Error::new(format!("{} has no level {level}", def.label)))?;
-                self.sim(sim)?;
+                if !self.sim(sim)?.adult(&self.content) {
+                    return Err(Error::new(format!("{} is too young to work", self.sims[sim as usize].name)));
+                }
                 let s = &mut self.sims[sim as usize];
                 if !crate::life::can_join(&self.content, position, &s.skills) {
                     return Err(Error::new(format!(
@@ -1965,7 +1980,8 @@ fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
             start_task(sim, task, ctx, objects);
         } else {
             sim.idle_ticks += 1;
-            let free_will = ctx.autonomy && ctx.households[sim.household as usize].free_will;
+            // Babies don't choose anything: they're cared for.
+            let free_will = ctx.autonomy && ctx.households[sim.household as usize].free_will && !content.life.baby(sim.age);
             if free_will && sim.idle_ticks >= AUTONOMY_DELAY_TICKS {
                 sim.idle_ticks = 0;
                 if let Some(task) = pick_autonomous(sim, ctx, objects, rng) {

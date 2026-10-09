@@ -114,6 +114,13 @@ export interface LifeStageDef {
   story?: string;
   /** How far hair greys at this stage (0..1). */
   greyHair?: number;
+  /** Grown up (default: unless `baby` or `school`); a baby (lives in a crib); goes to school. */
+  adult?: boolean;
+  baby?: boolean;
+  school?: boolean;
+  /** Body size and head size for the stage (renderer). */
+  scale?: number;
+  head?: number;
 }
 
 /** What a room is for, from the tags of what stands in it (sim-core `RoomKind`). */
@@ -430,6 +437,17 @@ export class Content {
     let stage: LifeStageDef | undefined;
     for (const s of this.lifeStages) if (age >= s.from) stage = s;
     return stage ?? this.lifeStages[0];
+  }
+
+  /** Whether someone at `age` is grown up (may work, fall in love, live without a parent). */
+  isAdult(age: number): boolean {
+    const s = this.stageOf(age);
+    return !s || (s.adult ?? (!s.baby && !s.school));
+  }
+
+  /** The grown-up stages, youngest first. */
+  get adultStages(): LifeStageDef[] {
+    return this.lifeStages.filter((s) => s.adult ?? (!s.baby && !s.school));
   }
 
   /** Ages a stage spans, `[from, to]` (the last one: fifteen years). */

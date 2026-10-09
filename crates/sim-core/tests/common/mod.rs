@@ -232,7 +232,8 @@ pub fn town(content: &str, seed: u64, player_size: usize) -> String {
                     "x": spawn[0], "z": spawn[1],
                 });
                 if family && m < 3 {
-                    sim["age"] = json!(if m < 2 { parents_age.floor() } else { (parents_age - 20.0 - rng.next() * 6.0).floor() });
+                    // A child of any age from three to grown up.
+                    sim["age"] = json!(if m < 2 { parents_age.floor() } else { (parents_age - 20.0 - rng.next() * 30.0).max(3.0).floor() });
                 }
                 if !player && !tracks.is_empty() && rng.next() < 0.75 {
                     let level = (rng.next().powi(2) * 6.0) as usize;

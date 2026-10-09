@@ -310,12 +310,12 @@
           {#if content.lifeStages.length}
             <div class="field">
               <span class="eyebrow">Age</span>
-              <div class="row">
-                <Segmented
-                  label="Life stage"
-                  bind:value={() => content.stageOf(sim.age)?.id ?? '', (id) => (sim.age = randomAge(content, id))}
-                  options={content.lifeStages.map((s) => ({ value: s.id, label: s.label }))}
-                />
+              <Segmented
+                label="Life stage"
+                bind:value={() => content.stageOf(sim.age)?.id ?? '', (id) => (sim.age = randomAge(content, id))}
+                options={content.lifeStages.map((s) => ({ value: s.id, label: s.label }))}
+              />
+              <label class="age-row">
                 <input
                   class="input age"
                   type="number"
@@ -324,7 +324,8 @@
                   max={content.stageAges(content.lifeStages[content.lifeStages.length - 1].id)[1]}
                   bind:value={sim.age}
                 />
-              </div>
+                <span class="hint">years old</span>
+              </label>
             </div>
           {/if}
           {#if content.genders.length}
@@ -443,7 +444,7 @@
                 <b>{other.name || 'Unnamed'}</b>
               </div>
               <div class="bond-pick" role="radiogroup" aria-label="Bond with {other.name}">
-                {#each bondOptions as o (o.value)}
+                {#each bondOptions.filter((o) => o.value !== 'partners' || (content.isAdult(sim.age) && content.isAdult(other.age))) as o (o.value)}
                   <button class="pill" class:on={bondFor(other.uid) === o.value} onclick={() => setBond(household, sim.uid, other.uid, o.value)}>{o.label}</button>
                 {/each}
               </div>
@@ -481,6 +482,11 @@
 <style>
   .input.age {
     width: 64px;
+  }
+  .age-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   .cas {
     position: relative;

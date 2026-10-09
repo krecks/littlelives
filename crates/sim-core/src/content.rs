@@ -257,12 +257,38 @@ pub struct LifeStage {
     pub mods: Modifiers,
     /// Granted on reaching the stage.
     pub feeling: Option<usize>,
+    /// Grown up: may work, fall in love, move, have children (default: unless `baby` or `school`).
+    pub adult: bool,
+    /// Lives in a crib and is cared for; doesn't choose anything.
+    pub baby: bool,
+    /// Goes to school on school days.
+    pub school: bool,
 }
 
 impl LifeRules {
     /// Index of the stage at `age` (0 without stages).
     pub fn stage(&self, age: f32) -> usize {
         self.stages.iter().rposition(|s| age >= s.from).unwrap_or(0)
+    }
+
+    /// The stage at `age`, if content has stages.
+    pub fn stage_at(&self, age: f32) -> Option<&LifeStage> {
+        self.stages.get(self.stage(age))
+    }
+
+    /// Grown up at `age` (everyone is, without stages).
+    pub fn adult(&self, age: f32) -> bool {
+        self.stage_at(age).is_none_or(|s| s.adult)
+    }
+
+    /// A baby at `age`.
+    pub fn baby(&self, age: f32) -> bool {
+        self.stage_at(age).is_some_and(|s| s.baby)
+    }
+
+    /// The age adults start at.
+    pub fn adult_age(&self) -> f32 {
+        self.stages.iter().find(|s| s.adult).map_or(0.0, |s| s.from)
     }
 }
 
@@ -1156,6 +1182,12 @@ struct LifeStageRaw {
     effects: ModifiersRaw,
     #[serde(default)]
     feeling: Option<String>,
+    #[serde(default)]
+    adult: Option<bool>,
+    #[serde(default)]
+    baby: bool,
+    #[serde(default)]
+    school: bool,
 }
 
 #[derive(Deserialize)]
@@ -1939,6 +1971,9 @@ impl Content {
                 from: st.from,
                 mods: build_modifiers(&st.effects, &ix, &ctx)?,
                 feeling: feeling(&st.feeling, &ctx)?,
+                adult: st.adult.unwrap_or(!st.baby && !st.school),
+                baby: st.baby,
+                school: st.school,
             });
         }
         let start_age = raw.life.start_age.unwrap_or([25.0, 50.0]);

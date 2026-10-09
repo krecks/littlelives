@@ -177,7 +177,7 @@ fn has_room(w: &World, h: usize, more: usize) -> bool {
 /// at work or out doesn't matter: they come back to the new home.
 fn may_move(w: &World, i: usize) -> bool {
     let s = &w.sims[i];
-    s.here() && (w.player_moves || !w.households[s.household as usize].player)
+    s.here() && s.adult(&w.content) && (w.player_moves || !w.households[s.household as usize].player)
 }
 
 /// A house nobody lives in (not a park, not the player's home), with beds for `n`.

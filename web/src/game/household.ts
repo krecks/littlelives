@@ -216,7 +216,7 @@ export function lookFromSeed(assets: AssetRegistry, gender: string, seed: number
 
 /** A random age: mostly adults, some young adults, a few elders (or within `stage`). */
 export function randomAge(content: Content, stage?: string): number {
-  const stages = content.lifeStages;
+  const stages = content.adultStages;
   const id = stage ?? (Math.random() < 0.35 ? stages[0]?.id : Math.random() < 0.8 ? stages[1]?.id : stages[2]?.id) ?? stages[0]?.id;
   const [lo, hi] = id ? content.stageAges(id) : [25, 50];
   return lo + Math.floor(Math.random() * (hi - lo + 1));
@@ -233,16 +233,18 @@ export function randomHousehold(
   const bonds: Bond[] = [];
   // Two adults who are attracted to each other are often a couple.
   const [a, b, c] = members;
-  const adult = content.lifeStages[0]?.from ?? 18;
+  const adult = content.adultStages[0]?.from ?? 18;
+  // Children start out of the crib (babies come into a home with a crib).
+  const youngest = content.lifeStages.find((s) => !s.baby)?.from ?? adult;
   const couple = !!a && !!b && a.attractedTo.includes(b.gender) && b.attractedTo.includes(a.gender) && Math.random() < 0.6;
   if (a && b && couple) {
     bonds.push({ a: a.uid, b: b.uid, preset: 'partners' });
     // Partners are close in age.
     b.age = Math.max(adult, a.age + Math.floor(Math.random() * 9) - 4);
-    // Often with a grown child still at home.
-    const youngest = Math.min(a.age, b.age);
-    if (c && youngest - 20 >= adult && Math.random() < 0.6) {
-      c.age = Math.max(adult, youngest - 20 - Math.floor(Math.random() * 11));
+    // Often with a child at home: little, a teenager, or grown up.
+    const parent = Math.min(a.age, b.age);
+    if (c && parent - 20 >= youngest && Math.random() < 0.7) {
+      c.age = Math.max(youngest, parent - 20 - Math.floor(Math.random() * 25));
       bonds.push({ a: c.uid, b: a.uid, preset: 'parent' }, { a: c.uid, b: b.uid, preset: 'parent' });
     }
   } else if (a && b && Math.random() < 0.3) {
@@ -273,6 +275,7 @@ export function householdProblems(content: Content, h: HouseholdDraft): string[]
   if (!h.name.trim()) problems.push('Give your household a name');
   if (h.members.length === 0) problems.push('Add at least one member');
   if (h.members.length > content.rules.maxHousehold) problems.push(`At most ${content.rules.maxHousehold} members`);
+  if (h.members.length && !h.members.some((m) => content.isAdult(m.age))) problems.push('A household needs a grown-up');
   for (const m of h.members) {
     const who = m.name.trim() || 'Unnamed';
     if (!m.name.trim()) problems.push('Every member needs a name');

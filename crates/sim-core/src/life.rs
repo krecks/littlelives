@@ -192,7 +192,12 @@ fn job_market(w: &mut World, day: u32) {
     let tick = w.tick;
     for i in 0..w.sims.len() {
         let h = w.sims[i].household as usize;
-        if !w.households[h].free_will || w.sims[i].away_until.is_some() || !w.sims[i].here() || w.sims[i].retired {
+        if !w.households[h].free_will
+            || w.sims[i].away_until.is_some()
+            || !w.sims[i].here()
+            || w.sims[i].retired
+            || !w.sims[i].adult(&w.content)
+        {
             continue;
         }
         if let Some(job) = &w.sims[i].job {
@@ -518,11 +523,22 @@ fn charge_rent(w: &mut World, day: u32) {
 /// Guests go home when the visit is over, it's late, or they need something.
 fn end_visit_if_due(w: &mut World, i: usize, hour: f32) {
     let tick = w.tick;
+    let Some(visit) = w.sims[i].visiting else { return };
+    // A guest left with nothing to do while the hosts are all off at work goes home (hosts
+    // just out visiting come back; parks have no hosts).
+    let hosts: Vec<&crate::world::Sim> = w
+        .sims
+        .iter()
+        .filter(|s| s.here() && w.households[s.household as usize].plot == Some(visit.plot))
+        .collect();
+    let hosts_out = w.sims[i].current.is_none()
+        && !w.plots[visit.plot as usize].public
+        && !hosts.is_empty()
+        && hosts.iter().all(|s| s.away_until.is_some());
     let content = &w.content;
     let sim = &mut w.sims[i];
-    let Some(visit) = sim.visiting else { return };
     let tired = content.needs.iter().zip(&sim.needs).any(|(d, &n)| !d.room && n < 0.15);
-    let late = !(6.0..22.0).contains(&hour);
+    let late = !(6.0..22.0).contains(&hour) || hosts_out;
     let busy = sim
         .current
         .as_ref()
