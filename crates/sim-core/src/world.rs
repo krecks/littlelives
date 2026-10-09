@@ -323,6 +323,8 @@ pub struct Sim {
     pub(crate) accident_at: [u64; crate::content::MAX_ACCIDENTS],
     /// Since when each accident's need has been empty (0: it isn't).
     pub(crate) empty_since: [u64; crate::content::MAX_ACCIDENTS],
+    /// Age in years (see `lifecycle.rs`); the life stage follows from it.
+    pub age: f32,
 }
 
 impl Sim {
@@ -550,6 +552,8 @@ pub struct World {
     /// Master switch for "free will" in the whole town (each household also has its own,
     /// `Household::free_will`). Off is mainly for tests.
     pub autonomy: bool,
+    /// How fast residents age (a per-game option).
+    pub lifespan: crate::lifecycle::Lifespan,
     pub(crate) rng: Rng,
     pub(crate) structure_version: u32,
     /// Bumped when the lot itself changes (walls, doors, windows, fences, coverings, floors),
@@ -633,6 +637,7 @@ impl World {
     pub fn new(content: Content, lot_file: &LotFile, seed: u32) -> Result<Self, Error> {
         let mut world = Self::empty(content, Lot::from_file(lot_file)?, Rng::new(seed));
         world.mode = lot_file.mode;
+        world.lifespan = lot_file.lifespan;
         world.meta = lot_file.meta.clone();
         world.exits = lot_file.exits.clone();
         world.plots = lot_file
@@ -721,6 +726,7 @@ impl World {
             tick: 0,
             speed: 1,
             autonomy: true,
+            lifespan: Default::default(),
             rng,
             structure_version: 1,
             lot_version: 1,
@@ -908,6 +914,10 @@ impl World {
             *s = s.clamp(0.0, max);
         }
 
+        let age = spawn
+            .age
+            .unwrap_or_else(|| crate::lifecycle::default_age(&content.life, name, self.sims.len()))
+            .clamp(0.0, 150.0);
         let mut needs = [0.0; MAX_NEEDS];
         for n in needs.iter_mut().take(self.content.needs.len()) {
             *n = self.rng.range(0.55, 0.95);
@@ -949,9 +959,30 @@ impl World {
             news: None,
             accident_at: [0; crate::content::MAX_ACCIDENTS],
             empty_since: [0; crate::content::MAX_ACCIDENTS],
+            age,
         });
         self.relationships.grow(self.sims.len());
-        Ok(self.sims.len() as u32 - 1)
+        let id = self.sims.len() - 1;
+        self.refresh_base_mods(id);
+        Ok(id as u32)
+    }
+
+    /// A resident's own modifiers: traits and perks, and what their life stage does (then the
+    /// active feelings on top, as `Sim::refresh_buffs` does).
+    pub(crate) fn refresh_base_mods(&mut self, i: usize) {
+        let content = &self.content;
+        let sim = &mut self.sims[i];
+        let mut mods = content.character_modifiers(&sim.traits, &sim.perks).unwrap_or_default();
+        if let Some(stage) = content.life.stages.get(content.life.stage(sim.age)) {
+            mods.combine(&stage.mods);
+        }
+        sim.mods = mods.clone();
+        for &m in &sim.buffs {
+            if let Some(e) = &content.feelings[m].effects {
+                sim.mods.combine(e);
+            }
+        }
+        sim.base_mods = mods;
     }
 
     /// New residents move into household `household`'s home (see `Command::MoveIn`): all of
@@ -1261,6 +1292,7 @@ impl World {
         self.apply_messes();
         conversation::update(self);
         crate::life::update(self);
+        crate::lifecycle::update(self);
         crate::planner::update(self);
         if self.tick.is_multiple_of(TICKS_PER_HOUR) {
             crate::rooms::opinions(self);
@@ -1294,6 +1326,7 @@ impl World {
         let keeps_history = matches!(
             cmd,
             Command::SetSpeed { .. }
+                | Command::SetLifespan { .. }
                 | Command::SetAutonomy { .. }
                 | Command::SetAutoFast { .. }
                 | Command::SetRoutines { .. }
@@ -1385,6 +1418,7 @@ impl World {
                     suggestions.remove(index);
                 }
             }
+            Command::SetLifespan { lifespan } => self.lifespan = lifespan,
             Command::SetAutonomy { enabled, household } => {
                 if let Some(h) = household {
                     self.households
@@ -1855,6 +1889,10 @@ fn pick_autonomous(
     let object_rules = &content.object_rules;
     let funds = ctx.households[sim.household as usize].funds - sim.pending_spend;
     let environment = content.needs.iter().position(|n| n.room).map_or(1.0, |n| sim.needs[n]);
+    // A need that wakes sleepers (bladder, hunger) is urgent: deal with it first, as a sleep
+    // started now would end at once (see `use_object`), over and over.
+    let rhythm = &content.day_rhythm;
+    let woken = (0..content.needs.len()).any(|n| needs[n] < 0.08 && rhythm.wake_for & (1 << n) != 0);
     for obj in objects
         .iter()
         .filter(|o| o.has_free_slot(content.objects[o.def].slots))
@@ -1890,6 +1928,7 @@ fn pick_autonomous(
                 * (1.0 - environment);
         for (i, inter) in content.objects[obj.def].interactions.iter().enumerate() {
             if !inter.autonomous
+                || (woken && inter.tags & rhythm.sleep_tags != 0)
                 || (allowed == Access::Guest && inter.tags & content.social_rules.busy_tags != 0)
                 || !affordable(inter.cost, funds)
             {
@@ -2207,13 +2246,15 @@ fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
                     interaction,
                 } => {
                     let done = use_object(sim, ctx, &objects[object as usize], interaction, elapsed);
-                    // Every finished use wears it a little; better quality wears slower.
+                    // Every finished use wears it a little, by how much of a full use it was (a
+                    // nap cut short when they're rested is a fraction); better quality wears slower.
                     if done {
                         let o = &mut objects[object as usize];
                         let def = &content.objects[o.def];
                         let rules = &content.object_rules;
                         let was = o.broken();
-                        let wear = def.wear_per_use * (1.0 - rules.wear_per_quality * f32::from(o.quality));
+                        let share = def.interactions.get(interaction).map_or(1.0, |it| (elapsed / it.minutes.max(1.0)).min(1.0));
+                        let wear = def.wear_per_use * share * (1.0 - rules.wear_per_quality * f32::from(o.quality));
                         o.wear = (o.wear + wear.max(0.0)).min(1.0);
                         if !was && o.broken() {
                             sim.news = Some(News::Broke(object));

@@ -4,6 +4,7 @@
   import { menuScene } from '../../game/menuScene';
   import { generateNeighbourhood, loadTemplates, vacantSlots, type NeighbourhoodDraft, type Templates, type TownSize } from '../../game/town';
   import { app } from '../app.svelte';
+  import { lifespanHint } from '../format';
   import Icon from '../Icon.svelte';
   import Segmented from '../kit/Segmented.svelte';
   import SimPreview from '../kit/SimPreview.svelte';
@@ -175,6 +176,20 @@
               ]}
             />
             <span class="hint">{app.mode === 'creative' ? 'Building is free. No rent or bills at home.' : 'Your residents earn the money to build with.'}</span>
+          </div>
+          <div class="control">
+            <span class="eyebrow">Lifespan</span>
+            <Segmented
+              label="Lifespan"
+              bind:value={app.lifespan}
+              options={[
+                { value: 'off', label: 'Off' },
+                { value: 'short', label: 'Short' },
+                { value: 'normal', label: 'Normal' },
+                { value: 'long', label: 'Long' },
+              ]}
+            />
+            <span class="hint">{lifespanHint(app.lifespan)}</span>
           </div>
           <div class="control">
             <span class="eyebrow">Town size</span>

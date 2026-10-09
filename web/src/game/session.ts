@@ -7,7 +7,7 @@
 import { AssetRegistry } from '../assets/registry';
 import { Content } from '../content/content';
 import { SimBridge } from '../core/bridge';
-import type { GameKind, GameSource, SocialEvent, WorldStructure } from '../core/protocol';
+import type { GameKind, GameSource, Lifespan, SocialEvent, WorldStructure } from '../core/protocol';
 import { AUTOSAVE_ID, readSave, writeSave, type SaveRecord } from '../persistence/saves';
 import { recentLog } from '../debug/log';
 import { deliverReport, gpuInfo, takePendingPose, type DebugReport } from '../debug/report';
@@ -47,6 +47,8 @@ export type StartRequest =
       existing?: boolean;
       /** Living (default) or Creative. */
       mode?: GameKind;
+      /** How fast residents age (default normal). */
+      lifespan?: Lifespan;
     }
   | { kind: 'load'; saveId: string };
 
@@ -124,7 +126,7 @@ export async function startSession(
   let household: string;
   if (request.kind === 'new') {
     const templates = await loadTemplates();
-    const lot = assembleTown(content, templates, request.town, request.household, request.slot, { existing: request.existing, mode: request.mode });
+    const lot = assembleTown(content, templates, request.town, request.household, request.slot, { existing: request.existing, mode: request.mode, lifespan: request.lifespan });
     source = { lot, seed: Number(params.get('seed')) || (Math.random() * 2 ** 31) >>> 0 };
     household = request.household?.name.trim() ?? request.town.slots[request.slot].name;
   } else {
@@ -303,6 +305,9 @@ export async function startSession(
       game.journalOpen = !game.journalOpen;
       if (game.journalOpen) game.homeOpen = false;
       if (game.journalOpen) void bridge.requestEvents().then((events) => (game.journal = events));
+    },
+    setLifespan(lifespan) {
+      bridge.send({ type: 'setLifespan', lifespan });
     },
     toggleHome() {
       game.homeOpen = !game.homeOpen;
@@ -604,6 +609,7 @@ export async function startSession(
     game.day = ui.day;
     game.minute = ui.minute;
     game.speed = ui.speed;
+    game.lifespan = ui.lifespan ?? 'off';
     game.sims = ui.sims;
     game.weekday = ui.weekday;
     const mine = ui.households.find((h) => game.households[h.id]?.player);

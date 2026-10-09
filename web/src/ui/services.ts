@@ -1,7 +1,7 @@
 /** Non-reactive handles the UI needs. Set once by the game layer before the HUD mounts. */
 
 import type { AssetRegistry } from '../assets/registry';
-import type { EdgeEdit, FacePaint, GoalIn, RoutineIn, SocialEvent } from '../core/protocol';
+import type { EdgeEdit, FacePaint, GoalIn, Lifespan, RoutineIn, SocialEvent } from '../core/protocol';
 import type { BuildTool, BuyFilter, GameMode } from './state.svelte';
 import type { Content } from '../content/content';
 import type { HouseholdDraft } from '../game/household';
@@ -24,6 +24,8 @@ export interface GameControls {
   frameHouse(): void;
   /** Opens or closes the journal (the story so far). */
   toggleJournal(): void;
+  /** How fast residents age in this game. */
+  setLifespan(lifespan: Lifespan): void;
   /** Opens or closes the Our home panel (the rooms and how they're doing). */
   toggleHome(): void;
   /** Build mode: shows or hides room scores on the floor (`on`: set). */

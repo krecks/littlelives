@@ -165,6 +165,36 @@ pub struct AccidentDef {
     pub another_room: Option<usize>,
 }
 
+/// Ages and life stages (content `life`; see `docs/design/life-cycle.md`).
+#[derive(Debug, Clone)]
+pub struct LifeRules {
+    /// Game days per year of age at the *Normal* lifespan.
+    pub days_per_year: f32,
+    /// Oldest first stage last; a resident is in the last stage whose `from` they have reached.
+    pub stages: Vec<LifeStage>,
+    /// Ages new residents get when nothing says otherwise.
+    pub start_age: [f32; 2],
+}
+
+#[derive(Debug, Clone)]
+pub struct LifeStage {
+    pub id: String,
+    pub label: String,
+    /// Age in years the stage starts at.
+    pub from: f32,
+    /// Combined with traits and perks (elders tire sooner, walk slower).
+    pub mods: Modifiers,
+    /// Granted on reaching the stage.
+    pub feeling: Option<usize>,
+}
+
+impl LifeRules {
+    /// Index of the stage at `age` (0 without stages).
+    pub fn stage(&self, age: f32) -> usize {
+        self.stages.iter().rposition(|s| age >= s.from).unwrap_or(0)
+    }
+}
+
 /// A little while of doing it on the spot (sleeping on the floor, eating takeout).
 #[derive(Debug, Clone)]
 pub struct AccidentRest {
@@ -762,6 +792,8 @@ pub struct Content {
     pub room_kinds: Vec<RoomKind>,
     pub room_rules: RoomRules,
     pub accidents: Vec<AccidentDef>,
+    /// Ages, life stages and life events (content `life`; see `lifecycle.rs`).
+    pub life: LifeRules,
     pub build: BuildRules,
     pub styles: Vec<StyleDef>,
     /// Animation tags (`"animations"`): what a Sim can be shown doing. Interactions refer
@@ -828,6 +860,8 @@ struct ContentFile {
     room_kinds: Vec<RoomKindRaw>,
     #[serde(default)]
     accidents: Vec<AccidentRaw>,
+    #[serde(default)]
+    life: LifeRaw,
     #[serde(default)]
     room_rules: RoomRulesRaw,
     #[serde(default)]
@@ -983,6 +1017,27 @@ struct RentRaw {
     #[serde(default)]
     #[serde(alias = "debtMoodlet")] // key before the moodlet → feeling rename
     debt_feeling: Option<String>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct LifeRaw {
+    days_per_year: Option<f32>,
+    stages: Vec<LifeStageRaw>,
+    start_age: Option<[f32; 2]>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LifeStageRaw {
+    id: String,
+    #[serde(default)]
+    label: Option<String>,
+    from: f32,
+    #[serde(default)]
+    effects: ModifiersRaw,
+    #[serde(default)]
+    feeling: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -1754,6 +1809,26 @@ impl Content {
                 })
                 .transpose()
         };
+        let mut stages = Vec::with_capacity(raw.life.stages.len());
+        for st in &raw.life.stages {
+            let ctx = format!("life stage '{}'", st.id);
+            if stages.last().is_some_and(|p: &LifeStage| st.from <= p.from) {
+                return Err(Error::new(format!("{ctx}: stages go from young to old")));
+            }
+            stages.push(LifeStage {
+                id: st.id.clone(),
+                label: st.label.clone().unwrap_or_else(|| st.id.clone()),
+                from: st.from,
+                mods: build_modifiers(&st.effects, &ix, &ctx)?,
+                feeling: feeling(&st.feeling, &ctx)?,
+            });
+        }
+        let start_age = raw.life.start_age.unwrap_or([25.0, 50.0]);
+        let life = LifeRules {
+            days_per_year: raw.life.days_per_year.unwrap_or(2.0).max(0.1),
+            stages,
+            start_age: [start_age[0].min(start_age[1]), start_age[0].max(start_age[1])],
+        };
         let valid_shift = |start: f32, hours: f32, days_ok: bool| {
             (0.0..24.0).contains(&start) && hours > 0.0 && hours <= 16.0 && days_ok
         };
@@ -2205,6 +2280,7 @@ impl Content {
             room_kinds,
             room_rules,
             accidents,
+            life,
             build,
             styles,
             animations,

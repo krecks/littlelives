@@ -8,6 +8,7 @@ export type Command =
   | { type: 'setSpeed'; speed: number }
   /** Free will for a household (default: the player's). */
   | { type: 'setAutonomy'; enabled: boolean; household?: number }
+  | { type: 'setLifespan'; lifespan: Lifespan }
   /** "Skip quiet hours": time-lapse while the player's household sleeps or is at work. */
   | { type: 'setAutoFast'; enabled: boolean }
   | { type: 'use'; sim: number; object: number; interaction: number }
@@ -329,12 +330,18 @@ export interface ActionView {
   active: boolean;
 }
 
+/** How fast residents age: off, or 1, 2 or 4 game days a year (short, normal, long). */
+export type Lifespan = 'off' | 'short' | 'normal' | 'long';
+
 export interface SimView {
   id: number;
   name: string;
   household: number;
   traits: string[];
   perks: string[];
+  /** Age in whole years and the life stage id (absent from older workers). */
+  age?: number;
+  stage?: string | null;
   needs: number[];
   mood: number;
   emotion: string | null;
@@ -455,6 +462,8 @@ export interface UiSnapshot {
   minute: number;
   speed: number;
   autonomy: boolean;
+  /** How fast residents age (absent from older workers). */
+  lifespan?: Lifespan;
   sims: SimView[];
   /** `undo`: build and buy edits the household can take back (absent from older workers). */
   households: { id: number; funds: number; rent: number | null; bills: number | null; style: number; undo?: number; redo?: number; routines?: Routine[] }[];

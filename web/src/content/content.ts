@@ -105,6 +105,15 @@ export interface AccidentDef {
   feeling?: string;
 }
 
+/** A stage of life (content `life.stages`): from `from` years until the next stage's. */
+export interface LifeStageDef {
+  id: string;
+  label: string;
+  from: number;
+  /** The story's words when someone reaches it ("is an elder now"). */
+  story?: string;
+}
+
 /** What a room is for, from the tags of what stands in it (sim-core `RoomKind`). */
 export interface RoomKindDef {
   id: string;
@@ -296,6 +305,7 @@ interface ContentFile {
   roomKinds?: RoomKindDef[];
   accidents?: AccidentDef[];
   roomRules?: { decorByCategory?: Record<string, number> };
+  life?: { daysPerYear?: number; startAge?: [number, number]; stages?: LifeStageDef[] };
   economy?: Partial<Economy>;
   objectRules?: { freeRotation?: string[] };
   /** Animation tags interactions can use as `anim` (the snapshot layout's `actions`). */
@@ -330,6 +340,8 @@ export class Content {
   readonly roofColors: readonly RoofColorDef[];
   readonly roomKinds: readonly RoomKindDef[];
   readonly accidents: readonly AccidentDef[];
+  /** Life stages, youngest first. */
+  readonly lifeStages: readonly LifeStageDef[];
   private readonly decorByCategory: Readonly<Record<string, number>>;
   readonly windowStyles: readonly WindowStyleDef[];
   readonly economy: Economy;
@@ -374,6 +386,7 @@ export class Content {
     this.roofColors = file.roofColors ?? [];
     this.roomKinds = file.roomKinds ?? [];
     this.accidents = file.accidents ?? [];
+    this.lifeStages = file.life?.stages ?? [];
     this.decorByCategory = file.roomRules?.decorByCategory ?? {};
     this.economy = { startingFunds: 0, currency: '$', ...file.economy };
     this.animations = [...new Set(file.animations ?? [])];
@@ -408,6 +421,22 @@ export class Content {
 
   activity(id: string): ActivityDef | undefined {
     return this.activities.find((a) => a.id === id);
+  }
+
+  /** The life stage at `age` (the last one reached). */
+  stageOf(age: number): LifeStageDef | undefined {
+    let stage: LifeStageDef | undefined;
+    for (const s of this.lifeStages) if (age >= s.from) stage = s;
+    return stage ?? this.lifeStages[0];
+  }
+
+  /** Ages a stage spans, `[from, to]` (the last one: fifteen years). */
+  stageAges(id: string): [number, number] {
+    const i = this.lifeStages.findIndex((s) => s.id === id);
+    const s = this.lifeStages[i];
+    if (!s) return [25, 50];
+    const next = this.lifeStages[i + 1];
+    return [s.from, next ? next.from - 1 : s.from + 15];
   }
 
   /** Whether an object belongs in the garden rather than a room (outdoor-only, or its category or group says so). */

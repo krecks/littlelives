@@ -6,6 +6,7 @@
     HAIR_STYLES,
     householdProblems,
     palette,
+    randomAge,
     randomFirstName,
     randomHousehold,
     randomSim,
@@ -287,6 +288,26 @@
               </button>
             </div>
           </label>
+          {#if content.lifeStages.length}
+            <div class="field">
+              <span class="eyebrow">Age</span>
+              <div class="row">
+                <Segmented
+                  label="Life stage"
+                  bind:value={() => content.stageOf(sim.age)?.id ?? '', (id) => (sim.age = randomAge(content, id))}
+                  options={content.lifeStages.map((s) => ({ value: s.id, label: s.label }))}
+                />
+                <input
+                  class="input age"
+                  type="number"
+                  aria-label="Age in years"
+                  min={content.lifeStages[0].from}
+                  max={content.stageAges(content.lifeStages[content.lifeStages.length - 1].id)[1]}
+                  bind:value={sim.age}
+                />
+              </div>
+            </div>
+          {/if}
           {#if content.genders.length}
             <div class="field">
               <span class="eyebrow">Gender</span>
@@ -435,6 +456,9 @@
 </div>
 
 <style>
+  .input.age {
+    width: 64px;
+  }
   .cas {
     position: relative;
     height: 100vh;

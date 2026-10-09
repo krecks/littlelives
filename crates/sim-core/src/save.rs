@@ -17,7 +17,8 @@
 //! may have nobody living in it yet; 11 = objects turned freely (`turn`, absent: 0), fences
 //! and gates (edges `4` and `5`, their fence style in `looks`), roofs (`plots[].roof`: roof
 //! style and colour ids); 12 = per-tile dirt (`dirt`), the surroundings need, tidying up,
-//! object wear and repairs.
+//! object wear and repairs; 13 = ages (`sims[].age`; absent: from content `life.startAge`)
+//! and the lifespan (`lifespan`; absent: off, so older games don't start aging by surprise).
 //! Older files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
@@ -34,7 +35,7 @@ use crate::planner::{BlockResult, Goal, HomeWish, Outcome, Planner, Reason, Rout
 use crate::world::{GameMode, Household, Plot, Task, TaskKind, World};
 use crate::{Error, MINUTES_PER_TICK, clock::MAX_SPEED};
 
-pub const SAVE_VERSION: u32 = 12;
+pub const SAVE_VERSION: u32 = 13;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -49,6 +50,9 @@ pub struct SaveFile {
     pub tick: u64,
     pub speed: u8,
     pub autonomy: bool,
+    /// How fast residents age (absent before v13: off).
+    #[serde(default)]
+    pub lifespan: Option<crate::lifecycle::Lifespan>,
     pub rng: u32,
     pub lot: LotSave,
     pub objects: Vec<ObjectSave>,
@@ -162,6 +166,9 @@ pub struct SimSave {
     pub household: u32,
     pub traits: Vec<String>,
     pub perks: Vec<String>,
+    /// Age in years (absent before v13).
+    #[serde(default)]
+    pub age: Option<f32>,
     pub pos: [f32; 2],
     pub yaw: f32,
     /// Sorted so identical worlds produce identical save files.
@@ -471,6 +478,7 @@ impl World {
                     household: s.household,
                     traits: s.traits.clone(),
                     perks: s.perks.clone(),
+                    age: Some(s.age),
                     pos,
                     yaw: s.yaw,
                     needs: content
@@ -535,6 +543,7 @@ impl World {
             tick: self.tick,
             speed: self.speed,
             autonomy: self.autonomy,
+            lifespan: Some(self.lifespan),
             rng: self.rng.state(),
             lot: LotSave {
                 width: self.lot.width,
@@ -625,6 +634,7 @@ impl World {
         // Before v8 the one free-will switch was the player's setting; now each household has one.
         let legacy_free_will = save.version < 8;
         world.autonomy = save.autonomy || legacy_free_will;
+        world.lifespan = save.lifespan.unwrap_or(crate::lifecycle::Lifespan::Off);
         world.meta = save.meta.clone();
         world.exits = save.exits.clone();
         world.plots = save
@@ -722,6 +732,7 @@ impl World {
                 appearance: s.appearance.clone(),
                 traits: s.traits.clone(),
                 perks: s.perks.clone(),
+                age: s.age,
                 skills: Default::default(),
                 x: s.pos[0],
                 z: s.pos[1],

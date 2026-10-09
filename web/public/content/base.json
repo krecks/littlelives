@@ -911,6 +911,8 @@
     },
     {"id": "hadAccident", "label": "Had an accident", "emotion": "embarrassed", "mood": -0.2, "hours": 6},
     {"id": "soreBack", "label": "Sore back", "emotion": "sad", "mood": -0.1, "hours": 8, "effects": {"needDecay": {"comfort": 1.4}}},
+    {"id": "grownUp", "label": "Grown up", "emotion": "relaxed", "mood": 0.04, "hours": 24},
+    {"id": "goldenYears", "label": "Golden years", "emotion": "relaxed", "mood": 0.05, "hours": 24},
     {"id": "lovesRoom", "label": "Loves this room", "emotion": "relaxed", "mood": 0.06, "hours": 4},
     {"id": "dislikesRoom", "label": "Dislikes this room", "emotion": "sad", "mood": -0.05, "hours": 3},
     {"id": "grubby", "label": "Feeling grubby", "emotion": "embarrassed", "mood": -0.08, "hours": 3, "effects": {"tagAcceptance": {"friendly": -0.15}}},
@@ -1740,7 +1742,8 @@
     "movedIn": "{a}'s household moved in",
     "broke": "{a} broke the {object}",
     "accident": "{a} {accident}",
-    "repaired": "{a} repaired the {object}"
+    "repaired": "{a} repaired the {object}",
+    "grewOlder": "{a} {stage}"
   },
   "activities": [
     {
@@ -3034,7 +3037,7 @@
   },
   "objectRules": {
     "freeRotation": ["decor", "garden", "outdoor"],
-    "wear": {"perUse": 0.002, "byCategory": {"bathroom": 0.003, "garden": 0, "outdoor": 0, "decor": 0}, "perQuality": 0.2},
+    "wear": {"perUse": 0.004, "byCategory": {"bathroom": 0.006, "garden": 0, "outdoor": 0, "decor": 0}, "perQuality": 0.2},
     "repair": {"label": "Repair", "minutes": 45, "skill": "handiness", "skillGainPerHour": 0.3, "chance": 0.5, "chancePerLevel": 0.08, "interest": 1.5, "cost": 0.3, "tags": ["chores"]},
     "maxQuality": 3,
     "qualityBonus": 0.25,
@@ -3114,6 +3117,16 @@
     {"id": "halfGlass", "label": "Half-glazed", "leaf": "halfGlass", "color": "#F2F0EA", "price": 220},
     {"id": "glass", "label": "French glass", "leaf": "glass", "color": "#3C3F44", "price": 260}
   ],
+  "life": {
+    "daysPerYear": 2,
+    "startAge": [25, 50],
+    "stages": [
+      {"id": "youngAdult", "label": "Young adult", "from": 18, "story": "is a young adult now"},
+      {"id": "adult", "label": "Adult", "from": 30, "story": "is an adult now", "feeling": "grownUp"},
+      {"id": "elder", "label": "Elder", "from": 60, "story": "is an elder now", "feeling": "goldenYears",
+       "effects": {"needDecay": {"energy": 1.2}, "walkSpeed": 0.85}}
+    ]
+  },
   "accidents": [
     {"id": "wetSelf", "need": "bladder", "anotherRoom": "bathroom", "story": "had an accident", "effects": {"bladder": 1.0, "hygiene": -0.6}, "dirt": 1.0, "feeling": "hadAccident", "cooldownHours": 2, "graceMinutes": 45},
     {"id": "fellAsleep", "need": "energy", "story": "fell asleep on the floor", "feeling": "soreBack", "cooldownHours": 4, "graceMinutes": 60,

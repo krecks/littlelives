@@ -50,6 +50,10 @@ pub enum Command {
         #[serde(default)]
         household: Option<u32>,
     },
+    /// How fast residents age (`off`, `short`, `normal`, `long`).
+    SetLifespan {
+        lifespan: crate::lifecycle::Lifespan,
+    },
     /// Queue an interaction on an object for a Sim.
     Use {
         sim: u32,

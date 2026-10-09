@@ -40,3 +40,17 @@ export function dayList(days: readonly number[]): string {
   if (contiguous && sorted.length > 2) return `${WEEKDAYS[sorted[0]]}–${WEEKDAYS[sorted[sorted.length - 1]]}`;
   return sorted.map((d) => WEEKDAYS[d]).join(' ');
 }
+
+/** What a lifespan means, in a line. */
+export function lifespanHint(lifespan: string): string {
+  switch (lifespan) {
+    case 'off':
+      return 'Nobody ages.';
+    case 'short':
+      return 'A year of age every game day: lives move fast.';
+    case 'long':
+      return 'A year of age every four game days.';
+    default:
+      return 'A year of age every two game days: a whole life in about 130 game days.';
+  }
+}

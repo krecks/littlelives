@@ -32,6 +32,7 @@ const ICONS: Record<string, string> = {
   broke: 'icon.skill.handiness',
   accident: 'icon.bubble.bad',
   repaired: 'icon.skill.handiness',
+  grewOlder: 'icon.ui.calendar',
 };
 
 const LOVE = new Set(['crush', 'firstKiss', 'startedDating']);
@@ -78,6 +79,7 @@ export function storyText(e: SocialEvent): string {
     .replace('{job}', job(e))
     .replace('{goal}', goalText(e.goal, e.n, e.skill, e.career))
     .replace('{accident}', services.content.accidents[e.n ?? -1]?.story ?? 'had a bad moment')
+    .replace('{stage}', services.content.lifeStages[e.n ?? -1]?.story ?? 'is a year older')
     .replace('{object}', (services.content.objectList[e.n ?? -1]?.name ?? 'something').toLowerCase())
     .replace('{n}', String(e.n ?? ''))
     .replace('{money}', money(e.n ?? 0))

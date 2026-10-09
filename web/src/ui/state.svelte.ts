@@ -1,6 +1,6 @@
 /** Reactive UI state. Written by the game layer at ~10 Hz, read by components. */
 
-import type { Catalog, HouseholdInfo, ObjectPlacement, PlotInfo, RelationshipView, RoomView, Routine, SimInfo, SimView, SocialEvent, SocialOption } from '../core/protocol';
+import type { Catalog, HouseholdInfo, Lifespan, ObjectPlacement, PlotInfo, RelationshipView, RoomView, Routine, SimInfo, SimView, SocialEvent, SocialOption } from '../core/protocol';
 import type { RenderStats, WallMode } from '../render/types';
 
 export interface MenuState {
@@ -73,6 +73,8 @@ class GameState {
   day = $state(1);
   minute = $state(480);
   speed = $state(1);
+  /** How fast residents age in this game. */
+  lifespan = $state<Lifespan>('normal');
   /** Replaced wholesale on each update; raw avoids deep proxies. */
   /** A debug report is being saved. */
   debugSaving = $state(false);

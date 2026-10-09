@@ -688,6 +688,8 @@ pub enum EventKind {
     Repaired,
     /// A need ran out on `a` (`n`: the accident, index into content `accidents`).
     Accident,
+    /// `a` reached a new life stage (`n`: index into content `life.stages`).
+    GrewOlder,
 }
 
 impl EventKind {
@@ -696,7 +698,7 @@ impl EventKind {
         use EventKind::*;
         match self {
             FirstKiss | StartedDating | BrokeUp | BecameBestFriends | Promoted | JobFound
-            | Fired | GoalReached | MovedIn => 2,
+            | Fired | GoalReached | MovedIn | GrewOlder => 2,
             BecameFriends | BecameGoodFriends | BecameEnemies | Crush | ProposalRejected
             | Fight | Jealous | QuitJob | RentDebt | Broke | Accident => 1,
             Met | MissedWork | SkillUp | PaidRent | Upgraded | Visited | GoalSuggested | Repaired => 0,

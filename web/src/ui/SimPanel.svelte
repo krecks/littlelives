@@ -43,6 +43,9 @@
         <div class="portrait">{@render face(sim.id, 46)}</div>
         <div class="ident">
           <div class="name">{sim.name}{#if !mine && homeName}<span class="family"> · the {homeName}s</span>{/if}</div>
+          {#if sim.age !== undefined && sim.stage}
+            <div class="age">{services.content.lifeStages.find((s) => s.id === sim.stage)?.label ?? ''} · {sim.age}</div>
+          {/if}
           <div class="mood">
             <span class="dot" style="background:{needColor(sim.mood)}"></span>
             {moodLabel(sim.mood)}
@@ -171,6 +174,10 @@
 </section>
 
 <style>
+  .age {
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
   .panel {
     position: absolute;
     left: var(--edge);

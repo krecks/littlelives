@@ -7,7 +7,7 @@
 
 import type { AssetRegistry } from '../assets/registry';
 import type { Content } from '../content/content';
-import type { GameKind } from '../core/protocol';
+import type { GameKind, Lifespan } from '../core/protocol';
 import { fetchText } from '../content/content';
 import { householdBonds, householdSpawns, randomHousehold, type HouseholdDraft, type SimSpawn } from './household';
 
@@ -294,6 +294,7 @@ export interface AssembleOptions {
   /** `player` is the neighbour household already living at the player's slot. */
   existing?: boolean;
   mode?: GameKind;
+  lifespan?: Lifespan;
 }
 
 /**
@@ -309,7 +310,7 @@ export function assembleTown(
   town: NeighbourhoodDraft,
   player: HouseholdDraft | null,
   playerSlot: number,
-  { existing = false, mode = 'living' }: AssembleOptions = {},
+  { existing = false, mode = 'living', lifespan = 'normal' }: AssembleOptions = {},
 ): string {
   const { width: pw } = t.plot;
   const { walls, doors, windows, objects, paths, plots } = layoutTown(content, t, town, playerSlot);
@@ -366,5 +367,5 @@ export function assembleTown(
   // Residents leave town (for work) at both ends of the street.
   const street = town.streets[0];
   const exits = street ? [[0.5, street.z + street.d / 2], [town.width - 0.5, street.z + street.d / 2]] : [];
-  return JSON.stringify({ mode, width: town.width, depth: town.depth, walls, doors, windows, objects, plots, households, sims, relationships, exits, meta });
+  return JSON.stringify({ mode, lifespan, width: town.width, depth: town.depth, walls, doors, windows, objects, plots, households, sims, relationships, exits, meta });
 }

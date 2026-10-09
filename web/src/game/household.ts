@@ -41,6 +41,8 @@ export interface SimDraft {
   appearance: Appearance;
   traits: string[];
   perks: string[];
+  /** Age in years. */
+  age: number;
 }
 
 export interface Bond {
@@ -65,6 +67,7 @@ export interface SimSpawn {
   appearance: Appearance;
   traits: string[];
   perks: string[];
+  age?: number;
   x: number;
   z: number;
 }
@@ -176,7 +179,16 @@ export function randomSim(content: Content, assets: AssetRegistry, taken: readon
     appearance,
     traits,
     perks,
+    age: randomAge(content),
   };
+}
+
+/** A random age: mostly adults, some young adults, a few elders (or within `stage`). */
+export function randomAge(content: Content, stage?: string): number {
+  const stages = content.lifeStages;
+  const id = stage ?? (Math.random() < 0.35 ? stages[0]?.id : Math.random() < 0.8 ? stages[1]?.id : stages[2]?.id) ?? stages[0]?.id;
+  const [lo, hi] = id ? content.stageAges(id) : [25, 50];
+  return lo + Math.floor(Math.random() * (hi - lo + 1));
 }
 
 export function randomHousehold(
@@ -192,6 +204,8 @@ export function randomHousehold(
   const [a, b] = members;
   if (a && b && a.attractedTo.includes(b.gender) && b.attractedTo.includes(a.gender) && Math.random() < 0.6) {
     bonds.push({ a: a.uid, b: b.uid, preset: 'partners' });
+    // Partners are close in age.
+    b.age = Math.max(content.lifeStages[0]?.from ?? 18, a.age + Math.floor(Math.random() * 9) - 4);
   }
   const names = content.names.last.filter((n) => !avoidNames.includes(n));
   return { name: pick(names.length ? names : content.names.last), members, bonds };
@@ -236,6 +250,7 @@ export function householdSpawns(h: HouseholdDraft, household: number, spawns: re
       appearance: m.appearance,
       traits: m.traits,
       perks: m.perks,
+      age: m.age,
       x,
       z,
     };

@@ -151,6 +151,9 @@ pub struct LotFile {
     /// Living (default) or Creative.
     #[serde(default)]
     pub mode: crate::world::GameMode,
+    /// How fast residents age (default: normal).
+    #[serde(default)]
+    pub lifespan: crate::lifecycle::Lifespan,
     pub width: u16,
     pub depth: u16,
     /// Wall segments `[x0, z0, x1, z1]` along grid lines.
@@ -275,6 +278,9 @@ pub struct SimSpawn {
     pub traits: Vec<String>,
     #[serde(default)]
     pub perks: Vec<String>,
+    /// Age in years (default: content `life.startAge`, by name).
+    #[serde(default)]
+    pub age: Option<f32>,
     /// Starting skill levels by id (on top of what traits give).
     #[serde(default)]
     pub skills: std::collections::HashMap<String, f32>,

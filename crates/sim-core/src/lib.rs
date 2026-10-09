@@ -14,6 +14,7 @@ pub mod conversation;
 pub mod error;
 pub mod home;
 pub mod life;
+pub mod lifecycle;
 pub mod lot;
 pub mod mesh;
 pub mod pack;

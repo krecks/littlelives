@@ -2,11 +2,21 @@
   import { applyPreset, resetSettings, RESTART_KEYS, settings, type QualityPreset } from '../../settings/settings.svelte';
   import { STYLES, VISUAL_STYLES } from '../../render/styles';
   import { app } from '../app.svelte';
+  import { services } from '../services';
+  import { game } from '../state.svelte';
+  import { lifespanHint } from '../format';
   import Segmented from '../kit/Segmented.svelte';
+  import type { Lifespan } from '../../core/protocol';
   import Toggle from '../kit/Toggle.svelte';
   import { benchVerdict, runBenchmark, synthesize, voiceStatus } from '../../voice/service.svelte';
   import { playClip } from '../../voice/player';
   import { voiceFor } from '../../voice/voices';
+
+  // This game's lifespan (sent to the simulation when picked).
+  let lifespan = $state<Lifespan>(game.lifespan);
+  $effect(() => {
+    if (app.screen === 'game' && lifespan !== game.lifespan) services.controls.setLifespan(lifespan);
+  });
 
   const tabs = ['Graphics', 'Gameplay', 'Watching', 'Interface', 'Audio', 'Controls'] as const;
   let tab = $state<(typeof tabs)[number]>('Graphics');
@@ -129,6 +139,21 @@
         <Toggle label="Ambient occlusion" bind:checked={settings.ambientOcclusion} />
       </div>
     {:else if tab === 'Gameplay'}
+      {#if app.screen === 'game'}
+        <div class="row">
+          <div><b>Lifespan</b><span>This game: {lifespanHint(game.lifespan)}</span></div>
+          <Segmented
+            label="Lifespan"
+            bind:value={lifespan}
+            options={[
+              { value: 'off', label: 'Off' },
+              { value: 'short', label: 'Short' },
+              { value: 'normal', label: 'Normal' },
+              { value: 'long', label: 'Long' },
+            ]}
+          />
+        </div>
+      {/if}
       <div class="row">
         <div><b>Free will</b><span>Your residents live their own lives: needs, friends, visits and work. Neighbours always do.</span></div>
         <Toggle label="Free will" bind:checked={settings.autonomy} />

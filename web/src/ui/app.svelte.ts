@@ -1,6 +1,6 @@
 /** Top-level navigation: which screen is shown, and which modal is open on top of it. */
 
-import type { GameKind } from '../core/protocol';
+import type { GameKind, Lifespan } from '../core/protocol';
 import type { HouseholdDraft } from '../game/household';
 import type { StartRequest } from '../game/session';
 import { EMPTY_LOT, withLot, type NeighbourhoodDraft } from '../game/town';
@@ -31,6 +31,8 @@ class AppState {
   household = $state.raw<HouseholdDraft | null>(null);
   /** Living (the residents earn the money) or Creative (building is free). */
   mode = $state<GameKind>('living');
+  /** How fast residents age (the new game's choice). */
+  lifespan = $state<Lifespan>('normal');
   /** Build first: the new game starts without a household (the draft is kept for going back). */
   buildFirst = $state(false);
   /** The home is an empty lot (its house cleared away) rather than the house as it stands. */
@@ -71,7 +73,7 @@ class AppState {
     const town = this.homeTown(slot);
     const household = this.buildFirst ? null : this.household;
     if (!town || (!household && !this.buildFirst)) return null;
-    return { kind: 'new', town, household, slot, mode: this.mode };
+    return { kind: 'new', town, household, slot, mode: this.mode, lifespan: this.lifespan };
   }
 
   start(request: StartRequest): void {

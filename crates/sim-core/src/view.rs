@@ -21,6 +21,8 @@ struct UiState<'a> {
     minute: f32,
     speed: u8,
     autonomy: bool,
+    /// How fast residents age.
+    lifespan: crate::lifecycle::Lifespan,
     sims: Vec<SimView<'a>>,
     households: Vec<FundsView<'a>>,
     relationships: Vec<RelView>,
@@ -106,6 +108,9 @@ struct SimView<'a> {
     household: u32,
     traits: &'a [String],
     perks: &'a [String],
+    /// Age in whole years, and the life stage (content `life.stages` id).
+    age: u32,
+    stage: Option<&'a str>,
     needs: &'a [f32],
     mood: f32,
     emotion: Option<&'a str>,
@@ -547,6 +552,8 @@ pub fn ui_state_json(world: &World) -> String {
                 household: s.household,
                 traits: &s.traits,
                 perks: &s.perks,
+                age: s.age.floor() as u32,
+                stage: content.life.stages.get(content.life.stage(s.age)).map(|st| st.id.as_str()),
                 needs: &s.needs[..n],
                 mood: s.mood(content),
                 emotion: s.emotion(content).map(|e| content.emotions[e].id.as_str()),
@@ -596,6 +603,7 @@ pub fn ui_state_json(world: &World) -> String {
         minute: clock::minute_of_day(world.tick),
         speed: world.speed,
         autonomy: world.autonomy,
+        lifespan: world.lifespan,
         sims,
         households: world
             .households
