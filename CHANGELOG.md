@@ -12,6 +12,7 @@ Build depth: more control while building.
 - **Eyedropper** in Build and Buy mode: press E (or the button next to Undo), or hold Alt, and click something to build or buy more of the same: a wall gives its covering and height, a door or window its style, a floor its covering, and an object puts another one in hand in the same style and at the same angle. A tag at the cursor says what a click will pick up.
 - **Fences and gates:** two new Build tools. Drag a fence along the grid like a wall, then click a gate into it. Five styles: white picket, ranch rails, modern slats, wrought iron and a low stone wall ($20–60 a metre; a gate adds $80). Fences keep residents in or out like walls, but a fenced garden stays a garden (no floor, no roof). As with walls, nobody can be shut in: leave a gate. Remove closes a gate back into fence.
 - **Roof style and colour:** a Roof tool in Build mode: gable, hip, steep gable, low hip or flat, in eight colours. It changes at once, costs nothing and can be undone; the roof shows over every room of the house (also from other lots).
+- **Lamps give light:** at night every floor lamp casts a warm pool of light where it stands, and the garden's stone lanterns light the lawn. Rooms without a lamp only get a dim glow, so lighting a room means buying a lamp for it. Up to four lamps near the camera's house are lit at once (the largest rooms' first).
 
 ### Changed
 - Saves are now version 11 (objects' angles, fences and gates, roofs); older saves load as before.

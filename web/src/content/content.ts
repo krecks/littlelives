@@ -56,6 +56,8 @@ export interface ObjectDef {
   slots?: number;
   /** Can only be placed outdoors (trees, flower beds, ponds). */
   outdoors?: boolean;
+  /** Gives light at night (lamps, lanterns): reach in metres, relative brightness, height of the bulb. */
+  light?: { range?: number; intensity?: number; height?: number };
   /** Turns freely (at any angle, for looks); default: 1×1 objects of `objectRules.freeRotation` categories. */
   freeRotation?: boolean;
 }

@@ -90,6 +90,8 @@ export interface HouseLooks {
   windows: readonly WindowStyleDef[];
   roofs?: readonly RoofStyleDef[];
   roofColors?: readonly RoofColorDef[];
+  /** The light an object type gives, if it's a lamp. */
+  lightOf?: (def: string) => LampLight | undefined;
 }
 
 /** A roof's shape: gable, hip or flat, and the pitch (rise per run) of pitched ones. */
@@ -145,8 +147,20 @@ export interface RoomLight {
   x: number;
   y: number;
   z: number;
-  /** Indoor area in tiles (bigger rooms get a brighter, wider light). */
+  /** Indoor area in tiles of the room it lights (0 outdoors). */
   area: number;
+  /** A lamp the household bought, or the dim fill of a room without one. */
+  kind: 'lamp' | 'fill';
+  /** Lamps: reach in metres and relative brightness (content `light`). */
+  range?: number;
+  power?: number;
+}
+
+/** What a lamp object gives (content `light`). */
+export interface LampLight {
+  range?: number;
+  intensity?: number;
+  height?: number;
 }
 
 export interface HouseBuild {
@@ -155,7 +169,7 @@ export interface HouseBuild {
   casters: Mesh[];
   /** Roofs and gables: drawn only with walls up. */
   roofs: Mesh[];
-  /** One light per room (largest rooms first), at a lamp if the room has one. */
+  /** Every lamp (largest rooms first, then the garden's), then a dim fill per room without one. */
   lights: RoomLight[];
   /** Garden dressing: shrubs along the foundation and trees on open lawn (x, z, scale, yaw). */
   shrubs: [number, number, number, number][];
@@ -348,8 +362,11 @@ export class HouseBuilder {
     const shown = world.objects.filter((o) => inView(o.x, o.z));
     const occupied = new Set<number>();
     const roomDefs = new Map<number, Set<string>>();
-    const lamps = new Map<number, { x: number; z: number }>();
+    const lamps: { x: number; z: number; room: number; light: LampLight }[] = [];
     for (const o of shown) {
+      // Lamps indoors and out (a garden lantern's room is 0).
+      const light = this.looks.lightOf?.(o.def);
+      if (light) lamps.push({ x: o.x + o.w / 2, z: o.z + o.d / 2, room: room(o.x, o.z), light });
       for (let z = o.z; z < o.z + o.d; z++) {
         for (let x = o.x; x < o.x + o.w; x++) {
           occupied.add(z * W + x);
@@ -357,7 +374,6 @@ export class HouseBuilder {
           if (r === 0) continue;
           if (!roomDefs.has(r)) roomDefs.set(r, new Set());
           roomDefs.get(r)!.add(o.def);
-          if (o.def === 'lamp') lamps.set(r, { x: o.x + o.w / 2, z: o.z + o.d / 2 });
         }
       }
     }
@@ -413,12 +429,18 @@ export class HouseBuilder {
       const kind = kinds.get(r) ?? 'living';
       return pick(ROOM_WALLS[kind], sx + r, sz, 11 + r);
     };
-    const lights: RoomLight[] = [...roomTiles.entries()]
-      .sort((a, b) => b[1].n - a[1].n)
-      .map(([r, t]) => {
-        const lamp = lamps.get(r);
-        return lamp ? { x: lamp.x, y: 1.6, z: lamp.z, area: t.n } : { x: t.sx / t.n, y: 2.45, z: t.sz / t.n, area: t.n };
-      });
+    // Lamps light the house (the biggest rooms' first, the garden's last); rooms without one
+    // get a dim fill from the ceiling if lights are left over.
+    const areaOf = (r: number) => roomTiles.get(r)?.n ?? 0;
+    const lights: RoomLight[] = [
+      ...lamps
+        .sort((a, b) => areaOf(b.room) - areaOf(a.room))
+        .map((l): RoomLight => ({ x: l.x, y: l.light.height ?? 1.55, z: l.z, area: areaOf(l.room), kind: 'lamp', range: l.light.range, power: l.light.intensity })),
+      ...[...roomTiles.entries()]
+        .filter(([r]) => !lamps.some((l) => l.room === r))
+        .sort((a, b) => b[1].n - a[1].n)
+        .map(([, t]): RoomLight => ({ x: t.sx / t.n, y: 2.45, z: t.sz / t.n, area: t.n, kind: 'fill' })),
+    ];
 
     // ---- geometry buckets (one draw call each) --------------------------------------
     const ext = new Geo().color(scheme.wall);

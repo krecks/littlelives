@@ -2208,6 +2208,7 @@
       "id": "garden.lantern",
       "name": "Stone lantern",
       "model": "model.garden.lantern",
+      "light": {"range": 3.5, "intensity": 0.6, "height": 0.6},
       "price": 180,
       "category": "outdoor",
       "outdoors": true,

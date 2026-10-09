@@ -73,7 +73,7 @@ import type {
 } from '../types';
 import { createLighting, lightingAt } from './environment';
 import { buildFences } from './fences';
-import { HALF_WALL_HEIGHT, HouseBuilder, WALL_HEIGHT, WALL_STUB } from './house';
+import { HALF_WALL_HEIGHT, HouseBuilder, WALL_HEIGHT, WALL_STUB, type RoomLight } from './house';
 import { Street } from './street';
 import { MaterialLibrary } from './materials';
 import { buildModel, placementVariation, type ModelTemplate } from './models';
@@ -94,8 +94,12 @@ const FENCE_PREVIEW_HEIGHT = 1.0;
 /** Game minutes between lighting updates (with / without snapshot rendering). */
 const LIGHT_STEP = 0.5;
 const LIGHT_STEP_SNAPSHOT = 5;
-/** Interior lights (largest rooms first). */
+/** Interior lights: the household's lamps first, then dim fills for rooms without one. */
 const ROOM_LIGHTS = 4;
+/** Brightness of a lamp at night (times its content `intensity`). */
+const LAMP_POWER = 7;
+/** A room without a lamp gets this share of the light it had before lamps gave light. */
+const FILL_POWER = 0.35;
 /** Camera distance below which the viewed lot's roof is hidden even with walls up. */
 const ROOF_MIN_DISTANCE = 15;
 /** Capacity of the wall-tool preview buffers (grown on demand). */
@@ -228,7 +232,8 @@ export class BabylonRenderer implements Renderer {
   /** `?hour=21` freezes the lighting at that hour (for screenshots and look development). */
   private readonly fixedHour: number | null;
   private readonly roomLights: PointLight[] = [];
-  private roomLightAreas: number[] = [];
+  /** What each interior light is lighting (null: unused). */
+  private roomLightUse: (RoomLight | null)[] = [];
   private readonly lampColor = new Color3();
   private readonly glowColor = new Color3();
 
@@ -318,7 +323,15 @@ export class BabylonRenderer implements Renderer {
     this.lib.onRefrozen = () => this.resetSnapshot();
     this.house = new HouseBuilder(scene);
     const c = this.deps.content;
-    this.house.setLooks({ coverings: c.wallCoverings, floors: c.floorCoverings, doors: c.doorStyles, windows: c.windowStyles, roofs: c.roofStyles, roofColors: c.roofColors });
+    this.house.setLooks({
+      coverings: c.wallCoverings,
+      floors: c.floorCoverings,
+      doors: c.doorStyles,
+      windows: c.windowStyles,
+      roofs: c.roofStyles,
+      roofColors: c.roofColors,
+      lightOf: (def) => c.object(def)?.light,
+    });
     this.street = new Street(scene, this.deps.assets, this.house);
     // Wind sway and tint variation for foliage materials (hooks them as the models load).
     installNature(scene);
@@ -1528,7 +1541,7 @@ export class BabylonRenderer implements Renderer {
       const wallMat = this.lotMaterial('material.wall');
       this.walls = this.meshFromArrays('walls', world.meshes.walls, wallMat);
       this.wallsLow = this.meshFromArrays('wallsLow', world.meshes.wallsLow, wallMat);
-      this.roomLightAreas = [];
+      this.roomLightUse = [];
       for (const light of this.roomLights) light.position.y = HIDDEN_Y;
       return [];
     }
@@ -1538,12 +1551,11 @@ export class BabylonRenderer implements Renderer {
     for (const roof of built.roofs) void roof.material?.forceCompilationAsync(roof).catch(() => {});
     // Garden dressing split into species (hedges or mixed shrub borders, varied lot trees).
     for (const [key, items] of [...natureDecor('model.bush', built.shrubs), ...natureDecor('model.tree', built.trees, world, this.view)]) void this.placeDecor(key, items);
-    this.roomLightAreas = [];
-    this.roomLights.forEach((light, i) => {
+    this.roomLightUse = this.roomLights.map((light, i) => {
       const l = built.lights[i];
       if (l) light.position.set(l.x, l.y, l.z);
       else light.position.y = HIDDEN_Y;
-      this.roomLightAreas.push(l ? l.area : 0);
+      return l ?? null;
     });
     return built.casters;
   }
@@ -1868,9 +1880,18 @@ export class BabylonRenderer implements Renderer {
     // Warm lamps inside, glowing windows outside at night; cool daylight in the panes by day.
     this.roomLights.forEach((light, i) => {
       // The overview has no interiors: the game house's lamps stay off behind it.
-      const area = this.townMode ? 0 : (this.roomLightAreas[i] ?? 0);
-      light.intensity = area > 0 ? l.lamps * (4 + Math.min(area, 30) * 0.35) : 0;
-      light.range = 4 + Math.sqrt(area) * 1.4;
+      const use = this.townMode ? null : (this.roomLightUse[i] ?? null);
+      if (!use) {
+        light.intensity = 0;
+      } else if (use.kind === 'lamp') {
+        // A lamp the household bought: a warm pool around it.
+        light.intensity = l.lamps * LAMP_POWER * (use.power ?? 1);
+        light.range = use.range ?? 4.5;
+      } else {
+        // A room without a lamp: only a dim glow from the ceiling.
+        light.intensity = l.lamps * FILL_POWER * (4 + Math.min(use.area, 30) * 0.35);
+        light.range = 4 + Math.sqrt(use.area) * 1.4;
+      }
       light.diffuse.copyFrom(this.lampColor);
     });
     const glass = this.lib.surface('material.window', { vertexColors: true, cutaway: true }) as PBRMaterial;

@@ -2891,6 +2891,7 @@
       "id": "lamp",
       "name": "Floor lamp",
       "model": "model.lamp",
+      "light": {"range": 4.5, "intensity": 1, "height": 1.55},
       "footprint": [
         1,
         1
