@@ -15,7 +15,8 @@
 //! (routines, goals, how blocks went, wishes) and household routine templates (absent: none);
 //! 10 = the game mode (`mode`: Living or Creative; absent: Living), and the player's household
 //! may have nobody living in it yet; 11 = objects turned freely (`turn`, absent: 0), fences
-//! and gates (edges `4` and `5`, their fence style in `looks`). Older files load. Saves written before feelings
+//! and gates (edges `4` and `5`, their fence style in `looks`), roofs (`plots[].roof`: roof
+//! style and colour ids). Older files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
 use std::collections::{BTreeMap, HashMap};
@@ -327,6 +328,9 @@ pub struct PlotSave {
     pub public: bool,
     #[serde(default)]
     pub entry: Option<[f32; 2]>,
+    /// The roof the player chose: roof style and colour ids (absent before v11: the town's look).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub roof: Option<[String; 2]>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -485,6 +489,13 @@ impl World {
                     d: p.d,
                     public: p.public,
                     entry: p.entry,
+                    roof: p.roof.map(|r| {
+                        let b = &content.build;
+                        let id = |list: &[crate::content::BuildStyle], i: u8| {
+                            list.get(i as usize).map_or(String::new(), |s| s.id.clone())
+                        };
+                        [id(&b.roofs, r.style), id(&b.roof_colors, r.color)]
+                    }),
                 })
                 .collect(),
             relationships,
@@ -547,6 +558,16 @@ impl World {
                 d: p.d,
                 public: p.public,
                 entry: p.entry,
+                roof: p.roof.as_ref().and_then(|[style, color]| {
+                    let b = &world.content.build;
+                    let index = |list: &[crate::content::BuildStyle], id: &str| {
+                        list.iter().position(|s| s.id == id).map(|i| i as u8)
+                    };
+                    // A style or colour the content no longer has falls back to the first.
+                    let style = index(&b.roofs, style).unwrap_or(0);
+                    let color = index(&b.roof_colors, color).unwrap_or(0);
+                    (!b.roofs.is_empty()).then_some(crate::world::RoofLook { style, color })
+                }),
             })
             .collect();
         let starting_funds = world.content.starting_funds;

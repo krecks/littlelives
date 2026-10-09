@@ -34,6 +34,7 @@ pub(crate) struct HomeSnapshot {
     blocked: Vec<bool>,
     sims: Vec<crate::world::Sim>,
     households: Vec<crate::world::Household>,
+    plots: Vec<crate::world::Plot>,
 }
 
 fn edge_kind(kind: EdgeKind) -> Edge {
@@ -83,6 +84,7 @@ impl World {
             blocked: self.blocked.clone(),
             sims: self.sims.clone(),
             households: self.households.clone(),
+            plots: self.plots.clone(),
         })
     }
 
@@ -93,7 +95,8 @@ impl World {
         let changed = before.households[h].funds != self.households[h].funds
             || before.households[h].style != self.households[h].style
             || before.objects != self.objects
-            || before.lot != self.lot;
+            || before.lot != self.lot
+            || before.plots != self.plots;
         if !changed {
             return;
         }
@@ -149,7 +152,20 @@ impl World {
         self.blocked = s.blocked;
         self.sims = s.sims;
         self.households = s.households;
+        self.plots = s.plots;
         self.structure_version += 1;
+    }
+
+    /// The roof over the household's home: a style and a colour (free; only for looks).
+    pub fn set_roof(&mut self, household: u32, style: u8, color: u8) -> Result<(), Error> {
+        let (_, plot) = self.home_of(household)?;
+        let b = &self.content.build;
+        if style as usize >= b.roofs.len().max(1) || color as usize >= b.roof_colors.len().max(1) {
+            return Err(Error::new("unknown roof style or colour"));
+        }
+        self.plots[plot as usize].roof = Some(crate::world::RoofLook { style, color });
+        self.structure_version += 1;
+        Ok(())
     }
 
     /// The household's index and its home plot.

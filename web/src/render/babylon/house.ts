@@ -28,7 +28,7 @@
  */
 
 import { Color3, type Material, type Mesh, type PBRMaterial, type Scene } from '@babylonjs/core';
-import type { DoorStyleDef, FloorCoveringDef, WallCoveringDef, WindowStyleDef } from '../../content/content';
+import type { DoorStyleDef, FloorCoveringDef, RoofColorDef, RoofStyleDef, WallCoveringDef, WindowStyleDef } from '../../content/content';
 import type { DiagonalWall, Opening, WorldStructure } from '../../core/protocol';
 import type { ViewRect } from '../types';
 import { Cut, facing, Geo, LOOK, type V3 } from './geometry';
@@ -88,7 +88,18 @@ export interface HouseLooks {
   floors: readonly FloorCoveringDef[];
   doors: readonly DoorStyleDef[];
   windows: readonly WindowStyleDef[];
+  roofs?: readonly RoofStyleDef[];
+  roofColors?: readonly RoofColorDef[];
 }
+
+/** A roof's shape: gable, hip or flat, and the pitch (rise per run) of pitched ones. */
+export interface RoofShape {
+  shape: RoofStyleDef['shape'];
+  pitch: number;
+}
+
+/** Pitch of a flat roof (just enough to draw it as a very low hip over diagonal outlines). */
+const FLAT_PITCH = 0.03;
 
 /** A window's opening and dressing (the classic window without styles in content). */
 type WindowSpec = Pick<WindowStyleDef, 'panes' | 'sill' | 'head' | 'inset' | 'shutters'>;
@@ -166,6 +177,8 @@ export interface SilhouetteSpec {
   door: number | null;
   /** Garage beside the house (wall centre lines), its door facing the street. */
   garage: { x0: number; z0: number; x1: number; z1: number } | null;
+  /** The roof the player chose (`PlotInfo.roof`); absent: the house's own look. */
+  roof?: [number, number];
 }
 
 export interface SilhouetteBuild {
@@ -241,6 +254,15 @@ export class HouseBuilder {
   }
 
   /** The content's wall coverings, door and window styles (structures refer to them by index). */
+  /** A house's scheme with the roof the player chose (if any) for its colour, shape and pitch. */
+  private schemeWith(scheme: HouseScheme, roof: [number, number] | undefined): HouseScheme & RoofShape {
+    const style = roof ? this.looks.roofs?.[roof[0]] : undefined;
+    const colour = roof ? this.looks.roofColors?.[roof[1]]?.color : undefined;
+    const shape: RoofStyleDef['shape'] = style?.shape ?? (scheme.hip ? 'hip' : 'gable');
+    const pitch = shape === 'flat' ? FLAT_PITCH : style?.pitch !== undefined ? Math.tan((style.pitch * Math.PI) / 180) : PITCH;
+    return { ...scheme, roof: colour ?? scheme.roof, hip: shape === 'hip', shape, pitch };
+  }
+
   setLooks(looks: HouseLooks): void {
     this.looks = looks;
   }
@@ -339,7 +361,8 @@ export class HouseBuilder {
         }
       }
     }
-    const scheme = houseScheme(view?.x ?? 0, view?.z ?? 0);
+    const viewed = view ? world.plots?.find((p) => p.x === view.x && p.z === view.z) : undefined;
+    const scheme = this.schemeWith(houseScheme(view?.x ?? 0, view?.z ?? 0), viewed?.roof);
     // Open-plan rooms that mix kinds get the living-room look (wood floor).
     const kindOf = (r: number): RoomKind => {
       const defs = roomDefs.get(r);
@@ -857,7 +880,7 @@ export class HouseBuilder {
     const viewDiagonals = (world.diagonals ?? []).some((d) => inView(d.x, d.z) && (d.rooms[0] !== 0 || d.rooms[1] !== 0));
     if (Number.isFinite(minX) && !viewDiagonals) {
       for (const rect of indoorRects(room, minX, minZ, maxX, maxZ)) {
-        addRoof(rect, scheme.hip, roof, roofTrim, gables);
+        addRoofShaped(rect, scheme, roof, roofTrim, gables);
       }
     } else if (Number.isFinite(minX)) {
       // With diagonal walls: per connected indoor area. A convex outline (a diamond, a box with
@@ -906,12 +929,12 @@ export class HouseBuilder {
           }
           const hull = convexHull(corners);
           if (split && indoorArea >= 2 && Math.abs(area(hull) - indoorArea) < 1e-3) {
-            addHipPolygon(hull, roof, roofTrim, H, T, OVERHANG, PITCH, ROOF_THICKNESS);
+            addHipPolygon(hull, roof, roofTrim, H, T, scheme.shape === 'flat' ? 0.12 : OVERHANG, scheme.pitch, ROOF_THICKNESS);
             continue;
           }
           // Here every leftover gets its own small roof too, so no part of the room stays open.
           const indoor = (tx: number, tz: number) => (inArea.has(tz * W + tx) ? 1 : 0);
-          for (const rect of indoorRects(indoor, minX, minZ, maxX, maxZ, 1)) addRoof(rect, scheme.hip, roof, roofTrim, gables);
+          for (const rect of indoorRects(indoor, minX, minZ, maxX, maxZ, 1)) addRoofShaped(rect, scheme, roof, roofTrim, gables);
         }
       }
     }
@@ -1040,7 +1063,7 @@ export class HouseBuilder {
     };
 
     for (const b of houses) {
-      const s = houseScheme(b.x0, b.z0);
+      const s = this.schemeWith(houseScheme(b.x0, b.z0), b.roof);
       const walls = s.brick ? brick : siding;
       const curtain = pick(CURTAINS, b.x0, b.z0, 7);
       walls.color(s.wall);
@@ -1103,14 +1126,14 @@ export class HouseBuilder {
         }
       }
       roof.color(s.roof);
-      addRoof({ x0: b.x0, z0: b.z0, x1: b.x1, z1: b.z1 }, s.hip, roof, trim, walls);
-      if (hash(b.x0, b.z0, 8) < 0.6) this.chimney(b, s, brick, stone);
+      addRoofShaped({ x0: b.x0, z0: b.z0, x1: b.x1, z1: b.z1 }, s, roof, trim, walls);
+      if (hash(b.x0, b.z0, 8) < 0.6 && s.shape !== 'flat' && !b.roof) this.chimney(b, s, brick, stone);
       const g = b.garage;
       if (g) {
         walls.color(s.wall);
         shell(walls, g.x0, g.z0, g.x1, g.z1, GARAGE_HEIGHT);
         roof.color(s.roof);
-        addRoof(g, s.hip, roof, trim, walls, GARAGE_HEIGHT, 0.3);
+        addRoofShaped(g, s, roof, trim, walls, GARAGE_HEIGHT, 0.3);
         // Sectional door on the street side, with a coach lamp beside it.
         const plane = b.front > 0 ? g.z1 + T : g.z0 - T;
         const n: V3 = [0, 0, b.front];
@@ -1425,6 +1448,28 @@ function indoorRects(room: (x: number, z: number) => number, x0: number, z0: num
   return out;
 }
 
+/** A roof of the scheme's shape (gable, hip or flat) over a rectangle of wall centre lines. */
+function addRoofShaped(
+  rect: { x0: number; z0: number; x1: number; z1: number },
+  s: RoofShape,
+  roof: Geo,
+  trim: Geo,
+  gables: Geo,
+  base = WALL_HEIGHT,
+  overhang = OVERHANG,
+): void {
+  if (s.shape === 'flat') addFlatRoof(rect, roof, trim, base);
+  else addRoof(rect, s.shape === 'hip', roof, trim, gables, base, overhang, s.pitch);
+}
+
+/** A flat roof: a slab just over the walls with a small overhang, edged with a fascia. */
+function addFlatRoof(rect: { x0: number; z0: number; x1: number; z1: number }, roof: Geo, trim: Geo, base = WALL_HEIGHT): void {
+  const o = 0.16;
+  const [a0, b0, a1, b1] = [rect.x0 - T - o, rect.z0 - T - o, rect.x1 + T + o, rect.z1 + T + o];
+  roof.box(a0 + 0.02, base, b0 + 0.02, a1 - 0.02, base + 0.16, b1 - 0.02, 'ny');
+  trim.box(a0, base - 0.04, b0, a1, base + 0.2, b1, 'py');
+}
+
 /**
  * Pitched roof over a rectangle of wall centre lines. The underside passes through the outer
  * top edge of the walls, so the eaves rest on them and overhang by `OVERHANG`; gable ends are
@@ -1438,6 +1483,7 @@ export function addRoof(
   gables: Geo,
   base = WALL_HEIGHT,
   overhang = OVERHANG,
+  pitch = PITCH,
 ): void {
   const alongX = rect.x1 - rect.x0 >= rect.z1 - rect.z0;
   // Local frame: a = along the ridge, b = across. `P` maps back to world space.
@@ -1455,9 +1501,9 @@ export function addRoof(
   const eb1 = B1 + o;
   const bc = (B0 + B1) / 2;
   const half = bc - eb0;
-  const ye = H - o * PITCH; // underside height at the eaves
-  const yr = ye + half * PITCH; // underside height at the ridge
-  const slope = Math.sqrt(1 + PITCH * PITCH);
+  const ye = H - o * pitch; // underside height at the eaves
+  const yr = ye + half * pitch; // underside height at the ridge
+  const slope = Math.sqrt(1 + pitch * pitch);
   // Hip ends start `half` in from the eaves; a square plan becomes a pyramid.
   const ra0 = hip ? Math.min(ea0 + half, (ea0 + ea1) / 2) : ea0;
   const ra1 = hip ? Math.max(ea1 - half, (ea0 + ea1) / 2) : ea1;

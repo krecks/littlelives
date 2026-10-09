@@ -375,6 +375,17 @@ is an index into this list, saved by `id`.
 `kind` is how it's drawn: `picket`, `rails`, `slats`, `iron` or `stone`; `price` is per metre
 (default `build.fence`), and a gate costs a metre plus `build.gate`.
 
+## Roofs
+
+`roofStyles` and `roofColors` are what Build mode's Roof tool offers (saved by `id`):
+
+```json
+{"id": "steepGable", "label": "Steep gable", "shape": "gable", "pitch": 46}
+{"id": "navy", "label": "Navy", "color": "#33465E"}
+```
+
+`shape` is `gable`, `hip` or `flat`; `pitch` is in degrees (default 34).
+
 ## Balance guidance
 
 Money: households start with $2,500 (`economy.startingFunds`), plus $10,000 to build with when

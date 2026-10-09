@@ -816,6 +816,9 @@ struct PlotView<'a> {
     entry: Option<[f32; 2]>,
     /// Bounding box of the walls on this plot `[x0, z0, x1, z1]`, if any (for silhouettes).
     house: Option<[i32; 4]>,
+    /// The roof the player chose: `[style, colour]` (indices into `roofStyles`, `roofColors`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    roof: Option<[u8; 2]>,
 }
 
 /// Bounding box of all wall/door edges (and diagonal walls) inside a plot.
@@ -909,6 +912,7 @@ pub fn structure_json(world: &World) -> String {
             public: p.public,
             entry: p.entry,
             house: house_bounds(world, p.x, p.z, p.x + p.w, p.z + p.d),
+            roof: p.roof.map(|r| [r.style, r.color]),
         })
         .collect();
     let (walls, openings, fences) = wall_edges(&world.lot);

@@ -18,6 +18,15 @@
   const doors = content.doorStyles;
   const windows = content.windowStyles;
   const fences = content.fenceStyles;
+  const roofs = content.roofStyles;
+  const roofColors = content.roofColors;
+  /** The roof over the home now (`[style, colour]`; undefined: the house's own look). */
+  const roof = $derived(game.plots[game.households.find((h) => h.player)?.plot ?? -1]?.roof);
+  const roofColour = $derived(roofColors[roof?.[1] ?? 0]?.color ?? '#5C626A');
+  function setRoof(style: number, color: number) {
+    play('tab');
+    services.controls.setRoof(style, color);
+  }
   const prices = $derived(game.catalog?.build);
 
   /** Rough colour of each finish's texture, so a swatch shows what the tint does to it. */
@@ -208,6 +217,42 @@
       </button>
     {/each}
   </div>
+{:else if tool === 'roof' && roofs.length}
+  <div class="row">
+    <div class="cards roof-shapes" role="radiogroup" aria-label="Roof shape">
+      {#each roofs as r, i (r.id)}
+        {@const rise = r.shape === 'flat' ? 0 : Math.min(16, Math.tan(((r.pitch ?? 34) * Math.PI) / 180) * 12)}
+        <button role="radio" aria-checked={roof?.[0] === i} class="card" class:active={roof?.[0] === i} title={r.label} onclick={() => setRoof(i, roof?.[1] ?? 0)}>
+          <svg viewBox="0 0 30 34" aria-hidden="true">
+            <rect x="5" y="20" width="20" height="13" fill="#E9E4DA" />
+            <rect x="12" y="25" width="6" height="8" fill="#B07A4A" />
+            {#if r.shape === 'flat'}
+              <rect x="3" y="17" width="24" height="3.5" rx=".5" fill={roofColour} />
+            {:else if r.shape === 'hip'}
+              <path d="M2 21 L{8 + rise * 0.15} {21 - rise} H{22 - rise * 0.15} L28 21Z" fill={roofColour} />
+            {:else}
+              <path d="M2 21 L15 {21 - rise} L28 21Z" fill={roofColour} />
+            {/if}
+          </svg>
+          <span class="name">{r.label}</span>
+        </button>
+      {/each}
+    </div>
+    <div class="swatches" role="radiogroup" aria-label="Roof colour">
+      {#each roofColors as c, i (c.id)}
+        <button
+          role="radio"
+          aria-checked={roof?.[1] === i}
+          class="swatch"
+          class:active={roof?.[1] === i}
+          style="--c:{c.color}"
+          title={c.label}
+          onclick={() => setRoof(roof?.[0] ?? 0, i)}
+        ></button>
+      {/each}
+    </div>
+    <span class="chosen"><b>{roof ? `${roofs[roof[0]]?.label ?? ''} · ${roofColors[roof[1]]?.label ?? ''}` : 'The house’s own roof'}</b><small> · free</small></span>
+  </div>
 {:else if tool === 'remove'}
   <p class="row muted">Tearing down walls, doors, windows and fences is free.</p>
 {/if}
@@ -331,6 +376,11 @@
   .chosen small {
     color: var(--text-muted);
     font-weight: 600;
+  }
+  .roof-shapes {
+    display: flex;
+    flex: none;
+    padding: 0;
   }
   .cards {
     gap: 6px;

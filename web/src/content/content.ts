@@ -91,6 +91,21 @@ export interface WallCoveringDef {
   price?: number;
 }
 
+/** A roof style (Build mode's Roof tool): the shape and, for pitched roofs, the pitch in degrees. */
+export interface RoofStyleDef {
+  id: string;
+  label: string;
+  shape: 'gable' | 'hip' | 'flat';
+  pitch?: number;
+}
+
+/** A roof colour (shingles). */
+export interface RoofColorDef {
+  id: string;
+  label: string;
+  color: string;
+}
+
 /** A fence style (Build mode's Fence and Gate tools). Price per metre; a gate adds `build.gate`. */
 export interface FenceStyleDef {
   id: string;
@@ -250,6 +265,8 @@ interface ContentFile {
   doorStyles?: DoorStyleDef[];
   windowStyles?: WindowStyleDef[];
   fenceStyles?: FenceStyleDef[];
+  roofStyles?: RoofStyleDef[];
+  roofColors?: RoofColorDef[];
   economy?: Partial<Economy>;
   objectRules?: { freeRotation?: string[] };
   /** Animation tags interactions can use as `anim` (the snapshot layout's `actions`). */
@@ -280,6 +297,8 @@ export class Content {
   readonly floorCoverings: readonly FloorCoveringDef[];
   readonly doorStyles: readonly DoorStyleDef[];
   readonly fenceStyles: readonly FenceStyleDef[];
+  readonly roofStyles: readonly RoofStyleDef[];
+  readonly roofColors: readonly RoofColorDef[];
   readonly windowStyles: readonly WindowStyleDef[];
   readonly economy: Economy;
   /** Animation tags, in the order the snapshot's `sim.action` indexes them. */
@@ -317,6 +336,8 @@ export class Content {
     this.doorStyles = file.doorStyles ?? [];
     this.windowStyles = file.windowStyles ?? [];
     this.fenceStyles = file.fenceStyles ?? [];
+    this.roofStyles = file.roofStyles ?? [];
+    this.roofColors = file.roofColors ?? [];
     this.economy = { startingFunds: 0, currency: '$', ...file.economy };
     this.animations = [...new Set(file.animations ?? [])];
     this.shop = file.objects.filter((o) => o.price !== undefined);

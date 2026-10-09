@@ -690,6 +690,8 @@ export class BuildBuyInput {
   }
 
   private hoverBuild(ground: Point): void {
+    // The Roof tool is used from its panel.
+    if (game.buildTool === 'roof') return this.clearPreviews();
     if (this.paintTool()) return this.hoverPaint(ground);
     if (this.floorTool()) return this.hoverFloor(ground);
     const edges = this.edits(ground);
@@ -719,6 +721,7 @@ export class BuildBuyInput {
   }
 
   private clickBuild(ground: Point): boolean {
+    if (game.buildTool === 'roof') return true;
     if (this.opening()) {
       this.send({ type: 'build', household: game.home, edits: this.edits(ground) });
       return true;

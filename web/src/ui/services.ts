@@ -66,6 +66,8 @@ export interface GameControls {
   upgrade(objectId: number): void;
   /** Build and Buy mode: arms (or disarms) the eyedropper: the next click picks up a look (E). */
   toggleEyedropper(): void;
+  /** Build mode: the roof over the home (a roof style and colour). */
+  setRoof(style: number, color: number): void;
   /** Build mode: pick a tool (walls, rooms, doors, windows, remove); switches to Build mode. */
   setBuildTool(tool: BuildTool): void;
   build(edits: EdgeEdit[]): void;

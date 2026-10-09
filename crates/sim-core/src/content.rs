@@ -519,6 +519,10 @@ pub struct BuildRules {
     /// Fence styles (`fenceStyles`): picket, ranch rails, slats... A fence's (or gate's) style is
     /// an index into this list; its `price` is per metre, a gate costs `gate` on top of it.
     pub fences: Vec<BuildStyle>,
+    /// Roof styles (`roofStyles`: gable, hip, flat...) and colours (`roofColors`) a home's roof
+    /// can have; the renderer reads the rest of each entry (shape, pitch, colour).
+    pub roofs: Vec<BuildStyle>,
+    pub roof_colors: Vec<BuildStyle>,
 }
 
 /// A look for walls, doors or windows. The simulation only needs its id (saves) and price; the
@@ -681,6 +685,10 @@ struct ContentFile {
     window_styles: Vec<BuildStyleRaw>,
     #[serde(default)]
     fence_styles: Vec<BuildStyleRaw>,
+    #[serde(default)]
+    roof_styles: Vec<BuildStyleRaw>,
+    #[serde(default)]
+    roof_colors: Vec<BuildStyleRaw>,
     #[serde(default)]
     floor_coverings: Vec<BuildStyleRaw>,
     #[serde(default)]
@@ -1652,6 +1660,8 @@ impl Content {
             fence: raw.build.fence.unwrap_or(25),
             gate: raw.build.gate.unwrap_or(100),
             fences: build_styles(&raw.fence_styles, "fence style")?,
+            roofs: build_styles(&raw.roof_styles, "roof style")?,
+            roof_colors: build_styles(&raw.roof_colors, "roof colour")?,
             coverings: build_styles(&raw.wall_coverings, "wall covering")?,
             doors: build_styles(&raw.door_styles, "door style")?,
             windows: build_styles(&raw.window_styles, "window style")?,

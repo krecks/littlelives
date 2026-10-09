@@ -31,6 +31,8 @@ export type Command =
   | { type: 'paintFloor'; household: number; tiles: FloorPaint[] }
   | { type: 'undo'; household: number }
   | { type: 'redo'; household: number }
+  /** The roof over the home: a roof style and colour (free). */
+  | { type: 'setRoof'; household: number; style: number; color: number }
   /** New residents move into the household's home (`bonds` index into `sims`); `name` renames the household. */
   | { type: 'moveIn'; household: number; name?: string; sims: SimSpawn[]; bonds: { a: number; b: number; preset: string }[] }
   /** The resident's own routine blocks (the whole list). */
@@ -260,6 +262,8 @@ export interface PlotInfo {
   entry: [number, number] | null;
   /** Wall bounding box `[x0, z0, x1, z1]`, for house silhouettes. */
   house: [number, number, number, number] | null;
+  /** The roof the player chose: `[style, colour]` (indices into the content's roof styles and colours). */
+  roof?: [number, number];
 }
 
 /** Sent when walls or objects change (rare). */

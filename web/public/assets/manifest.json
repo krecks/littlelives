@@ -8199,6 +8199,10 @@
       "type": "icon",
       "url": "icons/gate.svg"
     },
+    "icon.ui.roof": {
+      "type": "icon",
+      "url": "icons/roof.svg"
+    },
     "icon.ui.search": {
       "type": "icon",
       "url": "icons/magnifier.svg"

@@ -318,7 +318,7 @@ export class BabylonRenderer implements Renderer {
     this.lib.onRefrozen = () => this.resetSnapshot();
     this.house = new HouseBuilder(scene);
     const c = this.deps.content;
-    this.house.setLooks({ coverings: c.wallCoverings, floors: c.floorCoverings, doors: c.doorStyles, windows: c.windowStyles });
+    this.house.setLooks({ coverings: c.wallCoverings, floors: c.floorCoverings, doors: c.doorStyles, windows: c.windowStyles, roofs: c.roofStyles, roofColors: c.roofColors });
     this.street = new Street(scene, this.deps.assets, this.house);
     // Wind sway and tint variation for foliage materials (hooks them as the models load).
     installNature(scene);

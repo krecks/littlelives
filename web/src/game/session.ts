@@ -488,11 +488,15 @@ export async function startSession(
       }
       play('tab');
     },
+    setRoof(style, color) {
+      bridge.send({ type: 'setRoof', household: game.home, style, color });
+    },
     setBuildTool(tool) {
       controls.setMode('build');
       game.buildTool = tool;
-      // Painting needs the walls standing to see them.
+      // Painting needs the walls standing to see them; the roof shows with walls up.
       if (tool === 'paint' && game.wallMode === 'down') controls.setWallMode('cutaway');
+      if (tool === 'roof') controls.setWallMode('up');
       game.buildStart = null;
       buildBuy.clearPreviews();
     },

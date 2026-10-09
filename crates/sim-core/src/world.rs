@@ -407,8 +407,16 @@ impl Sim {
     }
 }
 
+/// How a house's roof looks: a roof style and a roof colour (indices into the content's
+/// `roofStyles` and `roofColors`). Presentation only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RoofLook {
+    pub style: u8,
+    pub color: u8,
+}
+
 /// A region of the town: a residential lot or a public place.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Plot {
     pub id: u32,
     pub name: String,
@@ -420,6 +428,8 @@ pub struct Plot {
     pub public: bool,
     /// Where visitors arrive (in front of the door); defaults to the plot centre.
     pub entry: Option<[f32; 2]>,
+    /// The roof the player chose for the house on this plot (None: the town's own look).
+    pub roof: Option<RoofLook>,
 }
 
 impl Plot {
@@ -566,6 +576,7 @@ impl World {
                 d: p.d,
                 public: p.public,
                 entry: p.entry,
+                roof: None,
             })
             .collect();
         let starting_funds = world.content.starting_funds;
@@ -1333,6 +1344,11 @@ impl World {
             Command::PaintFloor { household, tiles } => self.paint_floor(household, &tiles)?,
             Command::Undo { household } => self.undo(household)?,
             Command::Redo { household } => self.redo(household)?,
+            Command::SetRoof {
+                household,
+                style,
+                color,
+            } => self.set_roof(household, style, color)?,
             Command::MoveIn {
                 household,
                 name,

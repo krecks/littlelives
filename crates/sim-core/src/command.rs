@@ -154,6 +154,12 @@ pub enum Command {
     Undo {
         household: u32,
     },
+    /// Build mode: the look of the roof over the home (a roof style and colour; free).
+    SetRoof {
+        household: u32,
+        style: u8,
+        color: u8,
+    },
     /// Build and buy mode: make the household's last undone edit again (see `World::redo`).
     Redo {
         household: u32,
@@ -274,7 +280,8 @@ impl Command {
             | Command::Upgrade { household, .. }
             | Command::Build { household, .. }
             | Command::Paint { household, .. }
-            | Command::PaintFloor { household, .. } => Some(household),
+            | Command::PaintFloor { household, .. }
+            | Command::SetRoof { household, .. } => Some(household),
             _ => None,
         }
     }

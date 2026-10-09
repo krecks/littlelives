@@ -452,7 +452,7 @@ export class Street {
       world.width,
       world.depth,
       view ? `${view.x},${view.z},${view.w},${view.d}` : '-',
-      world.plots.map((p) => p.house?.join(',') ?? '').join(';'),
+      world.plots.map((p) => `${p.house?.join(',') ?? ''}${p.roof ? `/${p.roof.join(',')}` : ''}`).join(';'),
       (world.meta?.paths ?? []).length,
       outside.length,
       outside.reduce((a, o) => a + o.x * 31 + o.z, 0),
@@ -482,7 +482,7 @@ export class Street {
     const specs: SilhouetteSpec[] = [];
     for (const L of plots) {
       if (L.kind !== 'house' || !L.house) continue;
-      specs.push({ ...L.house, front: L.front, door: L.door, garage: this.garage(L, blocked) });
+      specs.push({ ...L.house, front: L.front, door: L.door, garage: this.garage(L, blocked), roof: L.plot.roof });
     }
     const sil = this.house.silhouettes(specs, world.openings ?? []);
     if (this.layerMask !== undefined) for (const mesh of sil.meshes) mesh.layerMask = this.layerMask;

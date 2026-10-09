@@ -18,12 +18,13 @@
     { id: 'floor', label: 'Floor', icon: 'icon.ui.floor', unit: '', steps: ['Pick a floor', 'Click a tile — or drag over several', 'Shift-click: a whole room'] },
     { id: 'door', label: 'Door', icon: 'icon.ui.door', unit: '', steps: ['Point at a wall, straight or diagonal', 'Click to fit a door'] },
     { id: 'window', label: 'Window', icon: 'icon.ui.window', unit: '', steps: ['Point at a wall, straight or diagonal', 'Click to fit a window'] },
+    { id: 'roof', label: 'Roof', icon: 'icon.ui.roof', unit: '', steps: ['Pick a roof shape', 'Pick a colour', 'It changes at once'] },
     { id: 'remove', label: 'Remove', icon: 'icon.ui.eraser', unit: '/m', steps: ['Click a door or window to wall it up', 'Or drag along walls', 'Let go to tear them down'] },
   ];
   /** What the tool costs with the look picked (per metre for walls, per face for paint, per tile for floors). */
   const price = (id: BuildTool): string => {
     if (!prices) return '';
-    if (game.creative) return 'Free';
+    if (game.creative || id === 'roof') return 'Free';
     const look = game.buildLook;
     const p =
       id === 'wall' || id === 'room'
@@ -87,7 +88,7 @@
         <span class="muted">This edit</span>
         {#key game.buildCost}<b class="tabular" class:short>{money(game.buildCost)}</b>{/key}
         {#if short}<span class="short">— {money(game.buildCost - game.funds)} short</span>{/if}
-      {:else}
+      {:else if game.buildTool !== 'roof'}
         <span class="muted">Point at your lot to see what it costs.</span>
       {/if}
     </div>
@@ -102,6 +103,8 @@
         Floors go inside rooms; every tile can have its own.
       {:else if game.buildTool === 'remove'}
         Doors, windows and gates are closed up again; residents and furniture can't be shut in.
+      {:else if game.buildTool === 'roof'}
+        The roof covers every room of the house. Changing it is free.
       {:else if game.buildTool === 'fence' || game.buildTool === 'gate'}
         Fences keep a garden outdoors (no floor, no roof); leave a gate so nobody is shut in.
       {:else if game.buildTool === 'door' || game.buildTool === 'window'}

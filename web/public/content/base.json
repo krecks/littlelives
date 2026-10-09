@@ -3097,6 +3097,23 @@
     {"id": "halfGlass", "label": "Half-glazed", "leaf": "halfGlass", "color": "#F2F0EA", "price": 220},
     {"id": "glass", "label": "French glass", "leaf": "glass", "color": "#3C3F44", "price": 260}
   ],
+  "roofStyles": [
+    {"id": "gable", "label": "Gable", "shape": "gable", "pitch": 34},
+    {"id": "hip", "label": "Hip", "shape": "hip", "pitch": 34},
+    {"id": "steepGable", "label": "Steep gable", "shape": "gable", "pitch": 46},
+    {"id": "lowHip", "label": "Low hip", "shape": "hip", "pitch": 20},
+    {"id": "flat", "label": "Flat", "shape": "flat"}
+  ],
+  "roofColors": [
+    {"id": "slate", "label": "Slate grey", "color": "#5C626A"},
+    {"id": "brown", "label": "Brown shingle", "color": "#6B4A3A"},
+    {"id": "terracotta", "label": "Terracotta", "color": "#8C4E3C"},
+    {"id": "moss", "label": "Moss green", "color": "#4F5A4C"},
+    {"id": "charcoal", "label": "Charcoal", "color": "#3E4148"},
+    {"id": "taupe", "label": "Taupe", "color": "#7A6A5A"},
+    {"id": "navy", "label": "Navy", "color": "#33465E"},
+    {"id": "pearl", "label": "Pearl grey", "color": "#A8A49C"}
+  ],
   "fenceStyles": [
     {"id": "picket", "label": "White picket", "kind": "picket", "color": "#F2F0EA", "height": 1.0, "price": 25},
     {"id": "rails", "label": "Ranch rails", "kind": "rails", "color": "#8A6440", "height": 1.1, "price": 20},
