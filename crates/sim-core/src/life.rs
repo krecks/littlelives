@@ -172,6 +172,7 @@ pub(crate) fn update(w: &mut World) {
             at_work(w, i);
         } else {
             schedule_work(w, i, day);
+            schedule_school(w, i, day);
             end_visit_if_due(w, i, hour);
         }
         report_skill_ups(w, i);
@@ -266,6 +267,47 @@ fn find_job(w: &mut World, i: usize, category: Option<usize>) -> Option<(usize, 
     crate::ai::choose(&mut candidates, rng.next_f32(), 3)
 }
 
+/// Today's school day for a pupil (a stage that goes to school, no job): when they leave, when
+/// it starts, when it ends.
+pub fn school_today(content: &Content, sim: &crate::world::Sim, tick: u64) -> Option<(u64, u64, u64)> {
+    let rules = content.life.school.as_ref()?;
+    if sim.job.is_some() || !content.life.stage_at(sim.age).is_some_and(|s| s.school) {
+        return None;
+    }
+    let day = clock::day(tick);
+    if rules.days & (1 << clock::weekday(day)) == 0 {
+        return None;
+    }
+    let start = clock::tick_at(day, rules.start * 60.0)?;
+    let leave = start.saturating_sub(ticks(content.career_rules.commute_minutes));
+    Some((leave, start, start + ticks(rules.hours * 60.0)))
+}
+
+/// Off to school when it's time (once a day; too late, and it's skipped for today).
+fn schedule_school(w: &mut World, i: usize, day: u32) {
+    let World { content, sims, objects, tick, .. } = w;
+    let tick = *tick;
+    let sim = &mut sims[i];
+    if sim.school_day == day {
+        return;
+    }
+    let Some((leave, start, _)) = school_today(content, sim, tick) else { return };
+    if tick > start + ticks(content.career_rules.late_minutes) {
+        sim.school_day = day;
+        return;
+    }
+    if tick < leave {
+        return;
+    }
+    let heading_out = matches!(sim.current.as_ref().map(|a| a.task.kind), Some(TaskKind::Work))
+        || matches!(sim.queue.front().map(|t| t.kind), Some(TaskKind::Work));
+    if !heading_out {
+        end_activity(sim, content, objects);
+        sim.engaged_with = None;
+        sim.queue.push_front(Task { kind: TaskKind::Work, directed: true });
+    }
+}
+
 /// Leave for work when it's time; count a shift as missed if the Sim never left.
 fn schedule_work(w: &mut World, i: usize, day: u32) {
     let World {
@@ -333,6 +375,15 @@ fn apply_transition(w: &mut World, i: usize, transition: Transition) {
             let mood = w.sims[i].mood(content);
             let sim = &mut w.sims[i];
             let skills = sim.skills;
+            // A pupil: school until the afternoon.
+            if sim.job.is_none() {
+                if let Some((_, start, end)) = school_today(content, sim, tick) {
+                    sim.school_day = clock::day(tick);
+                    sim.away_until = Some(end.max(start).max(tick + 1));
+                    sim.queue.clear();
+                }
+                return;
+            }
             let Some(job) = sim.job.as_mut() else { return };
             let Some((_, start, end)) = shift_today(content, job, &skills, tick) else {
                 return;
@@ -382,7 +433,17 @@ fn at_work(w: &mut World, i: usize) {
     } = w;
     let sim = &mut sims[i];
     let Some(job) = sim.job.clone() else {
+        // At school: a little of the school's skills, then home.
+        if let Some(school) = &content.life.school {
+            for &(skill, weight) in &school.skills {
+                practise(sim, content, skill, content.skill_rules.work_gain_per_hour * weight);
+            }
+        }
+        if sim.away_until.is_some_and(|until| tick < until) {
+            return;
+        }
         sim.away_until = None;
+        sim.queue.push_back(Task { kind: TaskKind::GoHome, directed: false });
         return;
     };
     let career = &content.careers[job.career];

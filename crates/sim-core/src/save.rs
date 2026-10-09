@@ -809,7 +809,9 @@ impl World {
             if let Some(p) = &s.planner {
                 sim.planner = planner_load(content, p);
             }
-            sim.away_until = s.away_minutes.filter(|_| sim.job.is_some()).map(after);
+            // At work, or a pupil at school.
+            let pupil = content.life.stage_at(s.age.unwrap_or(30.0)).is_some_and(|st| st.school);
+            sim.away_until = s.away_minutes.filter(|_| sim.job.is_some() || pupil).map(after);
             sim.visiting = s.visiting.and_then(|(plot, left)| {
                 ((plot as usize) < plot_count).then(|| Visit {
                     plot,

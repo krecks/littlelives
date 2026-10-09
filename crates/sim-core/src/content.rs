@@ -197,6 +197,18 @@ pub struct LifeRules {
     pub moving: Option<MovingRules>,
     /// New households for vacant houses (None: nobody new comes).
     pub newcomers: Option<NewcomerRules>,
+    /// School for stages with `school` (None: no school).
+    pub school: Option<SchoolRules>,
+}
+
+/// School days: away from `start` for `hours` on `days` (bit 0 = Monday), practising `skills`
+/// (skill, weight) a little.
+#[derive(Debug, Clone)]
+pub struct SchoolRules {
+    pub start: f32,
+    pub hours: f32,
+    pub days: u8,
+    pub skills: Vec<(usize, f32)>,
 }
 
 /// Once a day at `hour`, each vacant house gets a household with a chance of 1 in `days`.
@@ -1142,6 +1154,17 @@ struct LifeRaw {
     grief: GriefRaw,
     moving: Option<MovingRaw>,
     newcomers: Option<NewcomersRaw>,
+    school: Option<SchoolRaw>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SchoolRaw {
+    start: f32,
+    hours: f32,
+    days: Vec<u8>,
+    #[serde(default)]
+    skills: HashMap<String, f32>,
 }
 
 #[derive(Deserialize, Default)]
@@ -2024,6 +2047,22 @@ impl Content {
                 leave_town_age: m.leave_town_age.unwrap_or(30.0),
                 leave_town: m.leave_town.unwrap_or(0.05).clamp(0.0, 1.0),
             }),
+            school: match &raw.life.school {
+                None => None,
+                Some(sc) => {
+                    let mut skills = Vec::new();
+                    for (id, w) in &sc.skills {
+                        skills.push((lookup(&skill_index, id, "life.school", "skill")?, *w));
+                    }
+                    skills.sort_by_key(|s| s.0);
+                    Some(SchoolRules {
+                        start: sc.start.clamp(0.0, 23.0),
+                        hours: sc.hours.clamp(0.5, 12.0),
+                        days: sc.days.iter().filter(|&&d| d < 7).fold(0, |m, d| m | (1 << d)),
+                        skills,
+                    })
+                }
+            },
             newcomers: raw.life.newcomers.as_ref().map(|n| NewcomerRules {
                 hour: n.hour.unwrap_or(12.0).clamp(0.0, 23.9),
                 days: n.days.unwrap_or(3.0).max(1.0),

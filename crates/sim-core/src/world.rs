@@ -329,6 +329,8 @@ pub struct Sim {
     pub age: f32,
     /// No longer in town (the slot stays, so ids don't change; see `World::depart`).
     pub gone: Option<Gone>,
+    /// The last day they went to (or skipped) school.
+    pub school_day: u32,
     /// Retired from work: doesn't look for a job; the household gets `pension` a week.
     pub retired: bool,
     pub pension: i64,
@@ -1043,6 +1045,7 @@ impl World {
             gone: None,
             retired: false,
             pension: 0,
+            school_day: 0,
         };
         if let Some(slot) = slot {
             self.retire_slot(slot);
@@ -1831,7 +1834,8 @@ fn wake_hour(sim: &Sim, ctx: &Ctx) -> f32 {
     let leave = sim
         .job
         .as_ref()
-        .and_then(|job| crate::life::shift_today(ctx.content, job, &sim.skills, ctx.tick));
+        .and_then(|job| crate::life::shift_today(ctx.content, job, &sim.skills, ctx.tick))
+        .or_else(|| crate::life::school_today(ctx.content, sim, ctx.tick));
     match leave {
         Some((leave, ..)) if leave > ctx.tick => (crate::clock::hour(leave)
             - rhythm.wake_before_work_minutes / 60.0)

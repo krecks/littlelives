@@ -17,7 +17,9 @@
   const info = (id: number) => game.roster.find((r) => r.id === id);
   const sim = $derived(game.inspectedSim);
   const mine = $derived(!!sim && !!game.households[sim.household]?.player);
-  const tabs = $derived(mine ? allTabs : allTabs.filter((t) => t !== 'Career'));
+  // Careers are for grown-ups of the player's household.
+  const grownUp = $derived(!sim || services.content.isAdult(sim.age ?? 30));
+  const tabs = $derived(mine && grownUp ? allTabs : allTabs.filter((t) => t !== 'Career'));
   const homeName = $derived(sim ? game.households[sim.household]?.name : undefined);
   const emotion = $derived(services.content.emotion(sim?.emotion ?? null));
   const people = $derived(

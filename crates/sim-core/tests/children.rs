@@ -64,3 +64,47 @@ fn babies_do_nothing_on_their_own() {
     assert!(w.sims[3].current().is_none(), "the baby didn't go and play");
     assert!(w.sims[2].current().is_some() || w.sims[0].current().is_some(), "the others did something");
 }
+
+const SCHOOL: &str = r#"{
+    "needs":[{"id":"fun","label":"Fun","decayPerHour":0.1}],
+    "objects":[],
+    "skills":[{"id":"intelligence","label":"Intelligence"}],
+    "skillRules":{"maxLevel":10,"workGainPerHour":0.05},
+    "life":{"daysPerYear":2,"stages":[
+        {"id":"child","label":"Child","from":2,"school":true},
+        {"id":"adult","label":"Adult","from":18}],
+        "school":{"start":8,"hours":7,"days":[0,1,2,3,4],"skills":{"intelligence":1}}},
+    "economy":{"startingFunds":1000}}"#;
+
+#[test]
+fn children_go_to_school_on_school_days() {
+    let town = r#"{"width":10,"depth":10,
+        "plots":[{"name":"Home","x":0,"z":0,"w":10,"d":10,"entry":[5.5,9.5]}],
+        "households":[{"name":"Player","plot":0,"player":true}],
+        "objects":[], "exits":[[5.5,9.9]],
+        "sims":[{"name":"Ada","x":4.5,"z":3.5,"age":35},{"name":"Kit","x":5.5,"z":3.5,"age":9}]}"#;
+    let mut w = World::from_json(SCHOOL, town, 1).unwrap();
+    // Day 1 (Monday) from 08:00: off to school until 15:00, a little cleverer.
+    let at = |w: &mut World, hour: f32| {
+        let day = sim_core::clock::day(w.tick);
+        let target = sim_core::clock::tick_at(day + u32::from(sim_core::clock::hour(w.tick) >= hour), hour * 60.0).unwrap();
+        while w.tick < target {
+            w.tick_once();
+        }
+    };
+    at(&mut w, 10.0);
+    assert!(w.sims[1].away_until.is_some(), "at school at 10:00");
+    assert!(w.sims[0].away_until.is_none(), "the grown-up has no school");
+    let ui: serde_json::Value = serde_json::from_str(&sim_core::view::ui_state_json(&w)).unwrap();
+    let kit = ui["sims"].as_array().unwrap().iter().find(|s| s["name"] == "Kit").unwrap();
+    assert_eq!(kit["actions"][0]["label"], "At school");
+    at(&mut w, 17.0);
+    assert!(w.sims[1].away_until.is_none(), "home after school");
+    assert!(w.sims[1].skills[0] > 0.2, "learned something: {}", w.sims[1].skills[0]);
+    // The weekend (day 6, Saturday): no school.
+    for _ in 0..5 {
+        at(&mut w, 10.0);
+    }
+    assert_eq!(sim_core::clock::weekday(sim_core::clock::day(w.tick)), 5);
+    assert!(w.sims[1].away_until.is_none(), "no school on Saturday");
+}

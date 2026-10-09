@@ -3163,6 +3163,7 @@
     "retireFeeling": "retired",
     "death": {"from": 75, "perYear": 0.04, "growth": 0.12},
     "grief": {"feeling": "grieving", "lightFeeling": "missesSomeone", "close": 60, "friend": 35},
+    "school": {"start": 8, "hours": 7, "days": [0, 1, 2, 3, 4], "skills": {"intelligence": 0.6, "writing": 0.4, "perception": 0.3}},
     "newcomers": {"hour": 12, "days": 3},
     "moving": {"hour": 11, "partners": 0.2, "romance": 60, "leaveHomeAge": 23, "leaveHome": 0.1, "leaveTownAge": 30, "leaveTown": 0.05},
     "stages": [

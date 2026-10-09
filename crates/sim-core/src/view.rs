@@ -475,11 +475,12 @@ pub fn ui_state_json(world: &World) -> String {
             let mut actions = Vec::new();
             if let Some(until) = s.away_until {
                 let left = until.saturating_sub(world.tick) as f32 * MINUTES_PER_TICK;
-                let total = s.job.as_ref().map_or(1.0, |j| {
+                let school = content.life.school.as_ref().filter(|_| s.job.is_none());
+                let total = s.job.as_ref().map_or(school.map_or(1.0, |sc| sc.hours * 60.0), |j| {
                     content.careers[j.career].levels[j.level].hours * 60.0
                 });
                 actions.push(ActionView {
-                    label: "At work".to_owned(),
+                    label: if school.is_some() { "At school" } else { "At work" }.to_owned(),
                     object: None,
                     target: None,
                     progress: (1.0 - left / total).clamp(0.0, 1.0),
