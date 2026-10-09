@@ -2,9 +2,10 @@
 //! saving up for a room or a piece of furniture should take days to weeks, and a career should
 //! take a good part of a life, not two months.
 //!
-//! The targets are the constants below. The shipped content doesn't meet them yet (careers pay
-//! and promote far too fast), so the test is ignored until the 0.9 rebalance:
-//! `cargo test --release --test balance -- --ignored --nocapture` prints the numbers.
+//! The targets are the constants below; the shipped content meets them (pay grades in
+//! `careers.json`, promotion speed in `careerRules`, rent and living costs in `economy.rent`).
+//! It runs 180 game days, so it's opt-in like the long soak:
+//! `cargo test --release --test balance -- --ignored --nocapture` (prints the numbers).
 
 mod common;
 
@@ -93,7 +94,7 @@ fn run(seed: u64) -> Run {
 }
 
 #[test]
-#[ignore = "balance target for the 0.9 rebalance; the shipped content doesn't meet it yet"]
+#[ignore = "long: run with --release -- --ignored"]
 fn living_mode_money_and_careers_take_time() {
     let mut savings = Vec::new();
     let mut richest = 0;
@@ -116,6 +117,7 @@ fn living_mode_money_and_careers_take_time() {
             }
         }
         let w = &r.world;
+        richest = richest.max(w.households.iter().map(|h| h.funds).max().unwrap_or(0));
         eprintln!(
             "seed {seed}: funds {:?}",
             w.households.iter().map(|h| h.funds).collect::<Vec<_>>()

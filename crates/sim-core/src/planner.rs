@@ -87,6 +87,8 @@ pub struct PlannerRules {
     /// Most goals and suggestions a resident has at once.
     pub max_goals: usize,
     pub max_suggestions: usize,
+    /// Days before an idea nobody answered is taken on anyway (residents with free will).
+    pub suggestion_days: u32,
 }
 
 impl Default for PlannerRules {
@@ -107,6 +109,7 @@ impl Default for PlannerRules {
             review_hour: 7.0,
             max_goals: 3,
             max_suggestions: 2,
+            suggestion_days: 2,
         }
     }
 }
@@ -180,6 +183,7 @@ pub(crate) struct PlannerRaw {
     review_hour: Option<f32>,
     max_goals: Option<usize>,
     max_suggestions: Option<usize>,
+    suggestion_days: Option<u32>,
 }
 
 #[derive(Deserialize)]
@@ -261,6 +265,7 @@ pub(crate) fn parse(
         review_hour: planner.review_hour.unwrap_or(d.review_hour),
         max_goals: planner.max_goals.unwrap_or(d.max_goals),
         max_suggestions: planner.max_suggestions.unwrap_or(d.max_suggestions),
+        suggestion_days: planner.suggestion_days.unwrap_or(d.suggestion_days),
     };
     let mut defs = Vec::with_capacity(goals.len());
     for g in goals {
@@ -891,6 +896,20 @@ fn review_goals(w: &mut World, i: usize, day: u32) {
     }
     let rules = &w.content.planner;
     let player = w.households[w.sims[i].household as usize].player;
+    let free = w.autonomy && w.households[w.sims[i].household as usize].free_will;
+    // Ideas the player let be for a while: they go ahead with them.
+    if free {
+        let (max, wait) = (rules.max_goals, rules.suggestion_days);
+        let p = &mut w.sims[i].planner;
+        while p.goals.len() < max
+            && let Some(k) = p.suggestions.iter().position(|g| day >= g.since_day + wait)
+        {
+            let mut goal = p.suggestions.remove(k);
+            goal.since_day = day;
+            p.goals.push(goal);
+        }
+    }
+    let rules = &w.content.planner;
     let p = &w.sims[i].planner;
     let room = if player {
         p.suggestions.len() < rules.max_suggestions && p.goals.len() < rules.max_goals

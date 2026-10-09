@@ -280,6 +280,8 @@ pub struct CareerRules {
     pub performance_per_shift: f32,
     /// Extra performance per shift for each skill level above the requirements (or less below).
     pub performance_per_fit: f32,
+    /// Extra performance per shift at full mood (and as much less at none).
+    pub performance_per_mood: f32,
     /// How far below a job's requirements a Sim may still be hired (on probation).
     pub probation_levels: f32,
     /// Sorted by `fit`.
@@ -385,8 +387,10 @@ pub struct RentRules {
     pub per_tile: f32,
     /// Weekly bills (power, water, upkeep) charged with the rent: a flat part…
     pub bills_base: i64,
-    /// …plus this share of what the household's objects are worth (price plus upgrades).
+    /// …plus this share of what the household's objects are worth (price plus upgrades)…
     pub bills_rate: f32,
+    /// …plus living costs (groceries, household goods) per resident.
+    pub per_resident: i64,
     /// Given to every member each day the household is in debt.
     pub debt_feeling: Option<usize>,
 }
@@ -396,8 +400,10 @@ impl RentRules {
         self.base + (self.per_tile * plot_tiles.max(0) as f32).round() as i64
     }
 
-    pub fn bills(&self, home_value: i64) -> i64 {
-        self.bills_base + (self.bills_rate * home_value.max(0) as f32).round() as i64
+    pub fn bills(&self, home_value: i64, residents: usize) -> i64 {
+        self.bills_base
+            + (self.bills_rate * home_value.max(0) as f32).round() as i64
+            + self.per_resident * residents as i64
     }
 }
 
@@ -789,6 +795,8 @@ struct RentRaw {
     #[serde(default)]
     bills_rate: f32,
     #[serde(default)]
+    per_resident: i64,
+    #[serde(default)]
     #[serde(alias = "debtMoodlet")] // key before the moodlet → feeling rename
     debt_feeling: Option<String>,
 }
@@ -857,6 +865,7 @@ struct CareerRulesRaw {
     missed_penalty: Option<f32>,
     performance_per_shift: Option<f32>,
     performance_per_fit: Option<f32>,
+    performance_per_mood: Option<f32>,
     probation_levels: Option<f32>,
     workweek: Vec<WorkweekRaw>,
     #[serde(alias = "promotionMoodlet")] // key before the moodlet → feeling rename
@@ -1511,6 +1520,7 @@ impl Content {
             missed_penalty: cr.missed_penalty.unwrap_or(20.0),
             performance_per_shift: cr.performance_per_shift.unwrap_or(12.0),
             performance_per_fit: cr.performance_per_fit.unwrap_or(0.0),
+            performance_per_mood: cr.performance_per_mood.unwrap_or(15.0),
             probation_levels: cr.probation_levels.unwrap_or(0.0),
             workweek,
             promotion_feeling: feeling(&cr.promotion_feeling, "careerRules")?,
@@ -1584,6 +1594,7 @@ impl Content {
                     per_tile: r.per_tile,
                     bills_base: r.bills_base,
                     bills_rate: r.bills_rate.max(0.0),
+                    per_resident: r.per_resident.max(0),
                     debt_feeling: feeling(&r.debt_feeling, "economy.rent")?,
                 })
             })

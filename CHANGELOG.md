@@ -17,6 +17,8 @@ The planner: steer your residents without giving orders.
 
 ### Changed
 - Residents sleep through the night unless they need the bathroom or are hungry (being lonely or bored no longer wakes them).
+- **Money and careers rebalanced** so building with earned money takes saving up: pay grades run from $12/h to $52/h (were $15 to $300), promotions take about three times as long, and the weekly bills now include living costs of $150 per resident (rent is lower). A working household saves roughly $100–2,000 a week.
+- Goal ideas you leave unanswered for two days are taken on anyway (dismiss them to say no).
 - Content packs can add activities, goals, discipline per trait, and which needs wake sleepers (see `docs/content-packs.md`).
 - Saves are now version 9 (plans, goals and household blocks); older saves load as before.
 

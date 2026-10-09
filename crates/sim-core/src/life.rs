@@ -404,7 +404,7 @@ fn at_work(w: &mut World, i: usize) {
     job.satisfaction = job.satisfaction * 0.8 + job.shift_mood * 0.2;
     job.performance = (job.performance
         + rules.performance_per_shift
-        + (job.shift_mood - 0.5) * 30.0
+        + (job.shift_mood - 0.5) * 2.0 * rules.performance_per_mood
         + fit * rules.performance_per_fit)
         .clamp(0.0, 100.0);
     // A promotion needs a full bar and the skills for the next level.
@@ -443,7 +443,8 @@ fn report_skill_ups(w: &mut World, i: usize) {
 }
 
 /// What household `h` pays each week: `(rent, bills)`, or `None` if it has no home or
-/// nothing is charged. Bills grow with the value of everything the household owns.
+/// nothing is charged. Bills grow with the value of everything the household owns and with
+/// how many live there.
 pub fn weekly_costs(w: &World, h: usize) -> Option<(i64, i64)> {
     let rent = w.content.rent.as_ref()?;
     let plot = w.households.get(h)?.plot?;
@@ -455,7 +456,8 @@ pub fn weekly_costs(w: &World, h: usize) -> Option<(i64, i64)> {
         .filter(|(_, on)| **on == Some(plot))
         .map(|(o, _)| o.value)
         .sum();
-    Some((rent.amount(p.w * p.d), rent.bills(home_value)))
+    let residents = w.sims.iter().filter(|s| s.household as usize == h).count();
+    Some((rent.amount(p.w * p.d), rent.bills(home_value, residents)))
 }
 
 /// Weekly rent and bills; households that can't cover them go into debt and worry about it

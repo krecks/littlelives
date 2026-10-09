@@ -315,13 +315,14 @@ the catalog filtered to it).
 "planner": {
   "boost": 6, "offBlock": 0.35, "urgentBelow": 0.15, "floor": 0.15, "skipChance": 0.1,
   "keptShare": 0.75, "maxMinutes": 240, "maxSleepMinutes": 720, "reviewHour": 7,
-  "maxGoals": 3, "maxSuggestions": 2,
+  "maxGoals": 3, "maxSuggestions": 2, "suggestionDays": 2,
   "discipline": { "lazy": 0.6, "energetic": 1.3 },
   "keptFeeling": "keptPlan", "noPlaceFeeling": "nowhereToDoIt", "goalFeeling": "goalReached"
 }
 ```
 
-`discipline` multiplies how well residents with a trait stick to plans (with their mood);
+`suggestionDays`: a goal a resident suggests is taken on by itself if the player neither
+accepts nor dismisses it for that many days. `discipline` multiplies how well residents with a trait stick to plans (with their mood);
 traits whose `tagPreference` dislikes an activity's tags skip it more. A pack's own top-level
 `planner` object replaces keys of the base one (objects merge shallowly), so repeat the whole
 `discipline` map if you change it.
@@ -363,11 +364,13 @@ traits whose `tagPreference` dislikes an activity's tags skip it more. A pack's 
 
 ## Balance guidance
 
-Money: households start with $2,500; rent is about $380 a week on the starter lot; an
-entry-level job pays roughly $90–180 a shift. Running costs come as weekly **bills**, paid
-with the rent: `economy.rent.billsBase` ($25) plus `billsRate` (1.5%) of what the
-household's objects are worth (price plus upgrades). A $2,000 luxury item adds about $30 a
-week.
+Money: households start with $2,500; rent is about $200 a week on a house plot; an
+entry-level job pays roughly $70–150 a shift (grades run from $12/h to $52/h). Running costs
+come as weekly **bills**, paid with the rent: `economy.rent.billsBase` ($25) plus `billsRate`
+(1.5%) of what the household's objects are worth (price plus upgrades) plus `perResident`
+($150 per resident). A $2,000 luxury item adds about $30 a week. A working household saves
+roughly $100–2,000 a week; `crates/sim-core/tests/balance.rs` checks this (and how fast
+careers go) for the base game, so run it after changing prices, pay or rent.
 
 **Prices by category** (base game):
 

@@ -217,10 +217,12 @@ fn a_town_lives_on_its_own_for_two_weeks() {
     }
     // The story keeps moving: something notable happened at the player's home in the second week.
     let week_two = clock::tick_at(8, 0.0).unwrap();
+    // (As the journal's "Our home": events naming one of them in any role.)
+    let ours = |id: u32| w.households[w.sims[id as usize].household as usize].player;
     assert!(
         w.events.iter().any(|e| e.tick >= week_two
             && e.kind.importance() >= 1
-            && w.households[w.sims[e.a as usize].household as usize].player),
+            && [Some(e.a), Some(e.b), e.c].into_iter().flatten().any(ours)),
         "nothing happened to the player's household in week two"
     );
 }

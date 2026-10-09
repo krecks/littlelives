@@ -1,16 +1,16 @@
 {
   "$comment": "Career catalog: 25 categories x 4 tracks x 10 grades (A-J) = 1000 positions. Grade sets pay per hour and required skill level; track skill weights scale the requirement (required = round(grade.skillLevel * weight)).",
   "grades": [
-    { "id": "A", "label": "Entry", "payPerHour": 15, "skillLevel": 0 },
-    { "id": "B", "label": "Junior", "payPerHour": 22, "skillLevel": 1 },
-    { "id": "C", "label": "Associate", "payPerHour": 32, "skillLevel": 2 },
-    { "id": "D", "label": "Professional", "payPerHour": 46, "skillLevel": 3 },
-    { "id": "E", "label": "Experienced", "payPerHour": 65, "skillLevel": 4 },
-    { "id": "F", "label": "Senior", "payPerHour": 90, "skillLevel": 5 },
-    { "id": "G", "label": "Lead", "payPerHour": 125, "skillLevel": 6 },
-    { "id": "H", "label": "Manager", "payPerHour": 170, "skillLevel": 7 },
-    { "id": "I", "label": "Director", "payPerHour": 230, "skillLevel": 8 },
-    { "id": "J", "label": "Top of the field", "payPerHour": 300, "skillLevel": 10 }
+    { "id": "A", "label": "Entry", "payPerHour": 12, "skillLevel": 0 },
+    { "id": "B", "label": "Junior", "payPerHour": 14, "skillLevel": 1 },
+    { "id": "C", "label": "Associate", "payPerHour": 16, "skillLevel": 2 },
+    { "id": "D", "label": "Professional", "payPerHour": 19, "skillLevel": 3 },
+    { "id": "E", "label": "Experienced", "payPerHour": 22, "skillLevel": 4 },
+    { "id": "F", "label": "Senior", "payPerHour": 26, "skillLevel": 5 },
+    { "id": "G", "label": "Lead", "payPerHour": 31, "skillLevel": 6 },
+    { "id": "H", "label": "Manager", "payPerHour": 37, "skillLevel": 7 },
+    { "id": "I", "label": "Director", "payPerHour": 44, "skillLevel": 8 },
+    { "id": "J", "label": "Top of the field", "payPerHour": 52, "skillLevel": 10 }
   ],
   "careerCategories": [
     {

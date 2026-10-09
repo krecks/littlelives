@@ -1547,10 +1547,11 @@
     "commuteMinutes": 30,
     "lateMinutes": 60,
     "missedPenalty": 20,
-    "performancePerShift": 12,
+    "performancePerShift": 2.5,
     "promotionFeeling": "promoted",
     "missedFeeling": "skippedWork",
-    "performancePerFit": 3,
+    "performancePerFit": 1,
+    "performancePerMood": 4,
     "probationLevels": 2,
     "market": {
       "hour": 9.5,
@@ -1691,10 +1692,11 @@
     "rent": {
       "weekday": 6,
       "hour": 12,
-      "base": 150,
-      "perTile": 0.4,
+      "base": 60,
+      "perTile": 0.25,
       "billsBase": 25,
       "billsRate": 0.015,
+      "perResident": 150,
       "debtFeeling": "inDebt"
     }
   },
@@ -1859,6 +1861,7 @@
     "reviewHour": 7,
     "maxGoals": 3,
     "maxSuggestions": 2,
+    "suggestionDays": 2,
     "discipline": {
       "lazy": 0.6,
       "slob": 0.75,
