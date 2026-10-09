@@ -1,6 +1,6 @@
 # Life cycle II (0.13)
 
-*Status: in progress on `build-and-watch`. Roadmap: PLAN.md section 8. Builds on 0.12
+*Status: done on `build-and-watch` (0.13). Roadmap: PLAN.md section 8. Builds on 0.12
 ([life-cycle.md](life-cycle.md)).*
 
 Families grow: couples have babies or adopt, babies grow into children and teens who go to
@@ -41,15 +41,18 @@ through the asset manifest.
 
 ## Babies and cribs
 
-A **crib** (content object, `crib` tag) has a place for the baby (slot 0, lying) and room for
-someone to tend it. A baby lies in a crib at home (`TaskKind::Use` that never ends) and never
-leaves it on their own. Content interactions on the crib with `care` gains (`"care": {"hunger":
-0.7}`) are used by an adult standing at it and fill the *baby's* needs: feed, change, rock and
-play. The AI scores care by how much the baby needs it (and likes caring for family), so parents
-look after their baby without orders. A baby whose needs run low cries (a thought bubble).
+A **crib** (content object; two tiles: the crib and a changing table) has a place for the baby
+(an interaction with `"baby": true`, lying) and room for someone to tend it. A baby with nothing
+to do is put straight into a free crib at home and never chooses anything. Content interactions
+with `care` gains (`"care": {"hunger": 0.8}`) are used by a grown-up at home standing at it and
+fill the needs of the baby lying there: feed, change, play. The care is collected during the
+tick and applied after it (`Sim::care_out`), as mess and news are. The AI scores care by how
+much the baby needs it (from the residents' briefs), family half as much again, so parents look
+after their baby without orders. A baby whose needs run low cries (a thought bubble with the
+need's icon). Babies have no accidents.
 
-A baby born or adopted into a home with no free crib gets one delivered to a free spot (story:
-"a crib for Mia arrived"); if there's no room for one, they lie in their parents' bed.
+A baby born, adopted, moving in or starting a game in a home with no free crib gets one
+delivered to a free spot; with no room for one, they have to wait for the player to make room.
 
 When a baby becomes a child they get out of the crib.
 
@@ -62,18 +65,20 @@ resident panel says "At school". No pay, no career, no grades yet.
 
 ## Having children
 
-- **Pregnancy:** partners who are both adults (and under `pregnancy.maxAge`) can *Try for a
-  baby* (a romantic social, content `pregnancy.social`), with `pregnancy.chance` of success;
-  autonomous with free will, weighted by content (some traits like it more). Being pregnant is a
-  household state (`Household::expecting`: the parents and the due day, `pregnancy.days` later),
-  so any couple can have a baby. The story says they're expecting, then that the baby is born.
+- **Pregnancy:** partners who are both adults (and at most `pregnancy.maxAge`) can *Try for a
+  baby* (a romantic social whose success has the `conceive` effect). The conversation only marks
+  it; after the step the life cycle checks living together, ages, room and nothing on the way,
+  and with `pregnancy.chance` the household is expecting (`Household::expecting`: the parents and
+  the due day, `pregnancy.days` later), so any couple can have a baby. The AI only tries where a
+  baby could come of it. The story says they're expecting, then that the baby is born (at
+  midnight on the due day).
 - Only with room: below `rules.maxHousehold`, and the town below its cap.
 - **The baby:** a name from content `names` by gender, the household's name, random traits, a
   look mixed from the parents' (an appearance seed with the parents' slots: the web takes skin
   from one parent and hair from the other), family links to both parents and any siblings.
 - **Adoption:** the player can adopt a baby or a child (a button in *Our home*), for
-  `adoption.cost` (free in Creative), when there's an adult and room. Neighbours adopt now and
-  then too.
+  `adoption.cost` (free in Creative), when there's an adult and room; the parents are a couple
+  in the household if there is one. (Neighbours don't adopt yet.)
 
 ## Growing up
 

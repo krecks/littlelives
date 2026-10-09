@@ -334,6 +334,9 @@
               <span class="eyebrow">Gender</span>
               <Segmented label="Gender" bind:value={sim.gender} options={content.genders.map((g) => ({ value: g.id, label: g.label }))} />
             </div>
+            {#if !content.isAdult(sim.age)}
+              <span class="hint small">Who they fall for is a question for when they grow up.</span>
+            {:else}
             <div class="field">
               <span class="eyebrow">Attracted to</span>
               <div class="chips-row">
@@ -350,6 +353,7 @@
                   : 'Romantic interactions only happen between residents attracted to each other.'}
               </span>
             </div>
+            {/if}
           {/if}
           <p class="hint">
             Traits shape what {sim.name || 'this resident'} enjoys and how quickly their needs change. Perks are small advantages bought with

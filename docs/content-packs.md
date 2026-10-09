@@ -354,7 +354,10 @@ Content `life` (an object, so a pack can change single keys; see `docs/design/li
 |---|---|
 | `daysPerYear` | Game days per year of age at the *Normal* lifespan (default 2; *Short* halves it, *Long* doubles it). |
 | `startAge` | `[min, max]` ages for residents nothing gives one (default `[25, 50]`). |
-| `stages` | Youngest first: `{"id", "label", "from", "story", "feeling", "effects", "greyHair"}`. `from` is the age it starts at; `story` the journal's words ("is an elder now"); `feeling` granted on reaching it; `effects` like a trait's (combined with traits and perks); `greyHair` 0..1 how far hair greys. |
+| `stages` | Youngest first: `{"id", "label", "from", "story", "feeling", "effects", "adult", "baby", "school", "scale", "head", "stoop", "greyHair"}`. `from` is the age it starts at; `story` the journal's words ("is an elder now"); `feeling` granted on reaching it; `effects` like a trait's (combined with traits and perks; `tagPreference` 0 means never on their own: children don't cook). `adult` (default: unless `baby` or `school`) may work, fall in love, move and have children, and a household needs one; `baby` lives in a crib and is cared for; `school` goes to school. `scale` and `head` size the body and the head (renderer), `stoop` 0..1 bends the upper back, `greyHair` 0..1 greys the hair. |
+| `school` | `{"start", "hours", "days", "skills"}`: school days (weekday numbers, 0 = Monday) for stages with `school`; `skills` (id → weight) practised a little there. |
+| `pregnancy` | `{"chance", "days", "maxAge"}`: when partners' *conceive* social goes well (a social whose `success` has `"effect": "conceive"`), a baby is on the way with this chance, born `days` later, if they live together, are both grown-ups at most `maxAge`, and there's room. Absent: nobody has babies. |
+| `adoption` | `{"cost"}`: what adopting a baby or a child costs. Absent: no adoption. |
 | `retireAt`, `pension`, `retireFeeling` | Working residents retire at this age; the weekly pension is `pension` × their last weekly pay. |
 | `death` | `{"from", "perYear", "growth"}`: from age `from`, a yearly chance of `perYear`, ×e^`growth` per year older. |
 | `grief` | `{"feeling", "lightFeeling", "close", "friend"}`: family, partners and friends from `close` get `feeling` when someone dies; friends from `friend` get `lightFeeling`. |
@@ -365,11 +368,19 @@ Content `life` (an object, so a pack can change single keys; see `docs/design/li
 resident to the first: `{"parent": {"friendship": 50, "kin": "parent"}}` in a bond `a, b` makes
 `b` the parent of `a` (`kin`: `parent`, `child` or `sibling`). Relatives don't flirt.
 
-**Names** for newcomers come from content `names`: `first`, `byGender` (first names per gender
+**Babies and cribs:** an interaction with `"baby": true` is the place a baby lies (only babies
+use it); an interaction with `care` (need → gain over the whole interaction) fills the needs of
+the baby lying in the same object, and only grown-ups at home do it. The base game's `crib` has
+both (lie; feed, change, play); a baby who arrives without a free crib gets the first object
+for sale with a `baby` interaction delivered.
+
+**Names** for newcomers and babies come from content `names`: `first`, `byGender` (first names per gender
 id) and `last` (household names).
 
 **Story texts** (`events`): `grewOlder` (`{stage}`: the stage's `story`), `retired` (`{job}`),
-`died`, `movedInWith` (`{b}`: the partner), `movedOut`, `movedAway`.
+`died`, `movedInWith` (`{b}`: the partner), `movedOut`, `movedAway`, `expecting` (`{a}` and
+`{b}`), `born` (`{b}` and `{and c}`: " and" the second parent, if any), `adopted` (`{b}` adopted
+`{a}`).
 
 ## Ids you can refer to
 

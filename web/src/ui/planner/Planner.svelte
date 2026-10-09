@@ -16,7 +16,10 @@
    * goals, plus the household's template that everyone follows. Edits apply as you make them.
    */
   const content = services.content;
-  const residents = $derived(game.sims.filter((s) => game.households[s.household]?.player));
+  // Everyone who plans their days (babies don't).
+  const residents = $derived(
+    game.sims.filter((s) => game.households[s.household]?.player && !services.content.lifeStages.find((st) => st.id === s.stage)?.baby),
+  );
   const who = $derived(game.plannerFor);
   const sim = $derived(who === 'household' ? null : (residents.find((s) => s.id === who) ?? null));
   const info = (id: number) => game.roster.find((r) => r.id === id);

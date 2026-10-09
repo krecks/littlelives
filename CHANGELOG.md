@@ -2,6 +2,24 @@
 
 All notable changes to Littlelives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
+## Unreleased (0.13.0)
+
+Life cycle II: families grow. Couples have babies or adopt, babies grow into children and teens who go to school, and teens grow up into the young adults of 0.12. A town can now run for generations.
+
+### New
+- **Babies, children and teens.** The household creator has every age from baby to elder (a household needs a grown-up), and random families sometimes have children. Children and teens don't work, flirt or move out on their own; children don't cook.
+- **Bodies for every age:** children are smaller with bigger heads, teens nearly grown, babies tiny, and elders stoop a little. Portraits and the creator show it too.
+- **Babies and cribs:** a baby lies in a crib (a new item: crib and changing table) and the grown-ups at home feed, change and play with them on their own, more the more the baby needs it. A baby who needs something cries. A baby who arrives in a home without a crib gets one delivered.
+- **School:** on weekdays children and teens go to school from 8:00 to 15:00 and learn a little; the resident panel says *At school*.
+- **Having a baby:** partners can *Try for a baby*; if it works, the household is expecting (shown in *Our home*), and three days later the baby is born, looking a bit like both parents, into a family of parents, brothers and sisters.
+- **Adoption:** *Our home → Adopt a baby / Adopt a child* ($1,500; free in Creative).
+- **Growing up:** a baby gets out of the crib as a child, school ends at 18, and young adults can work, fall in love and move out.
+
+### Changed
+- Romance chosen by residents on their own is now only between grown-ups who aren't family (asking them to already was).
+- A guest left with nothing to do while the hosts are all at work goes home.
+- Saves are now version 14 (a baby on the way); older saves load as before.
+
 ## Unreleased (0.12.0)
 
 Life cycle I: lives move on. Everyone is an adult here; babies, children and teens come in 0.13.

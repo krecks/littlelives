@@ -19,6 +19,8 @@
   const mine = $derived(!!sim && !!game.households[sim.household]?.player);
   // Careers are for grown-ups of the player's household.
   const grownUp = $derived(!sim || services.content.isAdult(sim.age ?? 30));
+  /** Babies don't plan or choose: they're cared for at the crib. */
+  const baby = $derived(!!sim && !!services.content.lifeStages.find((s) => s.id === sim.stage)?.baby);
   const tabs = $derived(mine && grownUp ? allTabs : allTabs.filter((t) => t !== 'Career'));
   const homeName = $derived(sim ? game.households[sim.household]?.name : undefined);
   const emotion = $derived(services.content.emotion(sim?.emotion ?? null));
@@ -97,7 +99,7 @@
       </div>
 
       {#if tab === 'Now'}
-        {#if mine}
+        {#if mine && !baby}
           <div class="plan">
             <TodayTimeline {sim} height={14} labels />
             <button class="btn small" onclick={() => services.controls.openPlanner(sim.id)}><Icon name="icon.ui.calendar" size={13} />Plan</button>
@@ -126,10 +128,12 @@
               {/if}
             </li>
           {:else}
-            <li class="idle">{sim.awayUntil !== null ? 'At work' : 'Deciding what to do next'}</li>
+            <li class="idle">{sim.awayUntil !== null ? (grownUp ? 'At work' : 'At school') : 'Deciding what to do next'}</li>
           {/each}
         </ol>
-        {#if mine}
+        {#if baby}
+          <p class="hint">A baby: the grown-ups at home feed, change and play with them at the crib. A crying baby needs someone.</p>
+        {:else if mine}
           <p class="hint">They choose for themselves. To step in, click a person to talk to, an object to use, or the floor to walk.</p>
         {/if}
       {:else if tab === 'People'}
