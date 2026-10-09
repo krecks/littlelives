@@ -108,3 +108,34 @@ fn children_go_to_school_on_school_days() {
     assert_eq!(sim_core::clock::weekday(sim_core::clock::day(w.tick)), 5);
     assert!(w.sims[1].away_until.is_none(), "no school on Saturday");
 }
+
+#[test]
+fn teens_grow_up_into_young_adults() {
+    use sim_core::social::EventKind;
+    let content = SCHOOL
+        .replace(r#"{"id":"adult","label":"Adult","from":18}"#, r#"{"id":"teen","label":"Teen","from":13,"school":true},{"id":"adult","label":"Adult","from":18}"#)
+        .replace(r#""economy""#, r#""grades":[{"id":"A","label":"Entry","payPerHour":10,"skillLevel":0}],
+            "careerCategories":[{"id":"press","label":"Press","shift":{"start":13,"hours":4,"days":[0,1,2,3,4]},
+              "tracks":[{"id":"press.print","label":"Print","skills":{"intelligence":1},"titles":["Runner"]}]}],
+            "economy""#);
+    let town = r#"{"width":10,"depth":10,
+        "plots":[{"name":"Home","x":0,"z":0,"w":10,"d":10,"entry":[5.5,9.5]}],
+        "households":[{"name":"Player","plot":0,"player":true}],
+        "objects":[], "exits":[[5.5,9.9]],
+        "sims":[{"name":"Ada","x":4.5,"z":3.5,"age":45},{"name":"Kit","x":5.5,"z":3.5,"age":17.6}]}"#;
+    let mut w = World::from_json(&content, town, 1).unwrap();
+    assert!(w.apply(Command::JoinCareer { sim: 1, career: 0, level: 0 }).is_err(), "17: too young to work");
+    for _ in 0..24 * 60 * 20 {
+        w.tick_once();
+    }
+    assert!(w.sims[1].adult(&w.content), "18 now");
+    assert!(w.events.iter().any(|e| e.kind == EventKind::GrewOlder && e.a == 1));
+    w.apply(Command::JoinCareer { sim: 1, career: 0, level: 0 }).unwrap();
+    // School is over: a weekday morning finds them at home (their shift starts at 13:00).
+    let day = sim_core::clock::day(w.tick);
+    let ten = sim_core::clock::tick_at(day + 2, 10.0 * 60.0).unwrap();
+    while w.tick < ten {
+        w.tick_once();
+    }
+    assert!(w.sims[1].away_until.is_none(), "no more school");
+}
