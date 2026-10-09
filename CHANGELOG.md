@@ -12,13 +12,17 @@ Life cycle II: families grow. Couples have babies or adopt, babies grow into chi
 - **Babies and cribs:** a baby lies in a crib (a new item: crib and changing table) and the grown-ups at home feed, change and play with them on their own, more the more the baby needs it. A baby who needs something cries. A baby who arrives in a home without a crib gets one delivered.
 - **School:** on weekdays children and teens go to school from 8:00 to 15:00 and learn a little; the resident panel says *At school*.
 - **Having a baby:** partners can *Try for a baby*; if it works, the household is expecting (shown in *Our home*), and three days later the baby is born, looking a bit like both parents, into a family of parents, brothers and sisters.
-- **Adoption:** *Our home → Adopt a baby / Adopt a child* ($1,500; free in Creative).
+- **Adoption:** *Our home → Adopt a baby / Adopt a child* ($1,500; free in Creative). Neighbours without children adopt now and then too.
+- **School grades and homework:** pupils have a grade (A–F, in the resident panel): days at school raise it, more in a good mood, missed days lower it, and homework at a bookshelf or computer desk raises it more. Finishing school is a moment in the journal with the final grade.
+- **Romance between singles:** single grown-ups who are attracted to each other and have met now flirt, fall for each other and ask to be partners; before, couples almost never formed, and so few children were born.
 - **Growing up:** a baby gets out of the crib as a child, school ends at 18, and young adults can work, fall in love and move out.
 
 ### Changed
 - Romance chosen by residents on their own is now only between grown-ups who aren't family (asking them to already was).
 - A guest left with nothing to do while the hosts are all at work goes home.
-- Saves are now version 14 (a baby on the way); older saves load as before.
+- Adopted children no longer take their look from their adoptive parents, and children and teens never have grey hair.
+- Saves remember the story by content id (save version 15), so a change in content can't make old events name the wrong thing; saves from before the crib are corrected.
+- Saves are now version 15 (a baby on the way, school grades, the story by content id); older saves load as before.
 
 ## Unreleased (0.12.0)
 

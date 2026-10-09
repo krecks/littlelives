@@ -38,10 +38,11 @@ const EVERY_DAY: u8 = 0x7f;
 #[test]
 fn a_planned_workout_happens_most_days() {
     // Life gets in the way sometimes (visits, a full bladder, a mess to tidy, a bad mood), but
-    // most blocks get real time: counted over a few towns, as one town's week can be unlucky.
+    // most blocks get real time: counted over eight towns, as one town's week can be unlucky
+    // (with four, the mean swung from 0.13 to 0.15 with changes elsewhere in town life).
     let (mut real, mut kept, mut total) = (0, 0, 0);
     let mut strength = Vec::new();
-    for seed in 1..=4 {
+    for seed in 1..=8 {
         let mut w = town(seed);
         homebody(&mut w);
         w.buy(0, "weightBench", None, None)

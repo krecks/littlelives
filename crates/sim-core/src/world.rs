@@ -602,6 +602,8 @@ pub(crate) struct SimBrief {
     /// A baby (cared for in a crib), and their needs (so carers know what's wanted).
     pub baby: bool,
     pub needs: [f32; MAX_NEEDS],
+    /// Has a partner.
+    pub partnered: bool,
     /// Still in town, grown up, and how old.
     pub here: bool,
     pub adult: bool,
@@ -1451,6 +1453,7 @@ impl World {
                 baby: s.here() && self.content.life.baby(s.age),
                 needs: s.needs,
                 here: s.here(),
+                partnered: self.relationships.partner_of(s.id as usize).is_some(),
                 adult: s.adult(&self.content),
                 age: s.age,
             });
@@ -2232,6 +2235,12 @@ fn pick_autonomous(
         // Partner lookups scan everyone: only when a goal asks for it.
         let single = !sim.planner.goals.is_empty() && ctx.rels.partner_of(j).is_none();
         let grown_ups = ctx.briefs[me].adult && other.adult;
+        // Two singles who like the look of each other: a spark before there's any romance.
+        let spark = if grown_ups && attracted && rel.met && !ctx.briefs[me].partnered && !other.partnered && rel.kin.is_none() {
+            content.social_rules.single_spark
+        } else {
+            0.0
+        };
         for (k, s) in content.socials.iter().enumerate() {
             if !s.autonomous || !s.requires.allows(rel) {
                 continue;
@@ -2248,7 +2257,7 @@ fn pick_autonomous(
             let friendly = matches!(s.prefer, Prefer::Any | Prefer::Liked);
             let score = ai::score_gains(needs, &s.actor_gain, distance)
                 * s.autonomy_weight
-                * prefer_factor(s.prefer, rel, chemistry)
+                * prefer_factor(s.prefer, rel, chemistry, spark)
                 * feel(s.tags)
                 * crate::planner::social_factor(content, sim, romantic, friendly, rel.friendship, single);
             if score > MIN_AUTONOMY_SCORE {
@@ -2342,12 +2351,12 @@ fn pick_autonomous(
 }
 
 /// How much a relationship invites a social of the given kind.
-pub(crate) fn prefer_factor(prefer: Prefer, rel: &social::Relationship, chemistry: f32) -> f32 {
+pub(crate) fn prefer_factor(prefer: Prefer, rel: &social::Relationship, chemistry: f32, spark: f32) -> f32 {
     match prefer {
         Prefer::Any => 1.0,
         Prefer::Liked => (0.5 + rel.friendship / 100.0).clamp(0.1, 1.5),
         Prefer::Disliked => (0.4 - rel.friendship / 100.0).clamp(0.0, 1.4),
-        Prefer::Romance => (rel.romance / 50.0 + chemistry * 0.4).clamp(0.0, 1.6),
+        Prefer::Romance => (rel.romance / 50.0 + chemistry * 0.4 + spark).clamp(0.0, 1.6),
         Prefer::Unloved => {
             if rel.partners && rel.romance < 25.0 {
                 (25.0 - rel.romance) / 25.0

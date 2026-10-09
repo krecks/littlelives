@@ -1283,7 +1283,7 @@
         "romantic"
       ],
       "prefer": "romance",
-      "autonomyWeight": 0.6,
+      "autonomyWeight": 2.5,
       "requires": {
         "minRomance": 60,
         "partners": false
@@ -1577,7 +1577,8 @@
     "jealousyFeeling": "jealous",
     "heartbreakFeeling": "heartbroken",
     "friendshipDecay": 1.5,
-    "romanceDecay": 3
+    "romanceDecay": 3,
+    "singleSpark": 1.0
   },
   "careerRules": {
     "commuteMinutes": 30,

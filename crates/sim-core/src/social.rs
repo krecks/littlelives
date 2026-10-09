@@ -218,6 +218,9 @@ pub struct SocialRules {
     /// Daily drift toward neutral.
     pub friendship_decay: f32,
     pub romance_decay: f32,
+    /// How drawn two single grown-ups who are attracted to each other and have met are to
+    /// romance before there is any (added to the flirting preference; see `prefer_factor`).
+    pub single_spark: f32,
 }
 
 // ---- Raw JSON --------------------------------------------------------------------------
@@ -313,6 +316,7 @@ pub(crate) struct SocialRulesRaw {
     heartbreak_feeling: Option<String>,
     friendship_decay: Option<f32>,
     romance_decay: Option<f32>,
+    single_spark: Option<f32>,
 }
 
 fn default_distance() -> f32 {
@@ -487,6 +491,7 @@ pub(crate) fn parse_rules(
         heartbreak_feeling: opt_feeling(&raw.heartbreak_feeling, ix, "socialRules")?,
         friendship_decay: raw.friendship_decay.unwrap_or(1.5),
         romance_decay: raw.romance_decay.unwrap_or(3.0),
+        single_spark: raw.single_spark.unwrap_or(0.0).max(0.0),
     })
 }
 
@@ -503,6 +508,7 @@ impl SocialRules {
             heartbreak_feeling: None,
             friendship_decay: 1.5,
             romance_decay: 3.0,
+            single_spark: 0.0,
         }
     }
 }
