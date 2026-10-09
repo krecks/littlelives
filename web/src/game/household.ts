@@ -224,7 +224,9 @@ export function lookFromSeed(assets: AssetRegistry, gender: string, seed: number
     const skinFrom = parents[first];
     const hairFrom = parents[(first + 1) % parents.length];
     look.skin = skinFrom.skin;
-    look.hair = hairFrom.hairBase ?? hairFrom.hair;
+    // The parent's own colour (before age greyed it); a grey one isn't passed on.
+    const inherited = hairFrom.hairBase ?? hairFrom.hair;
+    if (!isGreyHair(inherited)) look.hair = inherited;
   }
   return look;
 }
@@ -327,12 +329,28 @@ export function householdBonds(h: HouseholdDraft, firstIndex: number): { a: numb
 }
 
 /** A draft's look at `age`: the body and head size and stoop of that life stage. */
-export function lookAtAge(content: Content, appearance: Appearance, age: number): Appearance {
-  return lookOfStage(appearance, content.stageOf(age));
+export function lookAtAge(content: Content, assets: AssetRegistry, appearance: Appearance, age: number): Appearance {
+  return lookOfStage(appearance, content.stageOf(age), palette(assets, 'palette.hair'));
 }
 
-/** A look with a life stage's body and head size and stoop (none: as grown). */
-export function lookOfStage(appearance: Appearance, stage: LifeStageDef | undefined): Appearance {
+/** Whether a hair colour is silver or grey (light and without colour). */
+export function isGreyHair(hex: string): boolean {
+  const n = parseInt(hex.replace('#', ''), 16);
+  if (!Number.isFinite(n)) return false;
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  return Math.max(r, g, b) - Math.min(r, g, b) < 24 && (r + g + b) / 3 > 120;
+}
+
+/** A look with a life stage's body and head size and stoop (none: as grown). Children and teens
+ * never show grey hair: a colour of their own instead, picked from their look (always the same). */
+export function lookOfStage(appearance: Appearance, stage: LifeStageDef | undefined, hairPalette: readonly string[] = []): Appearance {
+  const young = hairPalette.filter((c) => !isGreyHair(c));
+  if (stage && !(stage.adult ?? (!stage.baby && !stage.school)) && young.length && appearance.hair && isGreyHair(appearance.hairBase ?? appearance.hair)) {
+    const key = `${appearance.skin}${appearance.body}${appearance.top ?? ''}`;
+    let h = 0;
+    for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    appearance = { ...appearance, hair: young[h % young.length], hairBase: undefined };
+  }
   const stageScale = stage?.scale;
   const stageHead = stage?.head;
   const stageStoop = stage?.stoop;

@@ -531,7 +531,7 @@ fn births(w: &mut World) {
         if !members(w, h).iter().any(|&i| w.sims[i].adult(&w.content)) || !room_for_one(w, h) {
             continue;
         }
-        if let Some(baby) = add_child(w, h, 0.0, &parents) {
+        if let Some(baby) = add_child(w, h, 0.0, &parents, true) {
             w.events.push(w.tick, EventKind::Born, baby, parents.first().copied().unwrap_or(baby), parents.get(1).copied());
         }
     }
@@ -556,16 +556,17 @@ pub fn adopt(w: &mut World, household: u32, child: bool) -> Result<u32, crate::E
         .find_map(|&a| adults.iter().find(|&&b| b != a && w.relationships.get(a, b).partners).map(|&b| vec![a, b]))
         .unwrap_or_else(|| vec![adults[0]]);
     let age = if child { 3.0 + (w.rng.next_u32() % 8) as f32 } else { 0.0 };
-    let id = add_child(w, h, age, &parents).ok_or_else(|| Error::new("there's no room for another"))?;
+    let id = add_child(w, h, age, &parents, false).ok_or_else(|| Error::new("there's no room for another"))?;
     w.pay(h, cost);
     w.events.push(w.tick, EventKind::Adopted, id, parents[0], parents.get(1).copied());
     Ok(id as u32)
 }
 
 /// A child of `parents` (at `age`) joins household `h`: a name for a random gender, the
-/// household's name, random traits, a look from the parents (an appearance seed with them),
-/// family links to the parents and their other children, and a crib for a baby.
-fn add_child(w: &mut World, h: usize, age: f32, parents: &[usize]) -> Option<usize> {
+/// household's name, random traits, a look (from the parents if `born` to them: an appearance
+/// seed with them; adopted children look like themselves), family links to the parents and
+/// their other children, and a crib for a baby.
+fn add_child(w: &mut World, h: usize, age: f32, parents: &[usize], born: bool) -> Option<usize> {
     let content = &w.content;
     let gender = pick(&mut w.rng, &content.genders).map(|g| g.id.clone())?;
     let firsts = content.names.by_gender.get(&gender).filter(|l| !l.is_empty()).unwrap_or(&content.names.first);
@@ -580,7 +581,8 @@ fn add_child(w: &mut World, h: usize, age: f32, parents: &[usize]) -> Option<usi
     let seed = w.rng.next_u32();
     let spawn = serde_json::json!({
         "name": name, "gender": gender, "traits": traits, "perks": perks, "age": age, "household": h,
-        "appearance": {"seed": seed, "parents": parents}, "x": at[0], "z": at[1],
+        "appearance": if born { serde_json::json!({"seed": seed, "parents": parents}) } else { serde_json::json!({"seed": seed}) },
+        "x": at[0], "z": at[1],
     });
     let spawn: crate::lot::SimSpawn = serde_json::from_value(spawn).ok()?;
     let id = w.spawn_at(&spawn, true).ok()? as usize;

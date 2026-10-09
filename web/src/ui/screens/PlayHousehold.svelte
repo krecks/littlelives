@@ -128,7 +128,7 @@
               {#each chosen.household.members as m (m.uid)}
                 {@const bond = partner(m.uid)}
                 <li>
-                  <span class="face"><SimPreview appearance={lookAtAge(services.content, m.appearance, m.age)} gender={m.gender} size={60} /></span>
+                  <span class="face"><SimPreview appearance={lookAtAge(services.content, services.assets, m.appearance, m.age)} gender={m.gender} size={60} /></span>
                   <span class="who">
                     <b>{m.name}</b>
                     {#if bond}<span class="bond">{bond}</span>{/if}
