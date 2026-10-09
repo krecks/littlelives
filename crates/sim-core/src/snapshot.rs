@@ -78,6 +78,11 @@ fn object_action(world: &World, s: &Sim) -> (f32, f32) {
         let anim = world.content.object_rules.repair.anim.filter(|_| matches!(phase, Phase::Using { .. }));
         return (*object as f32, anim.map_or(-1.0, |a| a as f32));
     }
+    // An accident's while on the spot (asleep on the floor, takeout).
+    if let Some(Activity { task: Task { kind: TaskKind::Spot { accident }, .. }, .. }) = s.current() {
+        let anim = world.content.accidents[*accident].rest.as_ref().and_then(|r| r.anim);
+        return (-1.0, anim.map_or(-1.0, |a| a as f32));
+    }
     // Tidying up: no object, the clean animation while at it.
     if let Some(Activity { task: Task { kind: TaskKind::Clean { .. }, .. }, phase, .. }) = s.current() {
         let anim = world.content.room_rules.clean.anim.filter(|_| matches!(phase, Phase::Using { .. }));

@@ -315,6 +315,9 @@ pub enum TaskSave {
         object: u32,
         directed: bool,
     },
+    Spot {
+        accident: String,
+    },
     /// Old saves only (upgrades are instant now); dropped on load.
     Upgrade {
         #[allow(dead_code)]
@@ -794,6 +797,8 @@ impl World {
                         kind: TaskKind::Clean { x: *x, z: *z },
                         directed: *directed,
                     },
+                    // (An accident's while on the spot doesn't outlast a reload.)
+                    TaskSave::Spot { .. } => continue,
                     TaskSave::Repair { object, directed } => {
                         let Some(&object) = object_ids.get(object) else {
                             continue;
@@ -887,6 +892,9 @@ impl World {
             TaskKind::Repair { object } => TaskSave::Repair {
                 object,
                 directed: t.directed,
+            },
+            TaskKind::Spot { accident } => TaskSave::Spot {
+                accident: content.accidents[accident].id.clone(),
             },
         }
     }

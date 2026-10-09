@@ -30,11 +30,12 @@ const ICONS: Record<string, string> = {
   goalSuggested: 'icon.ui.calendar',
   movedIn: 'icon.ui.home',
   broke: 'icon.skill.handiness',
+  accident: 'icon.bubble.bad',
   repaired: 'icon.skill.handiness',
 };
 
 const LOVE = new Set(['crush', 'firstKiss', 'startedDating']);
-const BAD = new Set(['becameEnemies', 'brokeUp', 'fight', 'jealous', 'proposalRejected', 'missedWork', 'rentDebt', 'fired', 'broke']);
+const BAD = new Set(['becameEnemies', 'brokeUp', 'fight', 'jealous', 'proposalRejected', 'missedWork', 'rentDebt', 'fired', 'broke', 'accident']);
 
 export function storyIcon(e: SocialEvent): string {
   if (e.kind === 'skillUp') return services.content.skills[e.skill ?? -1]?.icon ?? 'icon.ui.skills';
@@ -76,6 +77,7 @@ export function storyText(e: SocialEvent): string {
     .replace('{c}', name(e.c))
     .replace('{job}', job(e))
     .replace('{goal}', goalText(e.goal, e.n, e.skill, e.career))
+    .replace('{accident}', services.content.accidents[e.n ?? -1]?.story ?? 'had a bad moment')
     .replace('{object}', (services.content.objectList[e.n ?? -1]?.name ?? 'something').toLowerCase())
     .replace('{n}', String(e.n ?? ''))
     .replace('{money}', money(e.n ?? 0))

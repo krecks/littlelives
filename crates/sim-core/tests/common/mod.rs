@@ -195,10 +195,12 @@ pub fn town(content: &str, seed: u64, player_size: usize) -> String {
             );
 
             let player = households.is_empty();
+            // Neighbours fit their house, as in the game (`town.ts`): its bedrooms, maybe one more.
+            let bedrooms = h["bedrooms"].as_u64().unwrap_or(1) as usize;
             let size = if player {
                 player_size
             } else {
-                1 + rng.below(4)
+                (bedrooms + rng.below(2) as usize).clamp(1, 4)
             };
             if player && size == 0 {
                 households.push(json!({"name": "Player", "plot": plot, "player": true}));

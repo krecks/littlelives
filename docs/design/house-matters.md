@@ -79,18 +79,19 @@ mode (a share of the price; free in Creative). Selling a broken object brings ba
 
 ## Essentials, fallbacks and accidents
 
-Nothing happens today when a need reaches 0. With the house mattering:
+Content `accidents`: when a need has been empty for `graceMinutes` and the home has nothing
+working that fills it (no toilet, no bed, no fridge, or it's broken):
 
-- **Bladder at 0** with no toilet in time: an accident (a puddle: lots of dirt on the tile,
-  hygiene drops, an embarrassed feeling, a story event).
-- **Energy at 0**: the resident falls asleep where they are (on the floor; slow rest, a sore
-  back after). Without a bed, a sofa nap is the better fallback.
-- **Hunger** with no food at home: they go out to eat (away for an hour, costs money).
-- **Hygiene**: a sink washes when there is no shower; at 0 they feel grubby (others like
-  chatting with them less).
+- **Bladder at 0**: an accident (a puddle: lots of dirt on the tile, hygiene drops, an
+  embarrassed feeling, a story event).
+- **Energy at 0**: the resident falls asleep where they are (on the floor for two hours; a sore
+  back after).
+- **Hunger at 0**: they order takeout (eaten on the spot; costs money).
+- **Hygiene at 0**: they feel grubby (others' friendly chats go less well).
 
-These make a missing bed, toilet or fridge visible within a day, and a crowded bathroom
-(the soak test's finding) shows as waiting and the occasional accident.
+With the essential at home but busy (a crowded bathroom), nothing happens unless the content
+sets `crowdedGraceMinutes`: the first version fired then too, and residents let needs sit at
+0 so often (an AI gap, see PLAN.md) that accidents drowned out the story.
 
 ## Opinions and wishes
 

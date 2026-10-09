@@ -909,6 +909,9 @@
       "mood": -0.06,
       "hours": 6
     },
+    {"id": "hadAccident", "label": "Had an accident", "emotion": "embarrassed", "mood": -0.2, "hours": 6},
+    {"id": "soreBack", "label": "Sore back", "emotion": "sad", "mood": -0.1, "hours": 8, "effects": {"needDecay": {"comfort": 1.4}}},
+    {"id": "grubby", "label": "Feeling grubby", "emotion": "embarrassed", "mood": -0.08, "hours": 3, "effects": {"tagAcceptance": {"friendly": -0.15}}},
     {
       "id": "goalReached",
       "label": "Reached a goal",
@@ -1734,6 +1737,7 @@
     "goalSuggested": "{a} has a new idea: {goal}",
     "movedIn": "{a}'s household moved in",
     "broke": "{a} broke the {object}",
+    "accident": "{a} {accident}",
     "repaired": "{a} repaired the {object}"
   },
   "activities": [
@@ -3107,6 +3111,14 @@
     {"id": "oak", "label": "Natural oak", "leaf": "oak", "price": 190},
     {"id": "halfGlass", "label": "Half-glazed", "leaf": "halfGlass", "color": "#F2F0EA", "price": 220},
     {"id": "glass", "label": "French glass", "leaf": "glass", "color": "#3C3F44", "price": 260}
+  ],
+  "accidents": [
+    {"id": "wetSelf", "need": "bladder", "story": "had an accident", "effects": {"bladder": 1.0, "hygiene": -0.6}, "dirt": 1.0, "feeling": "hadAccident", "cooldownHours": 2, "graceMinutes": 45},
+    {"id": "fellAsleep", "need": "energy", "story": "fell asleep on the floor", "feeling": "soreBack", "cooldownHours": 4, "graceMinutes": 60,
+     "rest": {"label": "Asleep on the floor", "minutes": 120, "pose": "lie", "anim": "sleep", "gains": {"energy": 0.45}, "tags": ["sleep", "rest"]}},
+    {"id": "takeout", "need": "hunger", "story": "ordered takeout", "cost": 25, "cooldownHours": 2, "graceMinutes": 60,
+     "rest": {"label": "Eat takeout", "minutes": 20, "pose": "stand", "anim": "eat", "gains": {"hunger": 0.7}, "tags": ["food"]}},
+    {"id": "grubby", "need": "hygiene", "feeling": "grubby", "cooldownHours": 3, "graceMinutes": 60}
   ],
   "roomKinds": [
     {"id": "bathroom", "label": "Bathroom", "tags": ["bathroom"], "essentials": [["bathroom"], ["hygiene"]], "size": [3, 6], "exclusive": true},

@@ -93,6 +93,14 @@ export interface WallCoveringDef {
   price?: number;
 }
 
+/** What happens when a need runs out (sim-core `AccidentDef`); `story` reads "{a} …". */
+export interface AccidentDef {
+  id: string;
+  need: string;
+  story?: string;
+  feeling?: string;
+}
+
 /** What a room is for, from the tags of what stands in it (sim-core `RoomKind`). */
 export interface RoomKindDef {
   id: string;
@@ -280,6 +288,7 @@ interface ContentFile {
   roofStyles?: RoofStyleDef[];
   roofColors?: RoofColorDef[];
   roomKinds?: RoomKindDef[];
+  accidents?: AccidentDef[];
   economy?: Partial<Economy>;
   objectRules?: { freeRotation?: string[] };
   /** Animation tags interactions can use as `anim` (the snapshot layout's `actions`). */
@@ -313,6 +322,7 @@ export class Content {
   readonly roofStyles: readonly RoofStyleDef[];
   readonly roofColors: readonly RoofColorDef[];
   readonly roomKinds: readonly RoomKindDef[];
+  readonly accidents: readonly AccidentDef[];
   readonly windowStyles: readonly WindowStyleDef[];
   readonly economy: Economy;
   /** Animation tags, in the order the snapshot's `sim.action` indexes them. */
@@ -355,6 +365,7 @@ export class Content {
     this.roofStyles = file.roofStyles ?? [];
     this.roofColors = file.roofColors ?? [];
     this.roomKinds = file.roomKinds ?? [];
+    this.accidents = file.accidents ?? [];
     this.economy = { startingFunds: 0, currency: '$', ...file.economy };
     this.animations = [...new Set(file.animations ?? [])];
     this.shop = file.objects.filter((o) => o.price !== undefined);

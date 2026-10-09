@@ -425,6 +425,10 @@ pub fn ui_state_json(world: &World) -> String {
                 let rules = &content.room_rules.clean;
                 (rules.label.clone(), None, None, rules.minutes)
             }
+            TaskKind::Spot { accident } => {
+                let rest = content.accidents[accident].rest.as_ref();
+                (rest.map_or_else(String::new, |r| r.label.clone()), None, None, rest.map_or(1.0, |r| r.minutes))
+            }
             TaskKind::Repair { object } => {
                 let rules = &content.object_rules.repair;
                 let name = &content.objects[world.objects[object as usize].def].name;

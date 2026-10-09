@@ -49,11 +49,13 @@ pub struct ObjectInstance {
     pub wear: f32,
 }
 
-/// Something that happened to an object while a resident stepped (applied after the step).
+/// Something that happened while a resident stepped, for the story (applied after the step).
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) enum ObjectNews {
+pub(crate) enum News {
     Broke(u32),
     Repaired(u32),
+    /// An accident (index into `Content::accidents`).
+    Accident(usize),
 }
 
 impl ObjectInstance {
@@ -218,6 +220,11 @@ pub enum TaskKind {
     Repair {
         object: u32,
     },
+    /// An accident's little while on the spot (`Content::accidents`): asleep on the floor,
+    /// eating takeout.
+    Spot {
+        accident: usize,
+    },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -308,8 +315,13 @@ pub struct Sim {
     /// Mess made (or, negative, cleaned) around a tile this tick; applied after the step
     /// (residents can't change the dirt while stepping).
     pub(crate) mess: Option<(i32, i32, f32)>,
-    /// An object they broke or repaired this tick (applied after the step).
-    pub(crate) news: Option<ObjectNews>,
+    /// An object they broke or repaired, or an accident they had, this tick (applied after
+    /// the step).
+    pub(crate) news: Option<News>,
+    /// When each accident can happen again (`Content::accidents`).
+    pub(crate) accident_at: [u64; crate::content::MAX_ACCIDENTS],
+    /// Since when each accident's need has been empty (0: it isn't).
+    pub(crate) empty_since: [u64; crate::content::MAX_ACCIDENTS],
 }
 
 impl Sim {
@@ -934,6 +946,8 @@ impl World {
             planner: Default::default(),
             mess: None,
             news: None,
+            accident_at: [0; crate::content::MAX_ACCIDENTS],
+            empty_since: [0; crate::content::MAX_ACCIDENTS],
         });
         self.relationships.grow(self.sims.len());
         Ok(self.sims.len() as u32 - 1)
@@ -1117,12 +1131,12 @@ impl World {
             if let Some(news) = self.sims[i].news.take() {
                 // Broken or mended: what the house offers and how it looks change.
                 self.structure_version += 1;
-                let (kind, object) = match news {
-                    ObjectNews::Broke(o) => (social::EventKind::Broke, o),
-                    ObjectNews::Repaired(o) => (social::EventKind::Repaired, o),
+                let (kind, n) = match news {
+                    News::Broke(o) => (social::EventKind::Broke, self.objects[o as usize].def as i64),
+                    News::Repaired(o) => (social::EventKind::Repaired, self.objects[o as usize].def as i64),
+                    News::Accident(a) => (social::EventKind::Accident, a as i64),
                 };
-                let def = self.objects[object as usize].def as i64;
-                self.events.push_detail(self.tick, kind, i, Some(def), None);
+                self.events.push_detail(self.tick, kind, i, Some(n), None);
             }
             let Some((x, z, amount)) = self.sims[i].mess.take() else {
                 continue;
@@ -1730,6 +1744,28 @@ fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
         return;
     }
 
+    // A need ran out with nothing being done about it: an accident (a puddle, asleep on the
+    // floor, takeout).
+    for (a, def) in content.accidents.iter().enumerate() {
+        if sim.needs[def.need] > 0.0 || filling(sim, content, objects, def.need) {
+            sim.empty_since[a] = 0;
+            continue;
+        }
+        if sim.empty_since[a] == 0 {
+            sim.empty_since[a] = ctx.tick.max(1);
+        }
+        // When home has something for it (it's busy, or they got caught up in something), only
+        // if the content says so; without (no toilet, no bed), after a short while.
+        let grace = if home_fills(sim, ctx, objects, def.need) { def.crowded_grace_ticks } else { Some(def.grace_ticks) };
+        let Some(grace) = grace else { continue };
+        if ctx.tick < sim.accident_at[a] || ctx.tick < sim.empty_since[a] + grace {
+            continue;
+        }
+        sim.empty_since[a] = 0;
+        accident(sim, ctx, objects, a);
+        break;
+    }
+
     // Someone is talking to this Sim: stay put unless the player gives an order.
     if sim.engaged_with.is_some() {
         if sim.queue.front().is_some_and(|t| t.directed) {
@@ -2032,6 +2068,8 @@ fn start_task(sim: &mut Sim, task: Task, ctx: &Ctx, objects: &mut [ObjectInstanc
         }
         TaskKind::MoveTo { x, z } => ([x, z], (x.floor() as i32, z.floor() as i32), 0),
         TaskKind::Clean { x, z } => ([x as f32 + 0.5, z as f32 + 0.5], (x, z), content.room_rules.clean.tags),
+        // Accidents start on the spot (see `accident`), never from the queue.
+        TaskKind::Spot { .. } => return,
         TaskKind::Repair { object } => {
             let Some(obj) = objects.get(object as usize).filter(|o| o.broken()) else {
                 return;
@@ -2174,7 +2212,7 @@ fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
                         let wear = def.wear_per_use * (1.0 - rules.wear_per_quality * f32::from(o.quality));
                         o.wear = (o.wear + wear.max(0.0)).min(1.0);
                         if !was && o.broken() {
-                            sim.news = Some(ObjectNews::Broke(object));
+                            sim.news = Some(News::Broke(object));
                         }
                     }
                     done
@@ -2190,10 +2228,19 @@ fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
                         let level = rules.skill.map_or(0.0, |s| sim.skills[s]);
                         if rng.next_f32() < rules.chance_at(level) {
                             objects[object as usize].wear = 0.0;
-                            sim.news = Some(ObjectNews::Repaired(object));
+                            sim.news = Some(News::Repaired(object));
                         }
                     }
                     done
+                }
+                TaskKind::Spot { accident } => {
+                    let Some(rest) = content.accidents[accident].rest.as_ref() else {
+                        return end_activity(sim, content, objects);
+                    };
+                    for (n, g) in rest.gain_per_minute.iter().enumerate().take(content.needs.len()) {
+                        sim.needs[n] = (sim.needs[n] + g * MINUTES_PER_TICK).clamp(0.0, 1.0);
+                    }
+                    elapsed >= rest.minutes
                 }
                 TaskKind::Clean { x, z } => {
                     let rules = &content.room_rules.clean;
@@ -2203,7 +2250,7 @@ fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
                     }
                     done
                 }
-                _ => unreachable!("only Use, Repair and Clean tasks have a Using phase"),
+                _ => unreachable!("only Use, Repair, Spot and Clean tasks have a Using phase"),
             }
         }
         // Conversations are driven by `conversation::update`, which sees both Sims.
@@ -2296,6 +2343,7 @@ fn arrive(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance]) {
             sim.pose = Pose::Stand;
             act.phase = Phase::Using { elapsed: 0.0 };
         }
+        TaskKind::Spot { .. } => {}
         TaskKind::Repair { object } => {
             let c = objects[object as usize].centre(content);
             sim.yaw = (c[0] - sim.pos[0]).atan2(c[1] - sim.pos[1]);
@@ -2328,6 +2376,70 @@ fn arrive(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance]) {
             sim.pose = inter.pose;
             act.phase = Phase::Using { elapsed: 0.0 };
         }
+    }
+}
+
+/// Whether their home has something working that fills need `n` (a toilet, a bed, a fridge).
+fn home_fills(sim: &Sim, ctx: &Ctx, objects: &[ObjectInstance], n: usize) -> bool {
+    let Some(home) = ctx.households[sim.household as usize].plot else {
+        return false;
+    };
+    objects.iter().zip(ctx.object_plot).any(|(o, plot)| {
+        *plot == Some(home)
+            && !o.broken()
+            && ctx.content.objects[o.def].interactions.iter().any(|i| i.autonomous && i.total_gain[n] > 0.0)
+    })
+}
+
+/// Whether what they're doing right now fills need `n` (on the toilet, in bed, eating).
+fn filling(sim: &Sim, content: &Content, objects: &[ObjectInstance], n: usize) -> bool {
+    let Some(act) = sim.current.as_ref().filter(|a| matches!(a.phase, Phase::Using { .. })) else {
+        return false;
+    };
+    match act.task.kind {
+        TaskKind::Use { object, interaction } => objects
+            .get(object as usize)
+            .and_then(|o| content.objects[o.def].interactions.get(interaction))
+            .is_some_and(|i| i.total_gain[n] > 0.0),
+        TaskKind::Spot { accident } => content.accidents[accident]
+            .rest
+            .as_ref()
+            .is_some_and(|r| r.gain_per_minute[n] > 0.0),
+        _ => false,
+    }
+}
+
+/// Accident `a` happens to `sim` where they are (see `Content::accidents`).
+fn accident(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], a: usize) {
+    let content = ctx.content;
+    let def = &content.accidents[a];
+    sim.accident_at[a] = ctx.tick + def.cooldown_ticks;
+    for (n, e) in def.effects.iter().enumerate().take(content.needs.len()) {
+        sim.needs[n] = (sim.needs[n] + e).clamp(0.0, 1.0);
+    }
+    if def.dirt > 0.0 {
+        let (x, z) = sim.tile();
+        sim.mess = Some((x, z, def.dirt));
+    }
+    if let Some(f) = def.feeling {
+        social::add_feeling(&mut sim.feelings, f, &content.feelings, ctx.tick);
+    }
+    sim.pending_spend += def.cost;
+    if def.story {
+        sim.news = Some(News::Accident(a));
+    }
+    if let Some(rest) = &def.rest {
+        end_activity(sim, content, objects);
+        sim.queue.retain(|t| t.directed);
+        sim.pose = rest.pose;
+        sim.current = Some(Activity {
+            task: Task {
+                kind: TaskKind::Spot { accident: a },
+                directed: false,
+            },
+            phase: Phase::Using { elapsed: 0.0 },
+            tags: rest.tags,
+        });
     }
 }
 

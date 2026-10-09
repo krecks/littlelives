@@ -686,6 +686,8 @@ pub enum EventKind {
     Broke,
     /// `a` repaired a broken object (`n`: its object type).
     Repaired,
+    /// A need ran out on `a` (`n`: the accident, index into content `accidents`).
+    Accident,
 }
 
 impl EventKind {
@@ -696,7 +698,7 @@ impl EventKind {
             FirstKiss | StartedDating | BrokeUp | BecameBestFriends | Promoted | JobFound
             | Fired | GoalReached | MovedIn => 2,
             BecameFriends | BecameGoodFriends | BecameEnemies | Crush | ProposalRejected
-            | Fight | Jealous | QuitJob | RentDebt | Broke => 1,
+            | Fight | Jealous | QuitJob | RentDebt | Broke | Accident => 1,
             Met | MissedWork | SkillUp | PaidRent | Upgraded | Visited | GoalSuggested | Repaired => 0,
         }
     }

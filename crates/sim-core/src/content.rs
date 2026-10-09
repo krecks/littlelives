@@ -134,6 +134,45 @@ pub struct ObjectDef {
     pub tags: TagMask,
 }
 
+/// Most accidents content can define (`Sim::accident_at` keeps one cooldown each).
+pub const MAX_ACCIDENTS: usize = 8;
+
+/// What happens when a need runs out (content `accidents`): a puddle, falling asleep on the
+/// floor, takeout. Instant effects, a mess, a feeling, a cost, and maybe a little while of
+/// doing it on the spot (`rest`).
+#[derive(Debug, Clone)]
+pub struct AccidentDef {
+    pub id: String,
+    pub need: usize,
+    /// Told in the story (content `story` text); quiet ones only bring their feeling.
+    pub story: bool,
+    /// Instant changes to needs.
+    pub effects: [f32; MAX_NEEDS],
+    /// Mess on the tile where it happens.
+    pub dirt: f32,
+    pub feeling: Option<usize>,
+    pub cost: i64,
+    /// Not again for this long.
+    pub cooldown_ticks: u64,
+    /// Only after the need has been empty this long when nothing at home fills it (no toilet)...
+    pub grace_ticks: u64,
+    /// ...or this long when something does but it's busy or out of reach (a crowded bathroom);
+    /// None: never then.
+    pub crowded_grace_ticks: Option<u64>,
+    pub rest: Option<AccidentRest>,
+}
+
+/// A little while of doing it on the spot (sleeping on the floor, eating takeout).
+#[derive(Debug, Clone)]
+pub struct AccidentRest {
+    pub label: String,
+    pub minutes: f32,
+    pub pose: Pose,
+    pub anim: Option<usize>,
+    pub gain_per_minute: [f32; MAX_NEEDS],
+    pub tags: TagMask,
+}
+
 /// What a room is for, from what stands in it (content `roomKinds`, in order of priority).
 #[derive(Debug, Clone)]
 pub struct RoomKind {
@@ -716,6 +755,7 @@ pub struct Content {
     pub object_rules: ObjectRules,
     pub room_kinds: Vec<RoomKind>,
     pub room_rules: RoomRules,
+    pub accidents: Vec<AccidentDef>,
     pub build: BuildRules,
     pub styles: Vec<StyleDef>,
     /// Animation tags (`"animations"`): what a Sim can be shown doing. Interactions refer
@@ -780,6 +820,8 @@ struct ContentFile {
     object_rules: ObjectRulesRaw,
     #[serde(default)]
     room_kinds: Vec<RoomKindRaw>,
+    #[serde(default)]
+    accidents: Vec<AccidentRaw>,
     #[serde(default)]
     room_rules: RoomRulesRaw,
     #[serde(default)]
@@ -935,6 +977,46 @@ struct RentRaw {
     #[serde(default)]
     #[serde(alias = "debtMoodlet")] // key before the moodlet → feeling rename
     debt_feeling: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AccidentRaw {
+    id: String,
+    need: String,
+    #[serde(default)]
+    story: Option<String>,
+    #[serde(default)]
+    effects: HashMap<String, f32>,
+    #[serde(default)]
+    dirt: f32,
+    #[serde(default)]
+    feeling: Option<String>,
+    #[serde(default)]
+    cost: i64,
+    #[serde(default)]
+    cooldown_hours: Option<f32>,
+    #[serde(default)]
+    grace_minutes: Option<f32>,
+    #[serde(default)]
+    crowded_grace_minutes: Option<f32>,
+    #[serde(default)]
+    rest: Option<AccidentRestRaw>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AccidentRestRaw {
+    label: String,
+    minutes: f32,
+    #[serde(default)]
+    pose: Pose,
+    #[serde(default)]
+    anim: Option<String>,
+    #[serde(default)]
+    gains: HashMap<String, f32>,
+    #[serde(default)]
+    tags: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -1865,6 +1947,43 @@ impl Content {
                 })
             })
             .transpose()?;
+        if raw.accidents.len() > MAX_ACCIDENTS {
+            return Err(Error::new(format!("at most {MAX_ACCIDENTS} accidents")));
+        }
+        let accidents = raw
+            .accidents
+            .iter()
+            .map(|a| {
+                let ctx = format!("accident '{}'", a.id);
+                Ok(AccidentDef {
+                    id: a.id.clone(),
+                    need: lookup(&need_index, &a.need, &ctx, "need")?,
+                    story: a.story.is_some(),
+                    effects: need_array(&a.effects, &ctx)?,
+                    dirt: a.dirt.clamp(0.0, 1.0),
+                    feeling: feeling(&a.feeling, &ctx)?,
+                    cost: a.cost.max(0),
+                    cooldown_ticks: (a.cooldown_hours.unwrap_or(2.0).max(0.0) * 60.0 / crate::MINUTES_PER_TICK) as u64,
+                    grace_ticks: (a.grace_minutes.unwrap_or(30.0).max(0.0) / crate::MINUTES_PER_TICK) as u64,
+                    crowded_grace_ticks: a.crowded_grace_minutes.map(|m| (m.max(0.0) / crate::MINUTES_PER_TICK) as u64),
+                    rest: a
+                        .rest
+                        .as_ref()
+                        .map(|r| -> Result<AccidentRest, Error> {
+                            let minutes = r.minutes.max(1.0);
+                            Ok(AccidentRest {
+                                label: r.label.clone(),
+                                minutes,
+                                pose: r.pose,
+                                anim: r.anim.as_deref().and_then(|n| animations.iter().position(|x| x == n)),
+                                gain_per_minute: need_array(&r.gains, &ctx)?.map(|g| g / minutes),
+                                tags: tag_mask(&r.tags),
+                            })
+                        })
+                        .transpose()?,
+                })
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
         let room_kinds = raw
             .room_kinds
             .iter()
@@ -2063,6 +2182,7 @@ impl Content {
             object_rules,
             room_kinds,
             room_rules,
+            accidents,
             build,
             styles,
             animations,
