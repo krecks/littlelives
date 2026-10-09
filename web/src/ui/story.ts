@@ -28,10 +28,13 @@ const ICONS: Record<string, string> = {
   quitJob: 'icon.ui.career',
   fired: 'icon.ui.career',
   goalSuggested: 'icon.ui.calendar',
+  movedIn: 'icon.ui.home',
+  broke: 'icon.skill.handiness',
+  repaired: 'icon.skill.handiness',
 };
 
 const LOVE = new Set(['crush', 'firstKiss', 'startedDating']);
-const BAD = new Set(['becameEnemies', 'brokeUp', 'fight', 'jealous', 'proposalRejected', 'missedWork', 'rentDebt', 'fired']);
+const BAD = new Set(['becameEnemies', 'brokeUp', 'fight', 'jealous', 'proposalRejected', 'missedWork', 'rentDebt', 'fired', 'broke']);
 
 export function storyIcon(e: SocialEvent): string {
   if (e.kind === 'skillUp') return services.content.skills[e.skill ?? -1]?.icon ?? 'icon.ui.skills';
@@ -73,6 +76,7 @@ export function storyText(e: SocialEvent): string {
     .replace('{c}', name(e.c))
     .replace('{job}', job(e))
     .replace('{goal}', goalText(e.goal, e.n, e.skill, e.career))
+    .replace('{object}', (services.content.objectList[e.n ?? -1]?.name ?? 'something').toLowerCase())
     .replace('{n}', String(e.n ?? ''))
     .replace('{money}', money(e.n ?? 0))
     .replace('{skill}', services.content.skills[e.skill ?? -1]?.label ?? '');

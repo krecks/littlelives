@@ -204,7 +204,10 @@ pub(crate) fn compute(w: &World) -> Vec<RoomInfo> {
         };
         acc.decor += def.decor * content.object_rules.quality_factor(o.quality);
         acc.lamps += u16::from(def.lamp);
-        acc.tags |= def.tags;
+        // Broken things don't do what they're for (a broken shower is no shower).
+        if !o.broken() {
+            acc.tags |= def.tags;
+        }
     }
 
     let weights = rules.weights;

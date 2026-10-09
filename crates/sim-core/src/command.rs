@@ -150,6 +150,11 @@ pub enum Command {
         household: u32,
         tiles: Vec<FloorPaint>,
     },
+    /// Buy mode: a paid quick fix for a worn or broken object at home (see `World::repair`).
+    Repair {
+        household: u32,
+        object: u32,
+    },
     /// Build and buy mode: take back the household's last edit (see `World::undo`).
     Undo {
         household: u32,
@@ -281,7 +286,8 @@ impl Command {
             | Command::Build { household, .. }
             | Command::Paint { household, .. }
             | Command::PaintFloor { household, .. }
-            | Command::SetRoof { household, .. } => Some(household),
+            | Command::SetRoof { household, .. }
+            | Command::Repair { household, .. } => Some(household),
             _ => None,
         }
     }

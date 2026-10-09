@@ -128,6 +128,8 @@ pub struct ObjectDef {
     pub decor: f32,
     /// Gives light at night (content `light`): counts for its room's light.
     pub lamp: bool,
+    /// Wear per finished use (it breaks at 1; see `ObjectRules::wear_per_quality`).
+    pub wear_per_use: f32,
     /// Every tag its interactions have (what the room it stands in can be used for).
     pub tags: TagMask,
 }
@@ -543,6 +545,9 @@ impl Default for CharacterRules {
 /// Buying, upgrading and selling objects.
 #[derive(Debug, Clone)]
 pub struct ObjectRules {
+    /// Each quality level takes this share off wear per use.
+    pub wear_per_quality: f32,
+    pub repair: RepairRules,
     pub max_quality: u8,
     /// Need and skill gains grow by this fraction per quality level.
     pub quality_bonus: f32,
@@ -550,6 +555,33 @@ pub struct ObjectRules {
     pub upgrade_cost: f32,
     /// Share of the price and paid upgrades returned when selling.
     pub resale: f32,
+}
+
+/// Repairing broken objects: by a resident (a chore that trains a skill) or a paid quick fix.
+#[derive(Debug, Clone)]
+pub struct RepairRules {
+    pub label: String,
+    pub minutes: f32,
+    /// Skill that helps (and is trained), e.g. handiness.
+    pub skill: Option<usize>,
+    /// Skill levels gained per hour of repairing.
+    pub skill_gain: f32,
+    /// Chance an attempt works at skill 0, and what each level adds (capped at 0.95).
+    pub chance: f32,
+    pub chance_per_level: f32,
+    /// How keen residents are to fix things (like a need gain).
+    pub interest: f32,
+    /// Quick fix in Buy mode: this share of the price, times how worn it is.
+    pub cost: f32,
+    pub tags: TagMask,
+    pub anim: Option<usize>,
+}
+
+impl RepairRules {
+    /// Chance an attempt works for someone with `level` in the repair skill.
+    pub fn chance_at(&self, level: f32) -> f32 {
+        (self.chance + self.chance_per_level * level).min(0.95)
+    }
 }
 
 impl ObjectRules {
@@ -923,6 +955,28 @@ struct RoomKindRaw {
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
+struct WearRaw {
+    per_use: Option<f32>,
+    by_category: HashMap<String, f32>,
+    per_quality: Option<f32>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct RepairRaw {
+    label: Option<String>,
+    minutes: Option<f32>,
+    skill: Option<String>,
+    skill_gain_per_hour: Option<f32>,
+    chance: Option<f32>,
+    chance_per_level: Option<f32>,
+    interest: Option<f32>,
+    cost: Option<f32>,
+    tags: Option<Vec<String>>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
 struct RoomRulesRaw {
     weights: Option<[f32; 5]>,
     window_tiles: Option<f32>,
@@ -955,6 +1009,8 @@ struct CleanRaw {
 struct ObjectRulesRaw {
     /// Catalog categories whose 1×1 objects turn freely.
     free_rotation: Option<Vec<String>>,
+    wear: WearRaw,
+    repair: RepairRaw,
     max_quality: Option<u8>,
     quality_bonus: Option<f32>,
     upgrade_cost: Option<f32>,
@@ -1111,6 +1167,9 @@ struct ObjectRaw {
     /// Decor points (default: by category, `roomRules.decorByCategory`).
     #[serde(default)]
     decor: Option<f32>,
+    /// Wear per finished use (default: `objectRules.wear`).
+    #[serde(default, rename = "wearPerUse")]
+    wear_per_use: Option<f32>,
     /// Lamps: the renderer reads the light's look; the simulation only that it gives light.
     #[serde(default)]
     light: Option<serde_json::Value>,
@@ -1515,6 +1574,7 @@ impl Content {
                 return Err(Error::new(format!("object '{}': negative price", obj.id)));
             }
             let offered = interactions.iter().fold(0, |m: TagMask, it| m | it.tags);
+            let used = !interactions.is_empty();
             objects.push(ObjectDef {
                 id: obj.id.clone(),
                 name: obj.name.clone(),
@@ -1538,6 +1598,16 @@ impl Content {
                     .unwrap_or(0.0)
                     .max(0.0),
                 lamp: obj.light.is_some(),
+                // Things nobody uses up (scenery, plants, decor) never wear out.
+                wear_per_use: if !used {
+                    0.0
+                } else {
+                    let w = &raw.object_rules.wear;
+                    obj.wear_per_use
+                        .or_else(|| obj.category.as_ref().and_then(|c| w.by_category.get(c).copied()))
+                        .unwrap_or(w.per_use.unwrap_or(0.004))
+                        .max(0.0)
+                },
                 tags: offered,
             });
         }
@@ -1844,7 +1914,21 @@ impl Content {
             }
         }
         let or = &raw.object_rules;
+        let rp = &or.repair;
         let object_rules = ObjectRules {
+            wear_per_quality: or.wear.per_quality.unwrap_or(0.2).clamp(0.0, 0.3),
+            repair: RepairRules {
+                label: rp.label.clone().unwrap_or_else(|| "Repair".into()),
+                minutes: rp.minutes.unwrap_or(45.0).max(1.0),
+                skill: rp.skill.as_deref().and_then(|s| skill_index.get(s).copied()),
+                skill_gain: rp.skill_gain_per_hour.unwrap_or(0.3),
+                chance: rp.chance.unwrap_or(0.5),
+                chance_per_level: rp.chance_per_level.unwrap_or(0.08),
+                interest: rp.interest.unwrap_or(0.7),
+                cost: rp.cost.unwrap_or(0.3),
+                tags: tag_mask(&rp.tags.clone().unwrap_or_else(|| vec!["chores".into()])),
+                anim: animations.iter().position(|a| a == "tinker"),
+            },
             max_quality: or.max_quality.unwrap_or(3),
             quality_bonus: or.quality_bonus.unwrap_or(0.25),
             upgrade_cost: or.upgrade_cost.unwrap_or(0.3),

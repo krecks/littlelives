@@ -1732,7 +1732,9 @@
     "fired": "{a} was let go from their job as {job}",
     "goalReached": "{a} reached a goal: {goal}",
     "goalSuggested": "{a} has a new idea: {goal}",
-    "movedIn": "{a}'s household moved in"
+    "movedIn": "{a}'s household moved in",
+    "broke": "{a} broke the {object}",
+    "repaired": "{a} repaired the {object}"
   },
   "activities": [
     {
@@ -3026,6 +3028,8 @@
   },
   "objectRules": {
     "freeRotation": ["decor", "garden", "outdoor"],
+    "wear": {"perUse": 0.002, "byCategory": {"bathroom": 0.003, "garden": 0, "outdoor": 0, "decor": 0}, "perQuality": 0.2},
+    "repair": {"label": "Repair", "minutes": 45, "skill": "handiness", "skillGainPerHour": 0.3, "chance": 0.5, "chancePerLevel": 0.08, "interest": 1.5, "cost": 0.3, "tags": ["chores"]},
     "maxQuality": 3,
     "qualityBonus": 0.25,
     "upgradeCost": 0.3,

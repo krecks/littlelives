@@ -458,7 +458,9 @@ impl World {
         if self.content.objects[obj.def].price.is_none() {
             return Err(Error::new("that can't be sold"));
         }
-        let refund = (obj.value as f32 * self.content.object_rules.resale).round() as i64;
+        // Something broken brings back half.
+        let broken = if obj.broken() { 0.5 } else { 1.0 };
+        let refund = (obj.value as f32 * self.content.object_rules.resale * broken).round() as i64;
         self.remove_object(object);
         self.households[h].funds += self.build_price(refund);
         Ok(())
@@ -501,6 +503,25 @@ impl World {
     pub fn restyle(&mut self, household: u32, object: u32, style: u8) -> Result<(), Error> {
         self.home_object(household, object)?;
         self.objects[object as usize].style = self.check_style(style)?;
+        self.structure_version += 1;
+        Ok(())
+    }
+
+    /// A quick fix in Buy mode: as good as new, for a share of the price times how worn it is
+    /// (free in Creative).
+    pub fn repair(&mut self, household: u32, object: u32) -> Result<(), Error> {
+        let (h, _) = self.home_object(household, object)?;
+        let obj = &self.objects[object as usize];
+        let def = &self.content.objects[obj.def];
+        if obj.wear <= 0.0 {
+            return Err(Error::new(format!("the {} is as good as new", def.name)));
+        }
+        let rules = &self.content.object_rules.repair;
+        let cost = (def.price.unwrap_or(0) as f32 * rules.cost * obj.wear).round().max(1.0) as i64;
+        let name = def.name.clone();
+        self.can_pay(h, cost, || format!("not enough money to repair the {name}"))?;
+        self.pay(h, cost);
+        self.objects[object as usize].wear = 0.0;
         self.structure_version += 1;
         Ok(())
     }

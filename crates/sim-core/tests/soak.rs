@@ -180,7 +180,13 @@ fn report(w: &World, stats: &[Stats]) {
                 format!("{kind} {:.2} (clean {:.2})", r.scores.overall, r.scores.clean)
             })
             .collect();
-        eprintln!("    rooms: {}", line.join(", "));
+        let broken: Vec<&str> = w
+            .objects
+            .iter()
+            .filter(|o| o.broken() && hh.plot.is_some() && w.plot_at(o.x, o.z) == hh.plot)
+            .map(|o| w.content.objects[o.def].id.as_str())
+            .collect();
+        eprintln!("    rooms: {}; broken now: {broken:?}", line.join(", "));
     }
     let mut kinds: std::collections::BTreeMap<String, usize> = Default::default();
     for e in w.events.iter() {

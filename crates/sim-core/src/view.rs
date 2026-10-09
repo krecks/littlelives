@@ -425,6 +425,11 @@ pub fn ui_state_json(world: &World) -> String {
                 let rules = &content.room_rules.clean;
                 (rules.label.clone(), None, None, rules.minutes)
             }
+            TaskKind::Repair { object } => {
+                let rules = &content.object_rules.repair;
+                let name = &content.objects[world.objects[object as usize].def].name;
+                (format!("{} the {}", rules.label, name.to_lowercase()), Some(object), None, rules.minutes)
+            }
         };
         let progress = match phase {
             Some(Phase::Using { elapsed }) | Some(Phase::Conversing { elapsed, .. }) => {
@@ -836,6 +841,8 @@ struct ObjectView<'a> {
     rot: u8,
     /// Degrees past `rot` (objects that turn freely).
     turn: u8,
+    /// Wear 0..1 (broken at 1).
+    wear: f32,
     w: i32,
     d: i32,
     quality: u8,
@@ -934,13 +941,15 @@ pub fn structure_json_with(world: &World, lot: bool) -> String {
                 z: o.z,
                 rot: o.rot,
                 turn: o.turn,
+                wear: o.wear,
                 w,
                 d,
                 quality: o.quality,
                 style: o.style,
-                sell_value: content.objects[o.def]
-                    .price
-                    .map(|_| (o.value as f32 * content.object_rules.resale).round() as i64),
+                sell_value: content.objects[o.def].price.map(|_| {
+                    let broken = if o.broken() { 0.5 } else { 1.0 };
+                    (o.value as f32 * content.object_rules.resale * broken).round() as i64
+                }),
             }
         })
         .collect();

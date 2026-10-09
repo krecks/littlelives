@@ -45,9 +45,23 @@ pub struct ObjectInstance {
     pub style: u8,
     /// Money put into this object (price plus upgrades), for resale.
     pub value: i64,
+    /// Wear from use, 0..1; at 1 it is broken until repaired.
+    pub wear: f32,
+}
+
+/// Something that happened to an object while a resident stepped (applied after the step).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum ObjectNews {
+    Broke(u32),
+    Repaired(u32),
 }
 
 impl ObjectInstance {
+    /// Worn out: its interactions don't work until it is repaired.
+    pub fn broken(&self) -> bool {
+        self.wear >= 1.0
+    }
+
     pub fn users(&self) -> impl Iterator<Item = u32> + '_ {
         self.users.iter().flatten().copied()
     }
@@ -200,6 +214,10 @@ pub enum TaskKind {
         x: i32,
         z: i32,
     },
+    /// Repair a broken object (`objectRules.repair`).
+    Repair {
+        object: u32,
+    },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -290,6 +308,8 @@ pub struct Sim {
     /// Mess made (or, negative, cleaned) around a tile this tick; applied after the step
     /// (residents can't change the dirt while stepping).
     pub(crate) mess: Option<(i32, i32, f32)>,
+    /// An object they broke or repaired this tick (applied after the step).
+    pub(crate) news: Option<ObjectNews>,
 }
 
 impl Sim {
@@ -585,6 +605,7 @@ impl Ctx<'_> {
 enum Choice {
     Object(u32, usize),
     Clean(i32, i32),
+    Repair(u32),
     Social(u32, usize),
     Visit(u32),
 }
@@ -752,6 +773,7 @@ impl World {
             quality: 0,
             style: 0,
             value: 0,
+            wear: 0.0,
         };
         let name = &self.content.objects[def].id;
         for (tx, tz) in obj.tiles(&self.content) {
@@ -911,6 +933,7 @@ impl World {
             job_search_from: 0,
             planner: Default::default(),
             mess: None,
+            news: None,
         });
         self.relationships.grow(self.sims.len());
         Ok(self.sims.len() as u32 - 1)
@@ -1091,6 +1114,16 @@ impl World {
     /// tile and (less) the tiles around it in the same room; cleaning clears them all.
     fn apply_messes(&mut self) {
         for i in 0..self.sims.len() {
+            if let Some(news) = self.sims[i].news.take() {
+                // Broken or mended: what the house offers and how it looks change.
+                self.structure_version += 1;
+                let (kind, object) = match news {
+                    ObjectNews::Broke(o) => (social::EventKind::Broke, o),
+                    ObjectNews::Repaired(o) => (social::EventKind::Repaired, o),
+                };
+                let def = self.objects[object as usize].def as i64;
+                self.events.push_detail(self.tick, kind, i, Some(def), None);
+            }
             let Some((x, z, amount)) = self.sims[i].mess.take() else {
                 continue;
             };
@@ -1361,6 +1394,12 @@ impl World {
                         "object {object} has no interaction {interaction}"
                     )));
                 };
+                if obj.broken() {
+                    return Err(Error::new(format!(
+                        "the {} is broken — repair it first",
+                        self.content.objects[obj.def].name
+                    )));
+                }
                 let household = self.sim(sim)?.household as usize;
                 if !affordable(inter.cost, self.households[household].funds) {
                     return Err(Error::new(format!(
@@ -1493,6 +1532,7 @@ impl World {
                 style,
                 color,
             } => self.set_roof(household, style, color)?,
+            Command::Repair { household, object } => self.repair(household, object)?,
             Command::MoveIn {
                 household,
                 name,
@@ -1720,7 +1760,7 @@ fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
         }
     }
 
-    progress(sim, ctx, objects);
+    progress(sim, ctx, objects, rng);
 }
 
 /// What a Sim may use on a plot: everything at home or in public places; as a guest,
@@ -1781,6 +1821,23 @@ fn pick_autonomous(
     {
         let allowed = access(ctx, sim, ctx.object_plot[obj.id as usize]);
         if allowed == Access::None {
+            continue;
+        }
+        if obj.broken() {
+            // Broken things at home get repaired (handier residents are keener).
+            if allowed == Access::Full {
+                let rules = &object_rules.repair;
+                let (fx, fz) = obj.front_tile(content);
+                let distance = (fx as f32 + 0.5 - sim.pos[0]).hypot(fz as f32 + 0.5 - sim.pos[1]);
+                let level = rules.skill.map_or(0.0, |s| sim.skills[s]);
+                let (plan, floor) = crate::planner::tags_factor(content, sim, rules.tags);
+                let s = (rules.interest * (1.0 + level * 0.1) / (1.0 + distance * 0.08)).max(floor)
+                    * feel(rules.tags)
+                    * plan;
+                if s > MIN_AUTONOMY_SCORE {
+                    candidates.push((s, Choice::Repair(obj.id)));
+                }
+            }
             continue;
         }
         let (fx, fz) = obj.front_tile(content);
@@ -1932,6 +1989,7 @@ fn pick_autonomous(
             Choice::Social(target, social) => TaskKind::Social { target, social },
             Choice::Visit(plot) => TaskKind::Visit { plot },
             Choice::Clean(x, z) => TaskKind::Clean { x, z },
+            Choice::Repair(object) => TaskKind::Repair { object },
         },
         directed: false,
     })
@@ -1965,7 +2023,7 @@ fn start_task(sim: &mut Sim, task: Task, ctx: &Ctx, objects: &mut [ObjectInstanc
             let Some(obj) = objects.get(object as usize) else {
                 return;
             };
-            if !obj.can_use(sim.id, content.objects[obj.def].slots) {
+            if !obj.can_use(sim.id, content.objects[obj.def].slots) || obj.broken() {
                 return;
             }
             let t = obj.front_tile(content);
@@ -1974,6 +2032,13 @@ fn start_task(sim: &mut Sim, task: Task, ctx: &Ctx, objects: &mut [ObjectInstanc
         }
         TaskKind::MoveTo { x, z } => ([x, z], (x.floor() as i32, z.floor() as i32), 0),
         TaskKind::Clean { x, z } => ([x as f32 + 0.5, z as f32 + 0.5], (x, z), content.room_rules.clean.tags),
+        TaskKind::Repair { object } => {
+            let Some(obj) = objects.get(object as usize).filter(|o| o.broken()) else {
+                return;
+            };
+            let t = obj.front_tile(content);
+            ([t.0 as f32 + 0.5, t.1 as f32 + 0.5], t, content.object_rules.repair.tags)
+        }
         TaskKind::Work => {
             // Nearest way out of town; with no exits, work starts on the spot.
             let exit = ctx.exits.iter().copied().min_by(|a, b| {
@@ -2061,7 +2126,7 @@ pub(crate) fn route(
     Some(waypoints)
 }
 
-fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance]) {
+fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut Rng) {
     let content = ctx.content;
     let Some(act) = sim.current.as_mut() else {
         return;
@@ -2098,7 +2163,38 @@ fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance]) {
                 TaskKind::Use {
                     object,
                     interaction,
-                } => use_object(sim, ctx, &objects[object as usize], interaction, elapsed),
+                } => {
+                    let done = use_object(sim, ctx, &objects[object as usize], interaction, elapsed);
+                    // Every finished use wears it a little; better quality wears slower.
+                    if done {
+                        let o = &mut objects[object as usize];
+                        let def = &content.objects[o.def];
+                        let rules = &content.object_rules;
+                        let was = o.broken();
+                        let wear = def.wear_per_use * (1.0 - rules.wear_per_quality * f32::from(o.quality));
+                        o.wear = (o.wear + wear.max(0.0)).min(1.0);
+                        if !was && o.broken() {
+                            sim.news = Some(ObjectNews::Broke(object));
+                        }
+                    }
+                    done
+                }
+                TaskKind::Repair { object } => {
+                    let rules = &content.object_rules.repair;
+                    if let Some(s) = rules.skill {
+                        let max = content.skill_rules.max_level;
+                        sim.skills[s] = (sim.skills[s] + rules.skill_gain * MINUTES_PER_TICK / 60.0).min(max);
+                    }
+                    let done = elapsed >= rules.minutes || !objects[object as usize].broken();
+                    if done && objects[object as usize].broken() {
+                        let level = rules.skill.map_or(0.0, |s| sim.skills[s]);
+                        if rng.next_f32() < rules.chance_at(level) {
+                            objects[object as usize].wear = 0.0;
+                            sim.news = Some(ObjectNews::Repaired(object));
+                        }
+                    }
+                    done
+                }
                 TaskKind::Clean { x, z } => {
                     let rules = &content.room_rules.clean;
                     let done = elapsed >= rules.minutes;
@@ -2107,7 +2203,7 @@ fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance]) {
                     }
                     done
                 }
-                _ => unreachable!("only Use and Clean tasks have a Using phase"),
+                _ => unreachable!("only Use, Repair and Clean tasks have a Using phase"),
             }
         }
         // Conversations are driven by `conversation::update`, which sees both Sims.
@@ -2197,6 +2293,12 @@ fn arrive(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance]) {
     match act.task.kind {
         TaskKind::MoveTo { .. } => sim.current = None,
         TaskKind::Clean { .. } => {
+            sim.pose = Pose::Stand;
+            act.phase = Phase::Using { elapsed: 0.0 };
+        }
+        TaskKind::Repair { object } => {
+            let c = objects[object as usize].centre(content);
+            sim.yaw = (c[0] - sim.pos[0]).atan2(c[1] - sim.pos[1]);
             sim.pose = Pose::Stand;
             act.phase = Phase::Using { elapsed: 0.0 };
         }

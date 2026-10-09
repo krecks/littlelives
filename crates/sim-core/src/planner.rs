@@ -598,7 +598,7 @@ fn refresh_offers(w: &mut World) {
             }
             for (o, plot) in w.objects.iter().zip(&w.object_plot) {
                 let here = plot.is_some_and(|p| Some(p) == h.plot || public[p as usize]);
-                if !here {
+                if !here || o.broken() {
                     continue;
                 }
                 for inter in content.objects[o.def].interactions.iter().filter(|i| i.autonomous) {

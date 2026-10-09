@@ -16,7 +16,8 @@
 //! 10 = the game mode (`mode`: Living or Creative; absent: Living), and the player's household
 //! may have nobody living in it yet; 11 = objects turned freely (`turn`, absent: 0), fences
 //! and gates (edges `4` and `5`, their fence style in `looks`), roofs (`plots[].roof`: roof
-//! style and colour ids); 12 = per-tile dirt (`dirt`), the surroundings need, tidying up.
+//! style and colour ids); 12 = per-tile dirt (`dirt`), the surroundings need, tidying up,
+//! object wear and repairs.
 //! Older files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
@@ -119,6 +120,10 @@ fn is_zero(n: &u8) -> bool {
     *n == 0
 }
 
+fn is_unworn(w: &f32) -> bool {
+    *w <= 0.0
+}
+
 fn is_zero_u32(n: &u32) -> bool {
     *n == 0
 }
@@ -139,6 +144,9 @@ pub struct ObjectSave {
     /// Degrees past the facing (objects that turn freely; absent before v11: 0).
     #[serde(default, skip_serializing_if = "is_zero")]
     pub turn: u8,
+    /// Wear, 0..1 (broken at 1; absent before v12: new).
+    #[serde(default, skip_serializing_if = "is_unworn")]
+    pub wear: f32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -303,6 +311,10 @@ pub enum TaskSave {
         z: i32,
         directed: bool,
     },
+    Repair {
+        object: u32,
+        directed: bool,
+    },
     /// Old saves only (upgrades are instant now); dropped on load.
     Upgrade {
         #[allow(dead_code)]
@@ -368,6 +380,7 @@ impl World {
                 style: o.style,
                 value: Some(o.value),
                 turn: o.turn,
+                wear: o.wear,
             })
             .collect();
         let sims = self
@@ -639,6 +652,7 @@ impl World {
                     let obj = &world.objects[id as usize];
                     let turn = world.check_turn(obj.def, o.turn).unwrap_or(0);
                     world.objects[id as usize].turn = turn;
+                    world.objects[id as usize].wear = o.wear.clamp(0.0, 1.0);
                     object_ids.insert(i as u32, id);
                 }
                 Err(_) if world.content.object_index(&o.def).is_none() => {} // content no longer has it
@@ -780,6 +794,15 @@ impl World {
                         kind: TaskKind::Clean { x: *x, z: *z },
                         directed: *directed,
                     },
+                    TaskSave::Repair { object, directed } => {
+                        let Some(&object) = object_ids.get(object) else {
+                            continue;
+                        };
+                        Task {
+                            kind: TaskKind::Repair { object },
+                            directed: *directed,
+                        }
+                    }
                     // Upgrades used to be a Sim task; they are instant purchases now.
                     TaskSave::Upgrade { .. } => continue,
                 };
@@ -859,6 +882,10 @@ impl World {
             TaskKind::Clean { x, z } => TaskSave::Clean {
                 x,
                 z,
+                directed: t.directed,
+            },
+            TaskKind::Repair { object } => TaskSave::Repair {
+                object,
                 directed: t.directed,
             },
         }

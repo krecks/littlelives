@@ -682,6 +682,10 @@ pub enum EventKind {
     GoalSuggested,
     /// `a`'s household moved into its home (`a` is the first of them).
     MovedIn,
+    /// `a` wore out an object (`n`: its object type) and it broke.
+    Broke,
+    /// `a` repaired a broken object (`n`: its object type).
+    Repaired,
 }
 
 impl EventKind {
@@ -692,8 +696,8 @@ impl EventKind {
             FirstKiss | StartedDating | BrokeUp | BecameBestFriends | Promoted | JobFound
             | Fired | GoalReached | MovedIn => 2,
             BecameFriends | BecameGoodFriends | BecameEnemies | Crush | ProposalRejected
-            | Fight | Jealous | QuitJob | RentDebt => 1,
-            Met | MissedWork | SkillUp | PaidRent | Upgraded | Visited | GoalSuggested => 0,
+            | Fight | Jealous | QuitJob | RentDebt | Broke => 1,
+            Met | MissedWork | SkillUp | PaidRent | Upgraded | Visited | GoalSuggested | Repaired => 0,
         }
     }
 }

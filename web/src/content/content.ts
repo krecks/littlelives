@@ -327,6 +327,8 @@ export class Content {
   readonly goals: readonly GoalDef[];
   readonly planner: PlannerRules;
   private readonly objects: Map<string, ObjectDef>;
+  /** Every object, in the order the simulation numbers them (story events name them by index). */
+  readonly objectList: readonly ObjectDef[];
 
   private constructor(
     /** Raw JSON, forwarded unchanged to the simulation. */
@@ -362,6 +364,7 @@ export class Content {
     this.goals = file.goals ?? [];
     this.planner = { maxMinutes: 240, maxSleepMinutes: 720, maxGoals: 3, ...file.planner };
     this.objects = new Map(file.objects.map((o) => [o.id, o]));
+    this.objectList = file.objects;
     this.freeRotation = new Set(file.objectRules?.freeRotation ?? []);
   }
 
