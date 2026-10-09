@@ -82,3 +82,75 @@ fn older_saves_load_with_aging_off() {
     assert_eq!(loaded.lifespan, Lifespan::Off, "an older game doesn't start aging by surprise");
     assert!((25.0..=50.0).contains(&loaded.sims[0].age));
 }
+
+const LATER_LIFE: &str = r#"{
+    "needs":[{"id":"energy","label":"Energy","decayPerHour":0.0}],
+    "objects":[],
+    "feelings":[{"id":"retired","label":"Retired","mood":0.06,"hours":48},
+                {"id":"grieving","label":"Grieving","mood":-0.3,"hours":96},
+                {"id":"missesSomeone","label":"Misses someone","mood":-0.1,"hours":48}],
+    "skills":[{"id":"writing","label":"Writing"}],
+    "grades":[{"id":"A","label":"Entry","payPerHour":10,"skillLevel":0}],
+    "careerCategories":[{"id":"press","label":"Press","shift":{"start":9,"hours":4,"days":[0,1,2,3,4]},
+      "tracks":[{"id":"press.print","label":"Print","skills":{"writing":1},"titles":["Runner"]}]}],
+    "careerRules":{"market":{"hour":10,"minShiftsBeforeQuit":99,"quitBelow":0}},
+    "life":{"daysPerYear":1,"stages":[{"id":"adult","label":"Adult","from":18},{"id":"elder","label":"Elder","from":60}],
+            "retireAt":65,"pension":0.4,"retireFeeling":"retired",
+            "death":{"from":75,"perYear":1.0,"growth":0.0},
+            "grief":{"feeling":"grieving","lightFeeling":"missesSomeone"}},
+    "bondPresets":{"roommates":{"friendship":20},"friends":{"friendship":45},"child":{"friendship":50,"kin":"child"}},
+    "economy":{"startingFunds":1000,"rent":{"weekday":6,"hour":12,"base":100,"perTile":1,"billsBase":20,"billsRate":0.1}}}"#;
+
+const ELDERS: &str = r#"{"width":20,"depth":10,
+    "plots":[{"name":"Home","x":0,"z":0,"w":10,"d":10,"entry":[5.5,9.5]},
+             {"name":"Next door","x":10,"z":0,"w":10,"d":10,"entry":[15.5,9.5]}],
+    "households":[{"name":"Player","plot":0,"player":true},{"name":"Neighbours","plot":1}],
+    "objects":[],
+    "sims":[{"name":"Ada","x":4.5,"z":3.5,"age":64.5,"job":{"career":"press.print","level":0}},
+            {"name":"Bo","x":5.5,"z":3.5,"age":30},
+            {"name":"Cy","x":14.5,"z":3.5,"age":30,"household":1},
+            {"name":"Di","x":15.5,"z":3.5,"age":30,"household":1}],
+    "relationships":[{"a":0,"b":1,"preset":"child"},{"a":0,"b":2,"preset":"friends"}]}"#;
+
+#[test]
+fn working_residents_retire_with_a_pension() {
+    let mut w = World::from_json(LATER_LIFE, ELDERS, 1).unwrap();
+    w.apply(Command::SetAutonomy { enabled: false, household: None }).unwrap();
+    days(&mut w, 1);
+    assert!(w.sims[0].retired && w.sims[0].job.is_none(), "65: retired");
+    assert_eq!(w.sims[0].pension, 80, "40% of 5 shifts of 4 hours at $10");
+    assert!(w.events.iter().any(|e| e.kind == EventKind::Retired && e.a == 0));
+    assert!(w.sims[0].feelings.iter().any(|f| w.content.feelings[f.def].id == "retired"));
+    // Saved retired.
+    let loaded = World::from_save_json(LATER_LIFE, &w.save_json()).unwrap();
+    assert_eq!((loaded.sims[0].retired, loaded.sims[0].pension), (true, 80));
+    // The pension comes in on rent day.
+    let costs = sim_core::life::weekly_costs(&w, 0).map_or(0, |(r, b)| r + b);
+    let funds = w.households[0].funds;
+    days(&mut w, 7);
+    assert_eq!(w.households[0].funds, funds + 80 - costs);
+}
+
+#[test]
+fn the_old_pass_away_and_are_mourned() {
+    let mut w = World::from_json(LATER_LIFE, ELDERS, 1).unwrap();
+    w.apply(Command::SetAutonomy { enabled: false, household: None }).unwrap();
+    w.sims[0].age = 80.0;
+    w.apply(Command::SetLifespan { lifespan: Lifespan::Off }).unwrap();
+    days(&mut w, 3);
+    assert!(w.sims[0].here(), "nobody dies when nobody ages");
+    w.apply(Command::SetLifespan { lifespan: Lifespan::Normal }).unwrap();
+    for _ in 0..30 {
+        days(&mut w, 1);
+        if !w.sims[0].here() {
+            break;
+        }
+    }
+    assert!(!w.sims[0].here(), "a certain death in this content");
+    assert_eq!(w.sims[0].gone.unwrap().why, sim_core::world::GoneWhy::Died);
+    assert!(w.events.iter().any(|e| e.kind == EventKind::Died && e.a == 0));
+    let feels = |i: usize, id: &str| w.sims[i].feelings.iter().any(|f| w.content.feelings[f.def].id == id);
+    assert!(feels(1, "grieving"), "her son grieves");
+    assert!(feels(2, "missesSomeone"), "a friend misses her");
+    assert!(!feels(3, "grieving") && !feels(3, "missesSomeone"), "a stranger doesn't");
+}

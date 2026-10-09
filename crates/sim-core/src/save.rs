@@ -132,6 +132,10 @@ fn is_unworn(w: &f32) -> bool {
     *w <= 0.0
 }
 
+fn is_zero_i64(n: &i64) -> bool {
+    *n == 0
+}
+
 fn is_zero_u32(n: &u32) -> bool {
     *n == 0
 }
@@ -176,6 +180,11 @@ pub struct SimSave {
     /// Died or moved away (the slot stays so ids don't change).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gone: Option<crate::world::Gone>,
+    /// Retired, with this weekly pension.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub retired: bool,
+    #[serde(default, skip_serializing_if = "is_zero_i64")]
+    pub pension: i64,
     pub pos: [f32; 2],
     pub yaw: f32,
     /// Sorted so identical worlds produce identical save files.
@@ -487,6 +496,8 @@ impl World {
                     perks: s.perks.clone(),
                     age: Some(s.age),
                     gone: s.gone,
+                    retired: s.retired,
+                    pension: s.pension,
                     pos,
                     yaw: s.yaw,
                     needs: content
@@ -757,6 +768,8 @@ impl World {
             let sim = &mut world.sims[id];
             sim.yaw = s.yaw;
             sim.gone = s.gone;
+            sim.retired = s.retired;
+            sim.pension = s.pension.max(0);
             for (i, need) in content.needs.iter().enumerate() {
                 sim.needs[i] = s
                     .needs

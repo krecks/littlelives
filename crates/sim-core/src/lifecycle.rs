@@ -4,8 +4,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::clock;
-use crate::social::{self, EventKind};
-use crate::world::World;
+use crate::social::{self, EventKind, Kin};
+use crate::world::{GoneWhy, World};
 
 /// How fast residents age (a per-game option): `Off` nobody does; the others scale content
 /// `life.daysPerYear` (the *Normal* speed).
@@ -69,4 +69,67 @@ pub(crate) fn update(w: &mut World) {
         w.structure_version += 1;
         w.events.push_detail(w.tick, EventKind::GrewOlder, i, Some(stage as i64), None);
     }
+    for i in 0..w.sims.len() {
+        if w.sims[i].here() {
+            retire_if_due(w, i);
+        }
+    }
+    for i in 0..w.sims.len() {
+        let Some(death) = w.content.life.death else { break };
+        if !w.sims[i].here() || w.sims[i].age < death.from {
+            continue;
+        }
+        // A day's share of the year's chance.
+        let chance = 1.0 - (1.0 - death.yearly_chance(w.sims[i].age)).powf(1.0 / days_per_year);
+        if w.rng.next_f32() < chance {
+            pass_away(w, i);
+        }
+    }
+}
+
+/// At the retirement age a working resident retires: a weekly pension for the household.
+fn retire_if_due(w: &mut World, i: usize) {
+    let rules = &w.content.life;
+    let Some(at) = rules.retire_at else { return };
+    let sim = &w.sims[i];
+    if sim.retired || sim.age < at {
+        return;
+    }
+    let Some(job) = sim.job.as_ref() else { return };
+    let level = &w.content.careers[job.career].levels[job.level];
+    let weekly = level.pay * i64::from(level.days.count_ones());
+    let (career, grade) = (job.career, job.level);
+    let feeling = rules.retire_feeling;
+    let pension = (weekly as f32 * rules.pension).round() as i64;
+    let sim = &mut w.sims[i];
+    sim.retired = true;
+    sim.pension = pension;
+    sim.job = None;
+    if let Some(f) = feeling {
+        social::add_feeling(&mut sim.feelings, f, &w.content.feelings, w.tick);
+    }
+    w.events.push_career(w.tick, EventKind::Retired, i, career, Some(grade as i64));
+}
+
+/// Old age: the story tells it, family, partners and friends grieve, and they're gone.
+pub fn pass_away(w: &mut World, i: usize) {
+    let grief = w.content.life.grief;
+    for j in 0..w.sims.len() {
+        if j == i || !w.sims[j].here() {
+            continue;
+        }
+        let r = *w.relationships.get(j, i);
+        let feeling = if r.kin != Kin::None || r.partners || r.friendship >= grief.close {
+            grief.feeling
+        } else if r.friendship >= grief.friend {
+            grief.light_feeling
+        } else {
+            None
+        };
+        if let Some(f) = feeling {
+            social::add_feeling(&mut w.sims[j].feelings, f, &w.content.feelings, w.tick);
+        }
+    }
+    w.events.push_detail(w.tick, EventKind::Died, i, None, None);
+    w.depart(i, GoneWhy::Died);
 }

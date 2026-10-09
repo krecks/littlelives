@@ -357,6 +357,8 @@ export interface SimView {
   /** Age in whole years and the life stage id (absent from older workers). */
   age?: number;
   stage?: string | null;
+  /** Retired: the weekly pension. */
+  pension?: number;
   needs: number[];
   mood: number;
   emotion: string | null;

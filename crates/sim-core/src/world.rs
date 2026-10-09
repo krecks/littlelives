@@ -327,6 +327,9 @@ pub struct Sim {
     pub age: f32,
     /// No longer in town (the slot stays, so ids don't change; see `World::depart`).
     pub gone: Option<Gone>,
+    /// Retired from work: doesn't look for a job; the household gets `pension` a week.
+    pub retired: bool,
+    pub pension: i64,
 }
 
 impl Sim {
@@ -1006,6 +1009,8 @@ impl World {
             empty_since: [0; crate::content::MAX_ACCIDENTS],
             age,
             gone: None,
+            retired: false,
+            pension: 0,
         };
         if let Some(slot) = slot {
             self.retire_slot(slot);
@@ -1630,10 +1635,8 @@ impl World {
                     .levels
                     .get(level)
                     .ok_or_else(|| Error::new(format!("{} has no level {level}", def.label)))?;
-                let s = self
-                    .sims
-                    .get_mut(sim as usize)
-                    .ok_or_else(|| Error::new(format!("unknown resident {sim}")))?;
+                self.sim(sim)?;
+                let s = &mut self.sims[sim as usize];
                 if !crate::life::can_join(&self.content, position, &s.skills) {
                     return Err(Error::new(format!(
                         "{} doesn't have the skills to be a {} yet",
@@ -1645,12 +1648,11 @@ impl World {
                     level,
                     crate::clock::day(self.tick),
                 ));
+                // Back to work: no more pension.
+                (s.retired, s.pension) = (false, 0);
             }
             Command::QuitCareer { sim } => {
-                self.sims
-                    .get_mut(sim as usize)
-                    .ok_or_else(|| Error::new(format!("unknown resident {sim}")))?
-                    .job = None;
+                self.sim_mut(sim)?.job = None;
             }
             Command::Visit { sim, plot } => {
                 if plot as usize >= self.plots.len() {

@@ -174,6 +174,40 @@ pub struct LifeRules {
     pub stages: Vec<LifeStage>,
     /// Ages new residents get when nothing says otherwise.
     pub start_age: [f32; 2],
+    /// Working residents retire at this age (None: never), with a weekly pension of
+    /// `pension` × their last weekly pay, and the `retire_feeling`.
+    pub retire_at: Option<f32>,
+    pub pension: f32,
+    pub retire_feeling: Option<usize>,
+    /// Passing away of old age (None: nobody does).
+    pub death: Option<DeathRules>,
+    /// How those left behind feel.
+    pub grief: GriefRules,
+}
+
+/// From `from` years, a yearly chance of `per_year`, growing by `growth` (×e^growth) a year.
+#[derive(Debug, Clone, Copy)]
+pub struct DeathRules {
+    pub from: f32,
+    pub per_year: f32,
+    pub growth: f32,
+}
+
+impl DeathRules {
+    /// The chance of passing away within a year at `age`.
+    pub fn yearly_chance(&self, age: f32) -> f32 {
+        if age < self.from { 0.0 } else { (self.per_year * (self.growth * (age - self.from)).exp()).min(1.0) }
+    }
+}
+
+/// Family, partners and friends with at least `close` friendship get `feeling`; friends with at
+/// least `friend` get `light_feeling`.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct GriefRules {
+    pub feeling: Option<usize>,
+    pub light_feeling: Option<usize>,
+    pub close: f32,
+    pub friend: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -1025,6 +1059,29 @@ struct LifeRaw {
     days_per_year: Option<f32>,
     stages: Vec<LifeStageRaw>,
     start_age: Option<[f32; 2]>,
+    retire_at: Option<f32>,
+    pension: Option<f32>,
+    retire_feeling: Option<String>,
+    death: Option<DeathRaw>,
+    grief: GriefRaw,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DeathRaw {
+    from: f32,
+    per_year: f32,
+    #[serde(default)]
+    growth: f32,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct GriefRaw {
+    feeling: Option<String>,
+    light_feeling: Option<String>,
+    close: Option<f32>,
+    friend: Option<f32>,
 }
 
 #[derive(Deserialize)]
@@ -1828,6 +1885,20 @@ impl Content {
             days_per_year: raw.life.days_per_year.unwrap_or(2.0).max(0.1),
             stages,
             start_age: [start_age[0].min(start_age[1]), start_age[0].max(start_age[1])],
+            retire_at: raw.life.retire_at,
+            pension: raw.life.pension.unwrap_or(0.0).max(0.0),
+            retire_feeling: feeling(&raw.life.retire_feeling, "life")?,
+            death: raw.life.death.as_ref().map(|d| DeathRules {
+                from: d.from,
+                per_year: d.per_year.clamp(0.0, 1.0),
+                growth: d.growth.max(0.0),
+            }),
+            grief: GriefRules {
+                feeling: feeling(&raw.life.grief.feeling, "life.grief")?,
+                light_feeling: feeling(&raw.life.grief.light_feeling, "life.grief")?,
+                close: raw.life.grief.close.unwrap_or(60.0),
+                friend: raw.life.grief.friend.unwrap_or(35.0),
+            },
         };
         let valid_shift = |start: f32, hours: f32, days_ok: bool| {
             (0.0..24.0).contains(&start) && hours > 0.0 && hours <= 16.0 && days_ok

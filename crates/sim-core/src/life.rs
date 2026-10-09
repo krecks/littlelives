@@ -192,7 +192,7 @@ fn job_market(w: &mut World, day: u32) {
     let tick = w.tick;
     for i in 0..w.sims.len() {
         let h = w.sims[i].household as usize;
-        if !w.households[h].free_will || w.sims[i].away_until.is_some() || !w.sims[i].here() {
+        if !w.households[h].free_will || w.sims[i].away_until.is_some() || !w.sims[i].here() || w.sims[i].retired {
             continue;
         }
         if let Some(job) = &w.sims[i].job {
@@ -485,6 +485,11 @@ fn charge_rent(w: &mut World, day: u32) {
         let Some(member) = w.sims.iter().position(|s| s.here() && s.household as usize == h) else {
             continue;
         };
+        if due {
+            // Pensions come in on the same day.
+            let pensions: i64 = w.sims.iter().filter(|s| s.here() && s.household as usize == h).map(|s| s.pension).sum();
+            w.households[h].funds += pensions;
+        }
         if due && let Some((rent, bills)) = weekly_costs(w, h) {
             let amount = rent + bills;
             let household = &mut w.households[h];

@@ -911,6 +911,9 @@
     },
     {"id": "hadAccident", "label": "Had an accident", "emotion": "embarrassed", "mood": -0.2, "hours": 6},
     {"id": "soreBack", "label": "Sore back", "emotion": "sad", "mood": -0.1, "hours": 8, "effects": {"needDecay": {"comfort": 1.4}}},
+    {"id": "retired", "label": "Retired", "emotion": "relaxed", "mood": 0.06, "hours": 48},
+    {"id": "grieving", "label": "Grieving", "emotion": "sad", "mood": -0.3, "hours": 96},
+    {"id": "missesSomeone", "label": "Misses someone", "emotion": "sad", "mood": -0.1, "hours": 48},
     {"id": "grownUp", "label": "Grown up", "emotion": "relaxed", "mood": 0.04, "hours": 24},
     {"id": "goldenYears", "label": "Golden years", "emotion": "relaxed", "mood": 0.05, "hours": 24},
     {"id": "lovesRoom", "label": "Loves this room", "emotion": "relaxed", "mood": 0.06, "hours": 4},
@@ -1755,7 +1758,9 @@
     "broke": "{a} broke the {object}",
     "accident": "{a} {accident}",
     "repaired": "{a} repaired the {object}",
-    "grewOlder": "{a} {stage}"
+    "grewOlder": "{a} {stage}",
+    "retired": "{a} retired from their job as {job}",
+    "died": "{a} passed away"
   },
   "activities": [
     {
@@ -3132,6 +3137,11 @@
   "life": {
     "daysPerYear": 2,
     "startAge": [25, 50],
+    "retireAt": 65,
+    "pension": 0.4,
+    "retireFeeling": "retired",
+    "death": {"from": 75, "perYear": 0.04, "growth": 0.12},
+    "grief": {"feeling": "grieving", "lightFeeling": "missesSomeone", "close": 60, "friend": 35},
     "stages": [
       {"id": "youngAdult", "label": "Young adult", "from": 18, "story": "is a young adult now"},
       {"id": "adult", "label": "Adult", "from": 30, "story": "is an adult now", "feeling": "grownUp"},

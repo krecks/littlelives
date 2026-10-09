@@ -111,6 +111,9 @@ struct SimView<'a> {
     /// Age in whole years, and the life stage (content `life.stages` id).
     age: u32,
     stage: Option<&'a str>,
+    /// Retired, with this weekly pension.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pension: Option<i64>,
     needs: &'a [f32],
     mood: f32,
     emotion: Option<&'a str>,
@@ -558,6 +561,7 @@ pub fn ui_state_json(world: &World) -> String {
                 perks: &s.perks,
                 age: s.age.floor() as u32,
                 stage: content.life.stages.get(content.life.stage(s.age)).map(|st| st.id.as_str()),
+                pension: s.retired.then_some(s.pension),
                 needs: &s.needs[..n],
                 mood: s.mood(content),
                 emotion: s.emotion(content).map(|e| content.emotions[e].id.as_str()),

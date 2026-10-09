@@ -64,6 +64,9 @@
   </span>
 {/snippet}
 
+{#if sim.pension !== undefined && !job}
+  <p class="retired"><b>Retired</b> · a pension of {money(sim.pension)} a week. {sim.name} can still take a job.</p>
+{/if}
 {#if !catalog}
   <p class="muted">Loading careers…</p>
 {:else if job}
@@ -143,6 +146,10 @@
 {/if}
 
 <style>
+  .retired {
+    margin: 0 0 8px;
+    font-size: 12.5px;
+  }
   .job {
     display: flex;
     flex-direction: column;
