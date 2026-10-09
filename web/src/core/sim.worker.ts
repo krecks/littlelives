@@ -17,6 +17,7 @@ interface WorkerScope {
 const scope = self as unknown as WorkerScope;
 
 const UI_INTERVAL_MS = 100;
+const STATS_INTERVAL_MS = 1000;
 /** After a stall (tab hidden, debugger), skip the backlog instead of fast-forwarding. */
 const MAX_BACKLOG_MS = 1000;
 
@@ -72,13 +73,38 @@ async function start(content: string, source: GameSource): Promise<void> {
 function runLoop(stepMs: number): void {
   let next = performance.now() + stepMs;
   let lastUi = 0;
+  let lastStats = performance.now();
+  let steps = 0;
+  let busyMs = 0;
+  let maxMs = 0;
   const step = () => {
+    const start = performance.now();
     game!.advance();
     publish();
-    const now = performance.now();
+    let now = performance.now();
     if (now - lastUi >= UI_INTERVAL_MS) {
       lastUi = now;
       postUi();
+      now = performance.now();
+    }
+    steps++;
+    busyMs += now - start;
+    maxMs = Math.max(maxMs, now - start);
+    if (now - lastStats >= STATS_INTERVAL_MS) {
+      const span = now - lastStats;
+      scope.postMessage({
+        type: 'stats',
+        stats: {
+          stepsPerSecond: (steps * 1000) / span,
+          targetPerSecond: 1000 / stepMs,
+          stepMs: busyMs / steps,
+          stepMaxMs: maxMs,
+          busy: busyMs / span,
+          memoryBytes: memory.buffer.byteLength,
+        },
+      });
+      lastStats = now;
+      steps = busyMs = maxMs = 0;
     }
     next += stepMs;
     if (now - next > MAX_BACKLOG_MS) next = now;

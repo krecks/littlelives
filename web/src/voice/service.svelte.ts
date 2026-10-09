@@ -21,6 +21,23 @@ export interface BenchResult {
 
 export type BenchVerdict = 'good' | 'ok' | 'slow';
 
+/** How the voice worker is doing (for the debug overlay). */
+export interface VoiceThreadStats {
+  state: 'off' | 'loading' | 'ready' | 'error';
+  /** Time to load the engine, ms (0 until ready). */
+  loadMs: number;
+  /** Lines made since the engine started, and lines waiting to be made. */
+  lines: number;
+  queued: number;
+  /** Time to make a line, last and average, ms. */
+  lastMs: number;
+  avgMs: number;
+  /** Generation time ÷ audio length over all lines (lower is faster). */
+  rtf: number;
+  /** Share of the last few seconds the worker spent making speech, 0..1. */
+  busy: number;
+}
+
 export const voiceStatus = $state({
   state: 'off' as 'off' | 'loading' | 'ready' | 'error',
   /** Download progress 0..1 while loading. */
@@ -42,6 +59,9 @@ let worker: Worker | null = null;
 let nextId = 1;
 const pending = new Map<number, { resolve: (s: Float32Array) => void; reject: (e: Error) => void }>();
 let readyWaiters: { resolve: () => void; reject: (e: Error) => void }[] = [];
+/** Counters behind `voiceThreadStats` (not reactive: read by the overlay's timer). */
+const BUSY_WINDOW_MS = 5000;
+const counters = { loadMs: 0, lines: 0, totalMs: 0, lastMs: 0, audioSeconds: 0, recent: [] as { at: number; ms: number }[] };
 
 function post(msg: ToVoiceWorker): void {
   worker?.postMessage(msg);
@@ -51,11 +71,19 @@ function onMessage(msg: FromVoiceWorker): void {
   if (msg.type === 'progress') {
     voiceStatus.progress = msg.total ? msg.loaded / msg.total : 0;
   } else if (msg.type === 'ready') {
+    counters.loadMs = msg.ms;
     voiceStatus.state = 'ready';
     voiceStatus.progress = 1;
     readyWaiters.forEach((w) => w.resolve());
     readyWaiters = [];
   } else if (msg.type === 'audio') {
+    const now = performance.now();
+    counters.lines++;
+    counters.totalMs += msg.ms;
+    counters.lastMs = msg.ms;
+    counters.audioSeconds += msg.samples.length / SAMPLE_RATE;
+    counters.recent.push({ at: now, ms: msg.ms });
+    while (counters.recent.length && counters.recent[0].at < now - BUSY_WINDOW_MS) counters.recent.shift();
     pending.get(msg.id)?.resolve(msg.samples);
     pending.delete(msg.id);
   } else if (msg.type === 'error') {
@@ -97,6 +125,21 @@ export async function synthesize(text: string, voice: VoiceParams): Promise<Floa
   });
 }
 
+export function voiceThreadStats(): VoiceThreadStats {
+  const now = performance.now();
+  const recentMs = counters.recent.filter((r) => r.at >= now - BUSY_WINDOW_MS).reduce((n, r) => n + r.ms, 0);
+  return {
+    state: voiceStatus.state,
+    loadMs: counters.loadMs,
+    lines: counters.lines,
+    queued: pending.size,
+    lastMs: counters.lastMs,
+    avgMs: counters.lines ? counters.totalMs / counters.lines : 0,
+    rtf: counters.audioSeconds ? counters.totalMs / 1000 / counters.audioSeconds : 0,
+    busy: Math.min(1, recentMs / BUSY_WINDOW_MS),
+  };
+}
+
 /** Stops the worker and frees the model's memory (files stay in the browser cache). */
 export function unloadVoice(): void {
   unload();
@@ -107,6 +150,7 @@ export function unloadVoice(): void {
 function unload(): void {
   worker?.terminate();
   worker = null;
+  Object.assign(counters, { loadMs: 0, lines: 0, totalMs: 0, lastMs: 0, audioSeconds: 0, recent: [] });
   for (const p of pending.values()) p.reject(new Error('voice unloaded'));
   pending.clear();
 }

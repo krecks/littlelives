@@ -565,6 +565,20 @@ export type ToWorker =
   /** Which part of the town to build geometry for (tile rectangle); null = everything. */
   | { type: 'view'; region: [number, number, number, number] | null };
 
+/** How the sim worker kept up over the last second (for the debug overlay). */
+export interface SimThreadStats {
+  /** Steps run in the last second, and the rate the sim aims for. */
+  stepsPerSecond: number;
+  targetPerSecond: number;
+  /** Time per step (advance, snapshot, UI view), average and worst, ms. */
+  stepMs: number;
+  stepMaxMs: number;
+  /** Share of the second the worker spent working, 0..1. */
+  busy: number;
+  /** Size of the simulation's WASM memory, bytes. */
+  memoryBytes: number;
+}
+
 export type FromWorker =
   | { type: 'ready'; layout: SnapshotLayout; shared: SharedArrayBuffer | null; catalog: Catalog }
   /** `full`: with the lot; otherwise a `LeanWorld` (the lot is as last sent). */
@@ -575,4 +589,6 @@ export type FromWorker =
   | { type: 'events'; requestId: number; events: SocialEvent[] }
   /** Fallback transport when SharedArrayBuffer is unavailable. */
   | { type: 'snapshot'; data: Float32Array }
+  /** About once a second. */
+  | { type: 'stats'; stats: SimThreadStats }
   | { type: 'error'; message: string; fatal: boolean };

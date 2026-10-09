@@ -153,7 +153,7 @@ export function summarize(content: Content, def: ObjectDef): ItemSummary {
   const costs: number[] = [];
   for (const it of def.interactions) {
     const hours = Math.max(it.minutes, 1) / 60;
-    for (const [id, v] of Object.entries(it.effects)) {
+    for (const [id, v] of Object.entries(it.effects ?? {})) {
       const need = content.needs.find((n) => n.id === id);
       if (!need || v === 0) continue;
       const entry = { need, perUse: v, perHour: v / hours };

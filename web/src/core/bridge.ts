@@ -3,7 +3,7 @@
  * into interpolatable frames for the renderer. Allocation-free per frame.
  */
 
-import type { Catalog, Command, FromWorker, GameSource, SocialEvent, SocialOption, ToWorker, UiSnapshot, WorldStructure } from './protocol';
+import type { Catalog, Command, FromWorker, GameSource, SimThreadStats, SocialEvent, SocialOption, ToWorker, UiSnapshot, WorldStructure } from './protocol';
 import { SharedSnapshotReader, type SnapshotLayout } from './snapshot';
 
 /** What the renderer needs each frame. Reused; do not keep references across frames. */
@@ -49,6 +49,8 @@ export class SimBridge {
 
   private world: WorldStructure | null = null;
   private ui: UiSnapshot | null = null;
+  /** The worker's latest report on how it keeps up (null until the first, after a second). */
+  threadStats: SimThreadStats | null = null;
   private worldListeners: Listener<WorldStructure>[] = [];
   private uiListeners: Listener<UiSnapshot>[] = [];
   private errorListeners: Listener<string>[] = [];
@@ -221,6 +223,9 @@ export class SimBridge {
         break;
       case 'events':
         this.resolve(msg.requestId, msg.events);
+        break;
+      case 'stats':
+        this.threadStats = msg.stats;
         break;
       case 'error':
         for (const fn of this.errorListeners) fn(msg.message);

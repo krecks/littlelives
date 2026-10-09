@@ -16,7 +16,10 @@ export interface InteractionDef {
   id: string;
   label: string;
   minutes: number;
-  effects: Record<string, number>;
+  /** Need changes over the whole interaction (absent: none, like a crib's care, which is for the baby). */
+  effects?: Record<string, number>;
+  /** Needs it fills for the baby lying in the object (cribs). */
+  care?: Record<string, number>;
   pose?: 'stand' | 'sit' | 'lie';
   autonomous?: boolean;
   tags?: string[];

@@ -20,6 +20,8 @@ export interface DebugReport {
   screen: { width: number; height: number; pixelRatio: number };
   gpu: Record<string, string> | null;
   renderer: unknown;
+  /** Main, sim and voice threads (see `debug/threads.ts`). */
+  threads: unknown;
   settings: unknown;
   camera: CameraPose;
   /** UI state (mode, selection, panels, needs…) at capture time. */

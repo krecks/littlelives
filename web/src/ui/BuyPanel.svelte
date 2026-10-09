@@ -118,6 +118,9 @@
 
   const folded = $derived(!!game.placing && !over);
   const selected = $derived(game.buySelection === null ? null : (game.objects.find((o) => o.id === game.buySelection) ?? null));
+  /** Something already owned, in hand: the panel shows just it, to restyle, upgrade or sell. */
+  const moving = $derived(game.placing?.objectId == null ? null : (game.objects.find((o) => o.id === game.placing!.objectId) ?? null));
+  const movingDef = $derived(moving && content.object(moving.def));
   /** The card pointed at, else what's in hand, else the owned object picked on the lot. */
   const detail = $derived.by(() => {
     const hover = hovered && content.object(hovered);
@@ -153,7 +156,16 @@
   }
 </script>
 
-{#if game.mode === 'buy'}
+{#if game.mode === 'buy' && moving && movingDef}
+  <section class="buy held glass" aria-label="In hand">
+    <div class="side">
+      <ItemDetail def={movingDef} owned={moving} />
+    </div>
+    <footer class="muted">
+      Click on your lot to put it down · <kbd>R</kbd> rotate{#if content.turns(movingDef)}{' · '}<kbd>Shift</kbd>+<kbd>R</kbd> turn 15°{/if} · <kbd>Delete</kbd> sell · <kbd>Esc</kbd> put back
+    </footer>
+  </section>
+{:else if game.mode === 'buy'}
   <section class="buy glass" aria-label="Buy mode" onpointerenter={() => (over = true)} onpointerleave={() => ((over = false), (hovered = null))}>
     <header class="tabs">
       <div class="group shop" role="tablist" aria-label="Furniture">
@@ -282,7 +294,7 @@
       {:else if selected}
         Upgrade, restyle or move it · <kbd>R</kbd> rotate · <kbd>Delete</kbd> sell · <kbd>Esc</kbd> deselect
       {:else}
-        Pick something to buy, or click something you own to upgrade, move, restyle or sell it.
+        Pick something to buy, or click something you own to pick it up: move, turn, restyle, upgrade or sell it.
       {/if}
     </footer>
   </section>
@@ -529,6 +541,14 @@
     padding: 10px 12px;
     border-radius: var(--radius-sm);
     background: var(--surface);
+  }
+  /* Something owned in hand: just its card, out of the way of the lot. */
+  .buy.held {
+    width: min(400px, calc(100vw - 2 * var(--edge)));
+  }
+  .held .side {
+    width: auto;
+    max-height: min(46vh, 520px);
   }
   .tip {
     display: flex;

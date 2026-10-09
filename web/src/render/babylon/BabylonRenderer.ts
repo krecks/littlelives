@@ -76,7 +76,7 @@ import type {
 import { createLighting, lightingAt } from './environment';
 import { buildFences } from './fences';
 import { applyShaderFixes } from './shaderFixes';
-import { HALF_WALL_HEIGHT, HouseBuilder, houseObjectKey, placeLights, WALL_HEIGHT, WALL_STUB, type RoomLight, type RoomTiles } from './house';
+import { HALF_WALL_HEIGHT, HouseBuilder, houseObjectKey, placeLights, WALL_HEIGHT, WALL_STUB, type HouseSurfaces, type RoomLight, type RoomTiles } from './house';
 import { Street } from './street';
 import { MaterialLibrary } from './materials';
 import { buildModel, placementVariation, type ModelTemplate } from './models';
@@ -124,6 +124,8 @@ interface PlacedObject {
   height: number;
   /** Its instance in the template's matrix buffer (for the placement pop). */
   pop: PopTarget;
+  /** Its contact shadow's instance. */
+  shadow?: PopTarget;
 }
 
 const MAX_SIMS = MAX_CHARACTERS;
@@ -161,6 +163,8 @@ export class BabylonRenderer implements Renderer {
   private tiltShift: TiltShift | null = null;
   private nightGrade: NightGrade | null = null;
   private instrumentation!: SceneInstrumentation;
+  /** Main-thread ms per frame, smoothed (see `stats`). */
+  private cpuMs = 0;
   private canvas!: HTMLCanvasElement;
   private lib!: MaterialLibrary;
   private house!: HouseBuilder;
@@ -179,6 +183,13 @@ export class BabylonRenderer implements Renderer {
   private lotTemplates = new Set<string>();
   /** Rooms of the cached house (where its lamps' and fills' lights go). */
   private lotRooms: RoomTiles | null = null;
+  /** Where coverings lie in the viewed house (null: plain fallback meshes). */
+  private lotSurfaces: HouseSurfaces | null = null;
+  /** The Paint and Floor tools' previews in the real look: what they show, and the mesh. */
+  private laid = {
+    faces: { keys: [] as string[], cover: null as number | null, shown: '', mesh: null as Mesh | null },
+    floors: { keys: [] as string[], cover: null as number | null, shown: '', mesh: null as Mesh | null },
+  };
   /** Meshes the room lights were last told to leave out (the landscape and sky). */
   private lightExcluded = new Set<Mesh>();
   private onFrame: ((now: number) => void) | null = null;
@@ -283,6 +294,9 @@ export class BabylonRenderer implements Renderer {
   private ghostMeshes: Mesh[] = [];
   private readonly ghostColor = new Float32Array(4);
   private ghostMaterial!: StandardMaterial;
+  /** Flat arrow on the tile the ghost is used from, pointing out of it. */
+  private ghostArrow!: Mesh;
+  private ghostArrowMaterial!: StandardMaterial;
   private ghostValid = true;
   /** The ghost glides to its tile and turns smoothly; it floats a little, as if held. */
   private ghostShown = false;
@@ -290,6 +304,10 @@ export class BabylonRenderer implements Renderer {
   private ghostYawGoal = 0;
   private ghostAge = 0;
   private ghostSpawn = 0;
+  /** The placed object in hand, hidden (its instances shrunk to nothing; their matrices kept to restore). */
+  private heldId: number | null = null;
+  private held: { id: number; saved: { target: PopTarget; matrix: Float32Array }[] } | null = null;
+  private heldRelease: ReturnType<typeof setTimeout> | null = null;
   private fx!: BuildEffects;
   private previewMeshes!: Record<'wall' | 'door' | 'window' | 'open', Mesh>;
   private previewBuffers!: Record<'wall' | 'door' | 'window' | 'open', Float32Array>;
@@ -419,6 +437,10 @@ export class BabylonRenderer implements Renderer {
     this.worldMeshes = [];
     this.placed = [];
     this.fx.clearPops();
+    // The held object's buffers go with the old world; a moved one now shows in its new place.
+    this.held = null;
+    if (this.heldRelease) clearTimeout(this.heldRelease);
+    this.heldRelease = null;
     this.view = view;
 
     const { width, depth } = world;
@@ -460,6 +482,7 @@ export class BabylonRenderer implements Renderer {
     this.placeRoomLights(world, view);
     const streetCasters = await this.street.build(world, this.view);
     await this.buildObjects(world);
+    this.hideHeld();
     await this.buildSims(world);
     this.retireTemplates(new Set(this.templatesInUse));
     const templates = await this.templateMeshes();
@@ -632,10 +655,69 @@ export class BabylonRenderer implements Renderer {
     }
     if (fresh) this.ghostSpawn = 0;
     this.ghostShown = true;
+    // The arrow rides with the ghost but ignores its free turn: the use tile goes by quarter turns.
+    const arrow = this.ghostArrow;
+    if (arrow.isEnabled() !== !!ghost.front) {
+      arrow.setEnabled(!!ghost.front);
+      this.resetSnapshot();
+    }
+    if (ghost.front) {
+      const dx = ghost.front.x + 0.5 - this.ghostGoal.x;
+      const dz = ghost.front.z + 0.5 - this.ghostGoal.z;
+      const c = Math.cos(yaw);
+      const s = Math.sin(yaw);
+      // World offset into the ghost's turned frame; just above the floor below the floating ghost.
+      arrow.position.set(dx * c - dz * s, -0.04, dx * s + dz * c);
+      arrow.rotation.y = (-(ghost.turn ?? 0) * Math.PI) / 180;
+    }
     if (ghost.valid !== this.ghostValid) {
       this.ghostValid = ghost.valid;
       this.setGhostTint();
     }
+  }
+
+  setHeldObject(id: number | null, moved = false): void {
+    if (id === this.heldId) return;
+    if (this.heldRelease) clearTimeout(this.heldRelease);
+    this.heldRelease = null;
+    this.heldId = id;
+    if (id === null && moved) {
+      // Put down elsewhere: the next world shows it there; a refused move shows it here again.
+      this.heldRelease = setTimeout(() => ((this.heldRelease = null), this.showHeld()), 1500);
+      return;
+    }
+    this.hideHeld();
+  }
+
+  private hideHeld(): void {
+    if (this.held?.id === this.heldId) return;
+    this.showHeld();
+    const p = this.heldId === null ? undefined : this.placed.find((o) => o.id === this.heldId);
+    if (!p) return;
+    const targets = p.shadow ? [p.pop, p.shadow] : [p.pop];
+    this.held = { id: p.id, saved: targets.map((target) => ({ target, matrix: target.matrices.slice(target.index * 16, target.index * 16 + 16) })) };
+    // Scaled to nothing where it stands (an all-zero matrix would put w = 0).
+    for (const { target, matrix } of this.held.saved) {
+      const m = matrix.slice();
+      m.fill(0, 0, 12);
+      this.writeInstance(target, m);
+    }
+  }
+
+  private showHeld(): void {
+    if (!this.held) return;
+    for (const { target, matrix } of this.held.saved) this.writeInstance(target, matrix);
+    this.held = null;
+  }
+
+  private writeInstance(target: PopTarget, matrix: Float32Array): void {
+    target.matrices.set(matrix, target.index * 16);
+    for (const mesh of target.meshes) {
+      if (mesh.isDisposed()) continue;
+      mesh.thinInstanceAllowAutomaticStaticBufferRecreation = true;
+      mesh.thinInstanceBufferUpdated('matrix');
+    }
+    this.resetSnapshot();
   }
 
   private updateGhost(dtMs: number): void {
@@ -654,13 +736,14 @@ export class BabylonRenderer implements Renderer {
     root.scaling.set(s, s, s);
     // Where it can't go, it pulses.
     this.ghostMaterial.alpha = this.ghostValid ? 0.5 : 0.36 + 0.14 * Math.sin(this.ghostAge * 9);
+    this.ghostArrowMaterial.alpha = this.ghostMaterial.alpha + 0.25;
   }
 
   buildEffect(fx: BuildEffect): void {
     if (this.townMode) return;
     this.fx.play(fx);
     const placed = fx.objectId === undefined ? undefined : this.placed.find((p) => p.id === fx.objectId);
-    if (placed) this.fx.pop(placed.pop);
+    if (placed && placed.id !== this.heldId) this.fx.pop(placed.pop);
   }
 
   setEdgePreview(edges: readonly EdgePreview[], valid: boolean): void {
@@ -738,7 +821,54 @@ export class BabylonRenderer implements Renderer {
     }
   }
 
-  setPaintPreview(faces: readonly PaintPreviewFace[], color: string | null): void {
+  setPaintPreview(faces: readonly PaintPreviewFace[], cover: number | null): void {
+    const real = this.showLaid('faces', faces.length ? cover : null, faces.map((f) => `${f.axis}:${f.x}:${f.z}:${f.side}`));
+    // The automatic look (0) depends on the room, so a white film stands in for it.
+    const color = real || cover === null ? null : ((cover ? this.deps.content.wallCoverings[cover - 1]?.color : undefined) ?? '#FFFFFF');
+    this.paintFilm(faces, color);
+  }
+
+  setFloorPreview(tiles: readonly { x: number; z: number }[], floor: number | null): void {
+    const real = this.showLaid('floors', tiles.length ? floor : null, tiles.map((t) => `${t.x}:${t.z}`));
+    const color = real || floor === null ? null : ((floor ? this.deps.content.floorCoverings[floor - 1]?.color : undefined) ?? '#FFFFFF');
+    this.floorFilm(tiles, color);
+  }
+
+  /**
+   * Shows `keys` (wall faces or floor tiles in `lotSurfaces`) as covering `cover` lays them, in its
+   * real material. False where it can't (no covering, the automatic look, no house surfaces).
+   */
+  private showLaid(which: 'faces' | 'floors', cover: number | null, keys: string[]): boolean {
+    const slot = this.laid[which];
+    slot.keys = keys;
+    slot.cover = cover;
+    const surfaces = this.lotSurfaces?.[which];
+    const shown = cover && surfaces ? `${cover}|${keys.join(',')}` : '';
+    if (shown !== slot.shown) {
+      slot.shown = shown;
+      slot.mesh?.dispose();
+      slot.mesh = null;
+      if (cover && surfaces) {
+        const parts = keys.flatMap((k) => surfaces.get(k) ?? []);
+        slot.mesh = which === 'faces' ? this.house.coverPreview(parts, cover) : this.house.floorPreview(parts, cover);
+      }
+      this.resetSnapshot();
+    }
+    return shown !== '';
+  }
+
+  /** The house was rebuilt: lay the shown previews on its new surfaces. */
+  private refreshLaid(): void {
+    for (const which of ['faces', 'floors'] as const) {
+      const slot = this.laid[which];
+      if (!slot.shown) continue;
+      slot.shown = '';
+      this.showLaid(which, slot.cover, slot.keys);
+    }
+  }
+
+  /** The Paint tool's stand-in: a film of `color` over each face (null: none). */
+  private paintFilm(faces: readonly PaintPreviewFace[], color: string | null): void {
     const mesh = this.paintPreview;
     const n = color ? faces.length : 0;
     if (n * 16 > this.paintBuffer.length) {
@@ -787,7 +917,8 @@ export class BabylonRenderer implements Renderer {
     }
   }
 
-  setFloorPreview(tiles: readonly { x: number; z: number }[], color: string | null): void {
+  /** The Floor tool's stand-in: a film of `color` over each tile (null: none). */
+  private floorFilm(tiles: readonly { x: number; z: number }[], color: string | null): void {
     const mesh = this.floorPreview;
     const n = color ? tiles.length : 0;
     if (n * 16 > this.floorBuffer.length) {
@@ -910,6 +1041,7 @@ export class BabylonRenderer implements Renderer {
       backend: `${this.webgpu ? 'WebGPU' : 'WebGL2'}${this.lampCluster ? ' · clustered lamps' : ''}`,
       fps: this.engine.getFps(),
       frameMs: this.engine.getDeltaTime(),
+      cpuMs: this.cpuMs,
       drawCalls: this.instrumentation.drawCallsCounter.current,
       snapshotRendering: this.webgpu?.snapshotRendering ?? false,
     };
@@ -973,6 +1105,7 @@ export class BabylonRenderer implements Renderer {
     this.walls = this.wallsLow = null;
     this.retireTemplates(new Set());
     this.placed = [];
+    this.held = null;
     this.characters?.clear();
     this.simCount = 0;
     this.selectedSim = null;
@@ -1249,6 +1382,7 @@ export class BabylonRenderer implements Renderer {
   }
 
   private readonly renderFrame = () => {
+    const start = performance.now();
     const dt = this.engine.getDeltaTime();
     if (this.idleOrbit && !this.townMode) this.camera.alpha += dt * 0.00003;
     this.onFrame?.(performance.now());
@@ -1257,6 +1391,7 @@ export class BabylonRenderer implements Renderer {
       if (this.warmFrames > 0 && !this.worldBuilding) this.warmWorld();
     }
     this.scene.render();
+    this.cpuMs += (performance.now() - start - this.cpuMs) * 0.1;
     for (let i = this.frameWaiters.length - 1; i >= 0; i--) {
       const w = this.frameWaiters[i];
       if (--w.left <= 0) {
@@ -1417,6 +1552,23 @@ export class BabylonRenderer implements Renderer {
     ghostMat.specularColor = Color3.Black();
     ghostMat.emissiveColor = new Color3(0.25, 0.25, 0.25);
     ghostMat.backFaceCulling = false;
+    const arrowMat = (this.ghostArrowMaterial = new StandardMaterial('ghostArrow', this.scene));
+    arrowMat.disableLighting = true;
+    arrowMat.backFaceCulling = false;
+    arrowMat.emissiveColor = new Color3(0.55, 1.0, 0.6);
+    // A stem and a head lying flat, pointing +z (out of the object's front), within one tile.
+    const arrow = (this.ghostArrow = new Mesh('ghostArrow', this.scene));
+    const arrowData = new VertexData();
+    arrowData.positions = [-0.09, 0, -0.36, 0.09, 0, -0.36, 0.09, 0, 0.04, -0.09, 0, 0.04, -0.26, 0, 0.04, 0.26, 0, 0.04, 0, 0, 0.38];
+    arrowData.normals = Array.from({ length: 7 }, () => [0, 1, 0]).flat();
+    arrowData.indices = [0, 2, 1, 0, 3, 2, 4, 6, 5];
+    arrowData.applyToMesh(arrow, false);
+    arrow.material = arrowMat;
+    arrow.parent = this.ghostRoot;
+    arrow.isPickable = false;
+    arrow.renderingGroupId = 1;
+    arrow.alwaysSelectAsActiveMesh = true;
+    arrow.setEnabled(false);
     this.fx = new BuildEffects(this.scene);
 
     const preview = (kind: EdgePreview['kind'], color: string, alpha: number) => {
@@ -1677,6 +1829,8 @@ export class BabylonRenderer implements Renderer {
       this.walls = this.meshFromArrays('walls', world.meshes.walls, wallMat);
       this.wallsLow = this.meshFromArrays('wallsLow', world.meshes.wallsLow, wallMat);
       this.lotRooms = null;
+      this.lotSurfaces = null;
+      this.refreshLaid();
       return [];
     }
     this.worldMeshes.push(...built.meshes);
@@ -1686,6 +1840,8 @@ export class BabylonRenderer implements Renderer {
     // Garden dressing split into species (hedges or mixed shrub borders, varied lot trees).
     for (const [key, items] of [...natureDecor('model.bush', built.shrubs), ...natureDecor('model.tree', built.trees, world, this.view)]) void this.placeDecor(key, items);
     this.lotRooms = built.rooms;
+    this.lotSurfaces = built.surfaces;
+    this.refreshLaid();
     return built.casters;
   }
 
@@ -1830,6 +1986,11 @@ export class BabylonRenderer implements Renderer {
     const shadows = this.objectShadow.clone('objectShadows', null, true, false) as Mesh;
     shadows.setEnabled(true);
     shadows.thinInstanceSetBuffer('matrix', blobs, 16, true);
+    const blobIndex = new Map(shown.map((o, i) => [o.id, i]));
+    for (const p of this.placed) {
+      const index = blobIndex.get(p.id);
+      if (index !== undefined) p.shadow = { meshes: [shadows], matrices: blobs, index };
+    }
     shadows.thinInstanceCount = shown.length;
     shadows.thinInstanceRefreshBoundingInfo(false);
     this.worldMeshes.push(shadows);
@@ -1933,6 +2094,7 @@ export class BabylonRenderer implements Renderer {
 
   private setGhostTint(): void {
     this.ghostColor.set(this.ghostValid ? [0.55, 1.0, 0.6, 1] : [1.0, 0.45, 0.42, 1]);
+    this.ghostArrowMaterial.emissiveColor.set(this.ghostColor[0], this.ghostColor[1], this.ghostColor[2]);
     for (const mesh of this.ghostMeshes) mesh.thinInstanceBufferUpdated('color');
     this.resetSnapshot();
   }

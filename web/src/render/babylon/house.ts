@@ -82,6 +82,17 @@ const FINISH_MATERIALS: Record<WallCoveringDef['finish'], string> = {
   tile: HOUSE_MATERIALS.floorTile,
 };
 
+/** The surface of each floor-covering finish. */
+const FLOOR_MATERIALS: Record<FloorCoveringDef['finish'], string> = {
+  wood: HOUSE_MATERIALS.floorWood,
+  tile: HOUSE_MATERIALS.floorTile,
+  carpet: HOUSE_MATERIALS.floorCarpet,
+  stone: HOUSE_MATERIALS.stone,
+};
+
+/** How far a covering preview lies off the surface it covers, so it draws over it (metres). */
+const PROUD = 0.004;
+
 /** Build-mode looks from content: wall coverings, door and window styles (indices as in the structure). */
 export interface HouseLooks {
   coverings: readonly WallCoveringDef[];
@@ -200,6 +211,17 @@ export interface HouseBuild {
   /** Garden dressing: shrubs along the foundation and trees on open lawn (x, z, scale, yaw). */
   shrubs: [number, number, number, number][];
   trees: [number, number, number, number][];
+  surfaces: HouseSurfaces;
+}
+
+/**
+ * Where coverings lie in the viewed house, for Build mode's previews: each wall face
+ * (`axis:x:z:side`, where a covering goes: openings left out, above the plinth outdoors) and each
+ * floor tile (`x:z`), a hair proud of the real surface and with its cutaway data.
+ */
+export interface HouseSurfaces {
+  faces: Map<string, Geo>;
+  floors: Map<string, Geo>;
 }
 
 type EdgeKind = 'wall' | 'door' | 'window';
@@ -344,6 +366,32 @@ export class HouseBuilder {
   /** Materials (cached by the library) so the renderer can update window glow etc. */
   material(key: string, cut = true): Material {
     return this.lib.surface(key, { vertexColors: true, cutaway: cut });
+  }
+
+  /**
+   * Build mode's Paint tool: wall faces (from `HouseBuild.surfaces`) as wall covering `cover`
+   * (1-based) would dress them, in its own material. Null when there's nothing to show.
+   */
+  coverPreview(parts: readonly Geo[], cover: number): Mesh | null {
+    const def = this.looks.coverings[cover - 1];
+    return def ? this.laid('preview-cover', parts, def.color, FINISH_MATERIALS[def.finish], true) : null;
+  }
+
+  /** Build mode's Floor tool: floor tiles (from `HouseBuild.surfaces`) laid with floor covering `floor` (1-based). */
+  floorPreview(parts: readonly Geo[], floor: number): Mesh | null {
+    const def = this.looks.floors[floor - 1];
+    return def ? this.laid('preview-floor-laid', parts, def.color, FLOOR_MATERIALS[def.finish], false) : null;
+  }
+
+  private laid(name: string, parts: readonly Geo[], color: string, key: string, cut: boolean): Mesh | null {
+    const geo = new Geo().color(color);
+    for (const part of parts) geo.append(part);
+    const mesh = geo.toMesh(name, this.scene, { colors: true, cut });
+    if (!mesh) return null;
+    mesh.material = this.material(key, cut);
+    mesh.receiveShadows = true;
+    mesh.isPickable = false;
+    return mesh;
   }
 
   /**
@@ -500,6 +548,13 @@ export class HouseBuilder {
       const c = cover ? this.looks.coverings[cover - 1] : undefined;
       return c ? covered.get(c.finish)!.color(c.color) : null;
     };
+    const surfaces: HouseSurfaces = { faces: new Map(), floors: new Map() };
+    /** The recorded surface `key` (see `HouseSurfaces`), cut like the wall being drawn. */
+    const surface = (map: Map<string, Geo>, key: string): Geo => {
+      let g = map.get(key);
+      if (!g) map.set(key, (g = new Geo()));
+      return g.cutting(ext.kind, ext.maskA, ext.maskB);
+    };
 
     const H = WALL_HEIGHT;
     /** Looking along which directions this edge hides the room behind it. */
@@ -510,11 +565,16 @@ export class HouseBuilder {
 
     /**
      * One wall face (a rectangle on the plane of a wall side) from `a0` to `a1` along the
-     * wall, `y0` to `y1` high. `n` is the outward normal; `r` the room that face looks into.
+     * wall, `y0` to `y1` high. `n` is the outward normal; `r` the room that face looks into;
+     * `key` names it in `surfaces`.
      */
-    const face = (axis: 'h' | 'v', plane: number, a0: number, a1: number, y0: number, y1: number, n: V3, r: number, cover = 0) => {
+    const face = (axis: 'h' | 'v', plane: number, a0: number, a1: number, y0: number, y1: number, n: V3, r: number, cover = 0, key?: string) => {
       const P = (a: number, y: number): V3 => (axis === 'h' ? [a, y, plane] : [plane, y, a]);
       const own = coverGeo(cover);
+      const mark = (y0: number, y1: number) => {
+        const S = (a: number, y: number): V3 => (axis === 'h' ? [a, y, plane + n[2] * PROUD] : [plane + n[0] * PROUD, y, a]);
+        if (key && y1 > y0) surface(surfaces.faces, key).poly([S(a0, y0), S(a1, y0), S(a1, y1), S(a0, y1)], n);
+      };
       if (r === 0) {
         // Exterior: stone plinth below, siding/brick above, frieze board under the eaves.
         const Q = (a: number, y: number, d: number): V3 => (axis === 'h' ? [a, y, plane + n[2] * d] : [plane + n[0] * d, y, a]);
@@ -526,6 +586,7 @@ export class HouseBuilder {
         }
         const yb = Math.max(y0, PLINTH);
         if (y1 > yb) (own ?? ext).poly([P(a0, yb), P(a1, yb), P(a1, y1), P(a0, y1)], n);
+        mark(yb, y1);
         if (y1 >= H - 0.01) {
           const k = trim.kind;
           trim.kind = Cut.Hide;
@@ -535,6 +596,7 @@ export class HouseBuilder {
         if (y0 < 0.01) ao.poly([Q(a0, 0.012, 0), Q(a1, 0.012, 0), Q(a1, 0.012, 0.45), Q(a0, 0.012, 0.45)], [0, 1, 0], undefined, [0.32, 0.32, 0, 0]);
         return;
       }
+      mark(y0, y1);
       if (own) own.poly([P(a0, y0), P(a1, y0), P(a1, y1), P(a0, y1)], n);
       else {
         const tint = roomWall(r);
@@ -562,12 +624,12 @@ export class HouseBuilder {
       const a1 = s1 ?? (axis === 'h' ? x : z) + 1 - T;
       const [c0, c1] = lookOf(axis, x, z).faces ?? [0, 0];
       if (axis === 'h') {
-        face('h', z - T, a0, a1, y0, y1, [0, 0, -1], roomP(x + 0.5, z - 0.25), c0);
-        face('h', z + T, a0, a1, y0, y1, [0, 0, 1], roomP(x + 0.5, z + 0.25), c1);
+        face('h', z - T, a0, a1, y0, y1, [0, 0, -1], roomP(x + 0.5, z - 0.25), c0, `h:${x}:${z}:0`);
+        face('h', z + T, a0, a1, y0, y1, [0, 0, 1], roomP(x + 0.5, z + 0.25), c1, `h:${x}:${z}:1`);
         if (cap) trim.box(a0, y1 - 0.001, z - T, a1, y1, z + T, 'ny nx px nz pz');
       } else {
-        face('v', x - T, a0, a1, y0, y1, [-1, 0, 0], roomP(x - 0.25, z + 0.5), c0);
-        face('v', x + T, a0, a1, y0, y1, [1, 0, 0], roomP(x + 0.25, z + 0.5), c1);
+        face('v', x - T, a0, a1, y0, y1, [-1, 0, 0], roomP(x - 0.25, z + 0.5), c0, `v:${x}:${z}:0`);
+        face('v', x + T, a0, a1, y0, y1, [1, 0, 0], roomP(x + 0.25, z + 0.5), c1, `v:${x}:${z}:1`);
         if (cap) trim.box(x - T, y1 - 0.001, a0, x + T, y1, a1, 'ny nx px nz pz');
       }
     };
@@ -660,15 +722,18 @@ export class HouseBuilder {
           }
           // Free end or outer corner: exterior if either quadrant on that side is outdoors. It
           // continues the faces of the walls in its plane (or closes the end of the one it ends).
-          const cover =
+          // The first wall there lends its face (its covering, and its preview in `surfaces`).
+          const faces: ['h' | 'v', number, number, 0 | 1][] =
             dir === 'px'
-              ? (faceAt('v', x, z - 1, 1) ?? faceAt('v', x, z, 1) ?? faceAt('h', x - 1, z, 0))
+              ? [['v', x, z - 1, 1], ['v', x, z, 1], ['h', x - 1, z, 0]]
               : dir === 'nx'
-                ? (faceAt('v', x, z - 1, 0) ?? faceAt('v', x, z, 0) ?? faceAt('h', x, z, 0))
+                ? [['v', x, z - 1, 0], ['v', x, z, 0], ['h', x, z, 0]]
                 : dir === 'pz'
-                  ? (faceAt('h', x - 1, z, 1) ?? faceAt('h', x, z, 1) ?? faceAt('v', x, z - 1, 0))
-                  : (faceAt('h', x - 1, z, 0) ?? faceAt('h', x, z, 0) ?? faceAt('v', x, z, 0));
-          face(axis, plane, a0, a1, 0, top, n, ra === 0 || rb === 0 ? 0 : ra, cover ?? 0);
+                  ? [['h', x - 1, z, 1], ['h', x, z, 1], ['v', x, z - 1, 0]]
+                  : [['h', x - 1, z, 0], ['h', x, z, 0], ['v', x, z, 0]];
+          const from = faces.find(([axis, ex, ez]) => edges.get(axis, ex, ez));
+          const cover = from ? faceAt(...from) : 0;
+          face(axis, plane, a0, a1, 0, top, n, ra === 0 || rb === 0 ? 0 : ra, cover, from && from.join(':'));
         };
         const q = (dx: number, dz: number) => roomP(x + dx * 0.25, z + dz * 0.25);
         side('px', hr, [1, 0, 0], q(1, -1), q(1, 1));
@@ -694,11 +759,15 @@ export class HouseBuilder {
     };
     /**
      * `face` for walls of any direction: a rectangle on the plane `dOff` across frame `f`, facing
-     * side `sign`, `a0..a1` along it, into room `r` (exterior cladding outdoors, wallpaper inside).
+     * side `sign`, `a0..a1` along it, into room `r` (exterior cladding outdoors, wallpaper inside);
+     * `key` names it in `surfaces`.
      */
-    const faceG = (f: WallFrame, a0: number, a1: number, y0: number, y1: number, dOff: number, sign: number, r: number, cover = 0) => {
+    const faceG = (f: WallFrame, a0: number, a1: number, y0: number, y1: number, dOff: number, sign: number, r: number, cover = 0, key?: string) => {
       const out = (o: number): [number, number] => (sign > 0 ? [dOff, dOff + o] : [dOff - o, dOff]);
       const own = coverGeo(cover);
+      const mark = (y0: number, y1: number) => {
+        if (key && y1 > y0) f.face(surface(surfaces.faces, key), a0, a1, y0, y1, dOff + sign * PROUD, sign);
+      };
       // Contact shadow on the floor along the face (fading out `o0..o1` from it).
       const ground = (y: number, o0: number, o1: number, alphas: number[]) => {
         ao.poly([f.at(a0, y, dOff + sign * o0), f.at(a1, y, dOff + sign * o0), f.at(a1, y, dOff + sign * o1), f.at(a0, y, dOff + sign * o1)], [0, 1, 0], undefined, alphas);
@@ -712,6 +781,7 @@ export class HouseBuilder {
         }
         const yb = Math.max(y0, PLINTH);
         if (y1 > yb) f.face(own ?? ext, a0, a1, yb, y1, dOff, sign);
+        mark(yb, y1);
         if (y1 >= H - 0.01) {
           const k = trim.kind;
           trim.kind = Cut.Hide;
@@ -721,6 +791,7 @@ export class HouseBuilder {
         if (y0 < 0.01) ground(0.012, 0, 0.45, [0.32, 0.32, 0, 0]);
         return;
       }
+      mark(y0, y1);
       if (own) f.face(own, a0, a1, y0, y1, dOff, sign);
       else {
         const tint = roomWall(r);
@@ -738,8 +809,8 @@ export class HouseBuilder {
     const diagSegment = (f: WallFrame, d: DiagonalWall, y0: number, y1: number, kind: number, a0: number, a1: number, cap = true) => {
       const mask = diagMask(d);
       for (const g of wallGeos) g.cutting(kind, mask);
-      faceG(f, a0, a1, y0, y1, -T, -1, d.rooms[0], d.faces?.[0]);
-      faceG(f, a0, a1, y0, y1, T, 1, d.rooms[1], d.faces?.[1]);
+      faceG(f, a0, a1, y0, y1, -T, -1, d.rooms[0], d.faces?.[0], `${d.axis}:${d.x}:${d.z}:0`);
+      faceG(f, a0, a1, y0, y1, T, 1, d.rooms[1], d.faces?.[1], `${d.axis}:${d.x}:${d.z}:1`);
       if (cap) trim.poly([f.at(a0, y1, -T), f.at(a1, y1, -T), f.at(a1, y1, T), f.at(a0, y1, T)], [0, 1, 0]);
     };
     /** Whether a diagonal run continues as a plain wall past one end (room for a shutter). */
@@ -928,10 +999,16 @@ export class HouseBuilder {
               halfTriangle(d.axis, h).map(([fx, fz]) => [x + fx, 0.01, z + fz] as V3),
               [0, 1, 0],
             );
+            surface(surfaces.floors, `${x}:${z}`).poly(
+              halfTriangle(d.axis, h).map(([fx, fz]) => [x + fx, 0.01 + PROUD, z + fz] as V3),
+              [0, 1, 0],
+            );
           }
           continue;
         }
         floorOf(r).poly([[x, 0.01, z], [x + 1, 0.01, z], [x + 1, 0.01, z + 1], [x, 0.01, z + 1]], [0, 1, 0]);
+        const y = 0.01 + PROUD;
+        surface(surfaces.floors, `${x}:${z}`).poly([[x, y, z], [x + 1, y, z], [x + 1, y, z + 1], [x, y, z + 1]], [0, 1, 0]);
       }
     }
 
@@ -1091,7 +1168,7 @@ export class HouseBuilder {
     add(roof, 'roof', M.roof, { cut: false, cast: true, roof: true });
     add(roofTrim, 'roofTrim', M.trim, { cut: false, cast: true, roof: true });
     add(gables, 'gables', scheme.brick ? M.brick : M.siding, { cut: false, cast: true, roof: true });
-    return { meshes, casters, roofs, rooms: roomTiles, shrubs, trees };
+    return { meshes, casters, roofs, rooms: roomTiles, shrubs, trees, surfaces };
   }
 
   /**

@@ -55,6 +55,9 @@ export class VoiceDirector {
   private readonly sims = new Map<number, SimState>();
   private readonly speaking: Speaking[] = [];
   private inFlight = 0;
+  /** Lines played, and lines given up on (engine busy, too late, too many voices). */
+  private spoken = 0;
+  private dropped = 0;
   private lastTick = 0;
   private counter = 0;
   private disposed = false;
@@ -152,6 +155,11 @@ export class VoiceDirector {
     this.pan(frame);
   }
 
+  /** For the debug overlay. */
+  stats(): { speaking: number; inFlight: number; spoken: number; dropped: number } {
+    return { speaking: this.speaking.length, inFlight: this.inFlight, spoken: this.spoken, dropped: this.dropped };
+  }
+
   dispose(): void {
     this.disposed = true;
     this.stopAll();
@@ -220,7 +228,10 @@ export class VoiceDirector {
   }
 
   private say(id: number, index: number, line: Line, partnerId: number, thought: boolean, now: number): void {
-    if (this.inFlight >= MAX_IN_FLIGHT) return;
+    if (this.inFlight >= MAX_IN_FLIGHT) {
+      this.dropped++;
+      return;
+    }
     const state = this.sims.get(id);
     if (thought && state) state.quietUntil = now + THOUGHT_GAP_MS;
     const text = fill(line.text, this.firstName(id), partnerId >= 0 ? this.firstName(partnerId) : '');
@@ -232,10 +243,14 @@ export class VoiceDirector {
         // An answer waits for the other side to finish (within reason).
         const before = this.speaking.filter((s) => s.id !== id);
         if (before.length && !thought) await Promise.race([Promise.all(before.map((s) => s.playing.ended)), wait(3000)]);
-        if (this.disposed || !settings.voices || performance.now() - requested > MAX_WAIT_MS + 3000) return;
-        if (this.speaking.length >= MAX_VOICES) return;
+        if (this.disposed || !settings.voices) return;
+        if (performance.now() - requested > MAX_WAIT_MS + 3000 || this.speaking.length >= MAX_VOICES) {
+          this.dropped++;
+          return;
+        }
         const playing = playClip(samples, this.panFor(index));
         if (!playing) return;
+        this.spoken++;
         const entry = { id, playing };
         this.speaking.push(entry);
         void playing.ended.then(() => {

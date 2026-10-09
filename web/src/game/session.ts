@@ -12,6 +12,7 @@ import { AUTOSAVE_ID, readSave, writeSave, type SaveRecord } from '../persistenc
 import { recentLog } from '../debug/log';
 import { deliverReport, gpuInfo, takePendingPose, type DebugReport } from '../debug/report';
 import { plainState } from '../debug/snapshot.svelte';
+import { threadStats } from '../debug/threads';
 import { createSimPreviews } from '../render/preview';
 import { createItemPreviews } from '../render/preview/items';
 import type { Renderer, WallMode } from '../render/types';
@@ -470,6 +471,7 @@ export async function startSession(
       };
       if (game.placing) {
         game.placing = { ...game.placing, ...turned(game.placing.def, game.placing.rot, game.placing.turn) };
+        buildBuy.rehover();
         play('rotate');
       } else if (game.buySelection !== null) {
         const obj = game.objects.find((o) => o.id === game.buySelection);
@@ -481,6 +483,8 @@ export async function startSession(
     },
     sell(objectId) {
       if (game.mode !== 'buy') return;
+      // Selling what's in hand puts it down first (selling renumbers the objects after it).
+      if (game.placing?.objectId === objectId) buildBuy.cancel();
       bridge.send({ type: 'sell', household: game.home, object: objectId });
       game.buySelection = null;
       game.menu = null;
@@ -577,8 +581,8 @@ export async function startSession(
         renderer.captureThumbnail(Math.round(canvas.clientWidth * scale), Math.round(canvas.clientHeight * scale)),
         gpuInfo(),
       ]);
-      // Everything the HUD shows, minus the (large, static) catalog.
-      const ui = plainState(game, ['catalog']);
+      // Everything the HUD shows, minus the (large, static) catalog and the threads (reported on their own).
+      const ui = plainState(game, ['catalog', 'threads']);
       const report: DebugReport = {
         note,
         version: __APP_VERSION__,
@@ -588,6 +592,7 @@ export async function startSession(
         screen: { width: window.innerWidth, height: window.innerHeight, pixelRatio: window.devicePixelRatio || 1 },
         gpu,
         renderer: renderer.stats(),
+        threads: threadStats(renderer.stats(), bridge.threadStats, voices.stats()),
         settings: plainState(liveSettings),
         camera: renderer.cameraPose(),
         ui: { ...ui, viewPlot },
@@ -687,6 +692,8 @@ export async function startSession(
       household = game.household = mine.name;
     }
     game.objects = w.objects;
+    // Something restyled while in hand: the ghost takes the new look.
+    if (game.placing?.objectId != null) buildBuy.rehover();
     if (game.buySelection !== null && !w.objects.some((o) => o.id === game.buySelection)) game.buySelection = null;
     game.roster = w.sims.filter((s) => !s.gone);
     game.everyone = w.sims;
@@ -810,7 +817,11 @@ export async function startSession(
         const hit = renderer.pick(x, y);
         const ground = hit.ground && inLot(hit.ground.x, hit.ground.z) ? hit.ground : null;
         if (buildBuy.picking()) return usePicked(buildBuy.pick(ground, hit.objectId));
+        const held = game.placing;
+        const refused = game.placeRefused;
         buildBuy.click(hit.ground, hit.objectId);
+        if (!held && game.placing) play('pick');
+        if (game.placeRefused !== refused) play('error');
         return;
       }
       // Watching first: a click looks at someone; orders come from their panel (or, with the
@@ -962,7 +973,10 @@ export async function startSession(
         return controls.toggleEyedropper();
       case 'Delete':
       case 'Backspace':
-        if (game.mode === 'buy' && game.buySelection !== null) controls.sell(game.buySelection);
+        if (game.mode === 'buy') {
+          const target = game.placing?.objectId ?? game.buySelection;
+          if (target !== null) controls.sell(target);
+        }
         return;
       // B toggles Build mode, V Buy mode.
       case 'b':
@@ -989,13 +1003,16 @@ export async function startSession(
   };
 
   const statsTimer = setInterval(() => {
-    if (game.perfOpen) game.stats = renderer.stats();
+    if (!game.perfOpen) return;
+    game.stats = renderer.stats();
+    game.threads = threadStats(game.stats, bridge.threadStats, voices.stats());
   }, STATS_INTERVAL_MS);
 
   renderer.run((now) => {
     bridge.sync(now);
     const frame = bridge.frame(now);
     renderer.update(frame);
+    renderer.setHeldObject(game.placing?.objectId ?? null);
     if (!revealed) return;
     bubbles.update(frame);
     voices.update(frame);

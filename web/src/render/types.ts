@@ -39,6 +39,8 @@ export interface RenderStats {
   backend: string;
   fps: number;
   frameMs: number;
+  /** Main-thread time spent on a frame (game update and draw submission), smoothed, ms. */
+  cpuMs: number;
   drawCalls: number;
   snapshotRendering: boolean;
 }
@@ -93,6 +95,8 @@ export interface PlacementGhost {
   turn?: number;
   w: number;
   d: number;
+  /** The tile a Sim uses it from, marked with an arrow (must stay clear). */
+  front?: { x: number; z: number };
   valid: boolean;
 }
 
@@ -200,12 +204,18 @@ export interface Renderer {
   setVisualStyle(style: VisualStyle): void;
   /** Build/buy mode: object placement preview (null hides it). Cheap; call on every pointer move. */
   setPlacementGhost(ghost: PlacementGhost | null): void;
+  /**
+   * Buy mode: hides a placed object while it is in hand (null shows it again). With `moved` it
+   * stays hidden until the next world shows it in its new place (or briefly, if the move is refused).
+   * Cheap when unchanged; call every frame.
+   */
+  setHeldObject(id: number | null, moved?: boolean): void;
   /** Build mode: wall/door/removal preview segments; `valid` tints them. Cheap; call on every pointer move. */
   setEdgePreview(edges: readonly EdgePreview[], valid: boolean): void;
-  /** Build mode's Paint tool: a film of `color` over the faces it would cover (null: none). */
-  setPaintPreview(faces: readonly PaintPreviewFace[], color: string | null): void;
-  /** Build mode's Floor tool: a film of `color` over the floor tiles it would cover (null: none). */
-  setFloorPreview(tiles: readonly { x: number; z: number }[], color: string | null): void;
+  /** Build mode's Paint tool: the faces it would cover, dressed in wall covering `cover` (0: the automatic look; null: none). */
+  setPaintPreview(faces: readonly PaintPreviewFace[], cover: number | null): void;
+  /** Build mode's Floor tool: the tiles it would cover, laid with floor covering `floor` (0: the automatic look; null: none). */
+  setFloorPreview(tiles: readonly { x: number; z: number }[], floor: number | null): void;
   /** Build mode's room-score overlay: a film over each tile in its colour (`rgb` 0..1); empty hides it. */
   setRoomOverlay(tiles: readonly RoomOverlayTile[]): void;
   /** Build/buy mode: subtle tile grid over a tile rectangle (null hides it). */
@@ -321,6 +331,8 @@ export interface ItemPreviews {
   prefetch(models: readonly { model: string; footprint: [number, number] }[]): void;
   /** The cached picture, if it has been drawn. */
   cachedThumbnail(model: string): string | null;
+  /** The cached turntable, if it has been drawn. */
+  cachedTurntable(model: string, frames: number): string[] | null;
   /** The model seen from `frames` angles, turning once around (the catalog's drag-to-turn preview). */
   turntable(model: string, footprint: [number, number], frames: number): Promise<string[] | null>;
 }

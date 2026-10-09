@@ -129,7 +129,9 @@
         {#if owned.repairCost !== undefined}
           <button class="btn small primary" title="Repair it now" onclick={() => services.controls.repair(owned.id)}>{game.creative ? 'Repair' : `Repair · ${money(owned.repairCost)}`}</button>
         {/if}
-        <button class="btn ghost small" onclick={() => services.controls.startMoving(owned.id)}>Move</button>
+        {#if game.placing?.objectId !== owned.id}
+          <button class="btn ghost small" onclick={() => services.controls.startMoving(owned.id)}>Move</button>
+        {/if}
         <button class="btn ghost small" title="Rotate (R)" onclick={() => services.controls.rotatePlacing()}>Rotate</button>
         {#if content.turns(def)}
           <button class="btn ghost small" title="Turn a little (Shift+R)" onclick={() => services.controls.rotatePlacing(true)}>Turn 15°</button>

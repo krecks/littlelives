@@ -77,6 +77,16 @@
     return { text: cost > 0 ? money(cost) : 'Free', sub: what, bad: false };
   });
 
+  // A click where the item in hand doesn't fit: the tag shakes (a new one for each click).
+  let shaking = $state(false);
+  let shakeTimer: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => {
+    if (!game.placeRefused) return;
+    shaking = true;
+    clearTimeout(shakeTimer);
+    shakeTimer = setTimeout(() => (shaking = false), 480);
+  });
+
   // Money moved by an edit floats up from the pointer (time stands still in Buy mode, so the
   // funds only change through buying, selling and building).
   let lastFunds: number | null = null;
@@ -99,10 +109,12 @@
 <svelte:window onpointermove={move} />
 
 {#if tag}
-  <div class="tag" class:bad={tag.bad} style="transform: translate({x + 18}px, {y + 14}px)">
-    <b class="tabular">{tag.text}</b>
-    {#if tag.sub}<span>{tag.sub}</span>{/if}
-  </div>
+  {#key game.placeRefused}
+    <div class="tag" class:bad={tag.bad} class:shake={shaking} style="transform: translate({x + 18}px, {y + 14}px)">
+      <b class="tabular">{tag.text}</b>
+      {#if tag.sub}<span>{tag.sub}</span>{/if}
+    </div>
+  {/key}
 {/if}
 {#each floats as f (f.id)}
   <div class="float tabular" class:gain={f.amount > 0} style="left:{f.x}px;top:{f.y}px">{f.amount > 0 ? '+' : '−'}{money(Math.abs(f.amount))}</div>
@@ -137,6 +149,30 @@
   .tag.bad b,
   .tag.bad span {
     color: var(--bad);
+  }
+  /* (`translate` and `scale` stack on the positioning `transform`.) */
+  .tag.shake {
+    animation: refuse 480ms var(--ease);
+  }
+  @keyframes refuse {
+    15% {
+      translate: -6px 0;
+      scale: 1.14;
+      background: #ffe4e0;
+    }
+    30% {
+      translate: 5px 0;
+    }
+    45% {
+      translate: -4px 0;
+      background: #ffe4e0;
+    }
+    60% {
+      translate: 3px 0;
+    }
+    75% {
+      translate: -1px 0;
+    }
   }
   .float {
     position: fixed;

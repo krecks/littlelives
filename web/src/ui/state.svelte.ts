@@ -1,6 +1,7 @@
 /** Reactive UI state. Written by the game layer at ~10 Hz, read by components. */
 
 import type { Catalog, FormerResident, HouseholdInfo, Lifespan, ObjectPlacement, PlotInfo, RelationshipView, RoomView, Routine, SimInfo, SimView, SocialEvent, SocialOption } from '../core/protocol';
+import type { ThreadStats } from '../debug/threads';
 import type { RenderStats, WallMode } from '../render/types';
 
 export interface MenuState {
@@ -146,6 +147,8 @@ class GameState {
   placeValid = $state(true);
   /** Why the item in hand doesn't fit where it points ("Goes outdoors"); null for the usual reason. */
   placeHint = $state<string | null>(null);
+  /** Counts clicks where the item in hand doesn't fit (it stays in hand; the pointer tag shakes). */
+  placeRefused = $state(0);
   jobBoardOpen = $state(false);
   /** Plot currently shown. */
   viewPlot = $state<number | null>(null);
@@ -186,6 +189,7 @@ class GameState {
   menu = $state.raw<MenuState | null>(null);
   perfOpen = $state(false);
   stats = $state.raw<RenderStats | null>(null);
+  threads = $state.raw<ThreadStats | null>(null);
   sharedMemory = $state(false);
   toasts = $state.raw<Toast[]>([]);
 
@@ -216,6 +220,7 @@ class GameState {
     this.townOpen = false;
     this.viewPlot = null;
     this.stats = null;
+    this.threads = null;
     this.selected = 0;
     this.inspected = null;
     this.follow = null;

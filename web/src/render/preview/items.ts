@@ -103,6 +103,10 @@ class ItemThumbnails implements ItemPreviews {
     for (const m of models) void this.thumbnail(m.model, m.footprint, 'idle');
   }
 
+  cachedTurntable(model: string, frames: number): string[] | null {
+    return turntables.get(`${model}|${frames}`) ?? null;
+  }
+
   turntable(model: string, footprint: [number, number], frames: number): Promise<string[] | null> {
     const key = `${model}|${frames}`;
     const hit = turntables.get(key);

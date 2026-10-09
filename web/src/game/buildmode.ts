@@ -30,11 +30,14 @@ import { game, type BuildTool } from '../ui/state.svelte';
 
 /** Preview calls the renderer offers in buy mode. */
 interface BuildPreview {
-  /** Paint tool: the wall faces a click would cover, in the covering's colour (null: hidden). */
-  setPaintPreview(faces: readonly PaintFace[], color: string | null): void;
-  /** Floor tool: the tiles a release would cover, in the covering's colour (null: hidden). */
-  setFloorPreview(tiles: readonly { x: number; z: number }[], color: string | null): void;
-  setPlacementGhost(ghost: { model: string; x: number; z: number; rot: number; turn?: number; w: number; d: number; valid: boolean } | null): void;
+  /** Paint tool: the wall faces a click would cover, dressed in wall covering `cover` (null: hidden). */
+  setPaintPreview(faces: readonly PaintFace[], cover: number | null): void;
+  /** Floor tool: the tiles a release would cover, laid with floor covering `floor` (null: hidden). */
+  setFloorPreview(tiles: readonly { x: number; z: number }[], floor: number | null): void;
+  setHeldObject(id: number | null, moved?: boolean): void;
+  setPlacementGhost(
+    ghost: { model: string; x: number; z: number; rot: number; turn?: number; w: number; d: number; front?: { x: number; z: number }; valid: boolean } | null,
+  ): void;
   setEdgePreview(edges: EdgeEdit[], valid: boolean): void;
   setBuildGrid(rect: ViewRect | null): void;
   /** Whether a left-drag turns the camera (off while drawing walls). */
@@ -57,6 +60,19 @@ type Axis = EdgeEdit['axis'];
 
 /** A drag counts as diagonal within this angle of 45° (tan 22.5°: halfway to straight). */
 const DIAGONAL_SLOPE = Math.tan(Math.PI / 8);
+
+/** The tile in front of a footprint (min corner, rotated size), where a Sim stands to use it. */
+function frontTile(x: number, z: number, w: number, d: number, rot: number): [number, number] {
+  const mx = x + Math.floor((w - 1) / 2);
+  const mz = z + Math.floor((d - 1) / 2);
+  const fronts: [number, number][] = [
+    [mx, z + d],
+    [x + w, mz],
+    [mx, z - 1],
+    [x - 1, mz],
+  ];
+  return fronts[rot % 4];
+}
 
 export class BuildBuyInput {
   private readonly preview: Partial<BuildPreview>;
@@ -224,6 +240,11 @@ export class BuildBuyInput {
     else if (game.mode === 'buy') this.hoverBuy(ground);
   }
 
+  /** Redraw the Buy ghost where the pointer last was (after a turn, without waiting for the pointer to move). */
+  rehover(): void {
+    if (this.lastHover && game.mode === 'buy' && !this.picking()) this.hoverBuy(this.lastHover);
+  }
+
   /** The next click picks up a look (E, or Alt held) instead of building or placing. */
   picking(): boolean {
     return game.mode !== 'live' && (game.eyedropper || this.alt);
@@ -327,12 +348,7 @@ export class BuildBuyInput {
     if (def.outdoors) {
       for (let tz = z; tz < z + d; tz++) for (let tx = x; tx < x + w; tx++) if (this.indoors(tx, tz)) return 'Goes outdoors';
     }
-    const front = [
-      [x + Math.floor((w - 1) / 2), z + d],
-      [x + w, z + Math.floor((d - 1) / 2)],
-      [x + Math.floor((w - 1) / 2), z - 1],
-      [x - 1, z + Math.floor((d - 1) / 2)],
-    ][rot % 4];
+    const front = frontTile(x, z, w, d, rot);
     if (!onPlot(front[0], front[1]) || taken(front[0], front[1])) return null;
     // As the simulation: no wall through the footprint, or between it and where it's used from.
     for (let tz = z; tz < z + d; tz++) {
@@ -363,7 +379,8 @@ export class BuildBuyInput {
     const p = this.placement(ground);
     if (!p) return this.preview.setPlacementGhost?.(null);
     const style = p && game.placing?.objectId != null ? (game.objects.find((o) => o.id === game.placing!.objectId)?.style ?? 0) : (game.placing?.style ?? game.householdStyle);
-    this.preview.setPlacementGhost?.({ model: this.styledModel(p.def, style), x: p.x, z: p.z, rot: p.rot, turn: p.turn, w: p.w, d: p.d, valid: p.valid });
+    const [fx, fz] = frontTile(p.x, p.z, p.w, p.d, p.rot);
+    this.preview.setPlacementGhost?.({ model: this.styledModel(p.def, style), x: p.x, z: p.z, rot: p.rot, turn: p.turn, w: p.w, d: p.d, front: { x: fx, z: fz }, valid: p.valid });
     if (game.placeValid !== p.valid) game.placeValid = p.valid;
     if (game.placeHint !== p.reason) game.placeHint = p.reason;
   }
@@ -373,8 +390,18 @@ export class BuildBuyInput {
     if (placing) {
       const p = ground && this.placement(ground);
       if (!p) return true;
+      // Doesn't fit: keep it in hand rather than ask the simulation to refuse it.
+      if (!p.valid) {
+        game.placeRefused++;
+        return true;
+      }
       if (placing.objectId !== null) {
-        this.send({ type: 'moveObject', household: game.home, object: placing.objectId, x: p.x, z: p.z, rot: p.rot, turn: p.turn });
+        // Put down where it was: nothing to send (a move renumbers it and is an undo step).
+        const was = game.objects.find((o) => o.id === placing.objectId);
+        const same = was && was.x === p.x && was.z === p.z && was.rot === p.rot && (was.turn ?? 0) === p.turn;
+        if (!same) this.send({ type: 'moveObject', household: game.home, object: placing.objectId, x: p.x, z: p.z, rot: p.rot, turn: p.turn });
+        // Moved: the original stays hidden until it shows up in its new place.
+        this.preview.setHeldObject?.(null, !same);
         game.placing = null;
         this.preview.setPlacementGhost?.(null);
       } else {
@@ -385,7 +412,11 @@ export class BuildBuyInput {
     }
     const home = this.home();
     const obj = objectId === null ? undefined : game.objects.find((o) => o.id === objectId);
-    game.buySelection = obj && home && obj.x >= home.x && obj.z >= home.z && obj.x < home.x + home.w && obj.z < home.z + home.d ? obj.id : null;
+    game.buySelection = null;
+    if (!obj || !home || obj.x < home.x || obj.z < home.z || obj.x >= home.x + home.w || obj.z >= home.z + home.d) return true;
+    // Clicking something at home picks it up: move it, turn it (R), restyle it from the panel.
+    game.placing = { def: obj.def, rot: obj.rot, turn: obj.turn ?? 0, objectId: obj.id };
+    if (ground) this.hoverBuy(ground);
     return true;
   }
 
@@ -621,9 +652,7 @@ export class BuildBuyInput {
       faces = this.painting;
     } else if (face) faces = this.shift ? this.roomFaces(face) : [face];
     faces = faces.filter((f) => this.edgesOnHome([{ ...f, kind: 'wall' }]));
-    const cover = game.buildLook.cover;
-    const color = cover ? (this.content.wallCoverings[cover - 1]?.color ?? '#FFFFFF') : '#FFFFFF';
-    this.preview.setPaintPreview?.(faces, faces.length ? color : null);
+    this.preview.setPaintPreview?.(faces, faces.length ? game.buildLook.cover : null);
     game.buildCost = game.creative ? 0 : this.paintCost(faces);
     game.paintFaces = faces.length;
     game.buildEdges = faces.length;
@@ -680,9 +709,7 @@ export class BuildBuyInput {
 
   private hoverFloor(ground: Point): void {
     const tiles = this.floorTiles(ground);
-    const floor = game.buildLook.floor;
-    const color = floor ? (this.content.floorCoverings[floor - 1]?.color ?? '#FFFFFF') : '#FFFFFF';
-    this.preview.setFloorPreview?.(tiles, tiles.length ? color : null);
+    this.preview.setFloorPreview?.(tiles, tiles.length ? game.buildLook.floor : null);
     game.buildCost = game.creative ? 0 : this.floorCost(tiles);
     game.floorTiles = tiles.length;
     game.buildEdges = tiles.length;
