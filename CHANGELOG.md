@@ -2,6 +2,26 @@
 
 All notable changes to Littlelives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
+## Unreleased (0.12.0)
+
+Life cycle I: lives move on. Everyone is an adult here; babies, children and teens come in 0.13.
+
+### New
+- **Ages and life stages:** every resident has an age and is a young adult, an adult or an elder. Reaching a new stage is a moment in the journal with a feeling; elders tire sooner, walk a little slower and their hair greys. The household creator has an age for each resident (pick a stage, or type the age), and the resident panel shows it.
+- **Lifespan**, chosen with a new game and changeable in *Settings → Gameplay*: *Off* (nobody ages), *Short* (a year every game day), *Normal* (every two days: a whole life in about 130 days) or *Long* (every four). Games saved before this version load with aging off.
+- **Retirement:** at 65 a working resident retires, and the household gets a weekly pension of 40% of their last pay on rent day. Retirees can still take a job.
+- **Passing away:** from 75 the old may pass away (on average in their mid-eighties). Family, partners and close friends grieve for days, friends miss them, and the journal remembers them, even once someone new lives in their place.
+- **Family:** parents, children and siblings. The household creator's bonds offer *Parent*, *Child* and *Sibling* (with a note when the ages don't fit); random households are sometimes a couple with a grown child or two siblings; the People tab says who is whose mother, son or sister; relatives don't flirt.
+- **Moving:** partners living apart move in together where a home has a bed for everyone (into your home if there's room, bringing some money), or into a house for sale together. Grown children with a job move out of the family home into a house for sale; with none free, some leave town. *Settings → Gameplay → Moving* keeps your household out of it.
+- **Newcomers:** a furnished house nobody lives in gets new neighbours now and then: a single, a couple (sometimes with a grown child) or two siblings, with names, traits, ages and looks of their own. Your home is never given away, even if nobody lives there any more.
+
+### Changed
+- Residents no longer start a sleep that hunger or the bathroom would end at once (a starving, exhausted resident tried every minute); they eat or go first.
+- Things wear by how much of a full use they got (a nap cut short wears a bed a little); base wear is higher to match, so breakdowns come about as often as before.
+- Residents hurry to repair what they badly need (a broken toilet before a broken lamp).
+- Oakridge House has a proper bathroom (its wall stopped halfway); a second-bathroom wish now forms only from waiting for the toilet, on two different days in a week.
+- Saves are now version 13 (ages, the lifespan, residents who are gone, former residents' names, family links, retirement, the Moving setting). Older saves load as before, with aging off.
+
 ## Unreleased (0.11.0)
 
 The house matters: what you build changes how your residents live, and they tell you what they'd like next.

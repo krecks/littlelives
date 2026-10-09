@@ -346,6 +346,31 @@ traits whose `tagPreference` dislikes an activity's tags skip it more. A pack's 
 `dayRhythm.workDecay` multiplies need decay while at work. **Jobs:**
 `careerRules.market` turns on residents finding, quitting and losing jobs on their own.
 
+## Life: ages, family, moving
+
+Content `life` (an object, so a pack can change single keys; see `docs/design/life-cycle.md`):
+
+| Key | Meaning |
+|---|---|
+| `daysPerYear` | Game days per year of age at the *Normal* lifespan (default 2; *Short* halves it, *Long* doubles it). |
+| `startAge` | `[min, max]` ages for residents nothing gives one (default `[25, 50]`). |
+| `stages` | Youngest first: `{"id", "label", "from", "story", "feeling", "effects", "greyHair"}`. `from` is the age it starts at; `story` the journal's words ("is an elder now"); `feeling` granted on reaching it; `effects` like a trait's (combined with traits and perks); `greyHair` 0..1 how far hair greys. |
+| `retireAt`, `pension`, `retireFeeling` | Working residents retire at this age; the weekly pension is `pension` × their last weekly pay. |
+| `death` | `{"from", "perYear", "growth"}`: from age `from`, a yearly chance of `perYear`, ×e^`growth` per year older. |
+| `grief` | `{"feeling", "lightFeeling", "close", "friend"}`: family, partners and friends from `close` get `feeling` when someone dies; friends from `friend` get `lightFeeling`. |
+| `moving` | `{"hour", "partners", "romance", "leaveHomeAge", "leaveHome", "leaveTownAge", "leaveTown"}`: daily chances of partners moving in together (romance at least `romance`), grown children moving out, and leaving town when no house is free. Absent: nobody moves on their own. |
+| `newcomers` | `{"hour", "days"}`: a vacant house gets a household with a chance of 1 in `days` a day. Absent: nobody new comes. |
+
+**Family** comes from bond presets with a `kin`, the family link of the bond's *second*
+resident to the first: `{"parent": {"friendship": 50, "kin": "parent"}}` in a bond `a, b` makes
+`b` the parent of `a` (`kin`: `parent`, `child` or `sibling`). Relatives don't flirt.
+
+**Names** for newcomers come from content `names`: `first`, `byGender` (first names per gender
+id) and `last` (household names).
+
+**Story texts** (`events`): `grewOlder` (`{stage}`: the stage's `story`), `retired` (`{job}`),
+`died`, `movedInWith` (`{b}`: the partner), `movedOut`, `movedAway`.
+
 ## Ids you can refer to
 
 - **Needs:** `hunger`, `energy`, `bladder`, `hygiene`, `fun`, `comfort`, `social`.

@@ -1,6 +1,6 @@
 # Life cycle I (0.12)
 
-*Status: in progress on `build-and-watch`. Roadmap: PLAN.md section 8.*
+*Status: done on `build-and-watch` (0.12). Roadmap: PLAN.md section 8.*
 
 Lives move on: residents age, grow old, retire and pass away; partners move in together, grown
 children move out, and newcomers arrive in empty houses. The house has to grow and shrink with
@@ -23,20 +23,21 @@ grows and is capped at `MAX_SIMS` (64).
   target; their relationships are cleared, their object slots and tasks released, everyone's
   tasks and conversations with them cancelled. Their snapshot row stays, flagged absent, so rows
   and ids still match.
-- **Slot reuse.** A newcomer takes the lowest gone slot (or a new one below the cap). Before a
-  slot is reused, story events that name its former occupant are converted: the slot's name is
-  kept in `World::former` (a small list of former residents: name and household name) and the
-  events point there (`SocialEvent` references become `Ref::Resident(id)` or
-  `Ref::Former(index)`). So the journal still says "Ada passed away" years later. Former entries
-  nobody's events name any more are dropped.
+- **Slot reuse.** Newcomers (and families the player moves in) take the lowest gone slot, else
+  a new one below the cap; loading a save never reuses. Before a slot is reused, story events
+  that name its former occupant are converted: the name is kept in `World::former` (name and
+  household name) and the events name `social::FORMER | index` instead (the top bit marks a
+  former resident). So the journal still says "Ada passed away" years later. Former entries no
+  event names any more are dropped. A move that fails restores everything (`World::move_in`).
 
-The renderer rebuilds a rig when the resident in a slot changes (a `generation` counter per slot
-in the structure), and the UI lists only residents who aren't gone.
+The renderer rebuilds rigs on every structure change and skips gone residents (a `generation`
+counter per slot says someone new is there); the UI's roster leaves them out, while the story
+names them from the full list (`game.everyone`) and former residents from `game.former`.
 
 ## Ages and life stages
 
-Each resident has an age in days (`born`: the game day of their birth, which may be negative).
-Content `life`:
+Each resident has an age in years (`Sim::age`), a year-fraction older every midnight at the
+game's pace, so changing the lifespan never makes anyone jump in age. Content `life`:
 
 ```json
 "life": {
@@ -49,13 +50,16 @@ Content `life`:
   ],
   "retireAt": 65, "pension": 0.4,
   "death": {"from": 75, "perYear": 0.04, "growth": 0.12},
-  ...
+  "grief": {"feeling": "grieving", "lightFeeling": "missesSomeone", "close": 60, "friend": 35},
+  "newcomers": {"hour": 12, "days": 3},
+  "moving": {"hour": 11, "partners": 0.2, "romance": 60, "leaveHomeAge": 23, "leaveHome": 0.1,
+             "leaveTownAge": 30, "leaveTown": 0.05}
 }
 ```
 
 - **Lifespan** is a per-game option (Settings, and a step of a new game): *Off* (nobody ages),
-  *Short* (1 day a year), *Normal* (2 days a year: young adult to elder in about 84 days, a
-  whole life about 120), *Long* (4). Saved in the world.
+  *Short* (1 day a year), *Normal* (2 days a year: 18 to elder in 84 days, a whole life about
+  130), *Long* (4). Saved in the world.
 - **Birthdays** pass quietly; a new stage is a story event ("Ada is an elder now") with a
   feeling. Elders get tired sooner and walk slower (content `effects`), and their hair greys
   (presentation only; elder bodies are 0.13).
@@ -65,63 +69,64 @@ Content `life`:
 
 ## Family
 
-Relationships gain a kin link (`Kin::Parent` / `Child` / `Sibling`, symmetric pairs; partners
-stay the `partners` flag). Family starts friendlier, family members don't flirt, and kin shows in
-the relationships panel and the journal ("Ada's son"). The household creator gets family bonds
-(parent and child, siblings), and generated households are sometimes families (a couple and a
-grown child, two siblings).
+Relationships gain a kin link (`Relationship::kin`: what the other is to this one, `Parent` /
+`Child` / `Sibling`, set both ways by bond presets with a `kin`; partners stay the `partners`
+flag). Family members don't flirt, and kin shows in the People tab ("Mother", "Son"). The
+household creator gets family bonds (parent, child, sibling), and generated households are
+sometimes families (a couple with a grown child, two siblings). Grief uses kin.
 
 ## Retirement and death
 
 - **Retirement:** at `retireAt` an employed resident retires (story event, a good feeling) and
   the household gets a weekly pension of `pension` × their last weekly pay.
-- **Death:** from `death.from` a resident may pass away of old age: a daily chance of
-  `perYear / daysPerYear`, growing by `growth` per year past `from` (about age 85 on average).
-  Someone at home goes quietly in their sleep or sitting down; the journal tells it, the household
-  and close friends grieve (a strong sad feeling, scaled by how close they were; family most),
+- **Death:** from `death.from` a resident may pass away of old age, checked at midnight: a
+  yearly chance of `perYear`, ×e^`growth` per year past `from`, spread over the year's days
+  (median about 84). The journal tells it; family, partners and friends with friendship of at
+  least `grief.close` get the strong `grief.feeling`, friends from `grief.friend` the lighter one;
   and they're gone. Their belongings stay; the household keeps the money.
 - A household with nobody left keeps its home; the player's own home then offers *Move a family
   in*, a neighbour's house becomes vacant.
 
 ## Moving
 
-- **Partners move in together:** partners in different households, partners for at least
-  `moveIn.days`, both adults, move in together when one home has room (a bed for everyone and
-  below `rules.maxHousehold`): the resident from the fuller home moves (with a share of their
-  household's money), and the story says so. If neither has room, nothing happens (or they move
-  to a vacant house together, below).
-- **Grown children move out:** a resident living with a parent, at least `moveOut.age`, with a
-  job (or a partner elsewhere), moves to a vacant house in town after a while, with their partner
-  if they have one at home. With no vacant house they stay.
-- **Newcomers:** a vacant house (a neighbour's home with nobody in it, or one left empty) gets a
-  new household after `newcomers.days`: a single, a couple, a couple with a grown child or two
-  siblings, sized to its bedrooms, with names from content `names`, traits and perks drawn like
-  the household creator's random ones, ages that fit, and an appearance seed
-  (`{"seed": n}`, expanded by the web into a look with the creator's own random generator).
-  Never the player's home.
-- Moving out of town: a resident who would move but finds nowhere (and isn't the player's)
-  may leave town (gone, "moved away") so towns don't fill up with grown children.
+Once a day at `moving.hour` (residents at work move too, and come back to the new home):
+
+- **Partners move in together:** partners in different households whose romance is at least
+  `moving.romance` both ways, with a `moving.partners` chance a day, move in together where a home
+  has a bed for everyone (broken beds count: someone will fix them) within `rules.maxHousehold`:
+  into the player's home first, else the one from the fuller home moves, bringing their share of
+  their household's money. If neither has room, into a vacant house together.
+- **Grown children move out:** a resident living with a parent, at least `moving.leaveHomeAge`,
+  working (or retired), with a `moving.leaveHome` chance a day, moves into a vacant house (with a
+  partner living with them) as a household with the family name. With no vacant house, from
+  `moving.leaveTownAge` they may leave town (`moving.leaveTown`; never the player's), so towns
+  don't fill up with grown children.
+- **Newcomers:** at `newcomers.hour` each vacant house (furnished, nobody living there, never the
+  player's home) gets a household with a chance of 1 in `newcomers.days`: a single, a couple
+  (sometimes with a grown child) or two siblings, sized to its beds, with names from content
+  `names`, traits without clashes, perks within the points, fitting ages, and an appearance seed
+  (`{"seed": n}`, which the web expands with the creator's own random look).
 
 The player's own household is part of this: their residents age, retire, die, find partners who
-move in, and their grown children move out. A setting can switch *Moving* off for the player's
-household (residents only leave or arrive with the player's say-so: a confirm toast).
+move in, and their grown children move out. *Settings → Gameplay → Moving* (per game) keeps the
+player's household out of moving; a confirm-each-move option ("ask") is left for later.
 
 ## Interface
 
-- Ages and stages in the resident panel, household strip and the household creator.
-- Family in the relationships list ("Mother", "Son", "Sister").
-- Story events: became an elder, retired, passed away, moved in together, moved out, moved away,
-  new neighbours.
-- Settings → Life: lifespan (off, short, normal, long) and the player's household moving on its
-  own (on, ask, off).
+- Ages and stages in the resident panel and the household creator; retirement and the pension in
+  the Career tab; elders' hair greys (`greyHair` on the stage).
+- Family in the People tab ("Mother", "Son", "Sister") and in the creator's bonds.
+- Story events: became an elder, retired, passed away, moved in together, moved out, left town,
+  moved in (newcomers).
+- New game and *Settings → Gameplay*: lifespan (off, short, normal, long); *Moving* (on, off).
 
 ## Saves
 
-Version 13: `born` per resident, gone residents (`gone: {why, day}`), slot generations, former
-residents, kin in relationships, references in events (still plain numbers for residents, with a
-`former` marker), the life options. Older saves: everyone gets an age from their household role
-(adults 25-50), nobody is gone, aging is *Normal* for new games and *Off* for loaded older games
-(the player can switch it on).
+Version 13: ages, gone residents (`gone: {why, day}`), retirement and pension, former residents
+(`former`) and the events naming them (`FORMER` references), kin in relationships, the lifespan
+and the Moving setting. Slot generations aren't saved (a loaded game starts them over). Older
+saves: everyone gets an age from content `life.startAge` (by name), nobody is gone, and aging is
+off (the player can switch it on); new games age at *Normal*.
 
 ## Build order
 
