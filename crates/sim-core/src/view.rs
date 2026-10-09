@@ -462,6 +462,7 @@ pub fn ui_state_json(world: &World) -> String {
     let sims = world
         .sims
         .iter()
+        .filter(|s| s.here())
         .map(|s| {
             let mut actions = Vec::new();
             if let Some(until) = s.away_until {
@@ -668,6 +669,9 @@ struct StructureView<'a> {
     depth: usize,
     objects: Vec<ObjectView<'a>>,
     sims: Vec<SimInfo<'a>>,
+    /// Names of former residents (story events name them with `social::FORMER`).
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
+    former: &'a [crate::world::Former],
     households: Vec<HouseholdView<'a>>,
     plots: Vec<PlotView<'a>>,
     exits: &'a [[f32; 2]],
@@ -881,6 +885,16 @@ struct SimInfo<'a> {
     appearance: &'a serde_json::Value,
     traits: &'a [String],
     perks: &'a [String],
+    /// Died or moved away (kept so ids and snapshot rows match; not listed or drawn).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    gone: Option<crate::world::Gone>,
+    /// Bumped when someone new takes the slot.
+    #[serde(skip_serializing_if = "is_zero_u32")]
+    generation: u32,
+}
+
+fn is_zero_u32(n: &u32) -> bool {
+    *n == 0
 }
 
 #[derive(Serialize)]
@@ -985,6 +999,8 @@ pub fn structure_json_with(world: &World, lot: bool) -> String {
             appearance: &s.appearance,
             traits: &s.traits,
             perks: &s.perks,
+            gone: s.gone,
+            generation: world.generations.get(s.id as usize).copied().unwrap_or(0),
         })
         .collect();
     let households = world
@@ -1028,6 +1044,7 @@ pub fn structure_json_with(world: &World, lot: bool) -> String {
         depth: world.lot.depth,
         objects,
         sims,
+        former: &world.former,
         households,
         plots,
         exits: &world.exits,

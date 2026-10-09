@@ -252,7 +252,20 @@ export interface SimInfo {
   appearance: Appearance;
   traits: string[];
   perks: string[];
+  /** Died or moved away: the slot (and its snapshot row) stays, but they're not listed or drawn. */
+  gone?: { why: 'died' | 'movedAway'; day: number };
+  /** Bumped when someone new takes the slot. */
+  generation?: number;
 }
+
+/** Someone whose slot a newcomer took; story events name them with `FORMER | index`. */
+export interface FormerResident {
+  name: string;
+  household: string;
+}
+
+/** Event references with this bit name a former resident (sim-core `social::FORMER`). */
+export const FORMER = 2 ** 31;
 
 export interface WorldMeta {
   kind?: string;
@@ -300,7 +313,9 @@ export interface WorldStructure {
   width: number;
   depth: number;
   objects: ObjectPlacement[];
+  /** Every slot, gone residents included (ids index this list); `roster` in the UI leaves them out. */
   sims: SimInfo[];
+  former?: FormerResident[];
   households: HouseholdInfo[];
   plots: PlotInfo[];
   exits: [number, number][];

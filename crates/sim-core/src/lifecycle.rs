@@ -51,6 +51,9 @@ pub(crate) fn update(w: &mut World) {
         return;
     }
     for i in 0..w.sims.len() {
+        if !w.sims[i].here() {
+            continue;
+        }
         let rules = &w.content.life;
         let sim = &mut w.sims[i];
         let before = rules.stage(sim.age);

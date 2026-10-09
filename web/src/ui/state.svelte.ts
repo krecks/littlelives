@@ -1,6 +1,6 @@
 /** Reactive UI state. Written by the game layer at ~10 Hz, read by components. */
 
-import type { Catalog, HouseholdInfo, Lifespan, ObjectPlacement, PlotInfo, RelationshipView, RoomView, Routine, SimInfo, SimView, SocialEvent, SocialOption } from '../core/protocol';
+import type { Catalog, FormerResident, HouseholdInfo, Lifespan, ObjectPlacement, PlotInfo, RelationshipView, RoomView, Routine, SimInfo, SimView, SocialEvent, SocialOption } from '../core/protocol';
 import type { RenderStats, WallMode } from '../render/types';
 
 export interface MenuState {
@@ -80,7 +80,11 @@ class GameState {
   debugSaving = $state(false);
   sims = $state.raw<SimView[]>([]);
   /** Static per-Sim info (appearance, traits) from the world structure. */
+  /** Residents in town (not those who died or moved away). */
   roster = $state.raw<SimInfo[]>([]);
+  /** Every slot, the gone included (the story names them), and former residents. */
+  everyone = $state.raw<SimInfo[]>([]);
+  former = $state.raw<FormerResident[]>([]);
   households = $state.raw<HouseholdInfo[]>([]);
   plots = $state.raw<PlotInfo[]>([]);
   relationships = $state.raw<RelationshipView[]>([]);
@@ -196,6 +200,8 @@ class GameState {
   reset(): void {
     this.sims = [];
     this.roster = [];
+    this.everyone = [];
+    this.former = [];
     this.households = [];
     this.plots = [];
     this.relationships = [];

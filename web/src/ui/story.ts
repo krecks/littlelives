@@ -1,6 +1,6 @@
 /** How story events read: their sentence, icon and tone (the feed and the journal). */
 
-import type { SocialEvent } from '../core/protocol';
+import { FORMER, type SocialEvent } from '../core/protocol';
 import { money } from './format';
 import { services } from './services';
 import { game } from './state.svelte';
@@ -61,7 +61,9 @@ export function storyTone(e: SocialEvent): 'love' | 'bad' | 'good' {
   return LOVE.has(e.kind) ? 'love' : BAD.has(e.kind) ? 'bad' : 'good';
 }
 
-const name = (id: number | undefined) => game.roster.find((s) => s.id === id)?.name ?? 'Someone';
+/** Who an event names: a resident (gone ones too) or a former resident. */
+const name = (id: number | undefined) =>
+  id === undefined ? 'Someone' : id >= FORMER ? (game.former[id - FORMER]?.name ?? 'Someone') : (game.everyone.find((s) => s.id === id)?.name ?? 'Someone');
 
 /** The job a job event is about (title at its level). */
 function job(e: SocialEvent): string {
@@ -88,7 +90,7 @@ export function storyText(e: SocialEvent): string {
 
 /** Whether an event is about the player's household. */
 export function aboutUs(e: SocialEvent): boolean {
-  return [e.a, e.b, e.c].some((id) => id !== undefined && game.households[game.roster.find((s) => s.id === id)?.household ?? -1]?.player);
+  return [e.a, e.b, e.c].some((id) => id !== undefined && id < FORMER && game.households[game.everyone.find((s) => s.id === id)?.household ?? -1]?.player);
 }
 
 /** Game minutes per tick (`sim-core` `MINUTES_PER_TICK`); day 1 starts at 08:00. */

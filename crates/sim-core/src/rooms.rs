@@ -307,7 +307,7 @@ pub(crate) fn opinions(w: &mut World) {
     let today = crate::clock::day(tick);
     for i in 0..w.sims.len() {
         let s = &w.sims[i];
-        let Some(home) = w.households[s.household as usize].plot else { continue };
+        let Some(home) = w.households[s.household as usize].plot.filter(|_| s.here()) else { continue };
         let (x, z) = s.tile();
         let at_home = s.away_until.is_none() && !s.asleep(&w.content) && w.plot_at(x, z) == Some(home);
         let rooms: Vec<&RoomInfo> = w.rooms.iter().filter(|r| r.plot == Some(home)).collect();

@@ -765,7 +765,7 @@ export class Characters {
       groups.set(key, list);
     };
     for (const s of world.sims) {
-      if (s.id >= MAX_CHARACTERS) continue;
+      if (s.id >= MAX_CHARACTERS || s.gone) continue;
       const bodyName = s.gender === 'female' ? 'female' : 'male';
       const body = set.bodies.get(bodyName) ?? set.bodies.values().next().value!;
       const style = s.appearance?.hairStyle ?? 'short';

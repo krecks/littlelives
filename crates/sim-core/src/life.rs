@@ -159,6 +159,9 @@ pub(crate) fn update(w: &mut World) {
     let day = clock::day(tick);
     let hour = clock::hour(tick);
     for i in 0..w.sims.len() {
+        if !w.sims[i].here() {
+            continue;
+        }
         // Interactions started this tick are paid from the Sim's own household (guests too).
         let spend = std::mem::take(&mut w.sims[i].pending_spend);
         w.households[w.sims[i].household as usize].funds -= spend;
@@ -189,7 +192,7 @@ fn job_market(w: &mut World, day: u32) {
     let tick = w.tick;
     for i in 0..w.sims.len() {
         let h = w.sims[i].household as usize;
-        if !w.households[h].free_will || w.sims[i].away_until.is_some() {
+        if !w.households[h].free_will || w.sims[i].away_until.is_some() || !w.sims[i].here() {
             continue;
         }
         if let Some(job) = &w.sims[i].job {
@@ -352,7 +355,7 @@ fn apply_transition(w: &mut World, i: usize, transition: Transition) {
                 .map(|h| h.id);
             if let Some(host) = host
                 && let Some(j) = w.sims.iter().position(|s| {
-                    s.household == host && w.plot_at(s.tile().0, s.tile().1) == Some(plot)
+                    s.here() && s.household == host && w.plot_at(s.tile().0, s.tile().1) == Some(plot)
                 })
             {
                 w.events.push(tick, EventKind::Visited, i, j, None);
@@ -460,7 +463,7 @@ pub fn weekly_costs(w: &World, h: usize) -> Option<(i64, i64)> {
         .filter(|(_, on)| **on == Some(plot))
         .map(|(o, _)| o.value)
         .sum();
-    let residents = w.sims.iter().filter(|s| s.household as usize == h).count();
+    let residents = w.sims.iter().filter(|s| s.here() && s.household as usize == h).count();
     if residents == 0 {
         return None;
     }
@@ -479,7 +482,7 @@ fn charge_rent(w: &mut World, day: u32) {
     let tick = w.tick;
     let due = clock::weekday(day) == rent.weekday;
     for h in 0..w.households.len() {
-        let Some(member) = w.sims.iter().position(|s| s.household as usize == h) else {
+        let Some(member) = w.sims.iter().position(|s| s.here() && s.household as usize == h) else {
             continue;
         };
         if due && let Some((rent, bills)) = weekly_costs(w, h) {
@@ -500,7 +503,7 @@ fn charge_rent(w: &mut World, day: u32) {
             && let Some(m) = rent.debt_feeling
         {
             let World { sims, content, .. } = &mut *w;
-            for s in sims.iter_mut().filter(|s| s.household as usize == h) {
+            for s in sims.iter_mut().filter(|s| s.here() && s.household as usize == h) {
                 social::add_feeling(&mut s.feelings, m, &content.feelings, tick);
             }
         }

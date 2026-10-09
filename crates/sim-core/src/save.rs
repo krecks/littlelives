@@ -18,7 +18,8 @@
 //! and gates (edges `4` and `5`, their fence style in `looks`), roofs (`plots[].roof`: roof
 //! style and colour ids); 12 = per-tile dirt (`dirt`), the surroundings need, tidying up,
 //! object wear and repairs; 13 = ages (`sims[].age`; absent: from content `life.startAge`)
-//! and the lifespan (`lifespan`; absent: off, so older games don't start aging by surprise).
+//! and the lifespan (`lifespan`; absent: off, so older games don't start aging by surprise),
+//! residents who are gone (`sims[].gone`) and former residents the story names (`former`).
 //! Older files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
@@ -72,6 +73,9 @@ pub struct SaveFile {
     pub events: Vec<serde_json::Value>,
     #[serde(default)]
     pub next_event_id: u64,
+    /// People whose slot someone new took (events name them with `social::FORMER`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub former: Vec<crate::world::Former>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -169,6 +173,9 @@ pub struct SimSave {
     /// Age in years (absent before v13).
     #[serde(default)]
     pub age: Option<f32>,
+    /// Died or moved away (the slot stays so ids don't change).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gone: Option<crate::world::Gone>,
     pub pos: [f32; 2],
     pub yaw: f32,
     /// Sorted so identical worlds produce identical save files.
@@ -479,6 +486,7 @@ impl World {
                     traits: s.traits.clone(),
                     perks: s.perks.clone(),
                     age: Some(s.age),
+                    gone: s.gone,
                     pos,
                     yaw: s.yaw,
                     needs: content
@@ -598,6 +606,7 @@ impl World {
                 .map(|e| serde_json::to_value(e).expect("event serializes"))
                 .collect(),
             next_event_id: self.events.last_id(),
+            former: self.former.clone(),
         }
     }
 
@@ -747,6 +756,7 @@ impl World {
             let content = &world.content;
             let sim = &mut world.sims[id];
             sim.yaw = s.yaw;
+            sim.gone = s.gone;
             for (i, need) in content.needs.iter().enumerate() {
                 sim.needs[i] = s
                     .needs
@@ -898,10 +908,12 @@ impl World {
         // doesn't know) are dropped.
         let events = save.events.iter().filter_map(|v| {
             let e: social::SocialEvent = serde_json::from_value(v.clone()).ok()?;
-            let known = |s: u32| (s as usize) < n;
+            let formers = save.former.len();
+            let known = |s: u32| if s & social::FORMER != 0 { ((s & !social::FORMER) as usize) < formers } else { (s as usize) < n };
             (known(e.a) && known(e.b) && e.c.is_none_or(known)).then_some(e)
         });
         world.events = social::EventLog::restore(save.next_event_id, events);
+        world.former = save.former.clone();
         world.dirt = vec![0.0; world.lot.width * world.lot.depth];
         for &[x, z, d] in &save.dirt {
             if world.lot.in_bounds(x as i32, z as i32) {

@@ -516,6 +516,10 @@ pub struct Relationship {
     pub kissed: bool,
 }
 
+/// An event reference with this bit set names a former resident (`World::former`, the rest of
+/// the bits its index) rather than a resident slot: their slot has someone new in it.
+pub const FORMER: u32 = 1 << 31;
+
 /// Directional relationship matrix plus symmetric chemistry. Sized to the Sim count.
 #[derive(Debug, Clone, Default)]
 pub struct Relationships {
@@ -547,6 +551,16 @@ impl Relationships {
             }
         }
         *self = Self { n, rel, chemistry };
+    }
+
+    /// Forgets everything between `a` and everyone (they're gone, or someone new took the slot).
+    pub fn clear(&mut self, a: usize) {
+        for b in 0..self.n {
+            self.rel[a * self.n + b] = Relationship::default();
+            self.rel[b * self.n + a] = Relationship::default();
+            self.chemistry[a * self.n + b] = 0.0;
+            self.chemistry[b * self.n + a] = 0.0;
+        }
     }
 
     pub fn get(&self, a: usize, b: usize) -> &Relationship {
@@ -730,7 +744,7 @@ pub struct SocialEvent {
     pub goal: Option<u32>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct EventLog {
     next_id: u64,
     events: VecDeque<SocialEvent>,
@@ -815,6 +829,17 @@ impl EventLog {
             career: None,
             goal: None,
         });
+    }
+
+    /// Changes the residents events name (`f` gets each `a`, `b` and `c`).
+    pub(crate) fn rewrite_refs(&mut self, mut f: impl FnMut(&mut u32)) {
+        for e in &mut self.events {
+            f(&mut e.a);
+            f(&mut e.b);
+            if let Some(c) = &mut e.c {
+                f(c);
+            }
+        }
     }
 
     fn add(&mut self, mut event: SocialEvent) {

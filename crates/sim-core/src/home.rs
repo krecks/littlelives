@@ -550,7 +550,7 @@ impl World {
         let quality = obj.quality;
         self.structure_version += 1;
         // Told about the household's first resident (nobody may live there yet).
-        if let Some(member) = self.sims.iter().position(|s| s.household as usize == h) {
+        if let Some(member) = self.sims.iter().position(|s| s.here() && s.household as usize == h) {
             self.events.push_detail(
                 self.tick,
                 EventKind::Upgraded,

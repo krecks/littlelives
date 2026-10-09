@@ -576,6 +576,9 @@ pub(crate) fn update(w: &mut World) {
     let minute = clock::minute_of_day(tick);
     let review = clock::tick_at(day, w.content.planner.review_hour * 60.0) == Some(tick);
     for i in 0..w.sims.len() {
+        if !w.sims[i].here() {
+            continue;
+        }
         let h = w.sims[i].household as usize;
         let now = running(&w.sims[i], &w.households[h].routines, day, minute);
         let current = w.sims[i].planner.run;

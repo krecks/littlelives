@@ -145,7 +145,7 @@ pub fn write(world: &World, out: &mut [f32]) {
         o[sim::ANIM] = 0.0;
         o[sim::EMOTION] = s.emotion(&world.content).map_or(0.0, |e| e as f32 + 1.0);
         o[sim::ROLE] = 0.0;
-        o[sim::AWAY] = s.away_until.is_some() as u8 as f32;
+        o[sim::AWAY] = (s.away_until.is_some() || !s.here()) as u8 as f32;
         (o[sim::OBJECT], o[sim::ACTION]) = object_action(world, s);
         o[sim::MOOD] = s.mood(&world.content);
         let thought = s.planner.thought.filter(|_| s.away_until.is_none());

@@ -658,12 +658,14 @@ export async function startSession(
     }
     game.objects = w.objects;
     if (game.buySelection !== null && !w.objects.some((o) => o.id === game.buySelection)) game.buySelection = null;
-    game.roster = w.sims;
+    game.roster = w.sims.filter((s) => !s.gone);
+    game.everyone = w.sims;
+    game.former = w.former ?? [];
     game.households = w.households;
     game.plots = w.plots;
     // Portraits for the HUD, the household first (drawn once, cached by look); the game is
     // ready once the household's are.
-    const mineFirst = [...w.sims].sort((a, b) => Number(!!w.households[b.household]?.player) - Number(!!w.households[a.household]?.player));
+    const mineFirst = [...game.roster].sort((a, b) => Number(!!w.households[b.household]?.player) - Number(!!w.households[a.household]?.player));
     const looks = mineFirst.map((s) => ({ gender: s.gender, appearance: s.appearance, id: s.id }));
     portraits ??= Promise.all(looks.filter((_, i) => w.households[mineFirst[i].household]?.player).map((look) => services.previews.portrait(look)));
     services.previews.prefetch(looks);

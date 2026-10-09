@@ -325,6 +325,8 @@ pub struct Sim {
     pub(crate) empty_since: [u64; crate::content::MAX_ACCIDENTS],
     /// Age in years (see `lifecycle.rs`); the life stage follows from it.
     pub age: f32,
+    /// No longer in town (the slot stays, so ids don't change; see `World::depart`).
+    pub gone: Option<Gone>,
 }
 
 impl Sim {
@@ -351,6 +353,11 @@ impl Sim {
         self.current.as_ref().is_some_and(|a| {
             a.tags & content.day_rhythm.sleep_tags != 0 && matches!(a.phase, Phase::Using { .. })
         })
+    }
+
+    /// Still in town (not dead or moved away).
+    pub fn here(&self) -> bool {
+        self.gone.is_none()
     }
 
     pub fn queue(&self) -> impl Iterator<Item = &Task> {
@@ -522,6 +529,30 @@ pub struct Household {
 
 /// Per-tick snapshot of other Sims, so each Sim can reason about the others
 /// without aliasing the mutable Sim list. Reused between ticks.
+/// A resident who is no longer in town: they died or moved away (see `lifecycle.rs`).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Gone {
+    pub why: GoneWhy,
+    /// Game day it happened.
+    pub day: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum GoneWhy {
+    Died,
+    MovedAway,
+}
+
+/// Someone whose slot a newcomer took: kept so the story can still name them.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Former {
+    pub name: String,
+    /// Their household's name at the time.
+    pub household: String,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SimBrief {
     pub pos: [f32; 2],
@@ -554,6 +585,10 @@ pub struct World {
     pub autonomy: bool,
     /// How fast residents age (a per-game option).
     pub lifespan: crate::lifecycle::Lifespan,
+    /// People whose slot someone new took, for the story (`social::FORMER` references).
+    pub former: Vec<Former>,
+    /// Bumped per slot when someone new takes it (views rebuild that resident).
+    pub(crate) generations: Vec<u32>,
     pub(crate) rng: Rng,
     pub(crate) structure_version: u32,
     /// Bumped when the lot itself changes (walls, doors, windows, fences, coverings, floors),
@@ -727,6 +762,8 @@ impl World {
             speed: 1,
             autonomy: true,
             lifespan: Default::default(),
+            former: Vec::new(),
+            generations: Vec::new(),
             rng,
             structure_version: 1,
             lot_version: 1,
@@ -849,13 +886,21 @@ impl World {
 
     /// Adds a Sim with random starting needs. Identity, traits and perks are validated.
     pub fn spawn_sim(&mut self, spawn: &SimSpawn) -> Result<u32, Error> {
+        self.spawn_at(spawn, false)
+    }
+
+    /// A new resident; with `reuse`, in the first slot someone gone left (their story events
+    /// then name them as a former resident), else in a new slot.
+    pub(crate) fn spawn_at(&mut self, spawn: &SimSpawn, reuse: bool) -> Result<u32, Error> {
         let SimSpawn { name, x, z, .. } = spawn;
         if !self.lot.in_bounds(x.floor() as i32, z.floor() as i32) {
             return Err(Error::new(format!("resident '{name}' spawns off the lot")));
         }
-        if self.sims.len() >= MAX_SIMS {
+        let slot = if reuse { self.sims.iter().position(|s| !s.here()) } else { None };
+        if slot.is_none() && self.sims.len() >= MAX_SIMS {
             return Err(Error::new(format!("at most {MAX_SIMS} residents per town")));
         }
+        let id = slot.unwrap_or(self.sims.len());
         if spawn.household as usize >= self.households.len() {
             return Err(Error::new(format!(
                 "{name}: unknown household {}",
@@ -916,14 +961,14 @@ impl World {
 
         let age = spawn
             .age
-            .unwrap_or_else(|| crate::lifecycle::default_age(&content.life, name, self.sims.len()))
+            .unwrap_or_else(|| crate::lifecycle::default_age(&content.life, name, id))
             .clamp(0.0, 150.0);
         let mut needs = [0.0; MAX_NEEDS];
         for n in needs.iter_mut().take(self.content.needs.len()) {
             *n = self.rng.range(0.55, 0.95);
         }
-        self.sims.push(Sim {
-            id: self.sims.len() as u32,
+        let sim = Sim {
+            id: id as u32,
             name: name.clone(),
             appearance: spawn.appearance.clone(),
             gender,
@@ -960,11 +1005,89 @@ impl World {
             accident_at: [0; crate::content::MAX_ACCIDENTS],
             empty_since: [0; crate::content::MAX_ACCIDENTS],
             age,
-        });
-        self.relationships.grow(self.sims.len());
-        let id = self.sims.len() - 1;
+            gone: None,
+        };
+        if let Some(slot) = slot {
+            self.retire_slot(slot);
+            self.sims[slot] = sim;
+            self.relationships.clear(slot);
+            self.generations[slot] += 1;
+        } else {
+            self.sims.push(sim);
+            self.relationships.grow(self.sims.len());
+            self.generations.push(0);
+        }
         self.refresh_base_mods(id);
         Ok(id as u32)
+    }
+
+    /// Before someone new takes `slot`: story events naming its former occupant name them as a
+    /// former resident instead; former residents no event names any more are forgotten.
+    fn retire_slot(&mut self, slot: usize) {
+        use crate::social::FORMER;
+        let gone = &self.sims[slot];
+        let household = self.households.get(gone.household as usize).map_or_else(String::new, |h| h.name.clone());
+        self.former.push(Former { name: gone.name.clone(), household });
+        let k = (self.former.len() - 1) as u32;
+        self.events.rewrite_refs(|r| {
+            if *r == slot as u32 {
+                *r = FORMER | k;
+            }
+        });
+        let mut used = vec![false; self.former.len()];
+        self.events.rewrite_refs(|r| {
+            if *r & FORMER != 0 {
+                used[(*r & !FORMER) as usize] = true;
+            }
+        });
+        let mut remap = vec![0u32; self.former.len()];
+        let mut kept = Vec::new();
+        for (i, f) in self.former.drain(..).enumerate() {
+            if used[i] {
+                remap[i] = kept.len() as u32;
+                kept.push(f);
+            }
+        }
+        self.former = kept;
+        self.events.rewrite_refs(|r| {
+            if *r & FORMER != 0 {
+                *r = FORMER | remap[(*r & !FORMER) as usize];
+            }
+        });
+    }
+
+    /// A resident leaves town for good (`why`): whatever they were doing stops, nobody waits
+    /// for them, their relationships are forgotten, and their slot is kept (ids don't change)
+    /// until a newcomer takes it.
+    pub fn depart(&mut self, i: usize, why: GoneWhy) {
+        let id = i as u32;
+        for o in &mut self.objects {
+            o.release(id);
+        }
+        let day = crate::clock::day(self.tick);
+        let sim = &mut self.sims[i];
+        sim.current = None;
+        sim.queue.clear();
+        sim.engaged_with = None;
+        sim.away_until = None;
+        sim.visiting = None;
+        sim.transition = None;
+        sim.job = None;
+        sim.pose = Pose::Stand;
+        sim.planner.run = None;
+        sim.planner.thought = None;
+        sim.gone = Some(Gone { why, day });
+        for other in &mut self.sims {
+            if other.engaged_with == Some(id) {
+                other.engaged_with = None;
+            }
+            other.queue.retain(|t| !matches!(t.kind, TaskKind::Social { target, .. } if target == id));
+            if other.current.as_ref().is_some_and(|a| matches!(a.task.kind, TaskKind::Social { target, .. } if target == id)) {
+                other.current = None;
+            }
+        }
+        self.relationships.clear(i);
+        self.structure_version += 1;
     }
 
     /// A resident's own modifiers: traits and perks, and what their life stage does (then the
@@ -998,45 +1121,46 @@ impl World {
         if sims.is_empty() {
             return Err(Error::new("nobody to move in"));
         }
-        let members = self.sims.iter().filter(|s| s.household as usize == h).count();
+        let members = self.sims.iter().filter(|s| s.here() && s.household as usize == h).count();
         let most = self.content.rules.max_household;
         if members + sims.len() > most {
             return Err(Error::new(format!("at most {most} residents per household")));
         }
-        if self.sims.len() + sims.len() > MAX_SIMS {
+        if self.sims.iter().filter(|s| s.here()).count() + sims.len() > MAX_SIMS {
             return Err(Error::new(format!("at most {MAX_SIMS} residents per town")));
         }
-        let first = self.sims.len();
-        let (relationships, rng) = (self.relationships.clone(), self.rng.clone());
+        if bonds.iter().any(|b| b.a >= sims.len() || b.b >= sims.len()) {
+            return Err(Error::new("a bond refers to someone who isn't moving in"));
+        }
+        // Newcomers may take slots of people who are gone, so a failure restores all of it.
+        let before = (
+            self.sims.clone(),
+            self.relationships.clone(),
+            self.rng.clone(),
+            self.former.clone(),
+            self.generations.clone(),
+            self.events.clone(),
+        );
+        let mut ids = Vec::with_capacity(sims.len());
         let moved = sims
             .iter()
             .try_for_each(|s| {
-                let spawn = SimSpawn {
-                    household,
-                    ..s.clone()
-                };
-                self.spawn_sim(&spawn).map(|_| ())
+                let spawn = SimSpawn { household, ..s.clone() };
+                ids.push(self.spawn_at(&spawn, true)? as usize);
+                Ok(())
             })
             .and_then(|()| {
-                if bonds.iter().any(|b| b.a >= sims.len() || b.b >= sims.len()) {
-                    return Err(Error::new("a bond refers to someone who isn't moving in"));
-                }
                 let bonds: Vec<BondRaw> = bonds
                     .iter()
-                    .map(|b| BondRaw {
-                        a: first + b.a,
-                        b: first + b.b,
-                        preset: b.preset.clone(),
-                    })
+                    .map(|b| BondRaw { a: ids[b.a], b: ids[b.b], preset: b.preset.clone() })
                     .collect();
-                self.init_relationships_from(first, &bonds)
+                self.init_relationships_for(&ids, &bonds)
             });
         if let Err(e) = moved {
-            self.sims.truncate(first);
-            self.relationships = relationships;
-            self.rng = rng;
+            (self.sims, self.relationships, self.rng, self.former, self.generations, self.events) = before;
             return Err(e);
         }
+        let first = ids[0];
         if let Some(name) = name.as_deref().map(str::trim).filter(|n| !n.is_empty()) {
             self.households[h].name = name.to_string();
         }
@@ -1048,16 +1172,20 @@ impl World {
 
     /// Chemistry for every pair, household bonds, then explicit bonds from the lot file.
     pub(crate) fn init_relationships(&mut self, bonds: &[BondRaw]) -> Result<(), Error> {
-        self.init_relationships_from(0, bonds)
+        let all: Vec<usize> = (0..self.sims.len()).collect();
+        self.init_relationships_for(&all, bonds)
     }
 
-    /// Chemistry and household bonds for every pair with a resident from index `first` on (the
-    /// ones before already have theirs), then `bonds` (indices into the whole list).
-    fn init_relationships_from(&mut self, first: usize, bonds: &[BondRaw]) -> Result<(), Error> {
+    /// Chemistry and household bonds for every pair with one of the `new` residents in it (the
+    /// others already have theirs; the gone have none), then `bonds` (indices into the list).
+    fn init_relationships_for(&mut self, new: &[usize], bonds: &[BondRaw]) -> Result<(), Error> {
         let n = self.sims.len();
         let default_bond = self.content.social_rules.default_bond;
         for a in 0..n {
-            for b in (a + 1).max(first)..n {
+            for b in a + 1..n {
+                if !(new.contains(&a) || new.contains(&b)) || !self.sims[a].here() || !self.sims[b].here() {
+                    continue;
+                }
                 let (sa, sb) = (&self.sims[a], &self.sims[b]);
                 let shared = sa.traits.iter().filter(|t| sb.traits.contains(t)).count() as f32;
                 let clashes = sa
@@ -1121,7 +1249,7 @@ impl World {
     /// work, and nothing notable happened to them in the last game hour.
     pub fn calm(&self) -> bool {
         let home = |h: u32| self.households[h as usize].player;
-        let mut members = self.sims.iter().filter(|s| home(s.household)).peekable();
+        let mut members = self.sims.iter().filter(|s| s.here() && home(s.household)).peekable();
         if members.peek().is_none() {
             return false;
         }
@@ -1241,11 +1369,11 @@ impl World {
             let plot = self.plots.iter().find(|p| p.contains(x, z)).map(|p| p.id);
             self.briefs.push(SimBrief {
                 pos: s.pos,
-                available: s.available_for_social(&self.content),
+                available: s.here() && s.available_for_social(&self.content),
                 gender_ix: s.gender_ix,
                 household: s.household,
-                plot,
-                away: s.away_until.is_some(),
+                plot: plot.filter(|_| s.here()),
+                away: s.away_until.is_some() || !s.here(),
             });
         }
         let hour = crate::clock::hour(tick);
@@ -1285,7 +1413,7 @@ impl World {
                 minute: crate::clock::minute_of_day(tick),
                 tick,
             };
-            for sim in sims.iter_mut() {
+            for sim in sims.iter_mut().filter(|s| s.here()) {
                 step_sim(sim, &ctx, objects, rng);
             }
         }
@@ -1619,20 +1747,19 @@ impl World {
     fn sim(&self, id: u32) -> Result<&Sim, Error> {
         self.sims
             .get(id as usize)
+            .filter(|s| s.here())
             .ok_or_else(|| Error::new(format!("unknown resident {id}")))
     }
 
     fn sim_mut(&mut self, id: u32) -> Result<&mut Sim, Error> {
         self.sims
             .get_mut(id as usize)
+            .filter(|s| s.here())
             .ok_or_else(|| Error::new(format!("unknown resident {id}")))
     }
 
     fn enqueue(&mut self, sim: u32, kind: TaskKind) -> Result<(), Error> {
-        let s = self
-            .sims
-            .get_mut(sim as usize)
-            .ok_or_else(|| Error::new(format!("unknown resident {sim}")))?;
+        let s = self.sim_mut(sim)?;
         if s.queue.len() >= MAX_QUEUE {
             return Err(Error::new("action queue is full"));
         }
