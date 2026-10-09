@@ -12,6 +12,7 @@
 //! up from their foot, step by step, and the top step leads straight to the landing on the
 //! storey above.
 
+use std::cell::RefCell;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
@@ -176,42 +177,44 @@ impl NavGrid<'_> {
         if start == goal {
             return Some(vec![start]);
         }
-        let n = lot.width * lot.depth;
-        let mut g = vec![u32::MAX; n];
-        let mut came = vec![u32::MAX; n];
-        let mut open = BinaryHeap::new();
-        let s = lot.tile_index(start.0, start.1);
-        let goal_i = lot.tile_index(goal.0, goal.1);
-        g[s] = 0;
-        let heuristic = |a: (i32, i32), b: (i32, i32)| heuristic(self.flat(a), self.flat(b));
-        open.push(Reverse((heuristic(start, goal), s as u32)));
+        SCRATCH.with_borrow_mut(|scratch| {
+            // (Every storey's rows: the lot's whole depth.)
+            let search = scratch.start(lot.width * lot.depth);
+            let Scratch { g, came, stamp, open, .. } = scratch;
+            // Costs from earlier searches don't count.
+            let cost_to = |g: &[u32], stamp: &[u32], i: usize| if stamp[i] == search { g[i] } else { u32::MAX };
+            let s = lot.tile_index(start.0, start.1);
+            let goal_i = lot.tile_index(goal.0, goal.1);
+            (g[s], came[s], stamp[s]) = (0, u32::MAX, search);
+            let heuristic = |a: (i32, i32), b: (i32, i32)| heuristic(self.flat(a), self.flat(b));
+            open.push(Reverse((heuristic(start, goal), s as u32)));
 
-        while let Some(Reverse((f, i))) = open.pop() {
-            let i = i as usize;
-            if i == goal_i {
-                return Some(reconstruct(lot, &came, i));
-            }
-            let (x, z) = ((i % lot.width) as i32, (i / lot.width) as i32);
-            if f > g[i] + heuristic((x, z), goal) {
-                continue; // stale heap entry
-            }
-            let link = self.stairs.link(x, z).filter(|&(lx, lz)| self.tile_free(lx, lz));
-            for (dx, dz) in NEIGHBOURS.into_iter().chain(link.map(|(lx, lz)| (lx - x, lz - z))) {
-                let (nx, nz) = (x + dx, z + dz);
-                let linked = Some((nx, nz)) == link;
-                if !linked && ((dx.abs() > 1 || dz.abs() > 1) || !self.can_step(x, z, nx, nz)) {
-                    continue;
+            while let Some(Reverse((f, i))) = open.pop() {
+                let i = i as usize;
+                if i == goal_i {
+                    return Some(reconstruct(lot, came, i));
                 }
-                let ni = lot.tile_index(nx, nz);
-                let cost = g[i] + if dx != 0 && dz != 0 && !linked { DIAG } else { ORTHO };
-                if cost < g[ni] {
-                    g[ni] = cost;
-                    came[ni] = i as u32;
-                    open.push(Reverse((cost + heuristic((nx, nz), goal), ni as u32)));
+                let (x, z) = ((i % lot.width) as i32, (i / lot.width) as i32);
+                if f > g[i] + heuristic((x, z), goal) {
+                    continue; // stale heap entry
+                }
+                let link = self.stairs.link(x, z).filter(|&(lx, lz)| self.tile_free(lx, lz));
+                for (dx, dz) in NEIGHBOURS.into_iter().chain(link.map(|(lx, lz)| (lx - x, lz - z))) {
+                    let (nx, nz) = (x + dx, z + dz);
+                    let linked = Some((nx, nz)) == link;
+                    if !linked && ((dx.abs() > 1 || dz.abs() > 1) || !self.can_step(x, z, nx, nz)) {
+                        continue;
+                    }
+                    let ni = lot.tile_index(nx, nz);
+                    let cost = g[i] + if dx != 0 && dz != 0 && !linked { DIAG } else { ORTHO };
+                    if cost < cost_to(g, stamp, ni) {
+                        (g[ni], came[ni], stamp[ni]) = (cost, i as u32, search);
+                        open.push(Reverse((cost + heuristic((nx, nz), goal), ni as u32)));
+                    }
                 }
             }
-        }
-        None
+            None
+        })
     }
 
     /// A tile as if on the ground storey (so distances between storeys stay honest).
@@ -272,6 +275,37 @@ impl NavGrid<'_> {
         }
         true
     }
+}
+
+/// Search state kept between searches: a big town is tens of thousands of tiles, too many to
+/// allocate and clear for every route. An entry counts only if stamped by the current search.
+#[derive(Default)]
+struct Scratch {
+    g: Vec<u32>,
+    came: Vec<u32>,
+    stamp: Vec<u32>,
+    search: u32,
+    open: BinaryHeap<Reverse<(u32, u32)>>,
+}
+
+impl Scratch {
+    /// Gets ready for a search over `tiles` tiles; returns its stamp.
+    fn start(&mut self, tiles: usize) -> u32 {
+        if self.g.len() != tiles {
+            *self = Self { g: vec![0; tiles], came: vec![0; tiles], stamp: vec![0; tiles], ..Self::default() };
+        }
+        self.search = self.search.wrapping_add(1);
+        if self.search == 0 {
+            self.stamp.fill(0);
+            self.search = 1;
+        }
+        self.open.clear();
+        self.search
+    }
+}
+
+thread_local! {
+    static SCRATCH: RefCell<Scratch> = RefCell::default();
 }
 
 const NEIGHBOURS: [(i32, i32); 8] = [
@@ -500,5 +534,20 @@ mod tests {
             stairs: &NO_STAIRS,
         };
         assert!(nav.find_path((0, 0), (3, 3)).is_none());
+    }
+
+    #[test]
+    fn search_buffers_follow_the_lot_size() {
+        // The same thread routes on a small lot, a lot grown by two storeys, and the small one
+        // again: the kept buffers are resized each time and earlier searches don't leak in.
+        let small = lot_with_wall();
+        let mut tall = lot_with_wall();
+        tall.grow_depth(30);
+        let (bs, bt) = (nav_of(&small), nav_of(&tall));
+        let flat = NavGrid { lot: &small, blocked: &bs, stairs: &NO_STAIRS };
+        let up = NavGrid { lot: &tall, blocked: &bt, stairs: &NO_STAIRS };
+        let first = flat.find_path((2, 2), (7, 2)).unwrap();
+        assert!(up.find_path((2, 22), (7, 22)).is_some(), "rows on the third storey are searched");
+        assert_eq!(flat.find_path((2, 2), (7, 2)).unwrap(), first);
     }
 }

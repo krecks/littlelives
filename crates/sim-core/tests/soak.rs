@@ -6,93 +6,10 @@
 
 mod common;
 
-use sim_core::social::{EventKind, FORMER};
-use sim_core::world::TaskKind;
+use sim_core::social::EventKind;
 use sim_core::{MINUTES_PER_TICK, World, clock, life};
 
 const TICKS_PER_HOUR: u64 = (60.0 / MINUTES_PER_TICK) as u64;
-
-/// Everything that must hold at any moment.
-fn check(w: &World) {
-    let n = w.sims.len();
-    let content_needs = w.content.needs.len();
-    for (i, s) in w.sims.iter().enumerate() {
-        assert_eq!(s.id as usize, i, "Sim ids are their index");
-        assert!(
-            s.pos.iter().all(|p| p.is_finite()),
-            "{} is nowhere: {:?}",
-            s.name,
-            s.pos
-        );
-        let (x, z) = s.tile();
-        assert!(w.lot.in_bounds(x, z), "{} left the town", s.name);
-        for (k, v) in s.needs[..content_needs].iter().enumerate() {
-            assert!((0.0..=1.0).contains(v), "{}'s need {k} is {v}", s.name);
-        }
-        assert!((s.household as usize) < w.households.len());
-        if let Some(t) = s.engaged_with {
-            assert!((t as usize) < n && t as usize != i);
-        }
-        if let Some(act) = s.current() {
-            match act.task.kind {
-                TaskKind::Use { object, .. } => {
-                    let o = &w.objects[object as usize];
-                    assert!(
-                        o.users().any(|u| u as usize == i),
-                        "{} uses object {object} without holding a slot",
-                        s.name
-                    );
-                }
-                TaskKind::Social { target, .. } => {
-                    assert!((target as usize) < n && target as usize != i)
-                }
-                TaskKind::Visit { plot } => assert!((plot as usize) < w.plots.len()),
-                _ => {}
-            }
-        }
-        if let Some(v) = s.visiting {
-            assert!((v.plot as usize) < w.plots.len());
-        }
-        if let Some(job) = &s.job {
-            let career = &w.content.careers[job.career];
-            assert!(job.level < career.levels.len());
-            assert!((0.0..=100.0).contains(&job.performance));
-            assert!((0.0..=1.0).contains(&job.satisfaction));
-        }
-    }
-    // Every object slot holder is someone who is using or heading to that object.
-    for o in &w.objects {
-        for u in o.users() {
-            let s = &w.sims[u as usize];
-            let ok = s.current().is_some_and(
-                |a| matches!(a.task.kind, TaskKind::Use { object, .. } if object == o.id),
-            );
-            assert!(
-                ok,
-                "object {} is held by {} who isn't using it",
-                o.id, s.name
-            );
-        }
-    }
-    // Partners are mutual and one at a time.
-    for a in 0..n {
-        if let Some(b) = w.relationships.partner_of(a) {
-            assert_eq!(
-                w.relationships.partner_of(b),
-                Some(a),
-                "partners aren't mutual"
-            );
-        }
-    }
-    let mut last = 0;
-    for e in w.events.iter() {
-        assert!(e.id > last, "event ids increase");
-        last = e.id;
-        // A resident slot, or a former resident whose name is kept.
-        let known = |r: u32| if r & FORMER != 0 { ((r & !FORMER) as usize) < w.former.len() } else { (r as usize) < n };
-        assert!(known(e.a) && known(e.b) && e.c.is_none_or(known), "{e:?} names someone unknown");
-    }
-}
 
 /// Per-resident record of how the run went.
 #[derive(Default, Clone)]
@@ -138,7 +55,7 @@ fn run(days: u32, seed: u64, player_size: usize) -> (World, Vec<Stats>) {
                 }
             }
         }
-        check(&w);
+        common::check(&w);
         let n = w.content.needs.len();
         for (i, s) in w.sims.iter().enumerate() {
             let st = &mut stats[i];
@@ -284,7 +201,7 @@ fn saving_and_loading_mid_run_keeps_the_town() {
     }
     let json = w.save_json();
     let loaded = World::from_save_json(&content, &json).unwrap();
-    check(&loaded);
+    common::check(&loaded);
     assert_eq!(loaded.sims.len(), w.sims.len());
     assert_eq!(
         loaded.events.iter().map(|e| e.id).collect::<Vec<_>>(),

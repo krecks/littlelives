@@ -948,7 +948,7 @@ impl World {
             for r in &save.relationships {
                 let (a, b) = (r.a as usize, r.b as usize);
                 if a < n && b < n && a != b {
-                    *world.relationships.get_mut(a, b) = r.rel;
+                    world.relationships.set(a, b, r.rel);
                     world.relationships.set_chemistry(a, b, r.chemistry);
                 }
             }

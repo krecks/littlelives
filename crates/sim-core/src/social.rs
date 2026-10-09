@@ -565,6 +565,9 @@ pub struct Relationships {
     n: usize,
     rel: Vec<Relationship>,
     chemistry: Vec<f32>,
+    /// Each one's partner, kept with `rel` (asked every tick for everyone; a row scan each
+    /// time was a tenth of a big town's tick). Partners change through `set_partners`.
+    partner: Vec<Option<u32>>,
 }
 
 impl Relationships {
@@ -589,7 +592,9 @@ impl Relationships {
                 chemistry[a * n + b] = self.chemistry[a * self.n + b];
             }
         }
-        *self = Self { n, rel, chemistry };
+        let mut partner = std::mem::take(&mut self.partner);
+        partner.resize(n, None);
+        *self = Self { n, rel, chemistry, partner };
     }
 
     /// Forgets everything between `a` and everyone (they're gone, or someone new took the slot).
@@ -600,14 +605,39 @@ impl Relationships {
             self.chemistry[a * self.n + b] = 0.0;
             self.chemistry[b * self.n + a] = 0.0;
         }
+        for b in 0..self.n {
+            if b == a || self.partner[b] == Some(a as u32) {
+                self.recount(b);
+            }
+        }
     }
 
     pub fn get(&self, a: usize, b: usize) -> &Relationship {
         &self.rel[a * self.n + b]
     }
 
+    /// The relationship to change (partners change with `set_partners`).
     pub fn get_mut(&mut self, a: usize, b: usize) -> &mut Relationship {
         &mut self.rel[a * self.n + b]
+    }
+
+    /// Replaces how `a` sees `b` (loading a game).
+    pub fn set(&mut self, a: usize, b: usize, rel: Relationship) {
+        *self.get_mut(a, b) = rel;
+        self.recount(a);
+    }
+
+    /// Makes `a` and `b` partners, or not, both ways.
+    pub fn set_partners(&mut self, a: usize, b: usize, partners: bool) {
+        self.get_mut(a, b).partners = partners;
+        self.get_mut(b, a).partners = partners;
+        self.recount(a);
+        self.recount(b);
+    }
+
+    /// Looks up `a`'s partner again after a change.
+    fn recount(&mut self, a: usize) {
+        self.partner[a] = (0..self.n).find(|&b| b != a && self.get(a, b).partners).map(|b| b as u32);
     }
 
     pub fn chemistry(&self, a: usize, b: usize) -> f32 {
@@ -633,6 +663,8 @@ impl Relationships {
                 r.kin = kin;
             }
         }
+        self.recount(a);
+        self.recount(b);
     }
 
     /// What `b` is to `a` in the family.
@@ -642,7 +674,13 @@ impl Relationships {
 
     /// Current partner of `a`, if any.
     pub fn partner_of(&self, a: usize) -> Option<usize> {
-        (0..self.n).find(|&b| b != a && self.get(a, b).partners)
+        let partner = self.partner.get(a).copied().flatten().map(|b| b as usize);
+        debug_assert_eq!(
+            partner,
+            (0..self.n).find(|&b| b != a && self.get(a, b).partners),
+            "partners changed without `set_partners`"
+        );
+        partner
     }
 
     pub fn adjust(&mut self, a: usize, b: usize, friendship: f32, romance: f32) {

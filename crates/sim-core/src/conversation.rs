@@ -373,8 +373,7 @@ fn apply_outcome(
                         );
                     }
                 }
-                rels.get_mut(a, t).partners = true;
-                rels.get_mut(t, a).partners = true;
+                rels.set_partners(a, t, true);
                 events.push(tick, EventKind::StartedDating, a, t, None);
             } else {
                 events.push(tick, EventKind::ProposalRejected, a, t, None);
@@ -450,8 +449,7 @@ fn break_up(
     left: usize,
     tick: u64,
 ) {
-    rels.get_mut(leaver, left).partners = false;
-    rels.get_mut(left, leaver).partners = false;
+    rels.set_partners(leaver, left, false);
     rels.adjust(left, leaver, -20.0, -40.0);
     rels.adjust(leaver, left, -5.0, -20.0);
     if let Some(m) = heartbreak {

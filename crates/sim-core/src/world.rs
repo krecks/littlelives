@@ -5,6 +5,7 @@ use std::f32::consts::FRAC_PI_2;
 
 use crate::clock::{AUTO_FAST_SPEED, MAX_SPEED, TICKS_PER_STEP};
 use crate::content::{Content, MAX_NEEDS, MAX_SKILLS, MAX_SLOTS, Modifiers, Pose, TagMask};
+use crate::index::ObjectIndex;
 use crate::lot::{BondRaw, Lot, LotFile, SimSpawn};
 use crate::path::NavGrid;
 use crate::rng::Rng;
@@ -628,9 +629,13 @@ pub struct World {
     pub objects: Vec<ObjectInstance>,
     /// Plot index per object (`None` when outside every plot).
     pub(crate) object_plot: Vec<Option<u32>>,
+    /// Objects by plot, for decisions (see `index.rs`); kept up to date by `refresh_index`.
+    pub(crate) object_index: ObjectIndex,
     pub sims: Vec<Sim>,
     pub households: Vec<Household>,
     pub plots: Vec<Plot>,
+    /// Plot per tile (see `map_plots`).
+    tile_plot: Vec<Option<u32>>,
     pub relationships: Relationships,
     pub events: EventLog,
     pub(crate) blocked: Vec<bool>,
@@ -677,6 +682,8 @@ pub struct World {
     pub(crate) rooms_version: u32,
     /// Overall score of the room or garden each tile is in (`roomRules.away` off the plots).
     pub(crate) room_score: Vec<f32>,
+    /// Which tiles make up each room, to rescore cleanliness after messes (see `rooms.rs`).
+    pub(crate) room_tiles: crate::rooms::RoomTiles,
     /// How many storeys the lot holds (see `storeys.rs`); 1: only the ground.
     pub storeys: u8,
     /// Rows per storey and the stairs between them, for walking.
@@ -692,6 +699,8 @@ pub(crate) struct Ctx<'a> {
     pub households: &'a [Household],
     pub plots: &'a [Plot],
     pub object_plot: &'a [Option<u32>],
+    /// Objects by plot (`World::object_index`).
+    pub index: &'a ObjectIndex,
     pub exits: &'a [[f32; 2]],
     pub autonomy: bool,
     /// Room score per tile (`World::room_score`).
@@ -828,9 +837,11 @@ impl World {
             lot,
             objects: Vec::new(),
             object_plot: Vec::new(),
+            object_index: ObjectIndex::default(),
             sims: Vec::new(),
             households: Vec::new(),
             plots: Vec::new(),
+            tile_plot: Vec::new(),
             relationships: Relationships::default(),
             events: EventLog::default(),
             blocked: vec![false; tiles],
@@ -856,6 +867,7 @@ impl World {
             rooms: Vec::new(),
             rooms_version: 0,
             room_score: Vec::new(),
+            room_tiles: Default::default(),
             storeys: 1,
             stairs: crate::path::StairMap::default(),
         }
@@ -878,7 +890,31 @@ impl World {
     /// The plot a tile is on (on any storey).
     pub fn plot_at(&self, x: i32, z: i32) -> Option<u32> {
         let z = self.ground_z(z);
+        let width = self.lot.width as i32;
+        if (0..width).contains(&x)
+            && z >= 0
+            && let Some(&plot) = self.tile_plot.get((z * width + x) as usize)
+        {
+            return plot;
+        }
         self.plots.iter().find(|p| p.contains(x, z)).map(|p| p.id)
+    }
+
+    /// Notes the plot of every ground tile (plots never move; upper storeys are the same
+    /// ground), so `plot_at` needn't search them.
+    fn map_plots(&mut self) {
+        let (width, depth) = (self.lot.width as i32, self.storey_depth());
+        if self.tile_plot.len() == (width * depth) as usize {
+            return;
+        }
+        self.tile_plot = vec![None; (width * depth) as usize];
+        for p in self.plots.iter().rev() {
+            for z in p.z.max(0)..(p.z + p.d).min(depth) {
+                for x in p.x.max(0)..(p.x + p.w).min(width) {
+                    self.tile_plot[(z * width + x) as usize] = Some(p.id);
+                }
+            }
+        }
     }
 
     pub fn place_object(&mut self, def_id: &str, x: i32, z: i32, rot: u8) -> Result<u32, Error> {
@@ -1420,60 +1456,83 @@ impl World {
                     let share = if amount < 0.0 || (dx, dz) == (0, 0) { 1.0 } else if dx == 0 || dz == 0 { 0.5 } else { 0.25 };
                     let t = self.lot.tile_index(tx, tz);
                     self.dirt[t] = (self.dirt[t] + amount * share).clamp(0.0, 1.0);
+                    self.room_tiles.touch(t);
                 }
             }
         }
     }
 
-    /// Recomputes rooms and their scores (see `rooms.rs`).
+    /// Rebuilds the objects-by-plot index if objects were added, removed or changed since.
+    pub(crate) fn refresh_index(&mut self) {
+        if self.object_index.version != self.structure_version {
+            self.object_index = ObjectIndex::new(&self.object_plot, &self.plots, self.structure_version);
+        }
+    }
+
+    /// Recomputes rooms and their scores (see `rooms.rs`). Call it after changing `dirt`
+    /// directly; messes residents make are rescored on their own.
     pub fn refresh_rooms(&mut self) {
         if self.dirt.len() != self.lot.width * self.lot.depth {
             self.dirt = vec![0.0; self.lot.width * self.lot.depth];
         }
-        self.rooms = crate::rooms::compute(self);
+        self.map_plots();
+        let (rooms, cells) = crate::rooms::compute(self);
+        self.rooms = rooms;
         self.rooms_version = self.structure_version;
-        let away = self.content.room_rules.away;
-        let mut score = vec![away; self.lot.width * self.lot.depth];
+        // The room (index into `rooms`) whose score each tile takes: its plot's garden, then
+        // indoor tiles anywhere their room; off the plots, none (`roomRules.away`).
         let rooms = &self.rooms;
+        let mut source = vec![None; self.lot.width * self.lot.depth];
         for (pi, p) in self.plots.iter().enumerate() {
-            let garden = rooms.iter().find(|r| r.garden && r.plot == Some(pi as u32)).map_or(away, |r| r.scores.overall);
+            let garden = rooms.iter().position(|r| r.garden && r.plot == Some(pi as u32));
             for z in p.z..p.z + p.d {
                 for x in p.x..p.x + p.w {
                     if self.lot.in_bounds(x, z) {
-                        score[self.lot.tile_index(x, z)] = garden;
+                        source[self.lot.tile_index(x, z)] = garden;
                     }
                 }
             }
         }
-        // Rooms by lot id (indoor tiles anywhere).
         let max_id = rooms.iter().filter(|r| !r.garden).map(|r| r.id as usize).max().unwrap_or(0);
         let mut by_id = vec![None; max_id + 1];
-        for r in rooms.iter().filter(|r| !r.garden) {
-            by_id[r.id as usize] = Some(r.scores.overall);
+        for (k, r) in rooms.iter().enumerate().filter(|(_, r)| !r.garden) {
+            by_id[r.id as usize] = Some(k);
         }
         for (i, &id) in self.lot.rooms().iter().enumerate() {
-            if let Some(Some(s)) = by_id.get(id as usize).filter(|_| id != crate::lot::OUTDOORS) {
-                score[i] = *s;
+            if let Some(Some(k)) = by_id.get(id as usize).filter(|_| id != crate::lot::OUTDOORS) {
+                source[i] = Some(*k);
             }
         }
-        self.room_score = score;
+        let away = self.content.room_rules.away;
+        self.room_score = source.iter().map(|s| s.map_or(away, |k| rooms[k].scores.overall)).collect();
+        self.room_tiles = crate::rooms::RoomTiles::new(cells, &source);
+    }
+
+    /// Scores cleanliness again in rooms that had a mess since: between structure changes
+    /// only the dirt changes, so the rooms needn't be found again (a whole-town job).
+    fn rescore_rooms(&mut self) {
+        self.room_tiles.rescore(&mut self.rooms, &self.content.room_rules, &self.dirt, &mut self.room_score);
     }
 
     pub fn tick_once(&mut self) {
         // Time moves on: edits can no longer be taken back.
         self.undo.clear();
         self.redo.clear();
-        if self.rooms_version != self.structure_version || self.tick.is_multiple_of(ROOM_REFRESH_TICKS) {
+        if self.rooms_version != self.structure_version {
             self.refresh_rooms();
+        } else if self.tick.is_multiple_of(ROOM_REFRESH_TICKS) {
+            self.rescore_rooms();
         }
+        self.refresh_index();
         self.tick += 1;
         let tick = self.tick;
 
-        self.briefs.clear();
+        let mut briefs = std::mem::take(&mut self.briefs);
+        briefs.clear();
         for s in &self.sims {
             let (x, z) = s.tile();
             let plot = self.plot_at(x, z);
-            self.briefs.push(SimBrief {
+            briefs.push(SimBrief {
                 pos: s.pos,
                 available: s.here() && s.available_for_social(&self.content),
                 gender_ix: s.gender_ix,
@@ -1488,6 +1547,7 @@ impl World {
                 age: s.age,
             });
         }
+        self.briefs = briefs;
         let hour = crate::clock::hour(tick);
         {
             let World {
@@ -1503,6 +1563,7 @@ impl World {
                 households,
                 plots,
                 object_plot,
+                object_index,
                 exits,
                 room_score,
                 dirt,
@@ -1519,6 +1580,7 @@ impl World {
                 households,
                 plots,
                 object_plot,
+                index: object_index,
                 exits,
                 autonomy: *autonomy,
                 hour,
@@ -2178,8 +2240,14 @@ fn pick_autonomous(
     // started now would end at once (see `use_object`), over and over.
     let rhythm = &content.day_rhythm;
     let woken = (0..content.needs.len()).any(|n| needs[n] < 0.08 && rhythm.wake_for & (1 << n) != 0);
-    for obj in objects
+    // Only what they may use: at home and in public places, or where they're a guest.
+    let usable = match sim.visiting {
+        Some(visit) => ctx.index.on(visit.plot),
+        None => ctx.index.usable_from(ctx.households[sim.household as usize].plot),
+    };
+    for obj in usable
         .iter()
+        .map(|&o| &objects[o as usize])
         .filter(|o| o.has_free_slot(content.objects[o.def].slots))
     {
         let allowed = access(ctx, sim, ctx.object_plot[obj.id as usize]);
@@ -2806,10 +2874,8 @@ fn home_fills(sim: &Sim, ctx: &Ctx, objects: &[ObjectInstance], n: usize) -> boo
     let Some(home) = ctx.households[sim.household as usize].plot else {
         return false;
     };
-    objects.iter().zip(ctx.object_plot).any(|(o, plot)| {
-        *plot == Some(home)
-            && !o.broken()
-            && ctx.content.objects[o.def].interactions.iter().any(|i| i.autonomous && i.total_gain[n] > 0.0)
+    ctx.index.on(home).iter().map(|&o| &objects[o as usize]).any(|o| {
+        !o.broken() && ctx.content.objects[o.def].interactions.iter().any(|i| i.autonomous && i.total_gain[n] > 0.0)
     })
 }
 
@@ -3044,11 +3110,12 @@ mod tests {
 fn crib_for(sim: &mut Sim, ctx: &Ctx, objects: &[ObjectInstance]) -> Option<Task> {
     let home = ctx.households[sim.household as usize].plot?;
     let content = ctx.content;
-    let (object, interaction) = objects.iter().find_map(|o| {
+    let (object, interaction) = ctx.index.on(home).iter().find_map(|&o| {
+        let o = &objects[o as usize];
         let def = &content.objects[o.def];
         let i = def.interactions.iter().position(|it| it.baby)?;
         let taken = o.users().any(|u| ctx.briefs.get(u as usize).is_some_and(|b| b.baby));
-        (ctx.object_plot[o.id as usize] == Some(home) && !o.broken() && !taken && o.has_free_slot(def.slots)).then_some((o.id, i))
+        (!o.broken() && !taken && o.has_free_slot(def.slots)).then_some((o.id, i))
     })?;
     let (fx, fz) = objects[object as usize].front_tile(content);
     sim.pos = [fx as f32 + 0.5, fz as f32 + 0.5];
