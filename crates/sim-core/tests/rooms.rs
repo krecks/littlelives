@@ -177,3 +177,57 @@ fn surroundings_follow_the_room_and_draw_residents_to_nicer_ones() {
     }
     assert!(nice > grim + 10, "nice room {nice}, grim room {grim}");
 }
+
+const MESS_CONTENT: &str = r#"{
+    "needs":[{"id":"hunger","label":"Hunger","decayPerHour":0.2},{"id":"environment","label":"Surroundings","room":true}],
+    "traits":[{"id":"neat","label":"Neat","effects":{"tagPreference":{"chores":3}}}],
+    "objects":[
+      {"id":"fridge","name":"Fridge","price":100,"interactions":[{"id":"cook","label":"Cook","minutes":30,"effects":{"hunger":1},"tags":["cooking"]}]}],
+    "activities":[{"id":"chores","label":"Chores","icon":"","tags":["chores","cleaning"]}],
+    "roomKinds":[{"id":"kitchen","tags":["cooking"],"size":[6,12],"exclusive":true}],
+    "roomRules":{"dirt":{"cooking":0.3},"clean":{"minutes":10,"threshold":0.15,"amount":0.7,"interest":0.6}}}"#;
+
+const KITCHEN: &str = r#"{"width":12,"depth":10,
+    "plots":[{"name":"Home","x":0,"z":0,"w":12,"d":10,"entry":[6.5,9.5]}],
+    "households":[{"name":"Player","plot":0,"player":true}],
+    "walls":[[1,1,7,1],[1,6,7,6],[1,1,1,6],[7,1,7,6]],
+    "doors":[{"x":3,"z":6,"axis":"x"}],
+    "objects":[{"def":"fridge","x":2,"z":1}],
+    "sims":[{"name":"Ada","x":3.5,"z":4.5,"traits":["neat"]}]}"#;
+
+#[test]
+fn using_things_makes_a_mess_and_residents_tidy_it_up() {
+    let mut w = World::from_json(MESS_CONTENT, KITCHEN, 3).unwrap();
+    w.apply(Command::SetAutonomy { enabled: false, household: None }).unwrap();
+    // Cooking leaves a mess in front of the fridge (and a little around it).
+    w.apply(Command::Use { sim: 0, object: 0, interaction: 0 }).unwrap();
+    for _ in 0..45 * 20 {
+        w.tick_once();
+    }
+    let front = w.lot.tile_index(2, 2);
+    assert!((w.dirt[front] - 0.3).abs() < 1e-4, "dirt {}", w.dirt[front]);
+    assert!((w.dirt[w.lot.tile_index(3, 2)] - 0.15).abs() < 1e-4);
+    assert_eq!(w.dirt[w.lot.tile_index(2, 7)], 0.0, "not through the wall");
+    w.refresh_rooms();
+    let dirty = room(&w, 2, 2).scores.clean;
+    assert!(dirty < 1.0);
+
+    // Saved and loaded.
+    let loaded = World::from_save_json(MESS_CONTENT, &w.save_json()).unwrap();
+    assert!((loaded.dirt[front] - 0.3).abs() < 0.01);
+
+    // With free will, the neat resident tidies it up.
+    w.apply(Command::SetAutonomy { enabled: true, household: None }).unwrap();
+    w.sims[0].needs[0] = 1.0;
+    let mut tidied = false;
+    for _ in 0..3 * 60 * 20 {
+        w.tick_once();
+        if w.dirt[front] < 0.05 {
+            tidied = true;
+            break;
+        }
+    }
+    assert!(tidied, "dirt left {}", w.dirt[front]);
+    w.refresh_rooms();
+    assert!(room(&w, 2, 2).scores.clean > dirty);
+}

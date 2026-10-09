@@ -83,6 +83,9 @@ pub struct Interaction {
     /// What the Sim is shown doing (index into `Content::animations`): the interaction's
     /// `anim`, else one derived from its tags, pose and needs (see `default_anim`).
     pub anim: Option<usize>,
+    /// Mess it leaves around the object when finished (0..1 of a tile's dirt): its `dirt`,
+    /// else the most any of its tags makes (`roomRules.dirt`).
+    pub dirt: f32,
 }
 
 impl Interaction {
@@ -165,6 +168,25 @@ pub struct RoomRules {
     pub away: f32,
     /// How much the AI prefers doing things in better rooms (see `World::pick_autonomous`).
     pub preference: f32,
+    /// Mess per use by interaction tag (`roomRules.dirt`).
+    pub dirt: Vec<(TagMask, f32)>,
+    pub clean: CleanRules,
+}
+
+/// Tidying up: residents clean the dirtiest spot at home (`roomRules.clean`).
+#[derive(Debug, Clone)]
+pub struct CleanRules {
+    pub label: String,
+    pub minutes: f32,
+    /// Spots dirtier than this are worth cleaning.
+    pub threshold: f32,
+    /// Dirt taken off the spot and the tiles around it.
+    pub amount: f32,
+    /// How keen residents are (like an interaction's need gain).
+    pub interest: f32,
+    /// Its tags (traits and the planner's chores see it like an interaction with these).
+    pub tags: TagMask,
+    pub anim: Option<usize>,
 }
 
 /// Multipliers and offsets a trait, perk or emotion applies to a Sim.
@@ -913,6 +935,19 @@ struct RoomRulesRaw {
     away: Option<f32>,
     preference: Option<f32>,
     decor_by_category: HashMap<String, f32>,
+    dirt: HashMap<String, f32>,
+    clean: CleanRaw,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct CleanRaw {
+    label: Option<String>,
+    minutes: Option<f32>,
+    threshold: Option<f32>,
+    amount: Option<f32>,
+    interest: Option<f32>,
+    tags: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Default)]
@@ -1091,6 +1126,9 @@ struct InteractionRaw {
     id: String,
     label: String,
     minutes: f32,
+    /// Mess it leaves (default: by its tags, `roomRules.dirt`).
+    #[serde(default)]
+    dirt: Option<f32>,
     #[serde(default)]
     effects: HashMap<String, f32>,
     #[serde(default)]
@@ -1311,6 +1349,11 @@ impl Content {
         }
         // Built-in tag for visiting other households (schedules and traits can refer to it).
         intern(&mut tags, VISIT_TAG)?;
+        // Tidying up is an action without an object; its tags exist all the same.
+        let clean_tags = raw.room_rules.clean.tags.clone().unwrap_or_else(|| vec!["chores".into(), "cleaning".into()]);
+        for t in &clean_tags {
+            intern(&mut tags, t)?;
+        }
         let tag_index: HashMap<&str, usize> = tags
             .iter()
             .enumerate()
@@ -1456,6 +1499,7 @@ impl Content {
                     feeling,
                     feeling_min_skill: it.feeling_min_skill,
                     anim,
+                    dirt: it.dirt.unwrap_or(-1.0),
                 });
             }
             if object_index.insert(obj.id.clone(), objects.len()).is_some() {
@@ -1775,7 +1819,30 @@ impl Content {
             drift: rr.drift.unwrap_or(0.5).max(0.0),
             away: rr.away.unwrap_or(0.6),
             preference: rr.preference.unwrap_or(1.0).max(0.0),
+            dirt: {
+                let mut d: Vec<(TagMask, f32)> =
+                    rr.dirt.iter().map(|(t, &v)| (tag_mask(std::slice::from_ref(t)), v.max(0.0))).filter(|(m, _)| *m != 0).collect();
+                d.sort_by(|a, b| a.0.cmp(&b.0));
+                d
+            },
+            clean: CleanRules {
+                label: rr.clean.label.clone().unwrap_or_else(|| "Tidy up".into()),
+                minutes: rr.clean.minutes.unwrap_or(12.0).max(1.0),
+                threshold: rr.clean.threshold.unwrap_or(0.15),
+                amount: rr.clean.amount.unwrap_or(0.7),
+                interest: rr.clean.interest.unwrap_or(0.6),
+                tags: tag_mask(&rr.clean.tags.clone().unwrap_or_else(|| vec!["chores".into(), "cleaning".into()])),
+                anim: animations.iter().position(|a| a == "clean"),
+            },
         };
+        // Interactions without their own mess make what their tags make.
+        for o in &mut objects {
+            for it in &mut o.interactions {
+                if it.dirt < 0.0 {
+                    it.dirt = room_rules.dirt.iter().filter(|(m, _)| it.tags & m != 0).map(|(_, v)| *v).fold(0.0, f32::max);
+                }
+            }
+        }
         let or = &raw.object_rules;
         let object_rules = ObjectRules {
             max_quality: or.max_quality.unwrap_or(3),

@@ -3122,7 +3122,9 @@
     "drift": 0.5,
     "away": 0.6,
     "preference": 1.0,
-    "decorByCategory": {"decor": 1, "garden": 0.8, "outdoor": 1}
+    "decorByCategory": {"decor": 1, "garden": 0.8, "outdoor": 1},
+    "dirt": {"cooking": 0.12, "food": 0.06, "bathroom": 0.05, "hygiene": 0.04},
+    "clean": {"label": "Tidy up", "minutes": 12, "threshold": 0.15, "amount": 0.7, "interest": 0.6}
   },
   "roofStyles": [
     {"id": "gable", "label": "Gable", "shape": "gable", "pitch": 34},

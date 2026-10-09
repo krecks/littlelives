@@ -16,7 +16,8 @@
 //! 10 = the game mode (`mode`: Living or Creative; absent: Living), and the player's household
 //! may have nobody living in it yet; 11 = objects turned freely (`turn`, absent: 0), fences
 //! and gates (edges `4` and `5`, their fence style in `looks`), roofs (`plots[].roof`: roof
-//! style and colour ids). Older files load. Saves written before feelings
+//! style and colour ids); 12 = per-tile dirt (`dirt`), the surroundings need, tidying up.
+//! Older files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
 use std::collections::{BTreeMap, HashMap};
@@ -32,7 +33,7 @@ use crate::planner::{BlockResult, Goal, Outcome, Planner, Reason, Routine};
 use crate::world::{GameMode, Household, Plot, Task, TaskKind, World};
 use crate::{Error, MINUTES_PER_TICK, clock::MAX_SPEED};
 
-pub const SAVE_VERSION: u32 = 11;
+pub const SAVE_VERSION: u32 = 12;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -41,6 +42,9 @@ pub struct SaveFile {
     /// Living or Creative (absent before v10: Living).
     #[serde(default)]
     pub mode: GameMode,
+    /// Dirty tiles: `[x, z, dirt × 255]` (absent before v12: clean).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dirt: Vec<[u16; 3]>,
     pub tick: u64,
     pub speed: u8,
     pub autonomy: bool,
@@ -294,6 +298,11 @@ pub enum TaskSave {
     GoHome {
         directed: bool,
     },
+    Clean {
+        x: i32,
+        z: i32,
+        directed: bool,
+    },
     /// Old saves only (upgrades are instant now); dropped on load.
     Upgrade {
         #[allow(dead_code)]
@@ -450,6 +459,13 @@ impl World {
         SaveFile {
             version: SAVE_VERSION,
             mode: self.mode,
+            dirt: self
+                .dirt
+                .iter()
+                .enumerate()
+                .filter(|(_, d)| **d >= 1.0 / 255.0)
+                .map(|(i, d)| [(i % self.lot.width) as u16, (i / self.lot.width) as u16, (d * 255.0).round() as u16])
+                .collect(),
             tick: self.tick,
             speed: self.speed,
             autonomy: self.autonomy,
@@ -760,6 +776,10 @@ impl World {
                         kind: TaskKind::GoHome,
                         directed: *directed,
                     },
+                    TaskSave::Clean { x, z, directed } => Task {
+                        kind: TaskKind::Clean { x: *x, z: *z },
+                        directed: *directed,
+                    },
                     // Upgrades used to be a Sim task; they are instant purchases now.
                     TaskSave::Upgrade { .. } => continue,
                 };
@@ -793,6 +813,13 @@ impl World {
             (known(e.a) && known(e.b) && e.c.is_none_or(known)).then_some(e)
         });
         world.events = social::EventLog::restore(save.next_event_id, events);
+        world.dirt = vec![0.0; world.lot.width * world.lot.depth];
+        for &[x, z, d] in &save.dirt {
+            if world.lot.in_bounds(x as i32, z as i32) {
+                let i = world.lot.tile_index(x as i32, z as i32);
+                world.dirt[i] = (f32::from(d) / 255.0).min(1.0);
+            }
+        }
         world.refresh_rooms();
         Ok(world)
     }
@@ -827,6 +854,11 @@ impl World {
                 directed: t.directed,
             },
             TaskKind::GoHome => TaskSave::GoHome {
+                directed: t.directed,
+            },
+            TaskKind::Clean { x, z } => TaskSave::Clean {
+                x,
+                z,
                 directed: t.directed,
             },
         }

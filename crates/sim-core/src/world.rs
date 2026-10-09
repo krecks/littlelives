@@ -195,6 +195,11 @@ pub enum TaskKind {
     },
     /// Walk back home.
     GoHome,
+    /// Tidy up around tile `(x, z)` (`roomRules.clean`).
+    Clean {
+        x: i32,
+        z: i32,
+    },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -282,6 +287,9 @@ pub struct Sim {
     pub job_search_from: u32,
     /// Routines, goals and how planned blocks went (see `planner`).
     pub planner: crate::planner::Planner,
+    /// Mess made (or, negative, cleaned) around a tile this tick; applied after the step
+    /// (residents can't change the dirt while stepping).
+    pub(crate) mess: Option<(i32, i32, f32)>,
 }
 
 impl Sim {
@@ -553,6 +561,8 @@ pub(crate) struct Ctx<'a> {
     pub autonomy: bool,
     /// Room score per tile (`World::room_score`).
     pub room_score: &'a [f32],
+    /// Dirt per tile (`World::dirt`).
+    pub dirt: &'a [f32],
     pub hour: f32,
     pub day: u32,
     pub minute: f32,
@@ -574,6 +584,7 @@ impl Ctx<'_> {
 #[derive(Debug, Clone, Copy)]
 enum Choice {
     Object(u32, usize),
+    Clean(i32, i32),
     Social(u32, usize),
     Visit(u32),
 }
@@ -899,6 +910,7 @@ impl World {
             practice_fatigue: 0.0,
             job_search_from: 0,
             planner: Default::default(),
+            mess: None,
         });
         self.relationships.grow(self.sims.len());
         Ok(self.sims.len() as u32 - 1)
@@ -1075,6 +1087,31 @@ impl World {
         }
     }
 
+    /// Mess residents made, and cleaning they finished, this tick: a mess spreads over the
+    /// tile and (less) the tiles around it in the same room; cleaning clears them all.
+    fn apply_messes(&mut self) {
+        for i in 0..self.sims.len() {
+            let Some((x, z, amount)) = self.sims[i].mess.take() else {
+                continue;
+            };
+            if !self.lot.in_bounds(x, z) {
+                continue;
+            }
+            let room = self.lot.room_at(x, z);
+            for dz in -1..=1 {
+                for dx in -1..=1 {
+                    let (tx, tz) = (x + dx, z + dz);
+                    if !self.lot.in_bounds(tx, tz) || self.lot.room_at(tx, tz) != room {
+                        continue;
+                    }
+                    let share = if amount < 0.0 || (dx, dz) == (0, 0) { 1.0 } else if dx == 0 || dz == 0 { 0.5 } else { 0.25 };
+                    let t = self.lot.tile_index(tx, tz);
+                    self.dirt[t] = (self.dirt[t] + amount * share).clamp(0.0, 1.0);
+                }
+            }
+        }
+    }
+
     /// Recomputes rooms and their scores (see `rooms.rs`).
     pub fn refresh_rooms(&mut self) {
         if self.dirt.len() != self.lot.width * self.lot.depth {
@@ -1149,10 +1186,12 @@ impl World {
                 object_plot,
                 exits,
                 room_score,
+                dirt,
                 ..
             } = self;
             let ctx = Ctx {
                 room_score,
+                dirt,
                 content,
                 nav: NavGrid { lot, blocked },
                 rels: relationships,
@@ -1171,6 +1210,7 @@ impl World {
                 step_sim(sim, &ctx, objects, rng);
             }
         }
+        self.apply_messes();
         conversation::update(self);
         crate::life::update(self);
         crate::planner::update(self);
@@ -1814,6 +1854,38 @@ fn pick_autonomous(
         }
     }
 
+    // Tidying up: the dirtiest spot at home, if it's dirty enough. The worse their surroundings
+    // feel, the keener they are; traits and planned chores do the rest.
+    let home = ctx.households[sim.household as usize].plot;
+    if let Some(plot) = home.filter(|&p| here == Some(p)) {
+        let rules = &content.room_rules.clean;
+        let p = &ctx.plots[plot as usize];
+        let lot = ctx.nav.lot;
+        let mut best: Option<(f32, i32, i32)> = None;
+        for z in p.z..p.z + p.d {
+            for x in p.x..p.x + p.w {
+                if !lot.in_bounds(x, z) {
+                    continue;
+                }
+                let i = lot.tile_index(x, z);
+                let d = ctx.dirt.get(i).copied().unwrap_or(0.0);
+                if d > rules.threshold && !ctx.nav.blocked[i] && !lot.diag_blocks(x, z) && best.is_none_or(|b| d > b.0) {
+                    best = Some((d, x, z));
+                }
+            }
+        }
+        if let Some((d, x, z)) = best {
+            let distance = (x as f32 + 0.5 - sim.pos[0]).hypot(z as f32 + 0.5 - sim.pos[1]);
+            let (plan, floor) = crate::planner::tags_factor(content, sim, rules.tags);
+            let s = (rules.interest * d * (1.5 - environment) / (1.0 + distance * 0.08)).max(floor)
+                * feel(rules.tags)
+                * plan;
+            if s > MIN_AUTONOMY_SCORE {
+                candidates.push((s, Choice::Clean(x, z)));
+            }
+        }
+    }
+
     // Residents visit friends who are home.
     let household = &ctx.households[sim.household as usize];
     let visits = &content.visits;
@@ -1859,6 +1931,7 @@ fn pick_autonomous(
             },
             Choice::Social(target, social) => TaskKind::Social { target, social },
             Choice::Visit(plot) => TaskKind::Visit { plot },
+            Choice::Clean(x, z) => TaskKind::Clean { x, z },
         },
         directed: false,
     })
@@ -1900,6 +1973,7 @@ fn start_task(sim: &mut Sim, task: Task, ctx: &Ctx, objects: &mut [ObjectInstanc
             ([t.0 as f32 + 0.5, t.1 as f32 + 0.5], t, tags)
         }
         TaskKind::MoveTo { x, z } => ([x, z], (x.floor() as i32, z.floor() as i32), 0),
+        TaskKind::Clean { x, z } => ([x as f32 + 0.5, z as f32 + 0.5], (x, z), content.room_rules.clean.tags),
         TaskKind::Work => {
             // Nearest way out of town; with no exits, work starts on the spot.
             let exit = ctx.exits.iter().copied().min_by(|a, b| {
@@ -2025,7 +2099,15 @@ fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance]) {
                     object,
                     interaction,
                 } => use_object(sim, ctx, &objects[object as usize], interaction, elapsed),
-                _ => unreachable!("only Use tasks have a Using phase"),
+                TaskKind::Clean { x, z } => {
+                    let rules = &content.room_rules.clean;
+                    let done = elapsed >= rules.minutes;
+                    if done {
+                        sim.mess = Some((x, z, -rules.amount));
+                    }
+                    done
+                }
+                _ => unreachable!("only Use and Clean tasks have a Using phase"),
             }
         }
         // Conversations are driven by `conversation::update`, which sees both Sims.
@@ -2082,6 +2164,11 @@ fn use_object(
         let drained = urgent && (inter.total_gain.iter().any(|&g| g < 0.0) || planned);
         elapsed >= inter.minutes || (any_gain && satisfied && !planned) || drained
     };
+    // A finished cook (or wash, or snack) leaves a mess around the object.
+    if done && inter.dirt > 0.0 {
+        let (fx, fz) = obj.front_tile(content);
+        sim.mess = Some((fx, fz, inter.dirt));
+    }
     if done && let Some(m) = inter.earns_feeling(elapsed, &sim.skills) {
         social::add_feeling(&mut sim.feelings, m, &content.feelings, ctx.tick);
     }
@@ -2109,6 +2196,10 @@ fn arrive(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance]) {
     };
     match act.task.kind {
         TaskKind::MoveTo { .. } => sim.current = None,
+        TaskKind::Clean { .. } => {
+            sim.pose = Pose::Stand;
+            act.phase = Phase::Using { elapsed: 0.0 };
+        }
         TaskKind::Work => {
             sim.current = None;
             sim.transition = Some(crate::life::Transition::Work);

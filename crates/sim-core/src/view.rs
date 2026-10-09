@@ -421,6 +421,10 @@ pub fn ui_state_json(world: &World) -> String {
             TaskKind::Work => ("Go to work".to_owned(), None, None, 1.0),
             TaskKind::Visit { plot } => (format!("Visit {}", host_name(plot)), None, None, 1.0),
             TaskKind::GoHome => ("Go home".to_owned(), None, None, 1.0),
+            TaskKind::Clean { .. } => {
+                let rules = &content.room_rules.clean;
+                (rules.label.clone(), None, None, rules.minutes)
+            }
         };
         let progress = match phase {
             Some(Phase::Using { elapsed }) | Some(Phase::Conversing { elapsed, .. }) => {

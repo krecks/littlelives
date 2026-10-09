@@ -73,6 +73,11 @@ fn object_action(world: &World, s: &Sim) -> (f32, f32) {
     if s.away_until.is_some() {
         return (-1.0, -1.0);
     }
+    // Tidying up: no object, the clean animation while at it.
+    if let Some(Activity { task: Task { kind: TaskKind::Clean { .. }, .. }, phase, .. }) = s.current() {
+        let anim = world.content.room_rules.clean.anim.filter(|_| matches!(phase, Phase::Using { .. }));
+        return (-1.0, anim.map_or(-1.0, |a| a as f32));
+    }
     let Some(Activity {
         task:
             Task {

@@ -170,6 +170,17 @@ fn report(w: &World, stats: &[Stats]) {
     for (h, hh) in w.households.iter().enumerate() {
         let weekly = life::weekly_costs(w, h).map_or(0, |(r, b)| r + b);
         eprintln!("{}: funds {} (weekly costs {weekly})", hh.name, hh.funds);
+        // How the home's rooms are doing (cleanliness and overall), worst first.
+        let mut rooms: Vec<_> = w.rooms().iter().filter(|r| !r.garden && r.plot == hh.plot).collect();
+        rooms.sort_by(|a, b| a.scores.overall.total_cmp(&b.scores.overall));
+        let line: Vec<String> = rooms
+            .iter()
+            .map(|r| {
+                let kind = r.kind.map_or("?", |k| w.content.room_kinds[k].id.as_str());
+                format!("{kind} {:.2} (clean {:.2})", r.scores.overall, r.scores.clean)
+            })
+            .collect();
+        eprintln!("    rooms: {}", line.join(", "));
     }
     let mut kinds: std::collections::BTreeMap<String, usize> = Default::default();
     for e in w.events.iter() {

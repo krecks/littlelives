@@ -588,6 +588,14 @@ fn refresh_offers(w: &mut World) {
         .iter()
         .map(|h| {
             let mut offer = HouseOffer::default();
+            // There is always something to tidy at home.
+            if h.plot.is_some() {
+                for (a, def) in content.activities.iter().enumerate() {
+                    if def.tags & content.room_rules.clean.tags != 0 && !def.social && !def.visit {
+                        offer.activities |= 1 << a;
+                    }
+                }
+            }
             for (o, plot) in w.objects.iter().zip(&w.object_plot) {
                 let here = plot.is_some_and(|p| Some(p) == h.plot || public[p as usize]);
                 if !here {
@@ -709,7 +717,7 @@ fn begin(w: &mut World, i: usize, routine: Routine, household: bool, day: u32) {
         && sim.current().is_some_and(|a| {
             !a.task.directed
                 && (a.tags & content.day_rhythm.sleep_tags == 0 || rested)
-                && matches!(a.task.kind, TaskKind::Use { .. } | TaskKind::MoveTo { .. })
+                && matches!(a.task.kind, TaskKind::Use { .. } | TaskKind::MoveTo { .. } | TaskKind::Clean { .. })
                 && !fits(content, objects, &run, sim)
         });
     if interruptible {
@@ -769,6 +777,10 @@ fn fits(content: &Content, objects: &[crate::world::ObjectInstance], run: &Block
             .get(object as usize)
             .and_then(|o| content.objects[o.def].interactions.get(interaction))
             .is_some_and(|inter| a.fits(inter, run.skill)),
+        // Tidying up is chores.
+        (TaskKind::Clean { .. }, Phase::Using { .. } | Phase::Routing { .. }) => {
+            run.skill.is_none() && a.tags & content.room_rules.clean.tags != 0
+        }
         _ => false,
     }
 }
@@ -1040,6 +1052,19 @@ pub(crate) fn object_factor(content: &Content, sim: &Sim, inter: &Interaction, n
     let urgent = (0..content.needs.len())
         .any(|n| sim.needs[n] < content.planner.urgent_below && inter.total_gain[n] > 0.0);
     (if urgent { factor } else { factor * content.planner.off_block }, 0.0)
+}
+
+/// `(factor, floor)` for an action without an object (tidying up) with these tags: favoured
+/// in a planned block whose activity it fits (the chores), held back outside one.
+pub(crate) fn tags_factor(content: &Content, sim: &Sim, tags: TagMask) -> (f32, f32) {
+    let Some(run) = active(sim) else {
+        return (1.0, 0.0);
+    };
+    let a = &content.activities[run.activity];
+    if a.tags & tags != 0 && !a.social && !a.visit {
+        return (run.boost, content.planner.floor);
+    }
+    (content.planner.off_block, 0.0)
 }
 
 /// Multiplier for a social with someone (`romantic`: it's a romantic social; `friendly`: it
