@@ -95,23 +95,29 @@ sets `crowdedGraceMinutes`: the first version fired then too, and residents let 
 
 ## Opinions and wishes
 
-Residents form opinions about the rooms they spend time in (checked a few times a day):
+Once an hour each awake resident at home forms an opinion of the room they're in
+(`rooms::opinions`):
 
-- A room scoring above `roomRules.love` → a good thought ("loves the living room"), now and then
-  a good feeling.
-- A room below `roomRules.dislike` → a bad thought about its worst factor, and a **wish**:
-  - light → "a lamp for the bedroom" (*Find in catalog*: things that give light),
-  - decor → "something nice for the bedroom" (*Find in catalog*: decor and plants),
-  - size → "a bigger bathroom" (opens Build mode),
-  - cleanliness → "a cleaner kitchen" (no purchase: someone should tidy up; the planner's
-    chores),
-  - function → the missing essential ("a shower") or "a room of its own" for a mixed room.
-- Waiting a long time for a busy toilet or shower → "a second bathroom".
-- A broken object → "the shower fixed" (Repair).
+- A room scoring at least `roomRules.love` → now and then a good thought ("loves the living
+  room") and the `loveFeeling`.
+- A room at most `roomRules.dislike` → a bad thought about it, the `dislikeFeeling`, and a
+  **home wish** about its weakest factor:
+  - light → "More light in the bedroom" (*Find in catalog*: things that give light),
+  - decor → "Something nice for the bedroom" (*Find in catalog*: decor; garden things for the
+    garden),
+  - size → "A bigger bathroom" (opens Build mode),
+  - cleanliness → "A tidier kitchen" (nothing to buy: someone should tidy up),
+  - function → "Everything a kitchen needs" (*Find in catalog*: its essentials).
+- A broken object at home → "The shower fixed" (Repair: the paid quick fix) and a thought.
+- Finding the bathroom taken while badly needing it (a need with an accident, below 0.15) on two
+  different days within a week → "A second bathroom" (Build). Only room kinds with
+  `another: true` ask for this; without the repeat rule nearly every shared home wished for one.
 
-Wishes extend the planner's wishes (they already link to the catalog) and come true when the
-room gets better or the thing is bought. Thoughts reuse the bubble system (new kinds: room
-loved, room disliked, broken, accident).
+Home wishes (at most four per resident, saved by id) come true and go when the room's factor
+reaches 0.6, the thing is fixed, or there are two rooms of the kind (or nobody waited for two
+weeks). They show in the planner's Goals panel next to the activity wishes. Thoughts reuse the
+bubble system (new kinds: room loved, room disliked, broken, accident) with the room kind's icon,
+the object's icon or the need's icon, and residents say a line for each.
 
 ## Interface
 
@@ -124,7 +130,8 @@ loved, room disliked, broken, accident).
 ## Saves
 
 Version 12: per-tile dirt (sparse `[x, z, dirt]`), object `wear`, the environment need (needs
-are saved by id, so older saves load with it at a neutral value), new wish kinds. Older saves
+are saved by id, so older saves load with it at a neutral value), home wishes and the last day a
+resident found the bathroom taken. Older saves
 load clean and unworn.
 
 ## Build order

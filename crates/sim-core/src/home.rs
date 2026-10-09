@@ -516,8 +516,7 @@ impl World {
         if obj.wear <= 0.0 {
             return Err(Error::new(format!("the {} is as good as new", def.name)));
         }
-        let rules = &self.content.object_rules.repair;
-        let cost = (def.price.unwrap_or(0) as f32 * rules.cost * obj.wear).round().max(1.0) as i64;
+        let cost = repair_cost(&self.content, obj);
         let name = def.name.clone();
         self.can_pay(h, cost, || format!("not enough money to repair the {name}"))?;
         self.pay(h, cost);
@@ -979,4 +978,10 @@ fn next_look(current: Edge, target: Edge, old: EdgeLook, e: &EdgeEdit) -> EdgeLo
             ..old
         },
     }
+}
+
+/// What the player's quick fix costs (Buy mode): a share of the price, by wear.
+pub(crate) fn repair_cost(content: &crate::content::Content, obj: &crate::world::ObjectInstance) -> i64 {
+    let price = content.objects[obj.def].price.unwrap_or(0) as f32;
+    (price * content.object_rules.repair.cost * obj.wear).round().max(1.0) as i64
 }

@@ -911,6 +911,8 @@
     },
     {"id": "hadAccident", "label": "Had an accident", "emotion": "embarrassed", "mood": -0.2, "hours": 6},
     {"id": "soreBack", "label": "Sore back", "emotion": "sad", "mood": -0.1, "hours": 8, "effects": {"needDecay": {"comfort": 1.4}}},
+    {"id": "lovesRoom", "label": "Loves this room", "emotion": "relaxed", "mood": 0.06, "hours": 4},
+    {"id": "dislikesRoom", "label": "Dislikes this room", "emotion": "sad", "mood": -0.05, "hours": 3},
     {"id": "grubby", "label": "Feeling grubby", "emotion": "embarrassed", "mood": -0.08, "hours": 3, "effects": {"tagAcceptance": {"friendly": -0.15}}},
     {
       "id": "goalReached",
@@ -3121,11 +3123,11 @@
     {"id": "grubby", "need": "hygiene", "feeling": "grubby", "cooldownHours": 3, "graceMinutes": 60}
   ],
   "roomKinds": [
-    {"id": "bathroom", "label": "Bathroom", "tags": ["bathroom"], "essentials": [["bathroom"], ["hygiene"]], "size": [3, 6], "exclusive": true},
-    {"id": "kitchen", "label": "Kitchen", "tags": ["cooking"], "essentials": [["cooking"]], "size": [6, 12], "exclusive": true},
-    {"id": "bedroom", "label": "Bedroom", "tags": ["sleep"], "essentials": [["sleep"]], "size": [6, 12], "exclusive": true},
-    {"id": "living", "label": "Living room", "tags": ["lounge", "entertainment", "screen"], "size": [9, 20]},
-    {"id": "study", "label": "Study", "tags": ["reading", "training", "creative", "fitness"], "size": [4, 9]}
+    {"id": "bathroom", "icon": "icon.category.bathroom", "label": "Bathroom", "tags": ["bathroom"], "essentials": [["bathroom"], ["hygiene"]], "size": [3, 6], "exclusive": true, "another": true},
+    {"id": "kitchen", "icon": "icon.category.kitchen", "label": "Kitchen", "tags": ["cooking"], "essentials": [["cooking"]], "size": [6, 12], "exclusive": true},
+    {"id": "bedroom", "icon": "icon.category.bedroom", "label": "Bedroom", "tags": ["sleep"], "essentials": [["sleep"]], "size": [6, 12], "exclusive": true},
+    {"id": "living", "icon": "icon.category.living", "label": "Living room", "tags": ["lounge", "entertainment", "screen"], "size": [9, 20]},
+    {"id": "study", "icon": "icon.category.office", "label": "Study", "tags": ["reading", "training", "creative", "fitness"], "size": [4, 9]}
   ],
   "roomRules": {
     "weights": [0.2, 0.2, 0.2, 0.25, 0.15],
@@ -3134,6 +3136,8 @@
     "decorPerTile": 0.125,
     "gardenDecorPerTile": 0.05,
     "love": 0.75,
+    "loveFeeling": "lovesRoom",
+    "dislikeFeeling": "dislikesRoom",
     "dislike": 0.4,
     "drift": 0.5,
     "away": 0.6,

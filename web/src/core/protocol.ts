@@ -22,6 +22,8 @@ export type Command =
   /** `turn`: degrees past the facing, for objects that turn freely (0..89). */
   | { type: 'buy'; household: number; object: string; at?: [number, number, number]; style?: number; turn?: number }
   | { type: 'sell'; household: number; object: number }
+  /** The paid quick fix for something worn or broken. */
+  | { type: 'repair'; household: number; object: number }
   | { type: 'moveObject'; household: number; object: number; x: number; z: number; rot: number; turn?: number }
   | { type: 'restyle'; household: number; object: number; style: number }
   | { type: 'setStyle'; household: number; style: number }
@@ -106,6 +108,13 @@ export interface GoalView {
   sinceDay: number;
 }
 
+export interface HomeWish {
+  room?: string;
+  factor?: string;
+  fix?: string;
+  another?: string;
+}
+
 /** A resident's planner (the player's household only). */
 export interface PlanView {
   routines: Routine[];
@@ -118,6 +127,10 @@ export interface PlanView {
   suggestions: GoalView[];
   /** `[activity, skill]`: places they'd like (from blocks with nowhere to do them). */
   wishes: [string, string | null][];
+  /** What they'd like for the home: a better room (`room`: kind id, "garden", or none for a room
+   * nothing marks; `factor`: size, light, decor, clean, function), a fix (`fix`: object id) or
+   * another room of a kind (`another`). */
+  homeWishes: HomeWish[];
   /** How well they stick to plans (1 = average). */
   adherence: number;
 }
@@ -223,6 +236,10 @@ export interface ObjectPlacement {
   style: number;
   /** What selling returns; null if it can't be sold. */
   sellValue: number | null;
+  /** Wear 0..1 (broken at 1). */
+  wear?: number;
+  /** What the quick fix costs (worn things). */
+  repairCost?: number;
 }
 
 export interface SimInfo {

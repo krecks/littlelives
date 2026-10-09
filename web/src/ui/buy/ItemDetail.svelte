@@ -124,7 +124,11 @@
 
   {#if owned}
     <div class="owned">
+      {#if (owned.wear ?? 0) >= 1}<div class="broken"><b>Broken.</b> It doesn't work until it's repaired: a resident can do it, or pay for a quick fix.</div>{/if}
       <div class="row">
+        {#if owned.repairCost !== undefined}
+          <button class="btn small primary" title="Repair it now" onclick={() => services.controls.repair(owned.id)}>{game.creative ? 'Repair' : `Repair · ${money(owned.repairCost)}`}</button>
+        {/if}
         <button class="btn ghost small" onclick={() => services.controls.startMoving(owned.id)}>Move</button>
         <button class="btn ghost small" title="Rotate (R)" onclick={() => services.controls.rotatePlacing()}>Rotate</button>
         {#if content.turns(def)}
@@ -406,6 +410,12 @@
     gap: 2px;
     color: var(--text-muted);
     font-size: 11px;
+  }
+  .broken {
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--bad) 12%, transparent);
+    font-size: 12px;
   }
   .owned {
     display: flex;

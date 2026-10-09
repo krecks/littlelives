@@ -1,6 +1,7 @@
 /**
  * Speech bubbles above Sims in a conversation, and thought bubbles (a planned block skipped or
- * kept, wanting somewhere to do it, a goal reached), as DOM elements over the canvas.
+ * kept, wanting somewhere to do it, a goal reached, a room loved or disliked, something broken,
+ * an accident), as DOM elements over the canvas.
  * Per frame only `transform` is written (compositor-only); icons change only when a
  * conversation starts or its outcome is revealed. No allocations per frame.
  */
@@ -12,7 +13,7 @@ import type { Renderer } from '../render/types';
 
 const MAX_SIMS = 64;
 /** Thought kinds (snapshot `thought`) to bubble tones. */
-const THOUGHT_TONES = ['', 'bad', 'wish', 'good', 'love'];
+const THOUGHT_TONES = ['', 'bad', 'wish', 'good', 'love', 'good', 'bad', 'bad', 'bad'];
 
 interface Bubble {
   /** Positioned element (transform written per frame). */
@@ -84,10 +85,26 @@ export class BubbleLayer {
     this.root.remove();
   }
 
-  /** A thought's icon: the activity (skipped, wanted, kept) or the goal reached. */
+  /**
+   * A thought's icon: the activity (skipped, wanted, kept), the goal reached, the room (loved,
+   * disliked), the broken thing or the need behind the accident.
+   */
   private thoughtIcon(kind: number, subject: number): string {
-    if (kind === 4) return this.content.goals[subject]?.icon || 'icon.bubble.good';
-    return this.content.activities[subject]?.icon ?? 'icon.bubble.good';
+    switch (kind) {
+      case 4:
+        return this.content.goals[subject]?.icon || 'icon.bubble.good';
+      case 5:
+      case 6:
+        return roomIcon(this.content, subject);
+      case 7:
+        return this.content.objectList[subject]?.icon || 'icon.bubble.bad';
+      case 8: {
+        const need = this.content.accidents[subject]?.need;
+        return this.content.needs.find((n) => n.id === need)?.icon || 'icon.bubble.bad';
+      }
+      default:
+        return this.content.activities[subject]?.icon ?? 'icon.bubble.good';
+    }
   }
 
   /** The initiator shows the topic; the other Sim shows their reaction once it's revealed. */
@@ -126,4 +143,11 @@ export class BubbleLayer {
     b.key = '';
     b.el.style.display = 'none';
   }
+}
+
+/** The icon of a room thought's subject (sim-core `rooms::room_subject`: kind × 8 + factor). */
+export function roomIcon(content: Content, subject: number): string {
+  const kind = Math.floor(subject / 8);
+  if (kind === 0) return 'icon.category.garden';
+  return content.roomKinds[kind - 1]?.icon || 'icon.ui.room';
 }

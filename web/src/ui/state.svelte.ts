@@ -51,10 +51,12 @@ export interface SocialMenuState {
 }
 
 /** Catalog filter from the planner: items that offer an activity (training a skill), for someone. */
+/** Narrows the catalog: to what offers an activity (a planner wish), or to a set of items (a home wish). */
 export interface BuyFilter {
   label: string;
-  activity: string;
+  activity?: string;
   skill?: string | null;
+  defs?: ReadonlySet<string>;
 }
 
 export interface FeedEntry {

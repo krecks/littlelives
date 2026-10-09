@@ -22,6 +22,7 @@ const MIN_AUTONOMY_SCORE: f32 = 0.01;
 /// Sims further apart than this don't start socials on their own.
 const SOCIAL_RANGE: f32 = 45.0;
 pub const TICKS_PER_DAY: u64 = (24.0 * 60.0 / MINUTES_PER_TICK) as u64;
+const TICKS_PER_HOUR: u64 = (60.0 / MINUTES_PER_TICK) as u64;
 /// Rooms are re-scored this often (for dirt), and whenever the structure changes.
 const ROOM_REFRESH_TICKS: u64 = (10.0 / MINUTES_PER_TICK) as u64;
 
@@ -1261,6 +1262,9 @@ impl World {
         conversation::update(self);
         crate::life::update(self);
         crate::planner::update(self);
+        if self.tick.is_multiple_of(TICKS_PER_HOUR) {
+            crate::rooms::opinions(self);
+        }
 
         for s in &mut self.sims {
             s.feelings.retain(|m| m.expires > tick);
@@ -2427,6 +2431,7 @@ fn accident(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], a: usize) 
     sim.pending_spend += def.cost;
     if def.story {
         sim.news = Some(News::Accident(a));
+        crate::planner::think(sim, crate::planner::ThoughtKind::Accident, a, ctx.tick);
     }
     if let Some(rest) = &def.rest {
         end_activity(sim, content, objects);

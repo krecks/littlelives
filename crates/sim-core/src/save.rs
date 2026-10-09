@@ -30,7 +30,7 @@ use crate::life::{Job, Visit};
 use crate::lot::{DiagDir, Diagonal, Edge, EdgeLook, EdgeRef, Lot, SimSpawn};
 use crate::rng::Rng;
 use crate::social::{self, Relationship};
-use crate::planner::{BlockResult, Goal, Outcome, Planner, Reason, Routine};
+use crate::planner::{BlockResult, Goal, HomeWish, Outcome, Planner, Reason, Routine};
 use crate::world::{GameMode, Household, Plot, Task, TaskKind, World};
 use crate::{Error, MINUTES_PER_TICK, clock::MAX_SPEED};
 
@@ -208,7 +208,57 @@ pub struct PlannerSave {
     /// `(activity, skill)` ids.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub wishes: Vec<(String, Option<String>)>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub home_wishes: Vec<HomeWishSave>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub waited_day: Option<u32>,
     pub reviewed: u32,
+}
+
+/// A wish about the home: a better room (`room`: room kind id, "garden", or absent for a room
+/// nothing marks; `factor`: "size", "light", ...), a fix (`fix`: object id) or another room of
+/// a kind (`another`: room kind id).
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct HomeWishSave {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub room: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub factor: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fix: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub another: Option<String>,
+}
+
+pub(crate) fn home_wish_save(content: &Content, w: &HomeWish) -> HomeWishSave {
+    let kind = |k: usize| content.room_kinds[k].id.clone();
+    match *w {
+        HomeWish::Room { kind: k, garden, factor } => HomeWishSave {
+            room: if garden { Some("garden".into()) } else { k.map(kind) },
+            factor: Some(crate::rooms::FACTORS[factor as usize].into()),
+            ..Default::default()
+        },
+        HomeWish::Fix { def } => HomeWishSave { fix: Some(content.objects[def].id.clone()), ..Default::default() },
+        HomeWish::Another { kind: k } => HomeWishSave { another: Some(kind(k)), ..Default::default() },
+    }
+}
+
+fn home_wish_load(content: &Content, w: &HomeWishSave) -> Option<HomeWish> {
+    let kind = |id: &str| content.room_kinds.iter().position(|k| k.id == id);
+    if let Some(f) = &w.fix {
+        return Some(HomeWish::Fix { def: content.object_index(f)? });
+    }
+    if let Some(a) = &w.another {
+        return Some(HomeWish::Another { kind: kind(a)? });
+    }
+    let factor = crate::rooms::FACTORS.iter().position(|f| Some(*f) == w.factor.as_deref())? as u8;
+    let garden = w.room.as_deref() == Some("garden");
+    let k = match w.room.as_deref() {
+        Some(id) if !garden => Some(kind(id)?),
+        _ => None,
+    };
+    Some(HomeWish::Room { kind: k, garden, factor })
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -1205,6 +1255,8 @@ fn planner_save(content: &Content, p: &Planner) -> Option<PlannerSave> {
             .iter()
             .map(|&(a, s)| (content.activities[a].id.clone(), skill_id(content, s)))
             .collect(),
+        home_wishes: p.home_wishes.iter().map(|w| home_wish_save(content, w)).collect(),
+        waited_day: p.waited_day,
         reviewed: p.reviewed,
     };
     let empty = save.routines.is_empty()
@@ -1212,7 +1264,9 @@ fn planner_save(content: &Content, p: &Planner) -> Option<PlannerSave> {
         && save.goals.is_empty()
         && save.suggestions.is_empty()
         && save.history.is_empty()
-        && save.wishes.is_empty();
+        && save.wishes.is_empty()
+        && save.home_wishes.is_empty()
+        && save.waited_day.is_none();
     (!empty || save.reviewed != 0).then_some(save)
 }
 
@@ -1252,6 +1306,8 @@ fn planner_load(content: &Content, p: &PlannerSave) -> Planner {
             .iter()
             .filter_map(|(a, s)| Some((activity(a)?, s.as_deref().and_then(|s| content.skill_index(s)))))
             .collect(),
+        home_wishes: p.home_wishes.iter().filter_map(|w| home_wish_load(content, w)).collect(),
+        waited_day: p.waited_day,
         thought: None,
         reviewed: p.reviewed,
     }

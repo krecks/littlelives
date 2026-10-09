@@ -459,6 +459,9 @@ export async function startSession(
       game.buySelection = null;
       game.menu = null;
     },
+    repair(objectId) {
+      bridge.send({ type: 'repair', household: game.home, object: objectId });
+    },
     undo() {
       // The step count follows a little later; don't send more undos than there are steps.
       if (game.mode === 'live' || game.undoSteps <= 0) return;
@@ -1080,6 +1083,8 @@ export async function startSession(
       townFile: () => ('lot' in source ? source.lot : null),
       /** Sends a simulation command (benchmarks and checks). */
       send: (command: Parameters<typeof bridge.send>[0]) => bridge.send(command),
+      save: (id: string) => session.save(id, id),
+      plan: (id: number) => game.sims.find((x) => x.id === id)?.plan ?? null,
       objects: () => game.objects.map((o) => ({ id: o.id, def: o.def, x: o.x, z: o.z, rot: o.rot, turn: o.turn ?? 0 })),
       steps: () => ({ undo: game.undoSteps, redo: game.redoSteps }),
       watch: () => ({ mode: game.mode, watchMode: game.watchMode, watching: game.watching }),

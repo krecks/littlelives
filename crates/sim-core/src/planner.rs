@@ -439,7 +439,33 @@ pub enum ThoughtKind {
     Kept = 3,
     /// Reached a goal.
     Goal = 4,
+    /// Loves the room they're in (subject: `rooms::room_subject`).
+    RoomLoved = 5,
+    /// Dislikes the room they're in, for its weakest factor (subject: `rooms::room_subject`).
+    RoomDisliked = 6,
+    /// Something at home broke (subject: object type).
+    Broken = 7,
+    /// Had an accident (subject: index into content `accidents`).
+    Accident = 8,
 }
+
+/// A wish about the home itself (beyond somewhere for a planned activity).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HomeWish {
+    /// A better room of this kind (`garden`: the garden), in this factor (`rooms::FACTORS`).
+    Room { kind: Option<usize>, garden: bool, factor: u8 },
+    /// A broken object fixed (object type).
+    Fix { def: usize },
+    /// Another room of this kind (a second bathroom).
+    Another { kind: usize },
+}
+
+/// Home wishes kept at once (the oldest goes).
+pub const MAX_HOME_WISHES: usize = 4;
+/// Finding the bathroom taken on two days this close together brings a wish for another; the
+/// wish goes after `WAIT_FORGET_DAYS` without it happening again.
+pub const WAIT_REPEAT_DAYS: u32 = 7;
+pub const WAIT_FORGET_DAYS: u32 = 14;
 
 /// Results kept for the planner's look back.
 pub const HISTORY: usize = 80;
@@ -458,6 +484,10 @@ pub struct Planner {
     /// Activities they'd like a place for (from blocks with nowhere to do them), and skills
     /// they'd like to train.
     pub wishes: Vec<(usize, Option<usize>)>,
+    /// What they'd like for the home itself (better rooms, fixes, another bathroom).
+    pub home_wishes: Vec<HomeWish>,
+    /// The last day they badly needed something that was taken (see `rooms::opinions`).
+    pub waited_day: Option<u32>,
     pub thought: Option<Thought>,
     /// The day goals were last reviewed.
     pub reviewed: u32,
@@ -626,7 +656,7 @@ fn refresh_offers(w: &mut World) {
     }
 }
 
-fn think(sim: &mut Sim, kind: ThoughtKind, subject: usize, tick: u64) {
+pub(crate) fn think(sim: &mut Sim, kind: ThoughtKind, subject: usize, tick: u64) {
     sim.planner.thought = Some(Thought {
         kind,
         subject,

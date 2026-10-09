@@ -187,6 +187,13 @@ fn report(w: &World, stats: &[Stats]) {
             .map(|o| w.content.objects[o.def].id.as_str())
             .collect();
         eprintln!("    rooms: {}; broken now: {broken:?}", line.join(", "));
+        let wishes: Vec<String> = w
+            .sims
+            .iter()
+            .filter(|s| s.household as usize == h)
+            .flat_map(|s| s.planner.home_wishes.iter().map(|wish| format!("{wish:?}")))
+            .collect();
+        eprintln!("    home wishes: {wishes:?}");
     }
     let mut kinds: std::collections::BTreeMap<String, usize> = Default::default();
     for e in w.events.iter() {

@@ -289,3 +289,128 @@ pub(crate) fn compute(w: &World) -> Vec<RoomInfo> {
     out.sort_by_key(|r| (r.plot.unwrap_or(u32::MAX), r.garden, r.id));
     out
 }
+
+/// Thought subject for a room: its kind (garden 0, kind + 1, or 63 for a room nothing marks)
+/// times 8 plus a factor (`FACTORS`).
+pub fn room_subject(room: &RoomInfo, factor: usize) -> usize {
+    let kind = if room.garden { 0 } else { room.kind.map_or(63, |k| k + 1) };
+    kind * 8 + factor.min(7)
+}
+
+/// What residents make of their home, once an hour: a room they love or dislike (a thought,
+/// a feeling, and for a disliked one a wish about its weakest factor), broken things to fix,
+/// and a busy essential they had to wait for (another bathroom). Wishes come true once the
+/// room is better, the thing is fixed, or there is another room of that kind.
+pub(crate) fn opinions(w: &mut World) {
+    use crate::planner::{HomeWish, MAX_HOME_WISHES, ThoughtKind, WAIT_FORGET_DAYS, WAIT_REPEAT_DAYS, think};
+    let tick = w.tick;
+    let today = crate::clock::day(tick);
+    for i in 0..w.sims.len() {
+        let s = &w.sims[i];
+        let Some(home) = w.households[s.household as usize].plot else { continue };
+        let (x, z) = s.tile();
+        let at_home = s.away_until.is_none() && !s.asleep(&w.content) && w.plot_at(x, z) == Some(home);
+        let rooms: Vec<&RoomInfo> = w.rooms.iter().filter(|r| r.plot == Some(home)).collect();
+        let broken: Vec<usize> = w
+            .objects
+            .iter()
+            .zip(&w.object_plot)
+            .filter(|(o, p)| o.broken() && **p == Some(home))
+            .map(|(o, _)| o.def)
+            .collect();
+        // Wishes that came true.
+        let good = |kind: Option<usize>, garden: bool, factor: u8| {
+            rooms.iter().any(|r| r.garden == garden && r.kind == kind && r.scores.factors()[factor as usize] >= 0.6)
+        };
+        let kept: Vec<HomeWish> = w.sims[i]
+            .planner
+            .home_wishes
+            .iter()
+            .copied()
+            .filter(|wish| match *wish {
+                HomeWish::Room { kind, garden, factor } => !good(kind, garden, factor),
+                HomeWish::Fix { def } => broken.contains(&def),
+                HomeWish::Another { kind } => {
+                    rooms.iter().filter(|r| !r.garden && r.kind == Some(kind)).count() < 2
+                        && s.planner.waited_day.is_some_and(|d| today <= d + WAIT_FORGET_DAYS)
+                }
+            })
+            .collect();
+        let mut wishes = kept;
+        let mut waited = w.sims[i].planner.waited_day;
+        let mut thought: Option<(ThoughtKind, usize)> = None;
+        let mut feeling = None;
+        if at_home {
+            let rules = &w.content.room_rules;
+            let roll = w.rng.next_f32();
+            if let Some(room) = w.room_at_tile(x, z) {
+                let s = room.scores;
+                if s.overall >= rules.love && roll < 0.3 {
+                    thought = Some((ThoughtKind::RoomLoved, room_subject(room, 0)));
+                    feeling = rules.love_feeling;
+                } else if s.overall <= rules.dislike && roll < 0.5 {
+                    let factor = s.weakest();
+                    thought = Some((ThoughtKind::RoomDisliked, room_subject(room, factor)));
+                    feeling = rules.dislike_feeling;
+                    let wish = HomeWish::Room { kind: room.kind, garden: room.garden, factor: factor as u8 };
+                    if !wishes.contains(&wish) {
+                        wishes.push(wish);
+                    }
+                }
+            }
+            // Something broke: they'd like it fixed.
+            for &def in &broken {
+                let wish = HomeWish::Fix { def };
+                if !wishes.contains(&wish) {
+                    wishes.push(wish);
+                    thought = Some((ThoughtKind::Broken, def));
+                }
+            }
+            // Badly needing what's taken (the toilet): another room for it, for kinds that ask.
+            let me = i as u32;
+            for acc in &w.content.accidents {
+                if w.sims[i].needs[acc.need] >= 0.15 {
+                    continue;
+                }
+                let fillers: Vec<&crate::world::ObjectInstance> = w
+                    .objects
+                    .iter()
+                    .zip(&w.object_plot)
+                    .filter(|(o, p)| {
+                        **p == Some(home)
+                            && !o.broken()
+                            && w.content.objects[o.def].interactions.iter().any(|it| it.autonomous && it.total_gain[acc.need] > 0.0)
+                    })
+                    .map(|(o, _)| o)
+                    .collect();
+                let busy = !fillers.is_empty()
+                    && fillers.iter().all(|o| o.users().any(|u| u != me) && !o.has_free_slot(w.content.objects[o.def].slots));
+                let kind = fillers.first().and_then(|o| w.room_at_tile(o.x, o.z)).and_then(|r| r.kind);
+                if busy && let Some(kind) = kind.filter(|&k| w.content.room_kinds[k].another) {
+                    // Once is bad luck; again on another day this week, they'd like a second one.
+                    let again = waited.is_some_and(|d| d < today && today <= d + WAIT_REPEAT_DAYS);
+                    let wish = HomeWish::Another { kind };
+                    if again && !wishes.contains(&wish) {
+                        wishes.push(wish);
+                    }
+                    waited = Some(today);
+                }
+            }
+        }
+        while wishes.len() > MAX_HOME_WISHES {
+            wishes.remove(0);
+        }
+        let content = &w.content;
+        let sim = &mut w.sims[i];
+        sim.planner.home_wishes = wishes;
+        sim.planner.waited_day = waited;
+        if let Some((kind, subject)) = thought
+            && sim.planner.thought.is_none()
+        {
+            think(sim, kind, subject, tick);
+        }
+        if let Some(f) = feeling {
+            crate::social::add_feeling(&mut sim.feelings, f, &content.feelings, tick);
+        }
+    }
+}

@@ -229,6 +229,8 @@ struct PlanView<'a> {
     suggestions: Vec<GoalView<'a>>,
     /// Activities they'd like a place for (`skill` for training).
     wishes: Vec<(&'a str, Option<&'a str>)>,
+    /// What they'd like for the home (as saved: `room` + `factor`, `fix` or `another`).
+    home_wishes: Vec<crate::save::HomeWishSave>,
     /// How well they stick to plans now (1 = average).
     adherence: f32,
 }
@@ -284,6 +286,7 @@ fn plan_view<'a>(world: &'a World, s: &'a Sim) -> PlanView<'a> {
             .iter()
             .map(|&(a, k)| (content.activities[a].id.as_str(), k.map(|k| content.skills[k].id.as_str())))
             .collect(),
+        home_wishes: p.home_wishes.iter().map(|w| crate::save::home_wish_save(content, w)).collect(),
         adherence: crate::planner::adherence(content, s),
     }
 }
@@ -853,6 +856,10 @@ struct ObjectView<'a> {
     style: u8,
     /// What selling it returns (None if it can't be sold).
     sell_value: Option<i64>,
+    /// What the quick fix costs (worn things; as of the last structure change, so exact for
+    /// broken ones).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    repair_cost: Option<i64>,
 }
 
 #[derive(Serialize)]
@@ -954,6 +961,7 @@ pub fn structure_json_with(world: &World, lot: bool) -> String {
                     let broken = if o.broken() { 0.5 } else { 1.0 };
                     (o.value as f32 * content.object_rules.resale * broken).round() as i64
                 }),
+                repair_cost: (o.wear > 0.0).then(|| crate::home::repair_cost(content, o)),
             }
         })
         .collect();

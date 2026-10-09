@@ -187,6 +187,8 @@ pub struct RoomKind {
     pub size: [f32; 2],
     /// A room can't be two exclusive kinds at once (a bed in the kitchen makes it `mixed`).
     pub exclusive: bool,
+    /// Residents who badly need what it's for and find it taken wish for another (a bathroom).
+    pub another: bool,
 }
 
 /// How rooms are scored (content `roomRules`; see `rooms.rs`).
@@ -209,6 +211,9 @@ pub struct RoomRules {
     pub away: f32,
     /// How much the AI prefers doing things in better rooms (see `World::pick_autonomous`).
     pub preference: f32,
+    /// Feelings from loving or disliking the room they're in (see `rooms::opinions`).
+    pub love_feeling: Option<usize>,
+    pub dislike_feeling: Option<usize>,
     /// Mess per use by interaction tag (`roomRules.dirt`).
     pub dirt: Vec<(TagMask, f32)>,
     pub clean: CleanRules,
@@ -1033,6 +1038,8 @@ struct RoomKindRaw {
     size: Option<[f32; 2]>,
     #[serde(default)]
     exclusive: bool,
+    #[serde(default)]
+    another: bool,
 }
 
 #[derive(Deserialize, Default)]
@@ -1070,6 +1077,8 @@ struct RoomRulesRaw {
     drift: Option<f32>,
     away: Option<f32>,
     preference: Option<f32>,
+    love_feeling: Option<String>,
+    dislike_feeling: Option<String>,
     decor_by_category: HashMap<String, f32>,
     dirt: HashMap<String, f32>,
     clean: CleanRaw,
@@ -1994,6 +2003,7 @@ impl Content {
                 essentials: k.essentials.iter().map(|e| tag_mask(e)).filter(|&m| m != 0).collect(),
                 size: k.size.unwrap_or([4.0, 9.0]),
                 exclusive: k.exclusive,
+                another: k.another,
             })
             .collect();
         let rr = &raw.room_rules;
@@ -2008,6 +2018,8 @@ impl Content {
             drift: rr.drift.unwrap_or(0.5).max(0.0),
             away: rr.away.unwrap_or(0.6),
             preference: rr.preference.unwrap_or(1.0).max(0.0),
+            love_feeling: feeling(&rr.love_feeling, "roomRules")?,
+            dislike_feeling: feeling(&rr.dislike_feeling, "roomRules")?,
             dirt: {
                 let mut d: Vec<(TagMask, f32)> =
                     rr.dirt.iter().map(|(t, &v)| (tag_mask(std::slice::from_ref(t)), v.max(0.0))).filter(|(m, _)| *m != 0).collect();

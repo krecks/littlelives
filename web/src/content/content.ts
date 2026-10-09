@@ -49,6 +49,8 @@ export interface ObjectDef {
   price?: number;
   /** Buy-mode category id. */
   category?: string;
+  /** Decor points it gives its room (default: by category, `roomRules.decorByCategory`). */
+  decor?: number;
   /** Group within the category (one of its `groups`), e.g. `trees` in the garden. */
   group?: string;
   description?: string;
@@ -105,10 +107,14 @@ export interface AccidentDef {
 export interface RoomKindDef {
   id: string;
   label?: string;
+  /** Asset key of its icon (thought bubbles, Our home). */
+  icon?: string;
   tags: string[];
   essentials?: string[][];
   size?: [number, number];
   exclusive?: boolean;
+  /** Residents who find it taken when they badly need it wish for another. */
+  another?: boolean;
 }
 
 /** A roof style (Build mode's Roof tool): the shape and, for pitched roofs, the pitch in degrees. */
@@ -289,6 +295,7 @@ interface ContentFile {
   roofColors?: RoofColorDef[];
   roomKinds?: RoomKindDef[];
   accidents?: AccidentDef[];
+  roomRules?: { decorByCategory?: Record<string, number> };
   economy?: Partial<Economy>;
   objectRules?: { freeRotation?: string[] };
   /** Animation tags interactions can use as `anim` (the snapshot layout's `actions`). */
@@ -323,6 +330,7 @@ export class Content {
   readonly roofColors: readonly RoofColorDef[];
   readonly roomKinds: readonly RoomKindDef[];
   readonly accidents: readonly AccidentDef[];
+  private readonly decorByCategory: Readonly<Record<string, number>>;
   readonly windowStyles: readonly WindowStyleDef[];
   readonly economy: Economy;
   /** Animation tags, in the order the snapshot's `sim.action` indexes them. */
@@ -366,6 +374,7 @@ export class Content {
     this.roofColors = file.roofColors ?? [];
     this.roomKinds = file.roomKinds ?? [];
     this.accidents = file.accidents ?? [];
+    this.decorByCategory = file.roomRules?.decorByCategory ?? {};
     this.economy = { startingFunds: 0, currency: '$', ...file.economy };
     this.animations = [...new Set(file.animations ?? [])];
     this.shop = file.objects.filter((o) => o.price !== undefined);
@@ -399,6 +408,16 @@ export class Content {
 
   activity(id: string): ActivityDef | undefined {
     return this.activities.find((a) => a.id === id);
+  }
+
+  /** Decor points an object gives the room it stands in (sim-core `ObjectDef::decor`). */
+  decorOf(def: ObjectDef): number {
+    return def.decor ?? (def.category ? this.decorByCategory[def.category] : undefined) ?? 0;
+  }
+
+  /** Whether an object's interactions offer any of `tags`. */
+  offersTags(def: ObjectDef, tags: readonly string[]): boolean {
+    return def.interactions.some((it) => (it.tags ?? []).some((t) => tags.includes(t)));
   }
 
   /** Whether an object's interactions offer an activity (with a skill to train, if given). */

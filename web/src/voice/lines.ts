@@ -23,8 +23,8 @@ export interface Line {
   tone?: string;
 }
 
-/** Planner thought kinds in snapshot order (`thought` 1..4). */
-const THOUGHTS = ['skipped', 'noPlace', 'kept', 'goal'] as const;
+/** Planner thought kinds in snapshot order (`thought` 1..8). */
+const THOUGHTS = ['skipped', 'noPlace', 'kept', 'goal', 'roomLoved', 'roomDisliked', 'broken', 'accident'] as const;
 
 const files = new Map<string, Promise<LinesFile | null>>();
 

@@ -79,13 +79,14 @@
 
   const terms = $derived(query.trim().toLowerCase().split(/\s+/).filter(Boolean));
   /** A wish or a goal from the planner narrows the catalog to what offers its activity. */
-  const wanted = $derived(game.buyFilter ? content.activity(game.buyFilter.activity) : undefined);
+  const wanted = $derived(game.buyFilter?.activity ? content.activity(game.buyFilter.activity) : undefined);
   /** Items passing the search, "Affordable" and "For us" filters, across all categories. */
   const matching = $derived(
     content.shop.filter((def) => {
       if (affordableOnly && !game.affords(def.price ?? 0)) return false;
       if (lovedOnly && !lovers.has(def.id)) return false;
       if (wanted && !content.offers(def, wanted, game.buyFilter?.skill)) return false;
+      if (game.buyFilter?.defs && !game.buyFilter.defs.has(def.id)) return false;
       if (!terms.length) return true;
       const text = summarize(content, def).haystack;
       return terms.every((t) => text.includes(t));

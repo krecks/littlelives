@@ -478,6 +478,31 @@
         "Another goal reached!"
       ],
       "tone": "happy"
+    },
+    "roomLoved": {
+      "lines": [
+        "I love it in here.",
+        "This room feels just right."
+      ],
+      "tone": "happy"
+    },
+    "roomDisliked": {
+      "lines": [
+        "This room could be so much nicer.",
+        "I don't like it in here."
+      ]
+    },
+    "broken": {
+      "lines": [
+        "Oh no, it's broken!",
+        "Someone should fix that."
+      ]
+    },
+    "accident": {
+      "lines": [
+        "Oh, this is embarrassing.",
+        "That wasn't supposed to happen."
+      ]
     }
   }
 }

@@ -1,11 +1,14 @@
 <script lang="ts">
   import type { GoalView, SimView } from '../../core/protocol';
   import Icon from '../Icon.svelte';
+  import { money } from '../format';
   import { services } from '../services';
+  import { game } from '../state.svelte';
   import { goalText } from '../story';
+  import { describeHomeWish, type WishInfo } from './homeWishes';
   import { activityLabel, reasonText } from './planner';
 
-  /** A resident's life goals, the ones they'd like to take on, and the places they wish for. */
+  /** A resident's life goals, the ones they'd like to take on, and what they wish for (places, the home). */
   let { sim }: { sim: SimView } = $props();
 
   const content = services.content;
@@ -36,6 +39,40 @@
       target: ['skill', 'friends', 'funds', 'jobLevel'].includes(picked.kind) ? target : undefined,
     });
     def = '';
+  }
+
+  /** Home wishes; a fix shows only while the thing is still broken (the sim drops it within the hour). */
+  const homeWishes = $derived(
+    (plan?.homeWishes ?? []).filter((w) => !w.fix || brokenAtHome(w.fix)).map((w) => describeHomeWish(content, w)),
+  );
+  /** The broken thing a fix wish is about, at home. */
+  function brokenAtHome(def: string) {
+    const plot = game.households[game.home]?.plot;
+    const home = plot == null ? null : game.plots[plot];
+    if (!home) return undefined;
+    return game.objects.find(
+      (o) => o.def === def && (o.wear ?? 0) >= 1 && o.x >= home.x && o.z >= home.z && o.x < home.x + home.w && o.z < home.z + home.d,
+    );
+  }
+  function act(w: WishInfo) {
+    const a = w.action;
+    if (!a) return;
+    if (a.kind === 'catalog') services.controls.openCatalog({ label: `For ${sim.name}: ${a.label}`, defs: a.defs });
+    else if (a.kind === 'build') {
+      game.plannerOpen = false;
+      services.controls.setMode('build');
+    } else {
+      const o = brokenAtHome(a.def);
+      if (o) services.controls.repair(o.id);
+    }
+  }
+  function actLabel(w: WishInfo): string {
+    const a = w.action;
+    if (!a) return '';
+    if (a.kind === 'catalog') return 'Find in catalog';
+    if (a.kind === 'build') return 'Build';
+    const cost = brokenAtHome(a.def)?.repairCost;
+    return game.creative || cost === undefined ? 'Repair' : `Repair · ${money(cost)}`;
   }
 
   const label = (g: GoalView) => goalText(g.def, g.target, g.skill, g.category);
@@ -120,9 +157,20 @@
       </div>
     {/if}
 
-    {#if plan.wishes.length}
+    {#if plan.wishes.length || homeWishes.length}
       <h3>Wishes</h3>
       <ul>
+        {#each homeWishes as w (w.key)}
+          <li class="wish">
+            <span class="icon"><Icon name={w.icon} size={15} /></span>
+            <span class="label">{w.text}</span>
+            {#if w.action}
+              <button class="btn small" onclick={() => act(w)}>{actLabel(w)}</button>
+            {:else}
+              <span class="muted hint">Someone should tidy up</span>
+            {/if}
+          </li>
+        {/each}
         {#each plan.wishes as [activity, skillId] (`${activity}:${skillId}`)}
           <li class="wish">
             <span class="label">Somewhere to <b>{activityLabel(activity, skillId).toLowerCase()}</b></span>
@@ -277,5 +325,8 @@
   }
   .empty {
     font-size: 12px;
+  }
+  .hint {
+    font-size: 11.5px;
   }
 </style>

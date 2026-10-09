@@ -59,6 +59,8 @@ export interface GameControls {
   rotatePlacing(fine?: boolean): void;
   cancelPlacing(): void;
   sell(objectId: number): void;
+  /** Pays for a quick fix of something worn or broken at home (free in Creative). */
+  repair(objectId: number): void;
   /** Buy and Build mode: takes back the last edit (Ctrl/⌘+Z). */
   undo(): void;
   /** Buy and Build mode: makes the last undone edit again (Ctrl/⌘+Shift+Z, Ctrl+Y). */
