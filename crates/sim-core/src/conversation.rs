@@ -343,6 +343,11 @@ fn apply_outcome(
 
     match o.effect {
         Effect::None => {}
+        Effect::Conceive => {
+            if success {
+                sims[a].conceived = Some(t as u32);
+            }
+        }
         Effect::Kiss => {
             if success && !rels.get(a, t).kissed {
                 rels.get_mut(a, t).kissed = true;

@@ -309,6 +309,9 @@ export async function startSession(
     setLifespan(lifespan) {
       bridge.send({ type: 'setLifespan', lifespan });
     },
+    adopt(child) {
+      bridge.send({ type: 'adopt', household: game.home, child });
+    },
     setPlayerMoves(enabled) {
       bridge.send({ type: 'setPlayerMoves', enabled });
     },
@@ -621,6 +624,7 @@ export async function startSession(
     game.rent = mine?.rent ?? null;
     game.bills = mine?.bills ?? null;
     game.householdStyle = mine?.style ?? 0;
+    game.expecting = mine?.expecting ?? null;
     game.undoSteps = mine?.undo ?? 0;
     game.redoSteps = mine?.redo ?? 0;
     if (ui.rooms) {
@@ -640,10 +644,18 @@ export async function startSession(
   });
   bridge.onWorld((w) => {
     if (disposed) return;
-    // Newcomers the simulation made up carry an appearance seed: give them their look.
+    // Newcomers and babies the simulation made up carry an appearance seed: give them their
+    // look (babies from their parents', so parents first).
+    type Seeded = { seed?: number; parents?: number[] } | null;
+    for (const pass of [false, true]) {
+      for (const s of w.sims) {
+        const { seed, parents } = (s.appearance as Seeded) ?? {};
+        if (typeof seed !== 'number' || !!parents?.length !== pass) continue;
+        const looks = (parents ?? []).map((p) => w.sims[p]?.appearance).filter((a) => a && (a as Seeded)?.seed === undefined);
+        s.appearance = lookFromSeed(assets, s.gender, seed, looks);
+      }
+    }
     for (const s of w.sims) {
-      const seed = (s.appearance as { seed?: number } | null)?.seed;
-      if (typeof seed === 'number') s.appearance = lookFromSeed(assets, s.gender, seed);
       // Life stage: body and head size, and age greys the hair (from the colour they started with).
       const stage = content.lifeStages.find((st) => st.id === s.stage);
       if (s.appearance) s.appearance = lookOfStage(s.appearance, stage);

@@ -316,6 +316,8 @@ pub struct Sim {
     /// Mess made (or, negative, cleaned) around a tile this tick; applied after the step
     /// (residents can't change the dirt while stepping).
     pub(crate) mess: Option<(i32, i32, f32)>,
+    /// Conceived with this partner this tick (the life cycle decides; see `lifecycle::conceive`).
+    pub(crate) conceived: Option<u32>,
     /// Care given this tick: the baby it's for and what it fills (applied after the step).
     pub(crate) care_out: Option<(u32, [f32; MAX_NEEDS])>,
     /// An object they broke or repaired, or an accident they had, this tick (applied after
@@ -548,6 +550,16 @@ pub struct Household {
     pub free_will: bool,
     /// Routine blocks every member follows (each may skip some; their own blocks win).
     pub routines: Vec<crate::planner::Routine>,
+    /// A baby on the way (see `lifecycle::conceive`).
+    pub expecting: Option<Expecting>,
+}
+
+/// A household expecting a baby: the parents and the day it's due.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Expecting {
+    pub parents: [u32; 2],
+    pub due: u32,
 }
 
 /// A resident who is no longer in town: they died or moved away (see `lifecycle.rs`).
@@ -588,6 +600,10 @@ pub(crate) struct SimBrief {
     /// A baby (cared for in a crib), and their needs (so carers know what's wanted).
     pub baby: bool,
     pub needs: [f32; MAX_NEEDS],
+    /// Still in town, grown up, and how old.
+    pub here: bool,
+    pub adult: bool,
+    pub age: f32,
 }
 
 pub struct World {
@@ -731,6 +747,7 @@ impl World {
                 style: 0,
                 free_will: true,
                 routines: Vec::new(),
+                expecting: None,
             }]
         } else {
             lot_file
@@ -746,6 +763,7 @@ impl World {
                     style: 0,
                     free_will: true,
                     routines: Vec::new(),
+                    expecting: None,
                 })
                 .collect()
         };
@@ -1038,6 +1056,7 @@ impl World {
             planner: Default::default(),
             mess: None,
             care_out: None,
+            conceived: None,
             news: None,
             accident_at: [0; crate::content::MAX_ACCIDENTS],
             empty_since: [0; crate::content::MAX_ACCIDENTS],
@@ -1330,6 +1349,9 @@ impl World {
     /// tile and (less) the tiles around it in the same room; cleaning clears them all.
     fn apply_messes(&mut self) {
         for i in 0..self.sims.len() {
+            if let Some(partner) = self.sims[i].conceived.take() {
+                crate::lifecycle::conceive(self, i, partner as usize);
+            }
             if let Some((baby, gains)) = self.sims[i].care_out.take()
                 && let Some(b) = self.sims.get_mut(baby as usize)
             {
@@ -1425,6 +1447,9 @@ impl World {
                 away: s.away_until.is_some() || !s.here(),
                 baby: s.here() && self.content.life.baby(s.age),
                 needs: s.needs,
+                here: s.here(),
+                adult: s.adult(&self.content),
+                age: s.age,
             });
         }
         let hour = crate::clock::hour(tick);
@@ -1600,6 +1625,9 @@ impl World {
             }
             Command::SetLifespan { lifespan } => self.lifespan = lifespan,
             Command::SetPlayerMoves { enabled } => self.player_moves = enabled,
+            Command::Adopt { household, child } => {
+                crate::lifecycle::adopt(self, household, child)?;
+            }
             Command::SetAutonomy { enabled, household } => {
                 if let Some(h) = household {
                     self.households
@@ -2194,11 +2222,17 @@ fn pick_autonomous(
             .is_none_or(|g| sim.attraction & (1 << g) != 0);
         // Partner lookups scan everyone: only when a goal asks for it.
         let single = !sim.planner.goals.is_empty() && ctx.rels.partner_of(j).is_none();
+        let grown_ups = ctx.briefs[me].adult && other.adult;
         for (k, s) in content.socials.iter().enumerate() {
             if !s.autonomous || !s.requires.allows(rel) {
                 continue;
             }
-            if s.tags & content.social_rules.romantic_tags != 0 && !attracted {
+            // Romance only between grown-ups who aren't family.
+            if s.tags & content.social_rules.romantic_tags != 0 && (!attracted || !grown_ups || !rel.kin.is_none()) {
+                continue;
+            }
+            // Trying for a baby only where one could come of it.
+            if s.success.effect == crate::social::Effect::Conceive && !could_conceive(ctx, me, j) {
                 continue;
             }
             let romantic = s.tags & content.social_rules.romantic_tags != 0;
@@ -2906,4 +2940,16 @@ fn crib_for(sim: &mut Sim, ctx: &Ctx, objects: &[ObjectInstance]) -> Option<Task
     let (fx, fz) = objects[object as usize].front_tile(content);
     sim.pos = [fx as f32 + 0.5, fz as f32 + 0.5];
     Some(Task { kind: TaskKind::Use { object, interaction }, directed: false })
+}
+
+/// Whether partners `a` and `b` could have a baby now: at home together, grown-ups young enough,
+/// none on the way, and room for one more.
+fn could_conceive(ctx: &Ctx, a: usize, b: usize) -> bool {
+    let Some(rules) = ctx.content.life.pregnancy else { return false };
+    let (x, y) = (&ctx.briefs[a], &ctx.briefs[b]);
+    let h = x.household as usize;
+    let fits = |s: &SimBrief| s.adult && s.age <= rules.max_age;
+    let members = ctx.briefs.iter().filter(|s| s.here && s.household as usize == h).count();
+    fits(x) && fits(y) && y.household == x.household && ctx.households[h].expecting.is_none()
+        && members < ctx.content.rules.max_household
 }

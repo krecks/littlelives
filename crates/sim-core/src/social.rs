@@ -82,6 +82,8 @@ pub enum Effect {
     BreakUp,
     Fight,
     Kiss,
+    /// Partners trying for a baby (the life cycle decides whether one is on the way).
+    Conceive,
 }
 
 /// Conditions on the actor's view of the target (and their shared status).
@@ -754,6 +756,12 @@ pub enum EventKind {
     MovedOut,
     /// `a` left town.
     MovedAway,
+    /// `a` and `b` are expecting a baby.
+    Expecting,
+    /// `a` was born to `b` (and `c`).
+    Born,
+    /// `b` adopted `a`.
+    Adopted,
 }
 
 impl EventKind {
@@ -763,7 +771,7 @@ impl EventKind {
         match self {
             FirstKiss | StartedDating | BrokeUp | BecameBestFriends | Promoted | JobFound
             | Fired | GoalReached | MovedIn | GrewOlder | Retired | Died | MovedInWith | MovedOut
-            | MovedAway => 2,
+            | MovedAway | Expecting | Born | Adopted => 2,
             BecameFriends | BecameGoodFriends | BecameEnemies | Crush | ProposalRejected
             | Fight | Jealous | QuitJob | RentDebt | Broke | Accident => 1,
             Met | MissedWork | SkillUp | PaidRent | Upgraded | Visited | GoalSuggested | Repaired => 0,

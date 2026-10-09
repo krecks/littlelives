@@ -19,7 +19,8 @@
 //! style and colour ids); 12 = per-tile dirt (`dirt`), the surroundings need, tidying up,
 //! object wear and repairs; 13 = ages (`sims[].age`; absent: from content `life.startAge`)
 //! and the lifespan (`lifespan`; absent: off, so older games don't start aging by surprise),
-//! residents who are gone (`sims[].gone`) and former residents the story names (`former`).
+//! residents who are gone (`sims[].gone`) and former residents the story names (`former`);
+//! 14 = a baby on the way (`households[].expecting`).
 //! Older files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
@@ -36,7 +37,7 @@ use crate::planner::{BlockResult, Goal, HomeWish, Outcome, Planner, Reason, Rout
 use crate::world::{GameMode, Household, Plot, Task, TaskKind, World};
 use crate::{Error, MINUTES_PER_TICK, clock::MAX_SPEED};
 
-pub const SAVE_VERSION: u32 = 13;
+pub const SAVE_VERSION: u32 = 14;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -416,6 +417,9 @@ pub struct HouseholdSave {
     /// Routine template for every member (absent before v9).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub routines: Vec<RoutineSave>,
+    /// A baby on the way (absent before v14: none).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expecting: Option<crate::world::Expecting>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -590,6 +594,7 @@ impl World {
                     style: h.style,
                     free_will: Some(h.free_will),
                     routines: h.routines.iter().map(|r| routine_save(content, r)).collect(),
+                    expecting: h.expecting,
                 })
                 .collect(),
             plots: self
@@ -698,6 +703,7 @@ impl World {
                 style: 0,
                 free_will: save.autonomy,
                 routines: Vec::new(),
+                expecting: None,
             }]
         } else {
             save.households
@@ -718,6 +724,7 @@ impl World {
                         .iter()
                         .filter_map(|r| routine_load(&world.content, r))
                         .collect(),
+                    expecting: h.expecting,
                 })
                 .collect()
         };

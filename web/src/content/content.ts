@@ -316,7 +316,7 @@ interface ContentFile {
   roomKinds?: RoomKindDef[];
   accidents?: AccidentDef[];
   roomRules?: { decorByCategory?: Record<string, number> };
-  life?: { daysPerYear?: number; startAge?: [number, number]; stages?: LifeStageDef[] };
+  life?: { daysPerYear?: number; startAge?: [number, number]; stages?: LifeStageDef[]; adoption?: { cost: number } };
   economy?: Partial<Economy>;
   objectRules?: { freeRotation?: string[] };
   /** Animation tags interactions can use as `anim` (the snapshot layout's `actions`). */
@@ -353,6 +353,8 @@ export class Content {
   readonly accidents: readonly AccidentDef[];
   /** Life stages, youngest first. */
   readonly lifeStages: readonly LifeStageDef[];
+  /** What adopting costs (null: no adoption). */
+  readonly adoptionCost: number | null;
   private readonly decorByCategory: Readonly<Record<string, number>>;
   readonly windowStyles: readonly WindowStyleDef[];
   readonly economy: Economy;
@@ -398,6 +400,7 @@ export class Content {
     this.roomKinds = file.roomKinds ?? [];
     this.accidents = file.accidents ?? [];
     this.lifeStages = file.life?.stages ?? [];
+    this.adoptionCost = file.life?.adoption?.cost ?? null;
     this.decorByCategory = file.roomRules?.decorByCategory ?? {};
     this.economy = { startingFunds: 0, currency: '$', ...file.economy };
     this.animations = [...new Set(file.animations ?? [])];

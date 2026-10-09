@@ -54,6 +54,12 @@ pub enum Command {
     SetLifespan {
         lifespan: crate::lifecycle::Lifespan,
     },
+    /// Adopt a baby (or a `child`) into the household, for content `life.adoption.cost`.
+    Adopt {
+        household: u32,
+        #[serde(default)]
+        child: bool,
+    },
     /// Whether the player's residents move in with partners and out of home on their own.
     SetPlayerMoves {
         enabled: bool,

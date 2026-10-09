@@ -1516,7 +1516,13 @@
         "targetFriendship": -3,
         "feeling": "awkward"
       }
-    }
+    },
+    {"id": "tryForBaby", "label": "Try for a baby", "category": "romantic", "icon": "icon.bubble.love", "minutes": 30, "animation": "kiss",
+     "tags": ["social", "romantic", "touch"], "distance": 0.5, "prefer": "romance", "autonomyWeight": 1.5,
+     "requires": {"partners": true, "minRomance": 50}, "acceptance": {"base": 0.4, "romance": 0.006, "mood": 0.2},
+     "needs": {"social": 0.2, "fun": 0.1}, "targetNeeds": {"social": 0.2, "fun": 0.1},
+     "success": {"romance": 6, "targetRomance": 6, "feeling": "inLove", "targetFeeling": "inLove", "effect": "conceive"},
+     "failure": {"romance": -2, "targetRomance": -2}}
   ],
   "bondPresets": {
     "roommates": {
@@ -1763,7 +1769,10 @@
     "died": "{a} passed away",
     "movedInWith": "{a} moved in with {b}",
     "movedOut": "{a} moved into a home of their own",
-    "movedAway": "{a} left town"
+    "movedAway": "{a} left town",
+    "expecting": "{a} and {b} are expecting a baby",
+    "born": "{a} was born to {b}{and c}",
+    "adopted": "{b} adopted {a}"
   },
   "activities": [
     {
@@ -3165,6 +3174,8 @@
     "grief": {"feeling": "grieving", "lightFeeling": "missesSomeone", "close": 60, "friend": 35},
     "school": {"start": 8, "hours": 7, "days": [0, 1, 2, 3, 4], "skills": {"intelligence": 0.6, "writing": 0.4, "perception": 0.3}},
     "newcomers": {"hour": 12, "days": 3},
+    "pregnancy": {"chance": 0.35, "days": 3, "maxAge": 50},
+    "adoption": {"cost": 1500},
     "moving": {"hour": 11, "partners": 0.2, "romance": 60, "leaveHomeAge": 23, "leaveHome": 0.1, "leaveTownAge": 30, "leaveTown": 0.05},
     "stages": [
       {"id": "baby", "label": "Baby", "from": 0, "baby": true, "scale": 0.36, "head": 1.6, "story": "was born"},

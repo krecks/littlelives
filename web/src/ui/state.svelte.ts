@@ -107,6 +107,8 @@ class GameState {
   bills = $state<number | null>(null);
   /** The household's favourite object style (index into content styles). */
   householdStyle = $state(0);
+  /** A baby on the way in the player's household. */
+  expecting = $state.raw<{ parents: [number, number]; due: number } | null>(null);
   /** Careers and build/buy rules from the simulation. */
   catalog = $state.raw<Catalog | null>(null);
   objects = $state.raw<ObjectPlacement[]>([]);

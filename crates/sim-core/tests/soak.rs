@@ -123,6 +123,10 @@ fn run(days: u32, seed: u64, player_size: usize) -> (World, Vec<Stats>) {
         for _ in 0..TICKS_PER_HOUR {
             w.tick_once();
             let waking = (9.0..21.0).contains(&clock::hour(w.tick));
+            // Babies are born and newcomers arrive: their records start now.
+            if stats.len() < w.sims.len() {
+                stats.resize(w.sims.len(), Stats { lowest: 1.0, ..Default::default() });
+            }
             for (i, s) in w.sims.iter().enumerate() {
                 let st = &mut stats[i];
                 let busy = s.current().is_some() || s.engaged_with.is_some();
@@ -224,11 +228,11 @@ fn a_town_lives_on_its_own_for_two_weeks() {
             st.worst_idle
         );
     }
-    // The newcomers found work on their own.
+    // The newcomers found work on their own (the grown-ups: a baby may have come along).
     let player: Vec<_> = w
         .sims
         .iter()
-        .filter(|s| w.households[s.household as usize].player)
+        .filter(|s| w.households[s.household as usize].player && s.adult(&w.content))
         .collect();
     assert!(!player.is_empty());
     assert!(

@@ -38,9 +38,12 @@ const ICONS: Record<string, string> = {
   movedInWith: 'icon.bubble.love',
   movedOut: 'icon.ui.home',
   movedAway: 'icon.ui.home',
+  expecting: 'icon.bubble.love',
+  born: 'icon.bubble.love',
+  adopted: 'icon.ui.home',
 };
 
-const LOVE = new Set(['crush', 'firstKiss', 'startedDating', 'movedInWith']);
+const LOVE = new Set(['crush', 'firstKiss', 'startedDating', 'movedInWith', 'expecting', 'born', 'adopted']);
 const BAD = new Set(['died', 'becameEnemies', 'brokeUp', 'fight', 'jealous', 'proposalRejected', 'missedWork', 'rentDebt', 'fired', 'broke', 'accident']);
 
 export function storyIcon(e: SocialEvent): string {
@@ -83,6 +86,7 @@ export function storyText(e: SocialEvent): string {
     .replace('{a}', name(e.a))
     .replace('{b}', name(e.b))
     .replace('{c}', name(e.c))
+    .replace('{and c}', e.c === undefined || e.c === null ? '' : ` and ${name(e.c)}`)
     .replace('{job}', job(e))
     .replace('{goal}', goalText(e.goal, e.n, e.skill, e.career))
     .replace('{accident}', services.content.accidents[e.n ?? -1]?.story ?? 'had a bad moment')

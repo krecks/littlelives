@@ -199,6 +199,19 @@ pub struct LifeRules {
     pub newcomers: Option<NewcomerRules>,
     /// School for stages with `school` (None: no school).
     pub school: Option<SchoolRules>,
+    /// Having children (None: nobody does).
+    pub pregnancy: Option<PregnancyRules>,
+    /// Adopting a baby or a child: what it costs (None: no adoption).
+    pub adoption_cost: Option<i64>,
+}
+
+/// A successful *Try for a baby* means a baby with a chance of `chance`, born `days` later, for
+/// partners at home who are both at most `max_age`.
+#[derive(Debug, Clone, Copy)]
+pub struct PregnancyRules {
+    pub chance: f32,
+    pub days: u32,
+    pub max_age: f32,
 }
 
 /// School days: away from `start` for `hours` on `days` (bit 0 = Monday), practising `skills`
@@ -1155,6 +1168,23 @@ struct LifeRaw {
     moving: Option<MovingRaw>,
     newcomers: Option<NewcomersRaw>,
     school: Option<SchoolRaw>,
+    pregnancy: Option<PregnancyRaw>,
+    adoption: Option<AdoptionRaw>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PregnancyRaw {
+    chance: f32,
+    days: u32,
+    #[serde(default)]
+    max_age: Option<f32>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AdoptionRaw {
+    cost: i64,
 }
 
 #[derive(Deserialize)]
@@ -2063,6 +2093,12 @@ impl Content {
                     })
                 }
             },
+            pregnancy: raw.life.pregnancy.as_ref().map(|p| PregnancyRules {
+                chance: p.chance.clamp(0.0, 1.0),
+                days: p.days.max(1),
+                max_age: p.max_age.unwrap_or(50.0),
+            }),
+            adoption_cost: raw.life.adoption.as_ref().map(|a| a.cost.max(0)),
             newcomers: raw.life.newcomers.as_ref().map(|n| NewcomerRules {
                 hour: n.hour.unwrap_or(12.0).clamp(0.0, 23.9),
                 days: n.days.unwrap_or(3.0).max(1.0),

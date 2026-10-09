@@ -76,3 +76,71 @@ fn a_baby_moving_in_comes_with_a_crib() {
     minutes(&mut w, 1);
     assert_eq!(w.sims[3].pose, sim_core::content::Pose::Lie, "Dot is in it");
 }
+
+const FAMILY: &str = r#"{
+    "needs":[{"id":"hunger","label":"Hunger","decayPerHour":0.0}],
+    "objects":[{"id":"crib","name":"Crib","price":350,"footprint":[2,1],"slots":2,"interactions":[
+        {"id":"lie","label":"Lie in the crib","minutes":720,"pose":"lie","baby":true,"autonomous":false,"effects":{"hunger":0.0},"tags":["rest"]}]}],
+    "genders":[{"id":"female","label":"Female"},{"id":"male","label":"Male"}],
+    "names":{"first":["Ivy","Jun"],"last":["Moss"]},
+    "tags":["romantic"],
+    "socials":[{"id":"tryForBaby","label":"Try for a baby","minutes":30,"tags":["romantic"],"requires":{"partners":true},
+                "acceptance":{"base":1.0},"success":{"effect":"conceive"}}],
+    "socialRules":{"romanticTags":["romantic"]},
+    "life":{"daysPerYear":2,"stages":[
+        {"id":"baby","label":"Baby","from":0,"baby":true},
+        {"id":"child","label":"Child","from":2,"school":true},
+        {"id":"adult","label":"Adult","from":18}],
+        "pregnancy":{"chance":1.0,"days":2,"maxAge":50},"adoption":{"cost":500}},
+    "bondPresets":{"partners":{"friendship":55,"romance":75,"partners":true},"parent":{"friendship":50,"kin":"parent"},
+                   "siblings":{"friendship":40,"kin":"sibling"}},
+    "rules":{"maxHousehold":4},
+    "economy":{"startingFunds":1000}}"#;
+
+const COUPLE: &str = r#"{"width":12,"depth":12,
+    "plots":[{"name":"Home","x":0,"z":0,"w":12,"d":12,"entry":[5.5,11.5]}],
+    "households":[{"name":"Moss","plot":0,"player":true}],
+    "objects":[],
+    "sims":[{"name":"Ada","x":4.5,"z":8.5,"age":30,"gender":"female"},{"name":"Ben","x":5.5,"z":8.5,"age":32,"gender":"male"}],
+    "relationships":[{"a":0,"b":1,"preset":"partners"}]}"#;
+
+#[test]
+fn partners_have_a_baby() {
+    use sim_core::social::{EventKind, Kin};
+    let mut w = World::from_json(FAMILY, COUPLE, 1).unwrap();
+    w.apply(Command::SetAutonomy { enabled: false, household: None }).unwrap();
+    w.apply(Command::Social { sim: 0, target: 1, social: 0 }).unwrap();
+    minutes(&mut w, 60);
+    let e = w.households[0].expecting.expect("expecting");
+    assert_eq!(e.parents, [0, 1]);
+    assert!(w.events.iter().any(|e| e.kind == EventKind::Expecting));
+    // Saved expecting.
+    let loaded = World::from_save_json(FAMILY, &w.save_json()).unwrap();
+    assert_eq!(loaded.households[0].expecting, Some(e));
+    // Born two days later, into a crib that came for them.
+    minutes(&mut w, 3 * 24 * 60);
+    assert_eq!(w.sims.len(), 3, "a baby");
+    let baby = &w.sims[2];
+    assert!(w.content.life.baby(baby.age) && ["Ivy", "Jun"].contains(&baby.name.as_str()));
+    assert_eq!(baby.appearance["parents"], serde_json::json!([0, 1]), "looks from the parents");
+    assert_eq!((w.relationships.kin(2, 0), w.relationships.kin(0, 2)), (Kin::Parent, Kin::Child));
+    assert!(w.events.iter().any(|e| e.kind == EventKind::Born && e.a == 2 && e.b == 0 && e.c == Some(1)));
+    assert!(w.households[0].expecting.is_none());
+    assert_eq!(w.objects.iter().filter(|o| w.content.objects[o.def].id == "crib").count(), 1);
+    assert_eq!(w.sims[2].pose, sim_core::content::Pose::Lie, "in the crib");
+}
+
+#[test]
+fn adopting_a_child() {
+    use sim_core::social::Kin;
+    let mut w = World::from_json(FAMILY, COUPLE, 1).unwrap();
+    w.apply(Command::Adopt { household: 0, child: true }).unwrap();
+    let kid = &w.sims[2];
+    assert!((3.0..11.0).contains(&kid.age), "a child: {}", kid.age);
+    assert_eq!((w.relationships.kin(2, 0), w.relationships.kin(2, 1)), (Kin::Parent, Kin::Parent), "both are parents");
+    assert_eq!(w.households[0].funds, 500, "adoption costs");
+    w.apply(Command::Adopt { household: 0, child: false }).unwrap();
+    assert_eq!(w.relationships.kin(3, 2), Kin::Sibling, "a little brother or sister");
+    let err = w.apply(Command::Adopt { household: 0, child: false }).unwrap_err();
+    assert!(err.to_string().contains("money") || err.to_string().contains("room"), "{err}");
+}

@@ -204,8 +204,11 @@ export function randomLook(assets: AssetRegistry, gender: string, rand: () => nu
   return appearance;
 }
 
-/** The look of a resident the simulation made up (a newcomer): `{seed}` expanded, always the same. */
-export function lookFromSeed(assets: AssetRegistry, gender: string, seed: number): Appearance {
+/**
+ * The look of a resident the simulation made up (a newcomer, a baby): `{seed}` expanded, always
+ * the same. A child of `parents` takes skin from one and hair colour from the other.
+ */
+export function lookFromSeed(assets: AssetRegistry, gender: string, seed: number, parents: readonly Appearance[] = []): Appearance {
   let state = seed >>> 0;
   // mulberry32
   const rand = () => {
@@ -215,7 +218,15 @@ export function lookFromSeed(assets: AssetRegistry, gender: string, seed: number
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-  return randomLook(assets, gender, rand);
+  const look = randomLook(assets, gender, rand);
+  if (parents.length) {
+    const first = Math.floor(rand() * parents.length);
+    const skinFrom = parents[first];
+    const hairFrom = parents[(first + 1) % parents.length];
+    look.skin = skinFrom.skin;
+    look.hair = hairFrom.hairBase ?? hairFrom.hair;
+  }
+  return look;
 }
 
 /** A random age: mostly adults, some young adults, a few elders (or within `stage`). */

@@ -10,6 +10,7 @@ export type Command =
   | { type: 'setAutonomy'; enabled: boolean; household?: number }
   | { type: 'setLifespan'; lifespan: Lifespan }
   | { type: 'setPlayerMoves'; enabled: boolean }
+  | { type: 'adopt'; household: number; child: boolean }
   /** "Skip quiet hours": time-lapse while the player's household sleeps or is at work. */
   | { type: 'setAutoFast'; enabled: boolean }
   | { type: 'use'; sim: number; object: number; interaction: number }
@@ -488,7 +489,18 @@ export interface UiSnapshot {
   playerMoves?: boolean;
   sims: SimView[];
   /** `undo`: build and buy edits the household can take back (absent from older workers). */
-  households: { id: number; funds: number; rent: number | null; bills: number | null; style: number; undo?: number; redo?: number; routines?: Routine[] }[];
+  households: {
+    id: number;
+    funds: number;
+    rent: number | null;
+    bills: number | null;
+    style: number;
+    undo?: number;
+    redo?: number;
+    routines?: Routine[];
+    /** A baby on the way: the parents and the game day it's due. */
+    expecting?: { parents: [number, number]; due: number };
+  }[];
   relationships: RelationshipView[];
   /** Recent story events, oldest first; ids increase monotonically (the whole log: `events` request). */
   events: SocialEvent[];

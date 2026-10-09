@@ -197,7 +197,7 @@ impl World {
 
     /// Checks that household `h` can pay `cost` for an edit (free in Creative); `Ok` means
     /// the edit may go ahead and be paid with `pay`.
-    fn can_pay(&self, h: usize, cost: i64, refusal: impl FnOnce() -> String) -> Result<(), Error> {
+    pub(crate) fn can_pay(&self, h: usize, cost: i64, refusal: impl FnOnce() -> String) -> Result<(), Error> {
         let cost = self.build_price(cost);
         if cost > 0 && self.households[h].funds < cost {
             return Err(Error::new(refusal()));
@@ -205,7 +205,7 @@ impl World {
         Ok(())
     }
 
-    fn pay(&mut self, h: usize, cost: i64) {
+    pub(crate) fn pay(&mut self, h: usize, cost: i64) {
         self.households[h].funds -= self.build_price(cost);
     }
 

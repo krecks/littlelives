@@ -58,6 +58,10 @@ fn run(seed: u64) -> Run {
             w.tick_once();
         }
         let day = clock::day(w.tick);
+        // Babies are born: nothing to compare for them yet.
+        last.resize(w.sims.len(), None);
+        grades.resize(w.sims.len(), 0);
+        employed.resize(w.sims.len(), false);
         for (i, s) in w.sims.iter().enumerate() {
             let now = s.job.as_ref().map(|j| (j.career, j.level));
             if let (Some((c0, l0)), Some((c1, l1))) = (last[i], now)

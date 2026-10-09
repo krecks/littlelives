@@ -66,6 +66,13 @@
     home ? game.objects.filter((o) => (o.wear ?? 0) >= 1 && o.x >= home.x && o.z >= home.z && o.x < home.x + home.w && o.z < home.z + home.d) : [],
   );
 
+  const members = $derived(game.sims.filter((s) => s.household === game.home));
+  const grownUp = $derived(members.some((s) => content.isAdult(s.age ?? 30)));
+  const room = $derived(members.length < content.rules.maxHousehold);
+  const cost = $derived(game.creative ? 0 : (content.adoptionCost ?? 0));
+  const parentNames = $derived(game.expecting ? game.expecting.parents.map((id) => game.roster.find((s) => s.id === id)?.name ?? '').filter(Boolean).join(' and ') : '');
+  const dueIn = $derived(game.expecting ? Math.max(0, game.expecting.due - game.day + 1) : 0);
+
   function showPlan() {
     game.homeOpen = false;
     services.controls.setMode('build');
@@ -83,6 +90,21 @@
     </header>
     <button class="btn small" onclick={showPlan}>See it on the floor plan</button>
     <div class="rooms">
+      {#if game.expecting || (content.adoptionCost !== null && grownUp)}
+        <section class="family">
+          <h3>Family</h3>
+          {#if game.expecting}
+            <p><b>{parentNames || 'They'}</b> are expecting a baby{dueIn <= 1 ? ' any day now' : ` in about ${dueIn} days`}.</p>
+          {/if}
+          {#if content.adoptionCost !== null && grownUp}
+            <div class="row">
+              <button class="btn small" disabled={!room || game.funds < cost} onclick={() => services.controls.adopt(false)}>Adopt a baby</button>
+              <button class="btn small" disabled={!room || game.funds < cost} onclick={() => services.controls.adopt(true)}>Adopt a child</button>
+              <span class="muted">{cost ? money(cost) : 'Free'}{room ? '' : ' · no room for another'}</span>
+            </div>
+          {/if}
+        </section>
+      {/if}
       {#if broken.length}
         <section class="broken">
           <h3>Broken</h3>
@@ -198,6 +220,9 @@
   }
   .broken {
     background: color-mix(in srgb, var(--bad) 10%, var(--surface));
+  }
+  .family p {
+    margin: 0;
   }
   .wish {
     background: var(--accent-soft);

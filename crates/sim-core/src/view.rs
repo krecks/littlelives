@@ -100,6 +100,9 @@ struct FundsView<'a> {
     /// The household's routine template (the player's household only).
     #[serde(skip_serializing_if = "Option::is_none")]
     routines: Option<Vec<RoutineView<'a>>>,
+    /// A baby on the way: the parents and the day it's due.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    expecting: Option<crate::world::Expecting>,
 }
 
 #[derive(Serialize)]
@@ -635,6 +638,7 @@ pub fn ui_state_json(world: &World) -> String {
                     routines: h
                         .player
                         .then(|| h.routines.iter().map(|r| routine_view(content, r)).collect()),
+                    expecting: h.expecting,
                 }
             })
             .collect(),

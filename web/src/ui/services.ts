@@ -26,6 +26,8 @@ export interface GameControls {
   toggleJournal(): void;
   /** How fast residents age in this game. */
   setLifespan(lifespan: Lifespan): void;
+  /** Adopts a baby (or a child) into the player's household. */
+  adopt(child: boolean): void;
   /** Whether the player's residents move in with partners and out of home on their own. */
   setPlayerMoves(enabled: boolean): void;
   /** Opens or closes the Our home panel (the rooms and how they're doing). */
