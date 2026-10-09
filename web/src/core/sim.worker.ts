@@ -7,7 +7,7 @@
  */
 
 import init, { Game } from './wasm-pkg/sim_wasm.js';
-import type { FromWorker, GameSource, MeshArrays, ToWorker, WorldStructure } from './protocol';
+import type { FromWorker, GameSource, LeanWorld, MeshArrays, ToWorker, WorldStructure } from './protocol';
 import { createSharedSnapshot, SharedSnapshotWriter, type SnapshotLayout } from './snapshot';
 
 interface WorkerScope {
@@ -24,6 +24,9 @@ let game: Game | null = null;
 let memory: WebAssembly.Memory;
 let writer: SharedSnapshotWriter | null = null;
 let lastStructure = -1;
+/** Lot version and region the renderer last got the lot (walls, rooms, meshes) for. */
+let lastLot = -1;
+let lastRegion = '';
 /** Tile rectangle whose walls and floors are sent to the renderer (null = whole town). */
 let region: [number, number, number, number] | null = null;
 
@@ -103,10 +106,21 @@ function publish(): void {
 
 function postWorld(): void {
   const g = game!;
+  // The lot (walls, rooms, floors and their meshes) only when it or the viewed region changed:
+  // most edits move furniture, and the main thread keeps the lot it has.
+  const lot = g.lot_version();
+  const area = JSON.stringify(region);
+  if (lot === lastLot && area === lastRegion) {
+    const world: LeanWorld = JSON.parse(g.structure(false));
+    scope.postMessage({ type: 'world', world, full: false });
+    return;
+  }
+  lastLot = lot;
+  lastRegion = area;
   const meshes = { walls: mesh(g, 0), wallsLow: mesh(g, 1), floors: mesh(g, 2) };
-  const world: WorldStructure = { ...JSON.parse(g.structure()), meshes };
+  const world: WorldStructure = { ...JSON.parse(g.structure(true)), meshes };
   const transfer = Object.values(meshes).flatMap((m) => [m.positions.buffer, m.normals.buffer, m.uvs.buffer, m.indices.buffer]);
-  scope.postMessage({ type: 'world', world }, transfer);
+  scope.postMessage({ type: 'world', world, full: true }, transfer);
 }
 
 function mesh(g: Game, kind: number): MeshArrays {

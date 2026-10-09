@@ -377,20 +377,21 @@ export class BabylonRenderer implements Renderer {
     if (this.townMode) this.warmFrames = WARM_WORLD_FRAMES;
   }
 
+  /** The lot arrays the last key was made from, and that key (they arrive unchanged when only furniture moved). */
+  private lotParts: { refs: unknown[]; key: string } | null = null;
+
   /** Everything the lot layer (streets, house, fences) is built from. */
   private lotKeyOf(world: WorldStructure, view: ViewRect | null): string {
+    const refs = [world.meta, world.walls, world.openings, world.diagonals, world.floors, world.fences];
+    if (!this.lotParts || this.lotParts.refs.some((r, i) => r !== refs[i])) {
+      const m = world.meta;
+      this.lotParts = { refs, key: JSON.stringify([m?.seed, m?.streets, m?.paths, world.walls, world.openings, world.diagonals, world.floors, world.fences]) };
+    }
     return JSON.stringify([
       view,
       world.width,
       world.depth,
-      world.meta?.seed,
-      world.meta?.streets,
-      world.meta?.paths,
-      world.walls,
-      world.openings,
-      world.diagonals,
-      world.floors,
-      world.fences,
+      this.lotParts.key,
       world.plots.map((p) => [p.house, p.roof]),
       world.households.find((h) => h.player)?.plot,
       houseObjectKey(world, view),
@@ -906,6 +907,7 @@ export class BabylonRenderer implements Renderer {
     this.lotCasters = [];
     this.lotTemplates.clear();
     this.lotRooms = null;
+    this.lotParts = null;
     this.roofs = [];
     this.baseCasters = [];
     this.wallCasters = [];

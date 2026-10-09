@@ -585,6 +585,8 @@ pub fn ui_state_json(world: &World) -> String {
 #[serde(rename_all = "camelCase")]
 struct StructureView<'a> {
     version: u32,
+    /// `World::lot_version`: the lot parts below are left out when the caller already has them.
+    lot_version: u32,
     /// `living` or `creative`.
     mode: crate::world::GameMode,
     width: usize,
@@ -594,17 +596,23 @@ struct StructureView<'a> {
     households: Vec<HouseholdView<'a>>,
     plots: Vec<PlotView<'a>>,
     exits: &'a [[f32; 2]],
-    rooms: &'a [u16],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rooms: Option<&'a [u16]>,
     /// Every edge with a wall on it (plain walls, and walls with a door or window).
-    walls: Vec<EdgeView>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    walls: Option<Vec<EdgeView>>,
     /// Doors and windows (also listed in `walls`).
-    openings: Vec<OpeningView>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    openings: Option<Vec<OpeningView>>,
     /// Diagonal walls (with or without a door or window), one per tile at most.
-    diagonals: Vec<DiagonalView>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    diagonals: Option<Vec<DiagonalView>>,
     /// Fences and gates (not walls: they make no rooms).
-    fences: Vec<FenceView>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    fences: Option<Vec<FenceView>>,
     /// Floor coverings: `[x, z, covering]` per tile that has one (a floor covering + 1).
-    floors: Vec<[u16; 3]>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    floors: Option<Vec<[u16; 3]>>,
     meta: &'a serde_json::Value,
 }
 
@@ -852,6 +860,12 @@ fn house_bounds(world: &World, x0: i32, z0: i32, x1: i32, z1: i32) -> Option<[i3
 }
 
 pub fn structure_json(world: &World) -> String {
+    structure_json_with(world, true)
+}
+
+/// The world structure; without `lot`, leaves out the lot itself (rooms, walls, openings,
+/// diagonals, fences, floors) for a caller that has it at this `lotVersion` already.
+pub fn structure_json_with(world: &World, lot: bool) -> String {
     let content = &world.content;
     let objects = world
         .objects
@@ -915,10 +929,16 @@ pub fn structure_json(world: &World) -> String {
             roof: p.roof.map(|r| [r.style, r.color]),
         })
         .collect();
-    let (walls, openings, fences) = wall_edges(&world.lot);
-    let diagonals = diagonals(&world.lot);
+    let (walls, openings, fences) = if lot {
+        let (w, o, f) = wall_edges(&world.lot);
+        (Some(w), Some(o), Some(f))
+    } else {
+        (None, None, None)
+    };
+    let diagonals = lot.then(|| diagonals(&world.lot));
     serde_json::to_string(&StructureView {
         version: world.structure_version(),
+        lot_version: world.lot_version(),
         mode: world.mode,
         width: world.lot.width,
         depth: world.lot.depth,
@@ -927,16 +947,18 @@ pub fn structure_json(world: &World) -> String {
         households,
         plots,
         exits: &world.exits,
-        rooms: world.lot.rooms(),
+        rooms: lot.then(|| world.lot.rooms()),
         walls,
         openings,
         fences,
         diagonals,
-        floors: world
-            .lot
-            .floors()
-            .map(|(x, z, c)| [x, z, u16::from(c)])
-            .collect(),
+        floors: lot.then(|| {
+            world
+                .lot
+                .floors()
+                .map(|(x, z, c)| [x, z, u16::from(c)])
+                .collect()
+        }),
         meta: &world.meta,
     })
     .expect("structure serializes")

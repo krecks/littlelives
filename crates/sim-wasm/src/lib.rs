@@ -74,8 +74,14 @@ impl Game {
         view::catalog_json(&self.world.content)
     }
 
-    pub fn structure(&self) -> String {
-        view::structure_json(&self.world)
+    /// The world structure; with `lot` false, without the lot parts (see `lotVersion`).
+    pub fn structure(&self, lot: bool) -> String {
+        view::structure_json_with(&self.world, lot)
+    }
+
+    /// Changes whenever the lot (walls, floors, fences...) does; see `World::lot_version`.
+    pub fn lot_version(&self) -> u32 {
+        self.world.lot_version()
     }
 
     /// Snapshot layout (JSON): float offsets plus the content's animation tags (`actions`).

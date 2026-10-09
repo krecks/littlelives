@@ -113,8 +113,14 @@ export class BuildBuyInput {
     window.removeEventListener('keyup', this.onKey);
   }
 
+  /** The lot arrays the maps below were made from (unchanged ones arrive as the same arrays). */
+  private lotRefs: unknown[] = [];
+
   /** Keeps the current walls, doors and windows (from each new world structure). */
   setStructure(world: WorldStructure): void {
+    const refs = [world.walls, world.openings, world.diagonals, world.fences, world.floors, world.rooms];
+    if (refs.every((r, i) => r === this.lotRefs[i])) return;
+    this.lotRefs = refs;
     this.edges = new Map();
     this.diagonals = new Map();
     this.looks = new Map();
@@ -924,8 +930,10 @@ export function editFeedback(prev: WorldStructure, next: WorldStructure): { effe
     for (const f of w.fences ?? []) shape.set(`${f.axis}:${f.x}:${f.z}`, `${f.kind}:${f.style ?? 0}`);
     return { faces, shape };
   };
-  const was = edges(prev);
-  const now = edges(next);
+  // Only furniture changed: the lot arrived as the same arrays.
+  const sameLot = prev.walls === next.walls && prev.openings === next.openings && prev.diagonals === next.diagonals && prev.fences === next.fences;
+  const was = sameLot ? new Map() : edges(prev);
+  const now = sameLot ? new Map() : edges(next);
   const edgeRect = (e: { axis: Axis; x: number; z: number }) =>
     e.axis === 'h' ? { x: e.x, z: e.z - 0.1, w: 1, d: 0.2 } : e.axis === 'v' ? { x: e.x - 0.1, z: e.z, w: 0.2, d: 1 } : { x: e.x + 0.3, z: e.z + 0.3, w: 0.4, d: 0.4 };
   const built = [...now].filter(([k]) => !was.has(k));
@@ -937,7 +945,8 @@ export function editFeedback(prev: WorldStructure, next: WorldStructure): { effe
   for (const [k, e] of torn.slice(0, MAX_EDIT_EDGES)) if (!rebuilt.has(edge(k))) effects.push({ kind: 'remove', ...edgeRect(e) });
   if (built.length) sounds.add('build');
   else if (torn.length) sounds.add('remove');
-  const [lookWas, lookNow] = [looks(prev), looks(next)];
+  const none = { faces: new Map<string, string>(), shape: new Map<string, string>() };
+  const [lookWas, lookNow] = sameLot ? [none, none] : [looks(prev), looks(next)];
   // (Walls that became a door or window already have their dust.)
   const restyled = [...lookNow.shape].filter(([k, v]) => !rebuilt.has(k) && lookWas.shape.has(k) && lookWas.shape.get(k) !== v);
   for (const [k] of restyled.slice(0, MAX_EDIT_EDGES)) {
@@ -947,7 +956,7 @@ export function editFeedback(prev: WorldStructure, next: WorldStructure): { effe
   if (restyled.length) sounds.add('build');
   if ([...lookNow.faces].some(([k, v]) => lookWas.faces.has(k) && lookWas.faces.get(k) !== v)) sounds.add('paint');
   const floorKey = (w: WorldStructure) => (w.floors ?? []).map((f) => f.join(':')).join(',');
-  if (floorKey(prev) !== floorKey(next)) sounds.add('paint');
+  if (prev.floors !== next.floors && floorKey(prev) !== floorKey(next)) sounds.add('paint');
 
   const order: Sound[] = ['upgrade', 'place', 'sell', 'build', 'remove', 'paint', 'rotate'];
   return { effects, sound: order.find((s) => sounds.has(s)) ?? null };

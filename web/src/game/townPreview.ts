@@ -93,6 +93,7 @@ export function previewWorld(content: Content, t: Templates, town: Neighbourhood
   const meta: TownMeta = { kind: 'town', name: town.name, streets: town.streets, paths: layout.paths, seed: town.seed ?? 1 };
   return {
     version: 0,
+    lotVersion: 0,
     mode: 'living',
     width: W,
     depth: D,

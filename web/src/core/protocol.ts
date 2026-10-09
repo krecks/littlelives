@@ -270,8 +270,14 @@ export interface PlotInfo {
 /** Living: the residents earn the money for building. Creative: building is free. */
 export type GameKind = 'living' | 'creative';
 
+/** The parts of `WorldStructure` that are the lot itself: sent only when `lotVersion` changes. */
+export type LotPart = 'rooms' | 'walls' | 'openings' | 'diagonals' | 'fences' | 'floors' | 'meshes';
+export type LeanWorld = Omit<WorldStructure, LotPart>;
+
 export interface WorldStructure {
   version: number;
+  /** Changes whenever the lot (walls, floors, fences, coverings) does; not with furniture. */
+  lotVersion: number;
   mode: GameKind;
   width: number;
   depth: number;
@@ -470,7 +476,8 @@ export type ToWorker =
 
 export type FromWorker =
   | { type: 'ready'; layout: SnapshotLayout; shared: SharedArrayBuffer | null; catalog: Catalog }
-  | { type: 'world'; world: WorldStructure }
+  /** `full`: with the lot; otherwise a `LeanWorld` (the lot is as last sent). */
+  | { type: 'world'; world: WorldStructure | LeanWorld; full: boolean }
   | { type: 'ui'; ui: UiSnapshot }
   | { type: 'saved'; requestId: number; data: string }
   | { type: 'socialOptions'; requestId: number; options: SocialOption[] }

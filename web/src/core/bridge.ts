@@ -201,10 +201,14 @@ export class SimBridge {
         this.scratch.set(msg.data);
         this.pending = true;
         break;
-      case 'world':
-        this.world = msg.world;
-        for (const fn of this.worldListeners) fn(msg.world);
+      case 'world': {
+        // A lean world leaves out the lot: keep the one we have (same arrays, so consumers
+        // can tell by reference that walls, floors and meshes didn't change).
+        const world: WorldStructure = msg.full || !this.world ? (msg.world as WorldStructure) : { ...this.world, ...msg.world };
+        this.world = world;
+        for (const fn of this.worldListeners) fn(world);
         break;
+      }
       case 'ui':
         this.ui = msg.ui;
         for (const fn of this.uiListeners) fn(msg.ui);

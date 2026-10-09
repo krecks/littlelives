@@ -16,7 +16,7 @@ Build depth: more control while building.
 
 ### Changed
 - **Watch and Live:** Watch is now the normal way to play and sits next to Live in the top bar (Watch · Live · Buy · Build). In Watch mode the camera follows what happens at home from the start; move it yourself and it watches again after a while without input (*Settings → Watching → Back to watching*). Live keeps the camera with you. Click either one, or press L, to switch; L also brings you back from Buy and Build. The separate eye button is gone.
-- **Quicker building and buying:** placing, moving, selling and restyling furniture no longer rebuilds the house, its street and its fences, only the furniture (about 13 ms down to 2.5 ms per edit in a software-rendered test); lamps move their light without a rebuild either. Walls, floors, paint, fences, roofs and room furniture still rebuild the house.
+- **Quicker building and buying:** placing, moving, selling and restyling furniture no longer rebuilds the house, its street and its fences, only the furniture (about 13 ms down to 2.5 ms per edit in a software-rendered test); lamps move their light without a rebuild either. Walls, floors, paint, fences, roofs and room furniture still rebuild the house. The simulation also sends the lot (walls, rooms, floors and their meshes) only when it changed, so a furniture edit's update is about a ninth of the size.
 - Saves are now version 11 (objects' angles, fences and gates, roofs); older saves load as before.
 
 ## Unreleased (0.9.0)

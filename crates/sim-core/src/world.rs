@@ -509,6 +509,9 @@ pub struct World {
     pub autonomy: bool,
     pub(crate) rng: Rng,
     pub(crate) structure_version: u32,
+    /// Bumped when the lot itself changes (walls, doors, windows, fences, coverings, floors),
+    /// not when only objects, residents or households do: views can then leave the lot out.
+    pub(crate) lot_version: u32,
     pub(crate) briefs: Vec<SimBrief>,
     /// Where Sims leave town for work.
     pub exits: Vec<[f32; 2]>,
@@ -650,6 +653,7 @@ impl World {
             autonomy: true,
             rng,
             structure_version: 1,
+            lot_version: 1,
             briefs: Vec::new(),
             exits: Vec::new(),
             meta: serde_json::Value::Null,
@@ -664,6 +668,11 @@ impl World {
     /// Bumped whenever walls or objects change, so renderers know to rebuild.
     pub fn structure_version(&self) -> u32 {
         self.structure_version
+    }
+
+    /// Changes whenever the lot does (see `lot_version`); never while only objects move.
+    pub fn lot_version(&self) -> u32 {
+        self.lot_version
     }
 
     pub fn blocked(&self) -> &[bool] {

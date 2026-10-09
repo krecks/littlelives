@@ -92,10 +92,14 @@ impl World {
     /// drawing a wall where one stands, leaves no step).
     pub(crate) fn remember(&mut self, before: HomeSnapshot) {
         let h = before.household;
+        let lot_changed = before.lot != self.lot;
+        if lot_changed {
+            self.lot_version += 1;
+        }
         let changed = before.households[h].funds != self.households[h].funds
             || before.households[h].style != self.households[h].style
             || before.objects != self.objects
-            || before.lot != self.lot
+            || lot_changed
             || before.plots != self.plots;
         if !changed {
             return;
@@ -146,6 +150,9 @@ impl World {
     }
 
     fn restore(&mut self, s: HomeSnapshot) {
+        if s.lot != self.lot {
+            self.lot_version += 1;
+        }
         self.lot = s.lot;
         self.objects = s.objects;
         self.object_plot = s.object_plot;

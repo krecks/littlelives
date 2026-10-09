@@ -1081,6 +1081,10 @@ export async function startSession(
       objects: () => game.objects.map((o) => ({ id: o.id, def: o.def, x: o.x, z: o.z, rot: o.rot, turn: o.turn ?? 0 })),
       steps: () => ({ undo: game.undoSteps, redo: game.redoSteps }),
       watch: () => ({ mode: game.mode, watchMode: game.watchMode, watching: game.watching }),
+      /** Doors, windows and wall looks (for checks that point at them). */
+      openings: () => world?.openings ?? [],
+      wallLooks: () => (world?.walls ?? []).filter((w) => w.faces || w.form),
+      floors: () => world?.floors ?? [],
       build: () => ({ mode: game.mode, tool: game.buildTool, look: { ...game.buildLook }, placing: game.placing, eyedropper: game.eyedropper, hint: game.pickHint }),
       sims: () =>
         game.sims.map((x) => {

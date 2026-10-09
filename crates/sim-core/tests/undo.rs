@@ -244,3 +244,24 @@ fn redo_makes_undone_edits_again_until_the_next_edit() {
     w.tick_once();
     assert_eq!((w.undo_steps(0), w.redo_steps(0)), (0, 0));
 }
+
+#[test]
+fn the_lot_version_moves_only_with_the_lot() {
+    let mut w = world();
+    let v = w.lot_version();
+    buy(&mut w, "chair", 1, 1);
+    assert_eq!(w.lot_version(), v, "furniture leaves the lot as it is");
+    w.apply(Command::Build { household: 0, edits: vec![EdgeEdit::new(EdgeAxis::H, 6, 6, EdgeKind::Wall)] }).unwrap();
+    let built = w.lot_version();
+    assert!(built > v);
+    w.apply(Command::PaintFloor { household: 0, tiles: vec![] }).unwrap();
+    assert_eq!(w.lot_version(), built, "an edit that changes nothing");
+    undo(&mut w);
+    assert!(w.lot_version() > built, "undoing the wall changes the lot again");
+    let undone = w.lot_version();
+    undo(&mut w);
+    assert_eq!(w.lot_version(), undone, "undoing the chair doesn't");
+    let lean: serde_json::Value = serde_json::from_str(&sim_core::view::structure_json_with(&w, false)).unwrap();
+    assert!(lean.get("walls").is_none() && lean.get("rooms").is_none() && lean["objects"].is_array());
+    assert_eq!(lean["lotVersion"], undone);
+}
