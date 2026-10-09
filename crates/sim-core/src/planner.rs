@@ -736,7 +736,7 @@ fn follow(w: &mut World, i: usize) {
     let mut pulled = run.pulled;
     if !on_it
         && let Some(n) = (0..content.needs.len())
-            .filter(|&n| sim.needs[n] < content.planner.urgent_below)
+            .filter(|&n| !content.needs[n].room && sim.needs[n] < content.planner.urgent_below)
             .min_by(|&a, &b| sim.needs[a].total_cmp(&sim.needs[b]))
     {
         pulled = Some(n);
@@ -1055,7 +1055,7 @@ pub(crate) fn social_factor(content: &Content, sim: &Sim, romantic: bool, friend
     }
     match active(sim) {
         Some(run) if content.activities[run.activity].social => factor * run.boost,
-        Some(_) if sim.needs.iter().take(content.needs.len()).all(|&n| n >= content.planner.urgent_below) => {
+        Some(_) if content.needs.iter().zip(&sim.needs).all(|(d, &n)| d.room || n >= content.planner.urgent_below) => {
             factor * content.planner.off_block
         }
         _ => factor,

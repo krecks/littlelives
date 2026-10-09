@@ -105,3 +105,75 @@ fn scores_follow_the_house_as_it_changes() {
     w.refresh_rooms();
     assert!((room(&w, 1, 1).scores.clean - 0.75).abs() < 1e-4);
 }
+
+/// Two equal rooms with a sofa each: the left one bright and decorated, the right one dark and
+/// dirty. Ada stands halfway between the sofas.
+const TWO_ROOMS: &str = r#"{"width":20,"depth":10,
+    "plots":[{"name":"Home","x":0,"z":0,"w":20,"d":10,"entry":[10.5,9.5]}],
+    "households":[{"name":"Player","plot":0,"player":true}],
+    "walls":[[1,1,6,1],[1,5,6,5],[1,1,1,5],[6,1,6,5],[13,1,18,1],[13,5,18,5],[13,1,13,5],[18,1,18,5]],
+    "doors":[{"x":3,"z":5,"axis":"x"},{"x":15,"z":5,"axis":"x"}],
+    "windows":[{"x":2,"z":1,"axis":"x"},{"x":4,"z":1,"axis":"x"},{"x":1,"z":2,"axis":"z"}],
+    "objects":[{"def":"sofa","x":2,"z":2},{"def":"sofa","x":14,"z":2},
+               {"def":"lamp","x":5,"z":1},{"def":"plant","x":1,"z":1},{"def":"plant","x":5,"z":3}],
+    "sims":[{"name":"Ada","x":9.5,"z":7.5}]}"#;
+
+const ROOM_CONTENT: &str = r#"{
+    "needs":[{"id":"comfort","label":"Comfort","decayPerHour":0.05},{"id":"environment","label":"Surroundings","room":true}],
+    "objects":[
+      {"id":"sofa","name":"Sofa","price":100,"footprint":[2,1],"interactions":[{"id":"sit","label":"Sit","minutes":30,"effects":{"comfort":0.6},"tags":["lounge"]}]},
+      {"id":"lamp","name":"Lamp","price":30,"category":"decor","light":{"range":4}},
+      {"id":"plant","name":"Plant","price":20,"category":"garden"}],
+    "roomKinds":[{"id":"living","tags":["lounge"],"size":[9,20]}],
+    "roomRules":{"decorByCategory":{"decor":1,"garden":0.8},"drift":0.5,"preference":1.0}}"#;
+
+fn two_rooms(seed: u32) -> World {
+    let mut w = World::from_json(ROOM_CONTENT, TWO_ROOMS, seed).unwrap();
+    // The right room is filthy.
+    for z in 1..5 {
+        for x in 13..18 {
+            let i = w.lot.tile_index(x, z);
+            w.dirt[i] = 0.8;
+        }
+    }
+    w.refresh_rooms();
+    w
+}
+
+#[test]
+fn surroundings_follow_the_room_and_draw_residents_to_nicer_ones() {
+    let w = two_rooms(1);
+    let (good, bad) = (room(&w, 3, 3).scores.overall, room(&w, 15, 3).scores.overall);
+    assert!(good > 0.7 && bad < 0.4, "good {good}, bad {bad}");
+
+    // Sitting in the bright room for four hours lifts the need towards its score.
+    let mut w = two_rooms(1);
+    w.sims[0].pos = [3.5, 3.5];
+    w.sims[0].needs[1] = 0.2;
+    w.apply(sim_core::Command::SetAutonomy { enabled: false, household: None }).unwrap();
+    for _ in 0..4 * 60 * 20 {
+        w.tick_once();
+    }
+    let need = w.sims[0].needs[1];
+    assert!((need - good).abs() < 0.15, "surroundings {need} near the room's {good}");
+
+    // Low on comfort and in poor surroundings, Ada mostly picks the sofa in the nicer room.
+    let (mut nice, mut grim) = (0, 0);
+    for seed in 1..=60 {
+        let mut w = two_rooms(seed);
+        w.sims[0].needs = [0.05, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        for _ in 0..200 {
+            w.tick_once();
+            // Heading for (or sitting on) a sofa holds a slot on it.
+            if w.objects[0].users().any(|u| u == 0) {
+                nice += 1;
+                break;
+            }
+            if w.objects[1].users().any(|u| u == 0) {
+                grim += 1;
+                break;
+            }
+        }
+    }
+    assert!(nice > grim + 10, "nice room {nice}, grim room {grim}");
+}

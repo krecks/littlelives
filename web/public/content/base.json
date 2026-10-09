@@ -41,6 +41,12 @@
       "label": "Social",
       "decayPerHour": 0.08,
       "icon": "icon.need.social"
+    },
+    {
+      "id": "environment",
+      "label": "Surroundings",
+      "room": true,
+      "icon": "icon.need.environment"
     }
   ],
   "rules": {
@@ -3115,7 +3121,7 @@
     "dislike": 0.4,
     "drift": 0.5,
     "away": 0.6,
-    "preference": 0.5,
+    "preference": 1.0,
     "decorByCategory": {"decor": 1, "garden": 0.8, "outdoor": 1}
   },
   "roofStyles": [

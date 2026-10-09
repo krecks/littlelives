@@ -3090,6 +3090,10 @@
       "type": "icon",
       "url": "icons/comfort.svg"
     },
+    "icon.need.environment": {
+      "type": "icon",
+      "url": "icons/environment.svg"
+    },
     "icon.ui.pause": {
       "type": "icon",
       "url": "icons/pause.svg"

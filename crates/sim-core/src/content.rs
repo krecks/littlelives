@@ -53,6 +53,9 @@ pub struct NeedDef {
     pub id: String,
     pub label: String,
     pub decay_per_minute: f32,
+    /// The environment need: instead of decaying it drifts towards the score of the room the
+    /// resident is in (`roomRules.drift`).
+    pub room: bool,
 }
 
 #[derive(Debug)]
@@ -1044,7 +1047,10 @@ struct EconomyRaw {
 struct NeedRaw {
     id: String,
     label: String,
+    #[serde(default)]
     decay_per_hour: f32,
+    #[serde(default)]
+    room: bool,
 }
 
 #[derive(Deserialize)]
@@ -1277,6 +1283,7 @@ impl Content {
                 id: n.id.clone(),
                 label: n.label.clone(),
                 decay_per_minute: n.decay_per_hour / 60.0,
+                room: n.room,
             })
             .collect();
         let need_index: HashMap<&str, usize> = needs
@@ -1767,7 +1774,7 @@ impl Content {
             dislike: rr.dislike.unwrap_or(0.4),
             drift: rr.drift.unwrap_or(0.5).max(0.0),
             away: rr.away.unwrap_or(0.6),
-            preference: rr.preference.unwrap_or(0.5).max(0.0),
+            preference: rr.preference.unwrap_or(1.0).max(0.0),
         };
         let or = &raw.object_rules;
         let object_rules = ObjectRules {

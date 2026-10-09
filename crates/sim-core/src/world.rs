@@ -536,6 +536,8 @@ pub struct World {
     /// were computed for.
     pub(crate) rooms: Vec<crate::rooms::RoomInfo>,
     pub(crate) rooms_version: u32,
+    /// Overall score of the room or garden each tile is in (`roomRules.away` off the plots).
+    pub(crate) room_score: Vec<f32>,
 }
 
 /// Read-only context for one Sim's update.
@@ -549,10 +551,24 @@ pub(crate) struct Ctx<'a> {
     pub object_plot: &'a [Option<u32>],
     pub exits: &'a [[f32; 2]],
     pub autonomy: bool,
+    /// Room score per tile (`World::room_score`).
+    pub room_score: &'a [f32],
     pub hour: f32,
     pub day: u32,
     pub minute: f32,
     pub tick: u64,
+}
+
+impl Ctx<'_> {
+    /// Score of the room or garden at a point (`roomRules.away` off the plots and off the lot).
+    pub(crate) fn room_at(&self, pos: [f32; 2]) -> f32 {
+        let (x, z) = (pos[0].floor() as i32, pos[1].floor() as i32);
+        let lot = self.nav.lot;
+        if !lot.in_bounds(x, z) {
+            return self.content.room_rules.away;
+        }
+        self.room_score.get(lot.tile_index(x, z)).copied().unwrap_or(self.content.room_rules.away)
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -674,6 +690,7 @@ impl World {
             dirt: vec![0.0; tiles],
             rooms: Vec::new(),
             rooms_version: 0,
+            room_score: Vec::new(),
         }
     }
 
@@ -1065,6 +1082,31 @@ impl World {
         }
         self.rooms = crate::rooms::compute(self);
         self.rooms_version = self.structure_version;
+        let away = self.content.room_rules.away;
+        let mut score = vec![away; self.lot.width * self.lot.depth];
+        let rooms = &self.rooms;
+        for (pi, p) in self.plots.iter().enumerate() {
+            let garden = rooms.iter().find(|r| r.garden && r.plot == Some(pi as u32)).map_or(away, |r| r.scores.overall);
+            for z in p.z..p.z + p.d {
+                for x in p.x..p.x + p.w {
+                    if self.lot.in_bounds(x, z) {
+                        score[self.lot.tile_index(x, z)] = garden;
+                    }
+                }
+            }
+        }
+        // Rooms by lot id (indoor tiles anywhere).
+        let max_id = rooms.iter().filter(|r| !r.garden).map(|r| r.id as usize).max().unwrap_or(0);
+        let mut by_id = vec![None; max_id + 1];
+        for r in rooms.iter().filter(|r| !r.garden) {
+            by_id[r.id as usize] = Some(r.scores.overall);
+        }
+        for (i, &id) in self.lot.rooms().iter().enumerate() {
+            if let Some(Some(s)) = by_id.get(id as usize).filter(|_| id != crate::lot::OUTDOORS) {
+                score[i] = *s;
+            }
+        }
+        self.room_score = score;
     }
 
     pub fn tick_once(&mut self) {
@@ -1106,9 +1148,11 @@ impl World {
                 plots,
                 object_plot,
                 exits,
+                room_score,
                 ..
             } = self;
             let ctx = Ctx {
+                room_score,
                 content,
                 nav: NavGrid { lot, blocked },
                 rels: relationships,
@@ -1588,6 +1632,14 @@ fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
         } else {
             1.0
         };
+        if def.room {
+            // Surroundings: towards how good the room is (a neutral value away from home).
+            let rules = &content.room_rules;
+            let target = if sim.away_until.is_some() { rules.away } else { ctx.room_at(sim.pos) };
+            let k = (rules.drift * MINUTES_PER_TICK / 60.0).min(1.0);
+            sim.needs[n] = (sim.needs[n] + (target - sim.needs[n]) * k).clamp(0.0, 1.0);
+            continue;
+        }
         let decay =
             def.decay_per_minute * sim.mods.need_decay[n] * rhythm_factor * MINUTES_PER_TICK;
         sim.needs[n] = (sim.needs[n] - decay).max(0.0);
@@ -1682,6 +1734,7 @@ fn pick_autonomous(
 
     let object_rules = &content.object_rules;
     let funds = ctx.households[sim.household as usize].funds - sim.pending_spend;
+    let environment = content.needs.iter().position(|n| n.room).map_or(1.0, |n| sim.needs[n]);
     for obj in objects
         .iter()
         .filter(|o| o.has_free_slot(content.objects[o.def].slots))
@@ -1692,6 +1745,12 @@ fn pick_autonomous(
         }
         let (fx, fz) = obj.front_tile(content);
         let distance = (fx as f32 + 0.5 - sim.pos[0]).hypot(fz as f32 + 0.5 - sim.pos[1]);
+        // Nicer rooms draw residents, the more so the less they like their surroundings.
+        let place = 1.0
+            + content.room_rules.preference
+                * (ctx.room_at([fx as f32 + 0.5, fz as f32 + 0.5]) - 0.5)
+                * 2.0
+                * (1.0 - environment);
         for (i, inter) in content.objects[obj.def].interactions.iter().enumerate() {
             if !inter.autonomous
                 || (allowed == Access::Guest && inter.tags & content.social_rules.busy_tags != 0)
@@ -1708,7 +1767,7 @@ fn pick_autonomous(
             }
             // The plan: a block's activity is the favourite (even with full needs); goals.
             let (plan, floor) = crate::planner::object_factor(content, sim, inter, night);
-            let s = s.max(floor) * feel(inter.tags) * plan;
+            let s = s.max(floor) * feel(inter.tags) * plan * place;
             if s > MIN_AUTONOMY_SCORE {
                 candidates.push((s, Choice::Object(obj.id, i)));
             }
@@ -2003,7 +2062,8 @@ fn use_object(
                 // Costs (a workout makes you hungry and sweaty).
                 sim.needs[n] = (sim.needs[n] + g * MINUTES_PER_TICK).max(0.0);
             }
-            urgent |= sim.needs[n] < 0.08;
+            // (Surroundings are never urgent: they follow the room, nothing fills them.)
+            urgent |= sim.needs[n] < 0.08 && !content.needs[n].room;
             wakes |= sim.needs[n] < 0.08 && content.day_rhythm.wake_for & (1 << n) != 0;
         }
     }

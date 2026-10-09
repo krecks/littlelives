@@ -513,7 +513,7 @@ fn end_visit_if_due(w: &mut World, i: usize, hour: f32) {
     let content = &w.content;
     let sim = &mut w.sims[i];
     let Some(visit) = sim.visiting else { return };
-    let tired = sim.needs[..content.needs.len()].iter().any(|&n| n < 0.15);
+    let tired = content.needs.iter().zip(&sim.needs).any(|(d, &n)| !d.room && n < 0.15);
     let late = !(6.0..22.0).contains(&hour);
     let busy = sim
         .current
