@@ -35,6 +35,7 @@ import {
   MeshBuilder,
   PBRMaterial,
   PointLight,
+  ClusteredLightContainer,
   Quaternion,
   Scene,
   SceneInstrumentation,
@@ -73,6 +74,7 @@ import type {
 } from '../types';
 import { createLighting, lightingAt } from './environment';
 import { buildFences } from './fences';
+import { applyShaderFixes } from './shaderFixes';
 import { HALF_WALL_HEIGHT, HouseBuilder, houseObjectKey, placeLights, WALL_HEIGHT, WALL_STUB, type RoomLight, type RoomTiles } from './house';
 import { Street } from './street';
 import { MaterialLibrary } from './materials';
@@ -94,8 +96,15 @@ const FENCE_PREVIEW_HEIGHT = 1.0;
 /** Game minutes between lighting updates (with / without snapshot rendering). */
 const LIGHT_STEP = 0.5;
 const LIGHT_STEP_SNAPSHOT = 5;
-/** Interior lights: the household's lamps first, then dim fills for rooms without one. */
+/**
+ * Interior lights: the household's lamps first, then dim fills for rooms without one. With
+ * clustered lighting (WebGPU, and WebGL2 with float blending) they live in one
+ * `ClusteredLightContainer` (one light to the materials) and many lamps light at once
+ * (quality `clusteredLamps`); otherwise each is a forward light and only a few fit.
+ * `?lights=forward|clustered` forces one for testing.
+ */
 const ROOM_LIGHTS = 4;
+const CLUSTERED_LIGHTS = 32;
 /** Brightness of a lamp at night (times its content `intensity`). */
 const LAMP_POWER = 7;
 /** A room without a lamp gets this share of the light it had before lamps gave light. */
@@ -245,6 +254,8 @@ export class BabylonRenderer implements Renderer {
   /** `?hour=21` freezes the lighting at that hour (for screenshots and look development). */
   private readonly fixedHour: number | null;
   private readonly roomLights: PointLight[] = [];
+  /** Holds the room lights when lighting is clustered (null: forward lights). */
+  private lampCluster: ClusteredLightContainer | null = null;
   /** What each interior light is lighting (null: unused). */
   private roomLightUse: (RoomLight | null)[] = [];
   private readonly lampColor = new Color3();
@@ -848,7 +859,7 @@ export class BabylonRenderer implements Renderer {
 
   stats(): RenderStats {
     return {
-      backend: this.webgpu ? 'WebGPU' : 'WebGL2',
+      backend: `${this.webgpu ? 'WebGPU' : 'WebGL2'}${this.lampCluster ? ' · clustered lamps' : ''}`,
       fps: this.engine.getFps(),
       frameMs: this.engine.getDeltaTime(),
       drawCalls: this.instrumentation.drawCallsCounter.current,
@@ -958,7 +969,9 @@ export class BabylonRenderer implements Renderer {
         if (this.townHighlight) overview.setHighlight(this.townHighlight);
         // Interior lamps of the game's house never reach the overview.
         const own = new Set<Mesh>(overview.meshes);
-        for (const light of this.roomLights) light.excludedMeshes = [...light.excludedMeshes.filter((m) => !m.isDisposed() && !own.has(m as Mesh)), ...own];
+        for (const light of [...this.roomLights, ...(this.lampCluster ? [this.lampCluster] : [])]) {
+          light.excludedMeshes = [...light.excludedMeshes.filter((m) => !m.isDisposed() && !own.has(m as Mesh)), ...own];
+        }
       } finally {
         this.endBuild();
       }
@@ -1179,7 +1192,7 @@ export class BabylonRenderer implements Renderer {
     const landscape = new Set([...all, this.skyDome.mesh]);
     if (landscape.size !== this.lightExcluded.size || [...landscape].some((m) => !this.lightExcluded.has(m))) {
       this.lightExcluded = landscape;
-      for (const light of this.roomLights) {
+      for (const light of [...this.roomLights, ...(this.lampCluster ? [this.lampCluster] : [])]) {
         light.excludedMeshes = [...new Set([...light.excludedMeshes.filter((m) => !m.isDisposed()), ...landscape])];
       }
     }
@@ -1229,6 +1242,7 @@ export class BabylonRenderer implements Renderer {
   }
 
   private setupLights(): void {
+    applyShaderFixes();
     // Sky ambient and reflections come from the environment map (image-based lighting); the
     // hemispheric light only adds a time-of-day tint (golden hour, blue hour, moonlight).
     this.sky = new HemisphericLight('sky', new Vector3(0.2, 1, -0.3), this.scene);
@@ -1246,16 +1260,29 @@ export class BabylonRenderer implements Renderer {
     // Note: with WebGPU snapshot rendering Babylon renders every render target each frame (to
     // keep the recorded passes aligned), so a render-once shadow map would not save anything.
 
-    // Warm interior lamps for the largest rooms; always enabled (so shaders never recompile)
-    // and dimmed to zero by day.
-    for (let i = 0; i < ROOM_LIGHTS; i++) {
+    // Warm interior lamps; always enabled (so shaders never recompile) and dimmed to zero by
+    // day. Clustered where the engine supports it: then dozens light at once.
+    const wanted = new URLSearchParams(location.search).get('lights');
+    const make = (i: number) => {
       const light = new PointLight(`room${i}`, new Vector3(0, HIDDEN_Y, 0), this.scene);
       light.falloffType = Light.FALLOFF_GLTF;
       light.range = 7;
       light.intensity = 0;
       light.specular = new Color3(0.4, 0.35, 0.3);
+      return light;
+    };
+    const first = make(0);
+    // Clusters take only the default (inverse-square) falloff.
+    first.falloffType = Light.FALLOFF_DEFAULT;
+    const clustered = (wanted === 'clustered' || (wanted !== 'forward' && this.quality.clusteredLamps)) && ClusteredLightContainer.IsLightSupported(first);
+    if (!clustered) first.falloffType = Light.FALLOFF_GLTF;
+    this.roomLights.push(first);
+    for (let i = 1; i < (clustered ? CLUSTERED_LIGHTS : ROOM_LIGHTS); i++) {
+      const light = make(i);
+      if (clustered) light.falloffType = Light.FALLOFF_DEFAULT;
       this.roomLights.push(light);
     }
+    if (clustered) this.lampCluster = new ClusteredLightContainer('lamps', this.roomLights, this.scene);
   }
 
   private setupPostProcessing(): void {

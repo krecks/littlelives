@@ -684,7 +684,8 @@ export class Street {
     // Interior lamps of the viewed house never reach the street (keeps its shaders simple).
     const mine = new Set([...this.meshes, ...foliage]);
     for (const light of this.scene.lights) {
-      if (!light.name.startsWith('room')) continue;
+      // The room lights, or the clustered container holding them.
+      if (!light.name.startsWith('room') && light.name !== 'lamps') continue;
       light.excludedMeshes = [...light.excludedMeshes.filter((m) => !m.isDisposed() && !mine.has(m as Mesh)), ...mine];
     }
     const lamps = this.lamps;

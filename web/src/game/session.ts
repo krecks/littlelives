@@ -1078,6 +1078,8 @@ export async function startSession(
       renderer,
       structure: () => ({ fences: world?.fences?.map((f) => `${f.kind}:${f.axis}:${f.x}:${f.z}:${f.style ?? 0}`) ?? [], walls: world?.walls?.length ?? 0, openings: world?.openings?.map((o) => o.kind) ?? [], diagonals: world?.diagonals?.map((d) => `${d.axis}:${d.x}:${d.z}:${d.kind}`) ?? [], funds: game.funds }),
       townFile: () => ('lot' in source ? source.lot : null),
+      /** Sends a simulation command (benchmarks and checks). */
+      send: (command: Parameters<typeof bridge.send>[0]) => bridge.send(command),
       objects: () => game.objects.map((o) => ({ id: o.id, def: o.def, x: o.x, z: o.z, rot: o.rot, turn: o.turn ?? 0 })),
       steps: () => ({ undo: game.undoSteps, redo: game.redoSteps }),
       watch: () => ({ mode: game.mode, watchMode: game.watchMode, watching: game.watching }),
