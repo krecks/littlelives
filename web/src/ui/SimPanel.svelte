@@ -7,6 +7,7 @@
   import { chemistryLabel, friendLabel, romanceLabel } from './relationship';
   import { services } from './services';
   import TodayTimeline from './planner/TodayTimeline.svelte';
+  import { goalText } from './story';
   import { game } from './state.svelte';
 
   const allTabs = ['Now', 'People', 'Feelings', 'Career', 'Skills'] as const;
@@ -99,7 +100,7 @@
           {#if sim.plan?.goals.length}
             <ul class="mini-goals">
               {#each sim.plan.goals as g (`${g.def}:${g.skill}:${g.target}`)}
-                <li title="{Math.round(g.progress * 100)}%"><span>{g.label}</span><span class="bar"><span style="width:{g.progress * 100}%"></span></span></li>
+                <li title="{Math.round(g.progress * 100)}%"><span>{goalText(g.def, g.target, g.skill, g.category)}</span><span class="bar"><span style="width:{g.progress * 100}%"></span></span></li>
               {/each}
             </ul>
           {/if}

@@ -164,7 +164,6 @@ struct BlockView<'a> {
 struct GoalView<'a> {
     def: &'a str,
     kind: GoalKind,
-    label: String,
     icon: &'a str,
     progress: f32,
     /// Change over the last days (positive: getting there).
@@ -180,7 +179,6 @@ fn goal_view<'a>(content: &'a Content, g: &Goal) -> GoalView<'a> {
     GoalView {
         def: &def.id,
         kind: def.kind,
-        label: crate::planner::goal_label(content, g),
         icon: &def.icon,
         progress: g.progress,
         trend: g.progress - g.history[2],

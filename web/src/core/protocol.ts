@@ -84,10 +84,10 @@ export interface BlockView {
 
 export type GoalKind = 'hasJob' | 'jobLevel' | 'promoted' | 'skill' | 'friends' | 'partner' | 'funds';
 
+/** A goal; its text comes from the content's goal template (see `goalText`), so it can be translated. */
 export interface GoalView {
   def: string;
   kind: GoalKind;
-  label: string;
   icon: string;
   /** 0..1 */
   progress: number;

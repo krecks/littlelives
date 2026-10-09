@@ -2,6 +2,7 @@
   import type { GoalView, SimView } from '../../core/protocol';
   import Icon from '../Icon.svelte';
   import { services } from '../services';
+  import { goalText } from '../story';
   import { activityLabel, reasonText } from './planner';
 
   /** A resident's life goals, the ones they'd like to take on, and the places they wish for. */
@@ -37,6 +38,7 @@
     def = '';
   }
 
+  const label = (g: GoalView) => goalText(g.def, g.target, g.skill, g.category);
   const trend = (g: GoalView) => (g.progress >= 1 ? '' : g.trend > 0.01 ? '▲' : g.trend < -0.01 ? '▼' : '–');
   const trendTitle = (g: GoalView) => (g.trend > 0.01 ? 'Getting there' : g.trend < -0.01 ? 'Slipping' : 'No progress lately');
 
@@ -70,11 +72,11 @@
         <li class="goal">
           <span class="icon"><Icon name={g.icon || 'icon.ui.calendar'} size={15} /></span>
           <div class="body">
-            <span class="label">{g.label}</span>
+            <span class="label">{label(g)}</span>
             <span class="bar"><span style="width:{g.progress * 100}%"></span></span>
           </div>
           <span class="trend" title={trendTitle(g)}>{trend(g)}</span>
-          <button class="x" aria-label="Drop goal {g.label}" onclick={() => services.controls.removeGoal(sim.id, i)}><Icon name="icon.ui.close" size={11} /></button>
+          <button class="x" aria-label="Drop goal {label(g)}" onclick={() => services.controls.removeGoal(sim.id, i)}><Icon name="icon.ui.close" size={11} /></button>
         </li>
       {:else}
         <li class="muted empty">No goals yet. Pick one below, or wait for {sim.name}'s own ideas.</li>
@@ -87,7 +89,7 @@
         {#each plan.suggestions as g, i (`${g.def}:${g.skill}:${g.target}`)}
           <li class="goal idea">
             <span class="icon"><Icon name={g.icon || 'icon.ui.calendar'} size={15} /></span>
-            <span class="label">{g.label}</span>
+            <span class="label">{label(g)}</span>
             <button class="btn small" disabled={full} title={full ? 'Three goals at a time' : 'Take it on'} onclick={() => services.controls.acceptSuggestion(sim.id, i)}>Yes</button>
             <button class="x" aria-label="Not now" onclick={() => services.controls.dismissSuggestion(sim.id, i)}><Icon name="icon.ui.close" size={11} /></button>
           </li>

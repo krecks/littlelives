@@ -285,6 +285,13 @@ Build mode's looks are top-level arrays, appended like objects, so a pack can ad
 Saves store looks by id; a look whose id no longer exists loads as the default (the house's own
 look for walls, the room's own floor, the first style for doors and windows). Ids must be unique within each list.
 
+## Text and languages
+
+The game is English only for now; other languages will come (text and voices). Write labels
+and templates as plain text in the content (they are the English default and will be
+overridden by id from locale files later), keep placeholders named (`{a}`, `{skill}`, `{n}`)
+rather than building sentences from parts, and never refer to content by its label, only by id.
+
 ## Planner: activities, goals, discipline
 
 The planner (each resident's weekly routines and life goals) is data too, so packs can add to it.

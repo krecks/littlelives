@@ -993,19 +993,6 @@ fn suggest(w: &mut World, i: usize, day: u32) -> Option<Goal> {
     None
 }
 
-/// Text for a goal: its label with the skill, target and category filled in.
-pub fn goal_label(content: &Content, g: &Goal) -> String {
-    let def = &content.goals[g.def];
-    def.label
-        .replace("{skill}", g.skill.map_or("", |s| content.skills[s].label.as_str()))
-        .replace("{n}", &format!("{}", g.target.round() as i64))
-        .replace(
-            "{category}",
-            g.category
-                .map_or("any field", |c| content.career_categories[c].label.as_str()),
-        )
-}
-
 // ---- How plans and goals steer choices (used by `World::pick_autonomous`) ----------------
 
 /// Multiplier for an object interaction while planning: (factor, floor score). `night` is

@@ -40,9 +40,9 @@ export function storyIcon(e: SocialEvent): string {
 }
 
 /** A goal's text: its label with the skill, target and career category filled in. */
-export function goalText(def: number | undefined, target?: number, skill?: number | string | null, category?: number | string | null): string {
+export function goalText(def: number | string | undefined, target?: number, skill?: number | string | null, category?: number | string | null): string {
   const content = services.content;
-  const goal = def === undefined ? undefined : content.goals[def];
+  const goal = typeof def === 'string' ? content.goals.find((g) => g.id === def) : def === undefined ? undefined : content.goals[def];
   if (!goal) return 'a goal';
   const skillDef = typeof skill === 'number' ? content.skills[skill] : skill ? content.skill(skill) : undefined;
   const cat = typeof category === 'number' ? content.careerCategories[category] : content.careerCategory(category ?? null);
