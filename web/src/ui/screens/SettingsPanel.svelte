@@ -148,9 +148,9 @@
       </div>
     {:else if tab === 'Watching'}
       <div class="row">
-        <div><b>Watch on its own</b><span>After a while without input the camera follows what happens at home. Any click, key or scroll takes it back.</span></div>
+        <div><b>Back to watching</b><span>In Watch mode (next to Live in the top bar) the camera follows what happens at home. Any click, key or scroll takes it back; after this long without input it watches again. Off: only when you pick Watch.</span></div>
         <Segmented
-          label="Watch on its own"
+          label="Back to watching"
           bind:value={settings.directorDelay}
           options={[
             { value: 0, label: 'Off' },

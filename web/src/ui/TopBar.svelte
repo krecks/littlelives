@@ -14,10 +14,11 @@
     { value: 5, icon: 'icon.ui.speed5', label: 'Fastest (5)' },
   ];
   const modes = [
-    { id: 'live', icon: 'icon.ui.live', label: 'Live', key: 'L' },
     { id: 'buy', icon: 'icon.ui.buy', label: 'Buy', key: 'V' },
     { id: 'build', icon: 'icon.ui.build', label: 'Build', key: 'B' },
   ] as const;
+  const watchActive = $derived(game.mode === 'live' && game.watchMode);
+  const liveActive = $derived(game.mode === 'live' && !game.watchMode);
   const rent = services.content.economy.rent;
   const fundsTitle = $derived(
     game.creative
@@ -32,6 +33,24 @@
   <div class="glass group">
     <span class="brand">{game.household || 'Littlelives'}</span>
     <div class="segmented">
+      <button
+        class:active={watchActive}
+        title={watchActive ? 'Watching: the camera follows what happens at home. Click for Live (L).' : 'Watch: the camera follows what happens at home on its own (L)'}
+        aria-pressed={watchActive}
+        onclick={() => services.controls.setWatchMode(!watchActive)}
+      >
+        <Icon name="icon.ui.watch" size={16} />
+        <span>Watch</span>
+      </button>
+      <button
+        class:active={liveActive}
+        title={liveActive ? 'Live: the camera stays with you. Click to watch (L).' : 'Live: the camera stays with you (L)'}
+        aria-pressed={liveActive}
+        onclick={() => services.controls.setWatchMode(liveActive)}
+      >
+        <Icon name="icon.ui.live" size={16} />
+        <span>Live</span>
+      </button>
       {#each modes as mode (mode.id)}
         <button class:active={mode.id === game.mode} title="{mode.label} ({mode.key})" onclick={() => services.controls.setMode(mode.id)}>
           <Icon name={mode.icon} size={16} />
@@ -95,16 +114,6 @@
 
   <div class="glass group">
     {#if game.mode === 'live'}
-      <button
-        class="tool"
-        class:active={game.watching}
-        title={game.watching ? 'Watching (any input takes the camera back)' : 'Watch: the camera follows what happens at home'}
-        aria-label="Watch"
-        aria-pressed={game.watching}
-        onclick={() => services.controls.watch()}
-      >
-        <Icon name="icon.ui.watch" />
-      </button>
       <button class="tool" title="Whole house (H)" aria-label="Show the whole house" onclick={() => services.controls.frameHouse()}>
         <Icon name="icon.ui.home" />
       </button>

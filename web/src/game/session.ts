@@ -53,6 +53,8 @@ export type StartRequest =
 const FEED_MS = 12_000;
 /** Story-feed entries shown at once. */
 const FEED_SIZE = 3;
+/** Watch mode: the camera starts watching this long after a game is revealed. */
+const START_WATCH_MS = 2500;
 /** Shift+R turns things that turn freely by this many degrees. */
 const FINE_TURN = 15;
 /** Fastest game speed (`clock::MAX_SPEED`). */
@@ -182,7 +184,6 @@ export async function startSession(
   let slowUntil = 0;
   const canWatch = () =>
     revealed &&
-    liveSettings.directorDelay > 0 &&
     game.mode === 'live' &&
     game.follow === null &&
     !game.pauseMenu &&
@@ -207,9 +208,14 @@ export async function startSession(
     if (playerWalls !== null && game.wallMode !== playerWalls) controls.setWallMode(playerWalls);
     playerWalls = null;
   }
+  /** Watch mode: seconds after the player's last input before the camera watches again (Off: never by itself, after the start). */
+  const autoWatchDelay = () => (liveSettings.directorDelay > 0 ? liveSettings.directorDelay : Infinity);
+  /** Watch mode at the start of a game: when the camera starts watching (0: not pending). */
+  let watchAt = 0;
   /** Any input: the camera is the player's again at once. */
   function takeBack() {
     lastInput = performance.now();
+    watchAt = 0;
     if (game.watching) stopWatching();
   }
   const onInput = () => takeBack();
@@ -269,6 +275,12 @@ export async function startSession(
     watch() {
       lastInput = -Infinity;
       if (canWatch()) startWatching(performance.now());
+    },
+    setWatchMode(watch) {
+      if (game.mode !== 'live') controls.setMode('live');
+      game.watchMode = watch;
+      if (watch) controls.watch();
+      else takeBack();
     },
     frameHouse() {
       takeBack();
@@ -895,7 +907,8 @@ export async function startSession(
         return controls.setMode(game.mode === 'buy' ? 'live' : 'buy');
       case 'l':
       case 'L':
-        return controls.setMode('live');
+        // Back from Buy or Build; in Live and Watch, switches between the two.
+        return game.mode === 'live' ? controls.setWatchMode(!game.watchMode) : controls.setMode('live');
       case 'Tab': {
         e.preventDefault();
         const ids = playerSims();
@@ -923,7 +936,10 @@ export async function startSession(
       // Menus and other modes end watching (opening them is input, but not all of it is ours).
       if (!canWatch() && !director.active) stopWatching();
       else director.update(now);
-    } else if (canWatch() && now - lastInput > liveSettings.directorDelay * 1000) startWatching(now);
+    } else if (game.watchMode && canWatch() && ((watchAt > 0 && now >= watchAt) || now - lastInput > autoWatchDelay() * 1000)) {
+      watchAt = 0;
+      startWatching(now);
+    }
     // After a big moment, back to the speed the player had (unless they picked another).
     if (slowedFrom !== null && now > slowUntil) {
       if (game.speed === 1 && game.mode === 'live') bridge.send({ type: 'setSpeed', speed: slowedFrom });
@@ -950,6 +966,8 @@ export async function startSession(
       window.addEventListener('keydown', onInput, true);
       window.addEventListener('pointermove', onMove, { passive: true });
       lastInput = performance.now();
+      // Watch mode is the normal way to play: the camera starts watching once it has flown in.
+      watchAt = lastInput + START_WATCH_MS;
       bridge.send({ type: 'setSpeed', speed: resumeSpeed ?? 1 });
       // Nobody lives here yet, or there's no house (an empty lot): the game starts with
       // building (time stands still until Live).
@@ -1062,6 +1080,7 @@ export async function startSession(
       townFile: () => ('lot' in source ? source.lot : null),
       objects: () => game.objects.map((o) => ({ id: o.id, def: o.def, x: o.x, z: o.z, rot: o.rot, turn: o.turn ?? 0 })),
       steps: () => ({ undo: game.undoSteps, redo: game.redoSteps }),
+      watch: () => ({ mode: game.mode, watchMode: game.watchMode, watching: game.watching }),
       build: () => ({ mode: game.mode, tool: game.buildTool, look: { ...game.buildLook }, placing: game.placing, eyedropper: game.eyedropper, hint: game.pickHint }),
       sims: () =>
         game.sims.map((x) => {

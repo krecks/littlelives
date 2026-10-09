@@ -18,6 +18,8 @@ export interface GameControls {
   follow(id: number | null): void;
   /** The camera starts watching on its own now (the director). */
   watch(): void;
+  /** Watch mode (true: the camera follows the household on its own) or Live mode; also leaves Buy and Build. */
+  setWatchMode(watch: boolean): void;
   /** Frames the whole house. */
   frameHouse(): void;
   /** Opens or closes the journal (the story so far). */

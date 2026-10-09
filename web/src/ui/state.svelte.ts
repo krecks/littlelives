@@ -145,6 +145,11 @@ class GameState {
   follow = $state<number | null>(null);
   /** The camera is watching on its own (the director). */
   watching = $state(false);
+  /**
+   * Watch mode (the default) or Live mode: watching, the camera follows what happens at home on
+   * its own (and takes over again a while after the player moves it); live, it stays with the player.
+   */
+  watchMode = $state(true);
   /** The mouse moved lately: a quiet interface shows itself again for a moment. */
   hudAwake = $state(false);
   journalOpen = $state(false);
@@ -195,6 +200,7 @@ class GameState {
     this.inspected = null;
     this.follow = null;
     this.watching = false;
+    this.watchMode = true;
     this.journalOpen = false;
     this.journal = [];
     this.plannerOpen = false;
