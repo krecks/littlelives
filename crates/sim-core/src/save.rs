@@ -20,7 +20,8 @@
 //! object wear and repairs; 13 = ages (`sims[].age`; absent: from content `life.startAge`)
 //! and the lifespan (`lifespan`; absent: off, so older games don't start aging by surprise),
 //! residents who are gone (`sims[].gone`) and former residents the story names (`former`);
-//! 14 = a baby on the way (`households[].expecting`).
+//! 14 = a baby on the way (`households[].expecting`); 15 = story events name the content they
+//! are about by id (`events[].refs`), so a content change can't rename them.
 //! Older files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
@@ -37,7 +38,7 @@ use crate::planner::{BlockResult, Goal, HomeWish, Outcome, Planner, Reason, Rout
 use crate::world::{GameMode, Household, Plot, Task, TaskKind, World};
 use crate::{Error, MINUTES_PER_TICK, clock::MAX_SPEED};
 
-pub const SAVE_VERSION: u32 = 14;
+pub const SAVE_VERSION: u32 = 15;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -623,7 +624,14 @@ impl World {
             events: self
                 .events
                 .iter()
-                .map(|e| serde_json::to_value(e).expect("event serializes"))
+                .map(|e| {
+                    let mut v = serde_json::to_value(e).expect("event serializes");
+                    let refs = event_refs(content, e);
+                    if !refs.is_empty() {
+                        v["refs"] = serde_json::Value::Object(refs);
+                    }
+                    v
+                })
                 .collect(),
             next_event_id: self.events.last_id(),
             former: self.former.clone(),
@@ -933,8 +941,13 @@ impl World {
         world.rng = Rng::new(save.rng);
         // The story: events about residents who no longer exist (or of kinds this version
         // doesn't know) are dropped.
+        let content = &world.content;
         let events = save.events.iter().filter_map(|v| {
-            let e: social::SocialEvent = serde_json::from_value(v.clone()).ok()?;
+            let mut e: social::SocialEvent = serde_json::from_value(v.clone()).ok()?;
+            match v.get("refs") {
+                Some(refs) => resolve_refs(content, &mut e, refs)?,
+                None => migrate_refs(content, &mut e, save.version),
+            }
             let formers = save.former.len();
             let known = |s: u32| if s & social::FORMER != 0 { ((s & !social::FORMER) as usize) < formers } else { (s as usize) < n };
             (known(e.a) && known(e.b) && e.c.is_none_or(known)).then_some(e)
@@ -1360,6 +1373,81 @@ fn planner_load(content: &Content, p: &PlannerSave) -> Planner {
         waited_day: p.waited_day,
         thought: None,
         reviewed: p.reviewed,
+    }
+}
+
+/// The content a story event names, by id (its indices change when content does): the object,
+/// accident or life stage in `n`, the skill, the career (or career category, for goals) and the
+/// goal.
+fn event_refs(content: &Content, e: &social::SocialEvent) -> serde_json::Map<String, serde_json::Value> {
+    use social::EventKind::*;
+    let mut refs = serde_json::Map::new();
+    let mut put = |key: &str, id: Option<&String>| {
+        if let Some(id) = id {
+            refs.insert(key.into(), id.clone().into());
+        }
+    };
+    let n = e.n.and_then(|n| usize::try_from(n).ok());
+    match e.kind {
+        Broke | Repaired => put("object", n.and_then(|n| content.objects.get(n)).map(|d| &d.id)),
+        Accident => put("accident", n.and_then(|n| content.accidents.get(n)).map(|d| &d.id)),
+        GrewOlder => put("stage", n.and_then(|n| content.life.stages.get(n)).map(|d| &d.id)),
+        _ => {}
+    }
+    put("skill", e.skill.and_then(|s| content.skills.get(s as usize)).map(|d| &d.id));
+    if matches!(e.kind, GoalReached | GoalSuggested) {
+        put("category", e.career.and_then(|c| content.career_categories.get(c as usize)).map(|d| &d.id));
+    } else {
+        put("career", e.career.and_then(|c| content.careers.get(c as usize)).map(|d| &d.id));
+    }
+    put("goal", e.goal.and_then(|g| content.goals.get(g as usize)).map(|d| &d.id));
+    refs
+}
+
+/// Points a loaded event at the content it names (by the ids saved with it). None when the
+/// content no longer has one of them: the event is dropped.
+fn resolve_refs(content: &Content, e: &mut social::SocialEvent, refs: &serde_json::Value) -> Option<()> {
+    /// The index of the saved id for `key` among `ids`: Some(None) without one, None if gone.
+    fn find<'a>(refs: &serde_json::Value, key: &str, mut ids: impl Iterator<Item = &'a String>) -> Option<Option<u32>> {
+        match refs.get(key).and_then(|v| v.as_str()) {
+            None => Some(None),
+            Some(want) => ids.position(|i| i == want).map(|p| Some(p as u32)),
+        }
+    }
+    let n = [
+        find(refs, "object", content.objects.iter().map(|d| &d.id))?,
+        find(refs, "accident", content.accidents.iter().map(|d| &d.id))?,
+        find(refs, "stage", content.life.stages.iter().map(|d| &d.id))?,
+    ];
+    if let Some(i) = n.into_iter().flatten().next() {
+        e.n = Some(i64::from(i));
+    }
+    if let Some(s) = find(refs, "skill", content.skills.iter().map(|d| &d.id))? {
+        e.skill = Some(s);
+    }
+    if let Some(c) = find(refs, "career", content.careers.iter().map(|d| &d.id))? {
+        e.career = Some(c);
+    }
+    if let Some(c) = find(refs, "category", content.career_categories.iter().map(|d| &d.id))? {
+        e.career = Some(c);
+    }
+    if let Some(g) = find(refs, "goal", content.goals.iter().map(|d| &d.id))? {
+        e.goal = Some(g);
+    }
+    Some(())
+}
+
+/// Events from before content ids were saved name content by index. The one change since: the
+/// base game's crib (0.13, save 14) came at the end of the base objects, so objects from packs
+/// (after it) moved up one.
+fn migrate_refs(content: &Content, e: &mut social::SocialEvent, version: u32) {
+    use social::EventKind::*;
+    if version < 14
+        && matches!(e.kind, Broke | Repaired)
+        && let (Some(crib), Some(n)) = (content.object_index("crib"), e.n)
+        && n >= crib as i64
+    {
+        e.n = Some(n + 1);
     }
 }
 
