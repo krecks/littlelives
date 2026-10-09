@@ -63,6 +63,15 @@
       >
         <Icon name="icon.ui.undo" size={16} /><span>Undo</span>
       </button>
+      <button
+        class="undo redo"
+        disabled={game.redoSteps === 0}
+        title={game.redoSteps ? 'Redo what you undid (Ctrl+Shift+Z / ⌘⇧Z)' : 'Nothing to redo'}
+        aria-label="Redo"
+        onclick={() => services.controls.redo()}
+      >
+        <span class="mirror"><Icon name="icon.ui.undo" size={16} /></span>
+      </button>
     {:else}
       <div class="segmented">
         {#each speeds as s (s.value)}
@@ -250,6 +259,13 @@
   .tool:disabled {
     opacity: 0.4;
     cursor: default;
+  }
+  .undo.redo {
+    padding: 0 10px;
+  }
+  .mirror {
+    display: inline-flex;
+    transform: scaleX(-1);
   }
   .undo {
     display: inline-flex;

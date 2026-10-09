@@ -64,7 +64,7 @@ fn an_empty_home_can_be_built_and_furnished() {
     assert_eq!(w.mode, GameMode::Living);
     assert!(w.sims.iter().all(|s| s.household != 0), "nobody lives there yet");
     w.apply(Command::Build { household: 0, edits: room() }).unwrap();
-    w.apply(Command::Buy { household: 0, object: "chair".into(), at: Some([2, 2, 0]), style: None }).unwrap();
+    w.apply(Command::Buy { household: 0, object: "chair".into(), at: Some([2, 2, 0]), style: None, turn: None }).unwrap();
     assert_eq!(w.households[0].funds, 5000 - 11 * 10 - 50 - 50, "11 walls, a door and a chair");
     assert_eq!(w.undo_steps(0), 2);
     w.apply(Command::Undo { household: 0 }).unwrap();
@@ -88,7 +88,7 @@ fn an_empty_home_can_be_built_and_furnished() {
 fn creative_building_is_free_and_the_home_pays_no_bills() {
     let mut w = world("creative");
     w.apply(Command::Build { household: 0, edits: room() }).unwrap();
-    w.apply(Command::Buy { household: 0, object: "chair".into(), at: Some([2, 2, 0]), style: None }).unwrap();
+    w.apply(Command::Buy { household: 0, object: "chair".into(), at: Some([2, 2, 0]), style: None, turn: None }).unwrap();
     let chair = w.objects.len() as u32 - 1;
     w.apply(Command::Upgrade { household: 0, object: chair }).unwrap();
     assert_eq!(w.households[0].funds, 5000, "building, buying and upgrading cost nothing");

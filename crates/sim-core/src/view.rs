@@ -64,8 +64,9 @@ struct FundsView<'a> {
     /// Weekly bills, which grow with what the household owns.
     bills: Option<i64>,
     style: u8,
-    /// Build and buy edits that can be undone.
+    /// Build and buy edits that can be undone, and undone edits that can be made again.
     undo: usize,
+    redo: usize,
     /// The household's routine template (the player's household only).
     #[serde(skip_serializing_if = "Option::is_none")]
     routines: Option<Vec<RoutineView<'a>>>,
@@ -567,6 +568,7 @@ pub fn ui_state_json(world: &World) -> String {
                     bills: costs.map(|c| c.1),
                     style: h.style,
                     undo: world.undo_steps(i),
+                    redo: world.redo_steps(i),
                     routines: h
                         .player
                         .then(|| h.routines.iter().map(|r| routine_view(content, r)).collect()),
@@ -749,6 +751,8 @@ struct ObjectView<'a> {
     x: i32,
     z: i32,
     rot: u8,
+    /// Degrees past `rot` (objects that turn freely).
+    turn: u8,
     w: i32,
     d: i32,
     quality: u8,
@@ -837,6 +841,7 @@ pub fn structure_json(world: &World) -> String {
                 x: o.x,
                 z: o.z,
                 rot: o.rot,
+                turn: o.turn,
                 w,
                 d,
                 quality: o.quality,

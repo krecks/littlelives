@@ -99,6 +99,7 @@ impl World {
             self.undo.remove(0);
         }
         self.undo.push(before);
+        self.redo.clear();
     }
 
     /// Build and buy edits the household can take back.
@@ -106,14 +107,40 @@ impl World {
         self.undo.iter().filter(|s| s.household == household).count()
     }
 
+    /// Edits the household took back and can make again.
+    pub fn redo_steps(&self, household: usize) -> usize {
+        self.redo.iter().filter(|s| s.household == household).count()
+    }
+
     /// Takes back the household's last build or buy edit: walls, furniture, money and residents
     /// are as they were before it (a sold object comes back where it stood, at its old price).
+    /// It can be made again with `redo` until the next edit or until time moves on.
     pub fn undo(&mut self, household: u32) -> Result<(), Error> {
         let (h, _) = self.home_of(household)?;
         if self.undo.last().is_none_or(|s| s.household != h) {
             return Err(Error::new("nothing to undo"));
         }
+        let now = self.home_snapshot(household).expect("the household has a home");
         let s = self.undo.pop().expect("checked above");
+        self.redo.push(now);
+        self.restore(s);
+        Ok(())
+    }
+
+    /// Makes the household's last undone edit again.
+    pub fn redo(&mut self, household: u32) -> Result<(), Error> {
+        let (h, _) = self.home_of(household)?;
+        if self.redo.last().is_none_or(|s| s.household != h) {
+            return Err(Error::new("nothing to redo"));
+        }
+        let now = self.home_snapshot(household).expect("the household has a home");
+        let s = self.redo.pop().expect("checked above");
+        self.undo.push(now);
+        self.restore(s);
+        Ok(())
+    }
+
+    fn restore(&mut self, s: HomeSnapshot) {
         self.lot = s.lot;
         self.objects = s.objects;
         self.object_plot = s.object_plot;
@@ -121,10 +148,8 @@ impl World {
         self.sims = s.sims;
         self.households = s.households;
         self.structure_version += 1;
-        Ok(())
     }
 
-    /// The Sim's household index and home plot.
     /// The household's index and its home plot.
     pub(crate) fn home_of(&self, household: u32) -> Result<(usize, u32), Error> {
         let h = household as usize;
@@ -157,6 +182,20 @@ impl World {
 
     fn pay(&mut self, h: usize, cost: i64) {
         self.households[h].funds -= self.build_price(cost);
+    }
+
+    /// An angle past the facing for object type `def`: only those that turn freely take one.
+    pub(crate) fn check_turn(&self, def: usize, turn: u8) -> Result<u8, Error> {
+        let d = &self.content.objects[def];
+        if turn == 0 {
+            Ok(0)
+        } else if !d.turns {
+            Err(Error::new(format!("the {} only faces four ways", d.name)))
+        } else if turn >= 90 {
+            Err(Error::new(format!("turn {turn}° is past the next facing")))
+        } else {
+            Ok(turn)
+        }
     }
 
     pub(crate) fn check_style(&self, style: u8) -> Result<u8, Error> {
@@ -412,19 +451,25 @@ impl World {
         let (_, plot) = self.home_object(household, object)?;
         let old = self.remove_object(object);
         let moved = self.place_at_home(plot, old.def, x, z, rot, old.style, old.quality, old.value);
-        if let Err(e) = moved {
-            self.place(
-                old.def,
-                old.x,
-                old.z,
-                old.rot,
-                old.style,
-                old.quality,
-                old.value,
-            )
-            .expect("the old spot is still free");
-            return Err(e);
-        }
+        let id = match moved {
+            Ok(id) => id,
+            Err(e) => {
+                let id = self
+                    .place(
+                        old.def,
+                        old.x,
+                        old.z,
+                        old.rot,
+                        old.style,
+                        old.quality,
+                        old.value,
+                    )
+                    .expect("the old spot is still free");
+                self.objects[id as usize].turn = old.turn;
+                return Err(e);
+            }
+        };
+        self.objects[id as usize].turn = old.turn;
         Ok(())
     }
 

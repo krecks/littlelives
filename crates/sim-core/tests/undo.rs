@@ -34,6 +34,7 @@ fn buy(w: &mut World, def: &str, x: i32, z: i32) {
         object: def.into(),
         at: Some([x, z, 0]),
         style: None,
+        turn: None,
     })
     .unwrap();
 }
@@ -96,6 +97,7 @@ fn undo_reverses_moves_walls_and_floors_one_step_at_a_time() {
         x: 2,
         z: 6,
         rot: 1,
+        turn: None,
     })
     .unwrap();
     let mut edits = Vec::new();
@@ -201,4 +203,44 @@ fn the_ui_state_reports_undo_steps() {
     buy(&mut w, "chair", 1, 1);
     let ui: serde_json::Value = serde_json::from_str(&sim_core::view::ui_state_json(&w)).unwrap();
     assert_eq!(ui["households"][0]["undo"], 1);
+}
+
+fn redo(w: &mut World) {
+    w.apply(Command::Redo { household: 0 }).unwrap();
+}
+
+#[test]
+fn redo_makes_undone_edits_again_until_the_next_edit() {
+    let mut w = world();
+    buy(&mut w, "chair", 1, 1);
+    buy(&mut w, "lamp", 3, 1);
+    let after = (objects(&w), funds(&w));
+    undo(&mut w);
+    undo(&mut w);
+    assert!(w.objects.is_empty());
+    assert_eq!(w.redo_steps(0), 2);
+    redo(&mut w);
+    assert_eq!(objects(&w), after.0[..1], "the chair is back first");
+    redo(&mut w);
+    assert_eq!((objects(&w), funds(&w)), after, "then the lamp, paid again");
+    assert_eq!((w.undo_steps(0), w.redo_steps(0)), (2, 0));
+    let err = w.apply(Command::Redo { household: 0 }).unwrap_err();
+    assert!(err.to_string().contains("nothing to redo"), "{err}");
+
+    // Undo, redo, undo: still the same history.
+    undo(&mut w);
+    redo(&mut w);
+    undo(&mut w);
+    assert_eq!(w.objects.len(), 1);
+    // A new edit drops what was undone.
+    buy(&mut w, "chair", 5, 1);
+    assert_eq!(w.redo_steps(0), 0);
+    assert!(w.apply(Command::Redo { household: 0 }).is_err());
+
+    // Time moving on drops it too.
+    undo(&mut w);
+    assert_eq!(w.redo_steps(0), 1);
+    w.apply(Command::SetSpeed { speed: 1 }).unwrap();
+    w.tick_once();
+    assert_eq!((w.undo_steps(0), w.redo_steps(0)), (0, 0));
 }

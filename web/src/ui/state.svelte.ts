@@ -32,6 +32,8 @@ export interface BuildLook {
 export interface Placing {
   def: string;
   rot: number;
+  /** Degrees past `rot`, for objects that turn freely. */
+  turn: number;
   /** Set when moving an object the household already owns. */
   objectId: number | null;
 }
@@ -108,6 +110,8 @@ class GameState {
   floorTiles = $state(0);
   /** Build and buy edits that can be taken back (until time moves on). */
   undoSteps = $state(0);
+  /** Edits taken back that can be made again (until the next edit, or time moves on). */
+  redoSteps = $state(0);
   /** Remove tool: the preview walls up doors and windows (rather than tearing walls down). */
   buildWallUp = $state(false);
   /** Wall being drawn: its first corner, and the cost of the preview. */
@@ -196,6 +200,7 @@ class GameState {
     this.buildTool = 'wall';
     this.buildStart = null;
     this.undoSteps = 0;
+    this.redoSteps = 0;
     this.jobBoardOpen = false;
     this.objects = [];
     this.catalog = null;

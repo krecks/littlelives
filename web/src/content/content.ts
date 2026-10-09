@@ -56,6 +56,8 @@ export interface ObjectDef {
   slots?: number;
   /** Can only be placed outdoors (trees, flower beds, ponds). */
   outdoors?: boolean;
+  /** Turns freely (at any angle, for looks); default: 1×1 objects of `objectRules.freeRotation` categories. */
+  freeRotation?: boolean;
 }
 
 export interface SkillDef {
@@ -237,6 +239,7 @@ interface ContentFile {
   doorStyles?: DoorStyleDef[];
   windowStyles?: WindowStyleDef[];
   economy?: Partial<Economy>;
+  objectRules?: { freeRotation?: string[] };
   /** Animation tags interactions can use as `anim` (the snapshot layout's `actions`). */
   animations?: string[];
   activities?: ActivityDef[];
@@ -309,6 +312,15 @@ export class Content {
     this.goals = file.goals ?? [];
     this.planner = { maxMinutes: 240, maxSleepMinutes: 720, maxGoals: 3, ...file.planner };
     this.objects = new Map(file.objects.map((o) => [o.id, o]));
+    this.freeRotation = new Set(file.objectRules?.freeRotation ?? []);
+  }
+
+  private readonly freeRotation: Set<string>;
+
+  /** Whether an object turns freely (sim-core `ObjectDef::turns`): at any angle past its facing. */
+  turns(def: ObjectDef): boolean {
+    const [w, d] = def.footprint ?? [1, 1];
+    return def.freeRotation ?? (w === 1 && d === 1 && def.category !== undefined && this.freeRotation.has(def.category));
   }
 
   /** Loads a content file and merges the files it includes (content packs); see `mergeContent`. */

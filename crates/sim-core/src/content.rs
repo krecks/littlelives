@@ -115,6 +115,9 @@ pub struct ObjectDef {
     pub slots: u8,
     /// Can only be placed outdoors (trees, flower beds, ponds).
     pub outdoors: bool,
+    /// Turns freely (decor, plants): besides its four facings it can stand at any angle
+    /// (`ObjectInstance::turn`). The angle is only for looks; the footprint stays on tiles.
+    pub turns: bool,
 }
 
 /// Multipliers and offsets a trait, perk or emotion applies to a Sim.
@@ -804,6 +807,8 @@ struct RentRaw {
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 struct ObjectRulesRaw {
+    /// Catalog categories whose 1×1 objects turn freely.
+    free_rotation: Option<Vec<String>>,
     max_quality: Option<u8>,
     quality_bonus: Option<f32>,
     upgrade_cost: Option<f32>,
@@ -945,6 +950,12 @@ struct ObjectRaw {
     slots: u8,
     #[serde(default)]
     outdoors: bool,
+    /// Buy catalog category (decides free rotation, see `objectRules.freeRotation`).
+    #[serde(default)]
+    category: Option<String>,
+    /// Overrides whether it turns freely.
+    #[serde(default, rename = "freeRotation")]
+    free_rotation: Option<bool>,
 }
 
 fn one_slot() -> u8 {
@@ -1343,6 +1354,12 @@ impl Content {
                 price: obj.price,
                 slots: obj.slots,
                 outdoors: obj.outdoors,
+                turns: obj.free_rotation.unwrap_or_else(|| {
+                    obj.footprint == [1, 1]
+                        && obj.category.as_ref().is_some_and(|c| {
+                            raw.object_rules.free_rotation.iter().flatten().any(|f| f == c)
+                        })
+                }),
             });
         }
 

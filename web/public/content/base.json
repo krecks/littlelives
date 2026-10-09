@@ -3018,6 +3018,7 @@
     "wakeBeforeWorkMinutes": 75
   },
   "objectRules": {
+    "freeRotation": ["decor", "garden", "outdoor"],
     "maxQuality": 3,
     "qualityBonus": 0.25,
     "upgradeCost": 0.3,

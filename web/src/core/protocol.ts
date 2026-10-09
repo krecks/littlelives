@@ -19,9 +19,10 @@ export type Command =
   | { type: 'goHome'; sim: number }
   | { type: 'cancel'; sim: number; index: number }
   /** Build and buy are addressed to a household: its home may have nobody living in it yet. */
-  | { type: 'buy'; household: number; object: string; at?: [number, number, number]; style?: number }
+  /** `turn`: degrees past the facing, for objects that turn freely (0..89). */
+  | { type: 'buy'; household: number; object: string; at?: [number, number, number]; style?: number; turn?: number }
   | { type: 'sell'; household: number; object: number }
-  | { type: 'moveObject'; household: number; object: number; x: number; z: number; rot: number }
+  | { type: 'moveObject'; household: number; object: number; x: number; z: number; rot: number; turn?: number }
   | { type: 'restyle'; household: number; object: number; style: number }
   | { type: 'setStyle'; household: number; style: number }
   | { type: 'upgrade'; household: number; object: number }
@@ -29,6 +30,7 @@ export type Command =
   | { type: 'paint'; household: number; faces: FacePaint[] }
   | { type: 'paintFloor'; household: number; tiles: FloorPaint[] }
   | { type: 'undo'; household: number }
+  | { type: 'redo'; household: number }
   /** New residents move into the household's home (`bonds` index into `sims`); `name` renames the household. */
   | { type: 'moveIn'; household: number; name?: string; sims: SimSpawn[]; bonds: { a: number; b: number; preset: string }[] }
   /** The resident's own routine blocks (the whole list). */
@@ -198,6 +200,8 @@ export interface ObjectPlacement {
   x: number;
   z: number;
   rot: number;
+  /** Degrees past `rot`, for objects that turn freely (0..89). */
+  turn?: number;
   /** Rotated footprint in tiles. */
   w: number;
   d: number;
@@ -392,7 +396,7 @@ export interface UiSnapshot {
   autonomy: boolean;
   sims: SimView[];
   /** `undo`: build and buy edits the household can take back (absent from older workers). */
-  households: { id: number; funds: number; rent: number | null; bills: number | null; style: number; undo?: number; routines?: Routine[] }[];
+  households: { id: number; funds: number; rent: number | null; bills: number | null; style: number; undo?: number; redo?: number; routines?: Routine[] }[];
   relationships: RelationshipView[];
   /** Recent story events, oldest first; ids increase monotonically (the whole log: `events` request). */
   events: SocialEvent[];

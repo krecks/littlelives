@@ -127,6 +127,9 @@
       <div class="row">
         <button class="btn ghost small" onclick={() => services.controls.startMoving(owned.id)}>Move</button>
         <button class="btn ghost small" title="Rotate (R)" onclick={() => services.controls.rotatePlacing()}>Rotate</button>
+        {#if content.turns(def)}
+          <button class="btn ghost small" title="Turn a little (Shift+R)" onclick={() => services.controls.rotatePlacing(true)}>Turn 15°</button>
+        {/if}
         {#if owned.sellValue !== null}
           <button class="btn ghost small danger" title="Sell (Delete)" onclick={() => services.controls.sell(owned.id)}>{game.creative ? 'Sell' : `Sell · ${money(owned.sellValue)}`}</button>
         {/if}

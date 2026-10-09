@@ -14,7 +14,8 @@
 //! one town-wide free-will switch, no story, a fresh start in every job); 9 = planners
 //! (routines, goals, how blocks went, wishes) and household routine templates (absent: none);
 //! 10 = the game mode (`mode`: Living or Creative; absent: Living), and the player's household
-//! may have nobody living in it yet. Older files load. Saves written before feelings
+//! may have nobody living in it yet; 11 = objects turned freely (`turn`, absent: 0). Older
+//! files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
 use std::collections::{BTreeMap, HashMap};
@@ -30,7 +31,7 @@ use crate::planner::{BlockResult, Goal, Outcome, Planner, Reason, Routine};
 use crate::world::{GameMode, Household, Plot, Task, TaskKind, World};
 use crate::{Error, MINUTES_PER_TICK, clock::MAX_SPEED};
 
-pub const SAVE_VERSION: u32 = 10;
+pub const SAVE_VERSION: u32 = 11;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -130,6 +131,9 @@ pub struct ObjectSave {
     /// Money put into it; defaults to the price.
     #[serde(default)]
     pub value: Option<i64>,
+    /// Degrees past the facing (objects that turn freely; absent before v11: 0).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub turn: u8,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -350,6 +354,7 @@ impl World {
                 quality: o.quality,
                 style: o.style,
                 value: Some(o.value),
+                turn: o.turn,
             })
             .collect();
         let sims = self
@@ -594,6 +599,9 @@ impl World {
             };
             match placed {
                 Ok(id) => {
+                    let obj = &world.objects[id as usize];
+                    let turn = world.check_turn(obj.def, o.turn).unwrap_or(0);
+                    world.objects[id as usize].turn = turn;
                     object_ids.insert(i as u32, id);
                 }
                 Err(_) if world.content.object_index(&o.def).is_none() => {} // content no longer has it

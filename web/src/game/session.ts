@@ -53,6 +53,8 @@ export type StartRequest =
 const FEED_MS = 12_000;
 /** Story-feed entries shown at once. */
 const FEED_SIZE = 3;
+/** Shift+R turns things that turn freely by this many degrees. */
+const FINE_TURN = 15;
 /** Fastest game speed (`clock::MAX_SPEED`). */
 const MAX_SPEED = 5;
 /** How long the interface stays after the mouse moves while it watches quietly. */
@@ -407,23 +409,31 @@ export async function startSession(
     startPlacing(def) {
       controls.setMode('buy');
       game.buySelection = null;
-      game.placing = { def, rot: game.placing?.rot ?? 0, objectId: null };
+      const turns = !!content.object(def) && content.turns(content.object(def)!);
+      game.placing = { def, rot: game.placing?.rot ?? 0, turn: turns ? (game.placing?.turn ?? 0) : 0, objectId: null };
     },
     startMoving(objectId) {
       const obj = game.objects.find((o) => o.id === objectId);
       if (!obj) return;
       controls.setMode('buy');
       game.buySelection = null;
-      game.placing = { def: obj.def, rot: obj.rot, objectId };
+      game.placing = { def: obj.def, rot: obj.rot, turn: obj.turn ?? 0, objectId };
     },
-    rotatePlacing() {
+    rotatePlacing(fine = false) {
       if (game.mode !== 'buy') return;
+      // Facing and turn as one angle: a quarter turn, or 15° for things that turn freely.
+      const turned = (def: string, rot: number, turn: number) => {
+        const d = content.object(def);
+        const step = fine && d && content.turns(d) ? FINE_TURN : 90;
+        const angle = (rot * 90 + turn + step) % 360;
+        return { rot: Math.floor(angle / 90), turn: angle % 90 };
+      };
       if (game.placing) {
-        game.placing = { ...game.placing, rot: (game.placing.rot + 1) % 4 };
+        game.placing = { ...game.placing, ...turned(game.placing.def, game.placing.rot, game.placing.turn) };
         play('rotate');
       } else if (game.buySelection !== null) {
         const obj = game.objects.find((o) => o.id === game.buySelection);
-        if (obj) bridge.send({ type: 'moveObject', household: game.home, object: obj.id, x: obj.x, z: obj.z, rot: (obj.rot + 1) % 4 });
+        if (obj) bridge.send({ type: 'moveObject', household: game.home, object: obj.id, x: obj.x, z: obj.z, ...turned(obj.def, obj.rot, obj.turn ?? 0) });
       }
     },
     cancelPlacing() {
@@ -443,6 +453,14 @@ export async function startSession(
       game.buySelection = null;
       buildBuy.clearPreviews();
       bridge.send({ type: 'undo', household: game.home });
+    },
+    redo() {
+      if (game.mode === 'live' || game.redoSteps <= 0) return;
+      game.redoSteps--;
+      game.buildStart = null;
+      game.buySelection = null;
+      buildBuy.clearPreviews();
+      bridge.send({ type: 'redo', household: game.home });
     },
     restyle(objectId, style) {
       bridge.send({ type: 'restyle', household: game.home, object: objectId, style });
@@ -547,6 +565,7 @@ export async function startSession(
     game.bills = mine?.bills ?? null;
     game.householdStyle = mine?.style ?? 0;
     game.undoSteps = mine?.undo ?? 0;
+    game.redoSteps = mine?.redo ?? 0;
     if (mine?.routines && JSON.stringify(mine.routines) !== JSON.stringify(game.householdRoutines)) game.householdRoutines = mine.routines;
     game.relationships = ui.relationships;
     // The view stays home; it goes along to other lots only with a resident the player follows.
@@ -767,9 +786,13 @@ export async function startSession(
       return;
     }
     if (game.pauseMenu) return;
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
       e.preventDefault();
-      return controls.undo();
+      return e.shiftKey ? controls.redo() : controls.undo();
+    }
+    if (e.ctrlKey && (e.key === 'y' || e.key === 'Y')) {
+      e.preventDefault();
+      return controls.redo();
     }
     switch (e.key) {
       case ' ':
@@ -818,7 +841,7 @@ export async function startSession(
         return;
       case 'r':
       case 'R':
-        return controls.rotatePlacing();
+        return controls.rotatePlacing(e.shiftKey);
       case 'Delete':
       case 'Backspace':
         if (game.mode === 'buy' && game.buySelection !== null) controls.sell(game.buySelection);
@@ -998,6 +1021,8 @@ export async function startSession(
       renderer,
       structure: () => ({ walls: world?.walls?.length ?? 0, openings: world?.openings?.map((o) => o.kind) ?? [], diagonals: world?.diagonals?.map((d) => `${d.axis}:${d.x}:${d.z}:${d.kind}`) ?? [], funds: game.funds }),
       townFile: () => ('lot' in source ? source.lot : null),
+      objects: () => game.objects.map((o) => ({ id: o.id, def: o.def, x: o.x, z: o.z, rot: o.rot, turn: o.turn ?? 0 })),
+      steps: () => ({ undo: game.undoSteps, redo: game.redoSteps }),
       sims: () =>
         game.sims.map((x) => {
           const snap = bridge.latest();

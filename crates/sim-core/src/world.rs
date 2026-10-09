@@ -33,6 +33,8 @@ pub struct ObjectInstance {
     pub z: i32,
     /// Facing: 0 = +z, 1 = +x, 2 = -z, 3 = -x.
     pub rot: u8,
+    /// Degrees turned past `rot` (0..90), for objects that turn freely; only for looks.
+    pub turn: u8,
     /// Sims using or walking to this object, one per slot.
     pub users: [Option<u32>; MAX_SLOTS],
     /// Upgrade level: higher quality objects satisfy needs and teach skills faster.
@@ -504,6 +506,8 @@ pub struct World {
     pub meta: serde_json::Value,
     /// Build and buy edits that can be taken back, oldest first (see `World::undo`).
     pub(crate) undo: Vec<crate::home::HomeSnapshot>,
+    /// Edits taken back that can be made again, latest last (see `World::redo`).
+    pub(crate) redo: Vec<crate::home::HomeSnapshot>,
     /// "Skip quiet hours": run at `AUTO_FAST_SPEED` while the player's household is asleep
     /// or out and nothing notable happened at home in the last hour (see `World::calm`).
     pub auto_fast: bool,
@@ -639,6 +643,7 @@ impl World {
             exits: Vec::new(),
             meta: serde_json::Value::Null,
             undo: Vec::new(),
+            redo: Vec::new(),
             auto_fast: false,
             offers: Vec::new(),
             offers_version: 0,
@@ -682,6 +687,7 @@ impl World {
             x,
             z,
             rot: rot % 4,
+            turn: 0,
             users: [None; MAX_SLOTS],
             quality: 0,
             style: 0,
@@ -1003,6 +1009,7 @@ impl World {
     pub fn tick_once(&mut self) {
         // Time moves on: edits can no longer be taken back.
         self.undo.clear();
+        self.redo.clear();
         self.tick += 1;
         let tick = self.tick;
 
@@ -1074,8 +1081,10 @@ impl World {
     /// Applies a player command. Build and buy edits can be undone (`Command::Undo`) until time
     /// moves on or the player gives the household another kind of order.
     pub fn apply(&mut self, cmd: Command) -> Result<(), Error> {
-        if let Command::Undo { household } = cmd {
-            return self.undo(household);
+        match cmd {
+            Command::Undo { household } => return self.undo(household),
+            Command::Redo { household } => return self.redo(household),
+            _ => {}
         }
         let snapshot = cmd.home_edit().and_then(|h| self.home_snapshot(h));
         let keeps_history = matches!(
@@ -1094,7 +1103,10 @@ impl World {
         self.apply_command(cmd)?;
         match snapshot {
             Some(s) => self.remember(s),
-            None if !keeps_history => self.undo.clear(),
+            None if !keeps_history => {
+                self.undo.clear();
+                self.redo.clear();
+            }
             None => {}
         }
         Ok(())
@@ -1277,8 +1289,12 @@ impl World {
                 object,
                 at,
                 style,
+                turn,
             } => {
-                self.buy(household, &object, at, style)?;
+                let def = self.content.object_index(&object);
+                let turn = def.map(|d| self.check_turn(d, turn.unwrap_or(0))).transpose()?;
+                let id = self.buy(household, &object, at, style)?;
+                self.objects[id as usize].turn = turn.unwrap_or(0);
             }
             Command::Sell { household, object } => self.sell(household, object)?,
             Command::MoveObject {
@@ -1287,7 +1303,18 @@ impl World {
                 x,
                 z,
                 rot,
-            } => self.move_object(household, object, x, z, rot)?,
+                turn,
+            } => {
+                let def = self.objects.get(object as usize).map(|o| o.def);
+                let turn = match (def, turn) {
+                    (Some(d), Some(t)) => Some(self.check_turn(d, t)?),
+                    _ => None,
+                };
+                self.move_object(household, object, x, z, rot)?;
+                if let Some(t) = turn {
+                    self.objects[object as usize].turn = t;
+                }
+            }
             Command::Restyle {
                 household,
                 object,
@@ -1304,6 +1331,7 @@ impl World {
             Command::Paint { household, faces } => self.paint(household, &faces)?,
             Command::PaintFloor { household, tiles } => self.paint_floor(household, &tiles)?,
             Command::Undo { household } => self.undo(household)?,
+            Command::Redo { household } => self.redo(household)?,
             Command::MoveIn {
                 household,
                 name,

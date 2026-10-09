@@ -541,7 +541,7 @@ export class BabylonRenderer implements Renderer {
     if (ghost.model !== this.ghostKey) this.loadGhost(ghost.model);
     // Rotate about the footprint centre, like placed objects. The turn takes the short way round.
     this.ghostGoal.set(ghost.x + ghost.w / 2, 0, ghost.z + ghost.d / 2);
-    const yaw = (ghost.rot * Math.PI) / 2;
+    const yaw = (ghost.rot * Math.PI) / 2 + ((ghost.turn ?? 0) * Math.PI) / 180;
     const turn = Math.atan2(Math.sin(yaw - this.ghostYawGoal), Math.cos(yaw - this.ghostYawGoal));
     this.ghostYawGoal += turn;
     if (!this.ghostShown) {
@@ -1635,7 +1635,7 @@ export class BabylonRenderer implements Renderer {
       const vary = this.deps.assets.get(group.slice(group.indexOf('|') + 1), 'model')?.vary ?? 0;
       list.forEach((o, i) => {
         const { turn, size } = placementVariation(vary, o.x, o.z);
-        Quaternion.RotationYawPitchRollToRef((o.rot * Math.PI) / 2 + turn, 0, 0, this.qTmp);
+        Quaternion.RotationYawPitchRollToRef((o.rot * Math.PI) / 2 + ((o.turn ?? 0) * Math.PI) / 180 + turn, 0, 0, this.qTmp);
         Matrix.ComposeToRef(this.vScale.setAll(size), this.qTmp, this.vTmp.set(o.x + o.w / 2, 0, o.z + o.d / 2), this.mOut);
         this.mOut.copyToArray(matrices, i * 16);
         this.placed.push({ id: o.id, minX: o.x, minZ: o.z, maxX: o.x + o.w, maxZ: o.z + o.d, height: template.height, pop: { meshes: template.meshes, matrices, index: i } });

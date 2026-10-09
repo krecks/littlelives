@@ -34,7 +34,7 @@ interface BuildPreview {
   setPaintPreview(faces: readonly PaintFace[], color: string | null): void;
   /** Floor tool: the tiles a release would cover, in the covering's colour (null: hidden). */
   setFloorPreview(tiles: readonly { x: number; z: number }[], color: string | null): void;
-  setPlacementGhost(ghost: { model: string; x: number; z: number; rot: number; w: number; d: number; valid: boolean } | null): void;
+  setPlacementGhost(ghost: { model: string; x: number; z: number; rot: number; turn?: number; w: number; d: number; valid: boolean } | null): void;
   setEdgePreview(edges: EdgeEdit[], valid: boolean): void;
   setBuildGrid(rect: ViewRect | null): void;
   /** Whether a left-drag turns the camera (off while drawing walls). */
@@ -215,7 +215,7 @@ export class BuildBuyInput {
     const x = Math.floor(ground.x - w / 2 + 0.5);
     const z = Math.floor(ground.z - d / 2 + 0.5);
     const fit = this.fits(x, z, w, d, placing.rot, placing.objectId, def);
-    return { def, rot: placing.rot, x, z, w, d, valid: fit === true, reason: fit === true ? null : fit };
+    return { def, rot: placing.rot, turn: placing.turn, x, z, w, d, valid: fit === true, reason: fit === true ? null : fit };
   }
 
   /** Whether a tile is indoors (a tile split by a diagonal wall is when either half is, as in the simulation). */
@@ -273,7 +273,7 @@ export class BuildBuyInput {
     const p = this.placement(ground);
     if (!p) return this.preview.setPlacementGhost?.(null);
     const style = p && game.placing?.objectId != null ? (game.objects.find((o) => o.id === game.placing!.objectId)?.style ?? 0) : game.householdStyle;
-    this.preview.setPlacementGhost?.({ model: this.styledModel(p.def, style), x: p.x, z: p.z, rot: p.rot, w: p.w, d: p.d, valid: p.valid });
+    this.preview.setPlacementGhost?.({ model: this.styledModel(p.def, style), x: p.x, z: p.z, rot: p.rot, turn: p.turn, w: p.w, d: p.d, valid: p.valid });
     if (game.placeValid !== p.valid) game.placeValid = p.valid;
     if (game.placeHint !== p.reason) game.placeHint = p.reason;
   }
@@ -284,12 +284,12 @@ export class BuildBuyInput {
       const p = ground && this.placement(ground);
       if (!p) return true;
       if (placing.objectId !== null) {
-        this.send({ type: 'moveObject', household: game.home, object: placing.objectId, x: p.x, z: p.z, rot: p.rot });
+        this.send({ type: 'moveObject', household: game.home, object: placing.objectId, x: p.x, z: p.z, rot: p.rot, turn: p.turn });
         game.placing = null;
         this.preview.setPlacementGhost?.(null);
       } else {
         // New purchases stay on the cursor so several can be placed in a row.
-        this.send({ type: 'buy', household: game.home, object: p.def.id, at: [p.x, p.z, p.rot], style: game.householdStyle });
+        this.send({ type: 'buy', household: game.home, object: p.def.id, at: [p.x, p.z, p.rot], style: game.householdStyle, ...(p.turn ? { turn: p.turn } : {}) });
       }
       return true;
     }
@@ -743,7 +743,7 @@ export function editFeedback(prev: WorldStructure, next: WorldStructure): { effe
   // the rest (moved, turned, restyled or upgraded); the same id wins a tie.
   const before = new Map<number, ObjectPlacement>();
   const left = new Set(prev.objects);
-  const key = (o: ObjectPlacement) => `${o.def}:${o.x}:${o.z}:${o.rot}:${o.style}:${o.quality}`;
+  const key = (o: ObjectPlacement) => `${o.def}:${o.x}:${o.z}:${o.rot}:${o.turn ?? 0}:${o.style}:${o.quality}`;
   const byKey = Map.groupBy(prev.objects, key);
   for (const o of next.objects) {
     const same = byKey.get(key(o));
@@ -778,7 +778,7 @@ export function editFeedback(prev: WorldStructure, next: WorldStructure): { effe
       if (o.quality > old.quality) {
         effects.push({ kind: 'upgrade', ...rect(o), objectId: o.id });
         sounds.add('upgrade');
-      } else if (o.x !== old.x || o.z !== old.z || o.rot !== old.rot || o.style !== old.style) {
+      } else if (o.x !== old.x || o.z !== old.z || o.rot !== old.rot || o.turn !== old.turn || o.style !== old.style) {
         effects.push({ kind: 'place', ...rect(o), objectId: o.id });
         sounds.add(o.x !== old.x || o.z !== old.z ? 'place' : 'rotate');
       }

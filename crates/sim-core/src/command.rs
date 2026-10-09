@@ -99,6 +99,9 @@ pub enum Command {
         /// Style index; defaults to the household's favourite.
         #[serde(default)]
         style: Option<u8>,
+        /// Degrees past the facing, for objects that turn freely (0..90).
+        #[serde(default)]
+        turn: Option<u8>,
     },
     /// Sell an object at home for part of what was paid.
     Sell {
@@ -112,6 +115,9 @@ pub enum Command {
         x: i32,
         z: i32,
         rot: u8,
+        /// Degrees past the facing (objects that turn freely); absent keeps the angle it had.
+        #[serde(default)]
+        turn: Option<u8>,
     },
     /// Change how an object looks (free; effects stay the same).
     Restyle {
@@ -146,6 +152,10 @@ pub enum Command {
     },
     /// Build and buy mode: take back the household's last edit (see `World::undo`).
     Undo {
+        household: u32,
+    },
+    /// Build and buy mode: make the household's last undone edit again (see `World::redo`).
+    Redo {
         household: u32,
     },
     /// New residents move into a household that has a home (an empty one, after building

@@ -2,6 +2,17 @@
 
 All notable changes to Littlelives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
+## Unreleased (0.10.0)
+
+Build depth: more control while building.
+
+### New
+- **Redo** in Build and Buy mode: the button next to Undo, or Ctrl+Shift+Z / ⌘⇧Z (Ctrl+Y works too). What you undid can be made again until you make another change or time moves on.
+- **Free rotation for decor:** plants, flowers, trees, shrubs, lamps and garden ornaments (1×1 things from the decor, garden and outdoor categories) turn in 15° steps with Shift+R, or *Turn 15°* on a placed one; R still turns a quarter. The angle is for looks; residents use them as before. Content packs can set `freeRotation` on an object, or list categories in `objectRules.freeRotation`.
+
+### Changed
+- Saves are now version 11 (objects' angles); older saves load as before.
+
 ## Unreleased (0.9.0)
 
 The builder's start: begin with a lot, not a family.

@@ -89,6 +89,8 @@ export interface PlacementGhost {
   z: number;
   /** Quarter turns 0..3, same convention as placed objects. */
   rot: number;
+  /** Degrees past `rot` (objects that turn freely). */
+  turn?: number;
   w: number;
   d: number;
   valid: boolean;

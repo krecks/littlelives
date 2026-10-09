@@ -53,11 +53,14 @@ export interface GameControls {
   startPlacing(def: string): void;
   /** Buy mode: pick up an owned object to move it. */
   startMoving(objectId: number): void;
-  rotatePlacing(): void;
+  /** Turns what's in hand (or picked) by a quarter; `fine`: by 15°, for things that turn freely. */
+  rotatePlacing(fine?: boolean): void;
   cancelPlacing(): void;
   sell(objectId: number): void;
   /** Buy and Build mode: takes back the last edit (Ctrl/⌘+Z). */
   undo(): void;
+  /** Buy and Build mode: makes the last undone edit again (Ctrl/⌘+Shift+Z, Ctrl+Y). */
+  redo(): void;
   restyle(objectId: number, style: number): void;
   setHouseholdStyle(style: number): void;
   upgrade(objectId: number): void;
