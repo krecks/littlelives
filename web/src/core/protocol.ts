@@ -363,6 +363,8 @@ export interface SimView {
   stage?: string | null;
   /** Retired: the weekly pension. */
   pension?: number;
+  /** A pupil's school grade (0..100). */
+  grade?: number;
   needs: number[];
   mood: number;
   emotion: string | null;

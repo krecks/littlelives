@@ -88,6 +88,8 @@ pub struct Interaction {
     pub dirt: f32,
     /// The place a baby lies (only babies use it; nobody else ever).
     pub baby: bool,
+    /// Homework: grade points for a full use (only pupils do it).
+    pub homework: f32,
     /// Needs this fills for the baby lying in the object, over the whole interaction (feeding,
     /// changing); only with a baby there, and only grown-ups do it.
     pub care: [f32; MAX_NEEDS],
@@ -203,6 +205,8 @@ pub struct LifeRules {
     pub pregnancy: Option<PregnancyRules>,
     /// Adopting a baby or a child: what it costs (None: no adoption).
     pub adoption_cost: Option<i64>,
+    /// The daily chance a household of grown-ups without children adopts on its own.
+    pub adoption_chance: f32,
 }
 
 /// A successful *Try for a baby* means a baby with a chance of `chance`, born `days` later, for
@@ -222,6 +226,31 @@ pub struct SchoolRules {
     pub hours: f32,
     pub days: u8,
     pub skills: Vec<(usize, f32)>,
+    /// Grade points (0..100) for a day at school, and up to `mood` more (or less) by how they
+    /// felt; `missed` off for a day not there. New pupils start at `start_grade`.
+    pub attend: f32,
+    pub mood: f32,
+    pub missed: f32,
+    pub start_grade: f32,
+    /// On leaving school: the feeling for a final grade of at least `good`, else `poor_feeling`
+    /// below `poor` (see `lifecycle`).
+    pub good: f32,
+    pub good_feeling: Option<usize>,
+    pub poor: f32,
+    pub poor_feeling: Option<usize>,
+}
+
+impl SchoolRules {
+    /// A grade's letter: A from 85, B 70, C 50, D 30, else F.
+    pub fn letter(grade: f32) -> char {
+        match grade {
+            g if g >= 85.0 => 'A',
+            g if g >= 70.0 => 'B',
+            g if g >= 50.0 => 'C',
+            g if g >= 30.0 => 'D',
+            _ => 'F',
+        }
+    }
 }
 
 /// Once a day at `hour`, each vacant house gets a household with a chance of 1 in `days`.
@@ -1185,6 +1214,8 @@ struct PregnancyRaw {
 #[serde(rename_all = "camelCase")]
 struct AdoptionRaw {
     cost: i64,
+    #[serde(default)]
+    neighbours: f32,
 }
 
 #[derive(Deserialize)]
@@ -1195,6 +1226,21 @@ struct SchoolRaw {
     days: Vec<u8>,
     #[serde(default)]
     skills: HashMap<String, f32>,
+    #[serde(default)]
+    grades: GradesRaw,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct GradesRaw {
+    attend: Option<f32>,
+    mood: Option<f32>,
+    missed: Option<f32>,
+    start: Option<f32>,
+    good: Option<f32>,
+    good_feeling: Option<String>,
+    poor: Option<f32>,
+    poor_feeling: Option<String>,
 }
 
 #[derive(Deserialize, Default)]
@@ -1550,6 +1596,8 @@ struct InteractionRaw {
     dirt: Option<f32>,
     #[serde(default)]
     baby: bool,
+    #[serde(default)]
+    homework: f32,
     #[serde(default)]
     care: HashMap<String, f32>,
     #[serde(default)]
@@ -1928,6 +1976,7 @@ impl Content {
                     anim,
                     dirt: it.dirt.unwrap_or(-1.0),
                     baby: it.baby,
+                    homework: it.homework.max(0.0),
                     care,
                 });
             }
@@ -2085,11 +2134,20 @@ impl Content {
                         skills.push((lookup(&skill_index, id, "life.school", "skill")?, *w));
                     }
                     skills.sort_by_key(|s| s.0);
+                    let g = &sc.grades;
                     Some(SchoolRules {
                         start: sc.start.clamp(0.0, 23.0),
                         hours: sc.hours.clamp(0.5, 12.0),
                         days: sc.days.iter().filter(|&&d| d < 7).fold(0, |m, d| m | (1 << d)),
                         skills,
+                        attend: g.attend.unwrap_or(1.0),
+                        mood: g.mood.unwrap_or(3.0),
+                        missed: g.missed.unwrap_or(5.0),
+                        start_grade: g.start.unwrap_or(60.0).clamp(0.0, 100.0),
+                        good: g.good.unwrap_or(70.0),
+                        good_feeling: feeling(&g.good_feeling, "life.school.grades")?,
+                        poor: g.poor.unwrap_or(30.0),
+                        poor_feeling: feeling(&g.poor_feeling, "life.school.grades")?,
                     })
                 }
             },
@@ -2099,6 +2157,7 @@ impl Content {
                 max_age: p.max_age.unwrap_or(50.0),
             }),
             adoption_cost: raw.life.adoption.as_ref().map(|a| a.cost.max(0)),
+            adoption_chance: raw.life.adoption.as_ref().map_or(0.0, |a| a.neighbours.clamp(0.0, 1.0)),
             newcomers: raw.life.newcomers.as_ref().map(|n| NewcomerRules {
                 hour: n.hour.unwrap_or(12.0).clamp(0.0, 23.9),
                 days: n.days.unwrap_or(3.0).max(1.0),

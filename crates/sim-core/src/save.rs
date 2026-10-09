@@ -190,6 +190,9 @@ pub struct SimSave {
     pub retired: bool,
     #[serde(default, skip_serializing_if = "is_zero_i64")]
     pub pension: i64,
+    /// How a pupil does at school (0..100).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grade: Option<f32>,
     pub pos: [f32; 2],
     pub yaw: f32,
     /// Sorted so identical worlds produce identical save files.
@@ -506,6 +509,7 @@ impl World {
                     gone: s.gone,
                     retired: s.retired,
                     pension: s.pension,
+                    grade: content.life.stage_at(s.age).is_some_and(|st| st.school).then_some(s.grade),
                     pos,
                     yaw: s.yaw,
                     needs: content
@@ -790,6 +794,9 @@ impl World {
             sim.gone = s.gone;
             sim.retired = s.retired;
             sim.pension = s.pension.max(0);
+            if let Some(g) = s.grade {
+                sim.grade = g.clamp(0.0, 100.0);
+            }
             for (i, need) in content.needs.iter().enumerate() {
                 sim.needs[i] = s
                     .needs

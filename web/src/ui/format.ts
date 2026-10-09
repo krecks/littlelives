@@ -41,6 +41,11 @@ export function dayList(days: readonly number[]): string {
   return sorted.map((d) => WEEKDAYS[d]).join(' ');
 }
 
+/** A school grade's letter (sim-core `SchoolRules::letter`). */
+export function gradeLetter(grade: number): string {
+  return grade >= 85 ? 'A' : grade >= 70 ? 'B' : grade >= 50 ? 'C' : grade >= 30 ? 'D' : 'F';
+}
+
 /** What a lifespan means, in a line. */
 export function lifespanHint(lifespan: string): string {
   switch (lifespan) {

@@ -1,7 +1,7 @@
 /** How story events read: their sentence, icon and tone (the feed and the journal). */
 
 import { FORMER, type SocialEvent } from '../core/protocol';
-import { money } from './format';
+import { gradeLetter, money } from './format';
 import { services } from './services';
 import { game } from './state.svelte';
 
@@ -41,6 +41,7 @@ const ICONS: Record<string, string> = {
   expecting: 'icon.bubble.love',
   born: 'icon.bubble.love',
   adopted: 'icon.ui.home',
+  graduated: 'icon.skill.intelligence',
 };
 
 const LOVE = new Set(['crush', 'firstKiss', 'startedDating', 'movedInWith', 'expecting', 'born', 'adopted']);
@@ -92,6 +93,10 @@ export function storyText(e: SocialEvent): string {
     .replace('{accident}', services.content.accidents[e.n ?? -1]?.story ?? 'had a bad moment')
     .replace('{stage}', services.content.lifeStages[e.n ?? -1]?.story ?? 'is a year older')
     .replace('{object}', (services.content.objectList[e.n ?? -1]?.name ?? 'something').toLowerCase())
+    .replace('{grade}', (() => {
+      const l = gradeLetter(e.n ?? 0);
+      return `${l === 'A' || l === 'F' ? 'an' : 'a'} ${l}`;
+    })())
     .replace('{n}', String(e.n ?? ''))
     .replace('{money}', money(e.n ?? 0))
     .replace('{skill}', services.content.skills[e.skill ?? -1]?.label ?? '');

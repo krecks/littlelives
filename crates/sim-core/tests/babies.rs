@@ -144,3 +144,16 @@ fn adopting_a_child() {
     let err = w.apply(Command::Adopt { household: 0, child: false }).unwrap_err();
     assert!(err.to_string().contains("money") || err.to_string().contains("room"), "{err}");
 }
+
+#[test]
+fn neighbours_adopt_now_and_then() {
+    let content = FAMILY.replace(r#""adoption":{"cost":500}"#, r#""adoption":{"cost":500,"neighbours":1.0},"newcomers":{"hour":12,"days":1000}"#);
+    let town = COUPLE.replace(r#""player":true"#, r#""player":false"#)
+        .replace(r#""households":[{"name":"Moss","plot":0,"player":false}]"#, r#""households":[{"name":"Moss","plot":0,"player":false},{"name":"Player","player":true}]"#)
+        .replace(r#""economy""#, r#""economy""#);
+    let mut w = World::from_json(&content, &town, 1).unwrap();
+    w.households[0].funds = 5000;
+    minutes(&mut w, 24 * 60);
+    assert!(w.events.iter().any(|e| e.kind == sim_core::social::EventKind::Adopted), "the neighbours adopted");
+    assert_eq!(w.households[0].funds, 4500);
+}

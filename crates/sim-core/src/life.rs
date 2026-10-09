@@ -293,7 +293,11 @@ fn schedule_school(w: &mut World, i: usize, day: u32) {
     }
     let Some((leave, start, _)) = school_today(content, sim, tick) else { return };
     if tick > start + ticks(content.career_rules.late_minutes) {
+        // A day missed.
         sim.school_day = day;
+        if let Some(school) = &content.life.school {
+            sim.grade = (sim.grade - school.missed).clamp(0.0, 100.0);
+        }
         return;
     }
     if tick < leave {
@@ -441,6 +445,11 @@ fn at_work(w: &mut World, i: usize) {
         }
         if sim.away_until.is_some_and(|until| tick < until) {
             return;
+        }
+        // A day at school: the better they felt, the better it went.
+        if let Some(school) = &content.life.school {
+            let mood = sim.mood(content);
+            sim.grade = (sim.grade + school.attend + (mood - 0.5) * 2.0 * school.mood).clamp(0.0, 100.0);
         }
         sim.away_until = None;
         sim.queue.push_back(Task { kind: TaskKind::GoHome, directed: false });

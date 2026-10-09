@@ -59,6 +59,7 @@ pub(crate) fn update(w: &mut World) {
         && w.autonomy
     {
         newcomers(w, &rules);
+        neighbours_adopt(w);
     }
     let Some(days_per_year) = w.lifespan.days_per_year(w.content.life.days_per_year) else { return };
     let day = clock::day(w.tick);
@@ -80,6 +81,22 @@ pub(crate) fn update(w: &mut World) {
         if let Some(f) = rules.stages[stage].feeling {
             social::add_feeling(&mut sim.feelings, f, &w.content.feelings, w.tick);
         }
+        // Into school, or out of it with a final grade.
+        if let Some(school) = &rules.school {
+            let (was, now) = (rules.stages[before].school, rules.stages[stage].school);
+            if !was && now {
+                sim.grade = school.start_grade;
+            }
+            if was && !now {
+                let grade = sim.grade;
+                let f = if grade >= school.good { school.good_feeling } else if grade < school.poor { school.poor_feeling } else { None };
+                if let Some(f) = f {
+                    social::add_feeling(&mut sim.feelings, f, &w.content.feelings, w.tick);
+                }
+                w.events.push_detail(w.tick, EventKind::Graduated, i, Some(grade.round() as i64), None);
+            }
+        }
+        let sim = &mut w.sims[i];
         // Out of the crib.
         if rules.stages[before].baby && !rules.stages[stage].baby {
             sim.clear_activity();
@@ -605,4 +622,27 @@ fn add_child(w: &mut World, h: usize, age: f32, parents: &[usize], born: bool) -
     cribs_for_babies(w, h);
     w.structure_version += 1;
     Some(id)
+}
+
+/// Now and then a neighbour household of grown-ups with no children, room and the money for it
+/// adopts (content `adoption.neighbours`, a daily chance).
+fn neighbours_adopt(w: &mut World) {
+    let (Some(cost), chance) = (w.content.life.adoption_cost, w.content.life.adoption_chance) else { return };
+    let max_age = w.content.life.pregnancy.map_or(55.0, |p| p.max_age + 5.0);
+    for h in 0..w.households.len() {
+        let hh = &w.households[h];
+        if hh.player || !hh.free_will || hh.plot.is_none() || hh.funds < cost * 3 {
+            continue;
+        }
+        let people = members(w, h);
+        let grown = people.iter().filter(|&&i| w.sims[i].adult(&w.content)).count();
+        let young_enough = people.iter().any(|&i| w.sims[i].age <= max_age);
+        if grown == 0 || grown < people.len() || !young_enough || !room_for_one(w, h) {
+            continue;
+        }
+        if w.rng.next_f32() < chance {
+            let child = w.rng.next_f32() < 0.5;
+            let _ = adopt(w, h as u32, child);
+        }
+    }
 }

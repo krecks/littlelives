@@ -762,6 +762,8 @@ pub enum EventKind {
     Born,
     /// `b` adopted `a`.
     Adopted,
+    /// `a` finished school with a final grade of `n` (0..100).
+    Graduated,
 }
 
 impl EventKind {
@@ -771,7 +773,7 @@ impl EventKind {
         match self {
             FirstKiss | StartedDating | BrokeUp | BecameBestFriends | Promoted | JobFound
             | Fired | GoalReached | MovedIn | GrewOlder | Retired | Died | MovedInWith | MovedOut
-            | MovedAway | Expecting | Born | Adopted => 2,
+            | MovedAway | Expecting | Born | Adopted | Graduated => 2,
             BecameFriends | BecameGoodFriends | BecameEnemies | Crush | ProposalRejected
             | Fight | Jealous | QuitJob | RentDebt | Broke | Accident => 1,
             Met | MissedWork | SkillUp | PaidRent | Upgraded | Visited | GoalSuggested | Repaired => 0,

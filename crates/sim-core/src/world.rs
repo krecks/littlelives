@@ -333,6 +333,8 @@ pub struct Sim {
     pub gone: Option<Gone>,
     /// The last day they went to (or skipped) school.
     pub school_day: u32,
+    /// How they do at school, 0..100 (pupils; see `SchoolRules::letter`).
+    pub grade: f32,
     /// Retired from work: doesn't look for a job; the household gets `pension` a week.
     pub retired: bool,
     pub pension: i64,
@@ -1065,6 +1067,7 @@ impl World {
             retired: false,
             pension: 0,
             school_day: 0,
+            grade: content.life.school.as_ref().map_or(0.0, |s| s.start_grade),
         };
         if let Some(slot) = slot {
             self.retire_slot(slot);
@@ -2169,6 +2172,12 @@ fn pick_autonomous(
             if inter.baby {
                 continue;
             }
+            if inter.homework > 0.0 {
+                if !content.life.stage_at(sim.age).is_some_and(|s| s.school) {
+                    continue;
+                }
+                care += inter.homework / 10.0 * (100.0 - sim.grade) / 100.0 * 1.5 / (1.0 + distance * 0.08);
+            }
             if inter.cares() {
                 let baby = obj.users().find(|&u| ctx.briefs.get(u as usize).is_some_and(|b| b.baby));
                 let Some(baby) = baby.filter(|_| content.life.adult(sim.age) && allowed == Access::Full) else { continue };
@@ -2616,6 +2625,11 @@ fn use_object(
         let drained = urgent && (inter.total_gain.iter().any(|&g| g < 0.0) || planned);
         elapsed >= inter.minutes || (any_gain && satisfied && !planned) || drained
     };
+    // Homework done: better at school (by how much of it they did).
+    if done && inter.homework > 0.0 && content.life.stage_at(sim.age).is_some_and(|s| s.school) {
+        let share = (elapsed / inter.minutes.max(1.0)).min(1.0);
+        sim.grade = (sim.grade + inter.homework * share).clamp(0.0, 100.0);
+    }
     // A finished cook (or wash, or snack) leaves a mess around the object.
     if done && inter.dirt > 0.0 {
         let (fx, fz) = obj.front_tile(content);

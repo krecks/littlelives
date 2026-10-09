@@ -2,7 +2,7 @@
   import CareerTab from './CareerTab.svelte';
   import SkillsTab from './SkillsTab.svelte';
   import Icon from './Icon.svelte';
-  import { moodLabel, needColor } from './format';
+  import { gradeLetter, moodLabel, needColor } from './format';
   import SimPreview from './kit/SimPreview.svelte';
   import { chemistryLabel, friendLabel, kinLabel, romanceLabel } from './relationship';
   import { services } from './services';
@@ -48,7 +48,9 @@
         <div class="ident">
           <div class="name">{sim.name}{#if !mine && homeName}<span class="family"> · the {homeName}s</span>{/if}</div>
           {#if sim.age !== undefined && sim.stage}
-            <div class="age">{services.content.lifeStages.find((s) => s.id === sim.stage)?.label ?? ''} · {sim.age}</div>
+            <div class="age">
+              {services.content.lifeStages.find((s) => s.id === sim.stage)?.label ?? ''} · {sim.age}{#if sim.grade !== undefined} · school: <b title="{Math.round(sim.grade)} of 100">{gradeLetter(sim.grade)}</b>{/if}
+            </div>
           {/if}
           <div class="mood">
             <span class="dot" style="background:{needColor(sim.mood)}"></span>

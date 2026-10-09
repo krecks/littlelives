@@ -139,3 +139,48 @@ fn teens_grow_up_into_young_adults() {
     }
     assert!(w.sims[1].away_until.is_none(), "no more school");
 }
+
+#[test]
+fn school_grades_homework_and_finishing_school() {
+    use sim_core::social::EventKind;
+    let content = SCHOOL
+        .replace(r#""objects":[],"#, r#""objects":[{"id":"desk","name":"Desk","price":100,"interactions":[
+            {"id":"homework","label":"Do homework","minutes":45,"homework":10,"tags":["study"]}]}],
+            "feelings":[{"id":"proud","label":"Proud","mood":0.1,"hours":24}],"#)
+        .replace(r#""school":{"start":8,"hours":7,"days":[0,1,2,3,4],"skills":{"intelligence":1}}"#,
+            r#""school":{"start":8,"hours":7,"days":[0,1,2,3,4],"skills":{"intelligence":1},
+                "grades":{"attend":2,"mood":0,"missed":6,"start":60,"good":60,"goodFeeling":"proud"}}"#);
+    let town = r#"{"width":10,"depth":10,
+        "plots":[{"name":"Home","x":0,"z":0,"w":10,"d":10,"entry":[5.5,9.5]}],
+        "households":[{"name":"Player","plot":0,"player":true}],
+        "objects":[{"def":"desk","x":2,"z":2}], "exits":[[5.5,9.9]],
+        "sims":[{"name":"Ada","x":4.5,"z":3.5,"age":35},{"name":"Kit","x":5.5,"z":3.5,"age":12}]}"#;
+    let mut w = World::from_json(&content, town, 1).unwrap();
+    w.apply(Command::SetAutonomy { enabled: false, household: None }).unwrap();
+    assert_eq!(w.sims[1].grade, 60.0);
+    // A day at school.
+    for _ in 0..24 * 60 * 20 {
+        w.tick_once();
+    }
+    assert!((w.sims[1].grade - 62.0).abs() < 0.01, "a school day: {}", w.sims[1].grade);
+    // After the second school day, homework helps.
+    for _ in 0..9 * 60 * 20 {
+        w.tick_once();
+    }
+    assert!((w.sims[1].grade - 64.0).abs() < 0.01, "two school days: {}", w.sims[1].grade);
+    w.apply(Command::Use { sim: 1, object: 0, interaction: 0 }).unwrap();
+    for _ in 0..60 * 20 {
+        w.tick_once();
+    }
+    assert!(w.sims[1].grade > 73.0, "homework: {}", w.sims[1].grade);
+    // Finishing school with a good grade.
+    w.sims[1].age = 17.6;
+    w.apply(Command::SetSpeed { speed: 1 }).unwrap();
+    for _ in 0..24 * 60 * 20 {
+        w.tick_once();
+    }
+    let done = w.events.iter().find(|e| e.kind == EventKind::Graduated).expect("finished school");
+    assert_eq!(done.a, 1);
+    assert!(done.n.unwrap() >= 70);
+    assert!(w.sims[1].feelings.iter().any(|f| w.content.feelings[f.def].id == "proud"));
+}
