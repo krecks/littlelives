@@ -91,6 +91,17 @@ export interface WallCoveringDef {
   price?: number;
 }
 
+/** A fence style (Build mode's Fence and Gate tools). Price per metre; a gate adds `build.gate`. */
+export interface FenceStyleDef {
+  id: string;
+  label: string;
+  kind: 'picket' | 'rails' | 'slats' | 'iron' | 'stone';
+  color: string;
+  /** Height in metres. */
+  height?: number;
+  price?: number;
+}
+
 /** A floor covering (Build mode's Floor tool): a finish (texture) tinted with a colour. Price per tile. */
 export interface FloorCoveringDef {
   id: string;
@@ -238,6 +249,7 @@ interface ContentFile {
   floorCoverings?: FloorCoveringDef[];
   doorStyles?: DoorStyleDef[];
   windowStyles?: WindowStyleDef[];
+  fenceStyles?: FenceStyleDef[];
   economy?: Partial<Economy>;
   objectRules?: { freeRotation?: string[] };
   /** Animation tags interactions can use as `anim` (the snapshot layout's `actions`). */
@@ -267,6 +279,7 @@ export class Content {
   /** A floor tile's covering is an index into `floorCoverings` + 1 (0: automatic, by room). */
   readonly floorCoverings: readonly FloorCoveringDef[];
   readonly doorStyles: readonly DoorStyleDef[];
+  readonly fenceStyles: readonly FenceStyleDef[];
   readonly windowStyles: readonly WindowStyleDef[];
   readonly economy: Economy;
   /** Animation tags, in the order the snapshot's `sim.action` indexes them. */
@@ -303,6 +316,7 @@ export class Content {
     this.floorCoverings = file.floorCoverings ?? [];
     this.doorStyles = file.doorStyles ?? [];
     this.windowStyles = file.windowStyles ?? [];
+    this.fenceStyles = file.fenceStyles ?? [];
     this.economy = { startingFunds: 0, currency: '$', ...file.economy };
     this.animations = [...new Set(file.animations ?? [])];
     this.shop = file.objects.filter((o) => o.price !== undefined);

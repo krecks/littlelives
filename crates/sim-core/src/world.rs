@@ -711,9 +711,10 @@ impl World {
         if !self.lot.in_bounds(fx, fz) {
             return Err(Error::new(format!("'{name}' at {x},{z} faces off the lot")));
         }
-        // No wall may run through the footprint or between the object and where it's used from.
+        // No wall or fence may run through the footprint or between the object and where it's
+        // used from.
         if obj.wall_edges(&self.content).any(|(a, b)| {
-            self.lot.edge_between(a.0, a.1, b.0, b.1).is_wall()
+            self.lot.edge_between(a.0, a.1, b.0, b.1) != crate::lot::Edge::Open
         }) {
             return Err(Error::new(format!("'{name}' at {x},{z} is blocked by a wall")));
         }

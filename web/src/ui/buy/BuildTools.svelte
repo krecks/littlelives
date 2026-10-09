@@ -12,6 +12,8 @@
   const tools: { id: BuildTool; label: string; icon: string; unit: string; steps: string[] }[] = [
     { id: 'wall', label: 'Wall', icon: 'icon.ui.wall', unit: '/m', steps: ['Press on a corner', 'Drag along the grid — at 45° for a diagonal', 'Let go to build'] },
     { id: 'room', label: 'Room', icon: 'icon.ui.room', unit: '/m', steps: ['Press on a corner', 'Drag out a rectangle', 'Let go, then add a door'] },
+    { id: 'fence', label: 'Fence', icon: 'icon.ui.fence', unit: '/m', steps: ['Press on a corner', 'Drag along the grid', 'Let go, then add a gate'] },
+    { id: 'gate', label: 'Gate', icon: 'icon.ui.gate', unit: '', steps: ['Point at a fence (or open ground)', 'Click to fit a gate'] },
     { id: 'paint', label: 'Paint', icon: 'icon.skill.creativity', unit: '', steps: ['Pick a covering', 'Click the side of a wall — or drag along walls', 'Shift-click: a whole room'] },
     { id: 'floor', label: 'Floor', icon: 'icon.ui.floor', unit: '', steps: ['Pick a floor', 'Click a tile — or drag over several', 'Shift-click: a whole room'] },
     { id: 'door', label: 'Door', icon: 'icon.ui.door', unit: '', steps: ['Point at a wall, straight or diagonal', 'Click to fit a door'] },
@@ -34,6 +36,10 @@
             ? look.floor
               ? (content.floorCoverings[look.floor - 1]?.price ?? 0)
               : 0
+            : id === 'fence'
+              ? (content.fenceStyles[look.fence]?.price ?? prices.fence ?? 0)
+              : id === 'gate'
+                ? (content.fenceStyles[look.fence]?.price ?? prices.fence ?? 0) + (prices.gate ?? 0)
             : id === 'door'
               ? (content.doorStyles[look.door]?.price ?? prices.door)
               : id === 'window'
@@ -95,7 +101,9 @@
       {:else if game.buildTool === 'floor'}
         Floors go inside rooms; every tile can have its own.
       {:else if game.buildTool === 'remove'}
-        Doors and windows are walled up again; residents and furniture can't be shut in.
+        Doors, windows and gates are closed up again; residents and furniture can't be shut in.
+      {:else if game.buildTool === 'fence' || game.buildTool === 'gate'}
+        Fences keep a garden outdoors (no floor, no roof); leave a gate so nobody is shut in.
       {:else if game.buildTool === 'door' || game.buildTool === 'window'}
         Doors and windows go into full-height walls; pick another style to replace one.
       {:else}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { DoorStyleDef, FloorCoveringDef, WallCoveringDef, WindowStyleDef } from '../../content/content';
+  import type { DoorStyleDef, FenceStyleDef, FloorCoveringDef, WallCoveringDef, WindowStyleDef } from '../../content/content';
   import { money } from '../format';
   import { services } from '../services';
   import { play } from '../sfx';
@@ -17,6 +17,7 @@
   const floors = content.floorCoverings;
   const doors = content.doorStyles;
   const windows = content.windowStyles;
+  const fences = content.fenceStyles;
   const prices = $derived(game.catalog?.build);
 
   /** Rough colour of each finish's texture, so a swatch shows what the tint does to it. */
@@ -57,6 +58,7 @@
 
   const doorPrice = (d: DoorStyleDef) => d.price ?? prices?.door ?? 0;
   const windowPrice = (w: WindowStyleDef) => w.price ?? prices?.window ?? 0;
+  const fencePrice = (f: FenceStyleDef) => f.price ?? prices?.fence ?? 0;
 
   /** Window opening in the drawing: 34 px tall for a 2.8 m wall. */
   const wy = (m: number) => 34 - (m / 2.8) * 34;
@@ -177,8 +179,37 @@
       </button>
     {/each}
   </div>
+{:else if (tool === 'fence' || tool === 'gate') && fences.length}
+  <div class="row cards" role="radiogroup" aria-label="Fence style">
+    {#each fences as f, i (f.id)}
+      {@const top = 34 - (f.height ?? 1) * 22}
+      <button role="radio" aria-checked={look.fence === i} class="card" class:active={look.fence === i} title={f.label} onclick={() => set({ fence: i })}>
+        <svg viewBox="0 0 30 34" aria-hidden="true">
+          <path d="M0 33.5h30" stroke="#8BB86A" stroke-width="1.5" />
+          {#if f.kind === 'picket'}
+            {#each [3, 9, 15, 21, 27] as x (x)}<path d="M{x - 2} 33V{top + 2}l2-2 2 2V33z" fill={f.color} stroke="#000" stroke-opacity=".15" stroke-width=".5" />{/each}
+            <path d="M0 {top + 6}h30M0 {top + 15}h30" stroke={f.color} stroke-width="1.6" />
+          {:else if f.kind === 'rails'}
+            <path d="M3 33V{top}M27 33V{top}" stroke={f.color} stroke-width="3" />
+            <path d="M0 {top + 3}h30M0 {top + 10}h30M0 {top + 17}h30" stroke={f.color} stroke-width="2" />
+          {:else if f.kind === 'slats'}
+            {#each [top + 1, top + 5, top + 9, top + 13, top + 17, top + 21, top + 25] as y (y)}{#if y < 32}<rect x="1" {y} width="28" height="2.6" fill={f.color} />{/if}{/each}
+          {:else if f.kind === 'iron'}
+            <path d="M0 {top + 4}h30M0 32h30" stroke={f.color} stroke-width="1.4" />
+            {#each [3, 7, 11, 15, 19, 23, 27] as x (x)}<path d="M{x} 33V{top + 1}" stroke={f.color} stroke-width="1" /><circle cx={x} cy={top} r="1" fill={f.color} />{/each}
+          {:else}
+            <rect x="0" y={top} width="30" height={34 - top} rx="1" fill={f.color} />
+            <path d="M0 {top + 5}h30M10 {top}v5M22 {top + 5}v5M5 {top + 5}v{29 - top}" stroke="#000" stroke-opacity=".18" stroke-width=".8" />
+          {/if}
+          {#if tool === 'gate'}<rect x="8" y={top - 1} width="14" height={33 - top} fill="none" stroke="#C9A24A" stroke-width="1.6" rx="1" />{/if}
+        </svg>
+        <span class="name">{f.label}</span>
+        <small class="tabular">{money(fencePrice(f) + (tool === 'gate' ? (prices?.gate ?? 0) : 0))}{tool === 'fence' ? '/m' : ''}</small>
+      </button>
+    {/each}
+  </div>
 {:else if tool === 'remove'}
-  <p class="row muted">Tearing down walls, doors and windows is free.</p>
+  <p class="row muted">Tearing down walls, doors, windows and fences is free.</p>
 {/if}
 
 <style>

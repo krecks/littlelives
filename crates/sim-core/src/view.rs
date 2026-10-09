@@ -601,6 +601,8 @@ struct StructureView<'a> {
     openings: Vec<OpeningView>,
     /// Diagonal walls (with or without a door or window), one per tile at most.
     diagonals: Vec<DiagonalView>,
+    /// Fences and gates (not walls: they make no rooms).
+    fences: Vec<FenceView>,
     /// Floor coverings: `[x, z, covering]` per tile that has one (a floor covering + 1).
     floors: Vec<[u16; 3]>,
     meta: &'a serde_json::Value,
@@ -696,19 +698,37 @@ struct OpeningView {
     style: u8,
 }
 
-/// Wall edges and openings (doors, windows) of the whole lot, in grid order.
-fn wall_edges(lot: &crate::lot::Lot) -> (Vec<EdgeView>, Vec<OpeningView>) {
+/// A fence or gate on edge `axis` `(x, z)` (as walls), in a fence style.
+#[derive(Serialize)]
+struct FenceView {
+    axis: &'static str,
+    x: usize,
+    z: usize,
+    kind: &'static str,
+    #[serde(skip_serializing_if = "is_zero")]
+    style: u8,
+}
+
+/// Wall edges, openings (doors, windows) and fences of the whole lot, in grid order.
+fn wall_edges(lot: &crate::lot::Lot) -> (Vec<EdgeView>, Vec<OpeningView>, Vec<FenceView>) {
     let mut walls = Vec::new();
     let mut openings = Vec::new();
+    let mut fences = Vec::new();
     let mut add = |axis: &'static str, x: usize, z: usize, e: Edge| {
-        if !e.is_wall() {
-            return;
-        }
         let at = if axis == "h" {
             crate::lot::EdgeRef::H(x as u16, z as u16)
         } else {
             crate::lot::EdgeRef::V(x as u16, z as u16)
         };
+        if e.is_fence() {
+            let kind = if e == Edge::Gate { "gate" } else { "fence" };
+            let style = lot.look(at).style;
+            fences.push(FenceView { axis, x, z, kind, style });
+            return;
+        }
+        if !e.is_wall() {
+            return;
+        }
         let look = LookView::of(lot, at);
         walls.push(EdgeView {
             axis,
@@ -740,7 +760,7 @@ fn wall_edges(lot: &crate::lot::Lot) -> (Vec<EdgeView>, Vec<OpeningView>) {
             add("v", x, z, lot.v_edge(x, z));
         }
     }
-    (walls, openings)
+    (walls, openings, fences)
 }
 
 #[derive(Serialize)]
@@ -810,14 +830,14 @@ fn house_bounds(world: &World, x0: i32, z0: i32, x1: i32, z1: i32) -> Option<[i3
     };
     for z in z0..=z1.min(lot.depth as i32) {
         for x in x0..x1.min(lot.width as i32) {
-            if z < lot.depth as i32 + 1 && lot.h_edge(x as usize, z as usize) != Edge::Open {
+            if z < lot.depth as i32 + 1 && lot.h_edge(x as usize, z as usize).is_wall() {
                 add(x, z, x + 1, z);
             }
         }
     }
     for z in z0..z1.min(lot.depth as i32) {
         for x in x0..=x1.min(lot.width as i32) {
-            if lot.v_edge(x as usize, z as usize) != Edge::Open {
+            if lot.v_edge(x as usize, z as usize).is_wall() {
                 add(x, z, x, z + 1);
             }
             if x < x1 && lot.diag(x, z).is_some() {
@@ -891,7 +911,7 @@ pub fn structure_json(world: &World) -> String {
             house: house_bounds(world, p.x, p.z, p.x + p.w, p.z + p.d),
         })
         .collect();
-    let (walls, openings) = wall_edges(&world.lot);
+    let (walls, openings, fences) = wall_edges(&world.lot);
     let diagonals = diagonals(&world.lot);
     serde_json::to_string(&StructureView {
         version: world.structure_version(),
@@ -906,6 +926,7 @@ pub fn structure_json(world: &World) -> String {
         rooms: world.lot.rooms(),
         walls,
         openings,
+        fences,
         diagonals,
         floors: world
             .lot
@@ -1016,6 +1037,9 @@ struct BuildView {
     remove: i64,
     /// A diagonal wall across one tile (`wall × 1.414`, rounded).
     diagonal_wall: i64,
+    /// A metre of fence and a gate, without fence styles (styles carry their own prices).
+    fence: i64,
+    gate: i64,
 }
 
 /// Every career with all its levels, expanded from the content (sent to the UI once).
@@ -1092,6 +1116,8 @@ pub fn catalog_json(content: &Content) -> String {
             window: content.build.window,
             remove: content.build.remove,
             diagonal_wall: content.build.diagonal_wall(),
+            fence: content.build.fence,
+            gate: content.build.gate,
         },
     })
     .expect("catalog serializes")

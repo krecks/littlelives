@@ -131,6 +131,10 @@ export class BuildBuyInput {
       this.edges.set(`${o.axis}:${o.x}:${o.z}`, o.kind);
       if (o.style) look(`${o.axis}:${o.x}:${o.z}`, { style: o.style });
     }
+    for (const f of world.fences ?? []) {
+      this.edges.set(`${f.axis}:${f.x}:${f.z}`, f.kind);
+      if (f.style) look(`${f.axis}:${f.x}:${f.z}`, { style: f.style });
+    }
     for (const d of world.diagonals ?? []) {
       this.edges.set(`${d.axis}:${d.x}:${d.z}`, d.kind);
       this.diagonals.set(`${d.x}:${d.z}`, d.axis);
@@ -240,6 +244,10 @@ export class BuildBuyInput {
         if (apply) game.buildLook = { ...look, [state]: l.style ?? 0 };
         return { kind: 'tool', tool: state };
       }
+      if (state === 'fence' || state === 'gate') {
+        if (apply) game.buildLook = { ...look, fence: l.style ?? 0 };
+        return { kind: 'tool', tool: state };
+      }
       const face = this.faceAt(ground);
       if (apply) game.buildLook = { ...look, cover: l.faces?.[face?.side ?? 0] ?? 0, form: l.form ?? 0 };
       return { kind: 'tool', tool: game.buildTool === 'wall' || game.buildTool === 'room' ? game.buildTool : 'paint' };
@@ -266,6 +274,7 @@ export class BuildBuyInput {
     const l = this.lookOf(e);
     if (p.tool === 'door') return this.content.doorStyles[l.style ?? 0]?.label ?? 'This door';
     if (p.tool === 'window') return this.content.windowStyles[l.style ?? 0]?.label ?? 'This window';
+    if (p.tool === 'fence' || p.tool === 'gate') return `${this.content.fenceStyles[l.style ?? 0]?.label ?? 'This'} ${p.tool}`;
     const c = l.faces?.[this.faceAt(ground!)?.side ?? 0] ?? 0;
     const label = c ? (this.content.wallCoverings[c - 1]?.label ?? 'This wall') : 'House default wall';
     return l.form ? `${label} · half wall` : label;
@@ -406,7 +415,8 @@ export class BuildBuyInput {
     const vz = ground.z - a.z;
     const ax = Math.abs(vx);
     const az = Math.abs(vz);
-    if (Math.min(ax, az) > Math.max(ax, az) * DIAGONAL_SLOPE) {
+    // Fences run along the grid only.
+    if (kind !== 'fence' && Math.min(ax, az) > Math.max(ax, az) * DIAGONAL_SLOPE) {
       const n = Math.round((ax + az) / 2);
       const sx = Math.sign(vx);
       const sz = Math.sign(vz);
@@ -425,14 +435,14 @@ export class BuildBuyInput {
     return edges;
   }
 
-  /** Doors and windows go into an existing wall with a single click. */
-  private opening(): 'door' | 'window' | null {
-    return game.buildTool === 'door' || game.buildTool === 'window' ? game.buildTool : null;
+  /** Doors and windows go into an existing wall with a single click; gates onto any edge without a wall. */
+  private opening(): 'door' | 'window' | 'gate' | null {
+    return game.buildTool === 'door' || game.buildTool === 'window' || game.buildTool === 'gate' ? game.buildTool : null;
   }
 
-  /** Walls, Room and Remove: drawn by dragging (or click-then-click). */
+  /** Walls, Room, Fence and Remove: drawn by dragging (or click-then-click). */
   private drawing(): boolean {
-    return this.building() && (game.buildTool === 'wall' || game.buildTool === 'room' || game.buildTool === 'remove');
+    return this.building() && (game.buildTool === 'wall' || game.buildTool === 'room' || game.buildTool === 'fence' || game.buildTool === 'remove');
   }
 
   /** The walls around the rectangle between corner `a` and the pointer (a line while it's flat). */
@@ -450,18 +460,35 @@ export class BuildBuyInput {
   private edits(ground: Point): EdgeEdit[] {
     const look = game.buildLook;
     const opening = this.opening();
-    if (opening) return [{ ...this.nearestEdge(ground), kind: opening, style: opening === 'door' ? look.door : look.window }];
-    const kind = game.buildTool === 'remove' ? 'open' : 'wall';
+    if (opening) {
+      const edge = this.nearestEdge(ground);
+      // Gates stand on grid edges (a diagonal under the pointer gives way to the nearest one).
+      const e = opening === 'gate' && (edge.axis === 'dp' || edge.axis === 'dn') ? this.gridEdge(ground) : edge;
+      return [{ ...e, kind: opening, style: opening === 'door' ? look.door : opening === 'window' ? look.window : look.fence }];
+    }
+    const kind = game.buildTool === 'remove' ? 'open' : game.buildTool === 'fence' ? 'fence' : 'wall';
     let edges: EdgeEdit[];
     if (!game.buildStart) {
       // Before the first click: highlight the edge under the cursor.
-      edges = [{ ...this.nearestEdge(ground), kind }];
+      edges = [{ ...(kind === 'fence' ? this.gridEdge(ground) : this.nearestEdge(ground)), kind }];
     } else edges = game.buildTool === 'room' ? this.room(game.buildStart, ground) : this.run(game.buildStart, ground, kind);
-    // Removing only doors and windows walls them up again; a run with walls in it tears it all down.
-    if (kind === 'open' && edges.length && edges.every((e) => this.edgeState(e) === 'door' || this.edgeState(e) === 'window')) {
-      return edges.map((e) => ({ ...e, kind: 'wall' }));
+    // Removing only doors, windows and gates closes them up again (a wall, or the fence with the
+    // gate's style); a run with walls or fences in it tears it all down.
+    const opened = (e: EdgeEdit) => ['door', 'window', 'gate'].includes(this.edgeState(e));
+    if (kind === 'open' && edges.length && edges.every(opened)) {
+      return edges.map((e) => (this.edgeState(e) === 'gate' ? { ...e, kind: 'fence' } : { ...e, kind: 'wall' }));
     }
+    if (kind === 'fence') return edges.map((e) => ({ ...e, style: look.fence }));
     return kind === 'wall' ? edges.map((e) => ({ ...e, cover: look.cover, form: look.form })) : edges;
+  }
+
+  /** The straight grid edge nearest a ground point (fences and gates ignore diagonals). */
+  private gridEdge(ground: Point): { axis: Axis; x: number; z: number } {
+    const fx = ground.x - Math.floor(ground.x);
+    const fz = ground.z - Math.floor(ground.z);
+    return Math.min(fz, 1 - fz) <= Math.min(fx, 1 - fx)
+      ? { axis: 'h', x: Math.floor(ground.x), z: Math.round(ground.z) }
+      : { axis: 'v', x: Math.round(ground.x), z: Math.floor(ground.z) };
   }
 
   private edgesOnHome(edges: EdgeEdit[]): boolean {
@@ -493,6 +520,13 @@ export class BuildBuyInput {
     return list[style ?? 0]?.price ?? (kind === 'door' ? (prices?.door ?? 0) : (prices?.window ?? prices?.door ?? 0));
   }
 
+  /** A metre of fence in a style; a gate adds the gate price. */
+  private fencePrice(style: number | undefined, gate = false): number {
+    const prices = game.catalog?.build;
+    const metre = this.content.fenceStyles[style ?? 0]?.price ?? prices?.fence ?? 0;
+    return metre + (gate ? (prices?.gate ?? 0) : 0);
+  }
+
   private coverPrice(cover: number | undefined): number {
     return cover ? (this.content.wallCoverings[cover - 1]?.price ?? 0) : 0;
   }
@@ -511,9 +545,11 @@ export class BuildBuyInput {
       if (state === e.kind) {
         // Rebuilt in another form, or replaced by another style.
         if (e.kind === 'wall') return sum + ((e.form ?? 0) !== (old.form ?? 0) && e.form !== undefined ? wall : 0);
+        if (e.kind === 'fence' || e.kind === 'gate') return sum + ((e.style ?? 0) !== (old.style ?? 0) ? this.fencePrice(e.style, e.kind === 'gate') : 0);
         return sum + ((e.style ?? old.style ?? 0) !== (old.style ?? 0) ? this.stylePrice(e.kind, e.style) : 0);
       }
       if (e.kind === 'wall') return sum + wall + (state === 'open' ? 2 * this.coverPrice(e.cover) : 0);
+      if (e.kind === 'fence' || e.kind === 'gate') return sum + this.fencePrice(e.style, e.kind === 'gate');
       return sum + this.stylePrice(e.kind, e.style);
     }, 0);
   }
@@ -659,12 +695,17 @@ export class BuildBuyInput {
     const edges = this.edits(ground);
     game.buildCost = game.creative ? 0 : this.cost(edges);
     // Doors and windows need a full-height wall to go into (the simulation re-checks everything).
-    const inWall = !this.opening() || edges.every((e) => this.edgeState(e) !== 'open' && !(this.edgeState(e) === 'wall' && this.lookOf(e).form));
+    // Fences and gates never go into walls; doors and windows only into full-height ones.
+    const walled = (e: EdgeEdit) => ['wall', 'door', 'window'].includes(this.edgeState(e));
+    const fenced = game.buildTool === 'fence' || game.buildTool === 'gate';
+    const inWall = fenced
+      ? edges.every((e) => !walled(e))
+      : !this.opening() || edges.every((e) => this.edgeState(e) !== 'open' && !(this.edgeState(e) === 'wall' && this.lookOf(e).form));
     const valid = inWall && this.edgesOnHome(edges) && this.diagonalsFit(edges) && game.affords(game.buildCost);
     this.preview.setEdgePreview?.(edges, valid);
     game.buildEdges = edges.length;
     game.buildValid = valid;
-    game.buildWallUp = game.buildTool === 'remove' && edges.length > 0 && edges.every((e) => e.kind === 'wall');
+    game.buildWallUp = game.buildTool === 'remove' && edges.length > 0 && edges.every((e) => e.kind === 'wall' || e.kind === 'fence');
     const start = game.buildStart;
     const end = this.corner(ground);
     game.buildRoom = game.buildTool === 'room' && start && start.x !== end.x && start.z !== end.z ? [Math.abs(end.x - start.x), Math.abs(end.z - start.z)] : null;
@@ -865,6 +906,7 @@ export function editFeedback(prev: WorldStructure, next: WorldStructure): { effe
     for (const e of w.walls ?? []) map.set(`${e.axis}:${e.x}:${e.z}:wall`, e);
     for (const o of w.openings ?? []) map.set(`${o.axis}:${o.x}:${o.z}:${o.kind}`, o);
     for (const d of w.diagonals ?? []) map.set(`${d.axis}:${d.x}:${d.z}:${d.kind}`, d);
+    for (const f of w.fences ?? []) map.set(`${f.axis}:${f.x}:${f.z}:${f.kind}`, f);
     return map;
   };
   /** Looks by edge: coverings (painting), and form and style (rebuilt or replaced in place). */
@@ -876,6 +918,7 @@ export function editFeedback(prev: WorldStructure, next: WorldStructure): { effe
       shape.set(`${e.axis}:${e.x}:${e.z}`, `${e.form ?? 0}:${'style' in e ? (e.style ?? 0) : ''}`);
     }
     for (const o of w.openings ?? []) shape.set(`${o.axis}:${o.x}:${o.z}`, `0:${o.style ?? 0}`);
+    for (const f of w.fences ?? []) shape.set(`${f.axis}:${f.x}:${f.z}`, `${f.kind}:${f.style ?? 0}`);
     return { faces, shape };
   };
   const was = edges(prev);

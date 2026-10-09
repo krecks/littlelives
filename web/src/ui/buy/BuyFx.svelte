@@ -56,6 +56,10 @@
       const sub = `${label} · ${n} ${n === 1 ? 'tile' : 'tiles'}`;
       return short ? { text: `${money(cost - game.funds)} short`, sub, bad: true } : { text: cost ? money(cost) : 'Free', sub, bad: false };
     }
+    if (tool === 'gate') {
+      if (!game.buildValid) return { text: 'Gate', sub: short ? `${money(cost - game.funds)} short` : 'Not into a wall', bad: true };
+      return cost > 0 ? { text: money(cost), sub: 'Gate', bad: false } : null;
+    }
     if (tool === 'door' || tool === 'window') {
       const label = tool === 'door' ? 'Door' : 'Window';
       if (!game.buildValid) return { text: label, sub: short ? `${money(cost - game.funds)} short` : 'Needs a full-height wall', bad: true };
@@ -64,7 +68,7 @@
     const n = game.buildEdges;
     const room = game.buildRoom;
     const wallUp = tool === 'remove' && game.buildWallUp;
-    const what = wallUp ? `Wall up ${n === 1 ? 'the opening' : `${n} openings`}` : tool === 'remove' ? `Tear down ${n} m` : room ? `${room[0]} × ${room[1]} room · ${n} m` : `${n} m of wall`;
+    const what = wallUp ? `Close up ${n === 1 ? 'the opening' : `${n} openings`}` : tool === 'remove' ? `Tear down ${n} m` : room ? `${room[0]} × ${room[1]} room · ${n} m` : `${n} m of ${tool === 'fence' ? 'fence' : 'wall'}`;
     if (!game.buildValid) return { text: what, sub: short ? `${money(cost - game.funds)} short` : "Can't build here", bad: true };
     if (!game.buildStart) {
       if (wallUp) return { text: cost > 0 ? money(cost) : 'Free', sub: 'Click to wall it up', bad: false };

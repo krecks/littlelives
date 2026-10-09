@@ -513,6 +513,12 @@ pub struct BuildRules {
     /// Floor coverings (`floorCoverings`): wood, tile, carpet... A tile's covering is an index
     /// into this list + 1; 0 is the automatic look (by what the room is used for).
     pub floors: Vec<BuildStyle>,
+    /// A metre of fence, and a gate, when there are no fence styles.
+    pub fence: i64,
+    pub gate: i64,
+    /// Fence styles (`fenceStyles`): picket, ranch rails, slats... A fence's (or gate's) style is
+    /// an index into this list; its `price` is per metre, a gate costs `gate` on top of it.
+    pub fences: Vec<BuildStyle>,
 }
 
 /// A look for walls, doors or windows. The simulation only needs its id (saves) and price; the
@@ -527,6 +533,16 @@ impl BuildRules {
     /// A diagonal wall spans a tile corner to corner (√2 m): `wall × 1.414`, rounded.
     pub fn diagonal_wall(&self) -> i64 {
         (self.wall as f64 * 1.414).round() as i64
+    }
+
+    /// A metre of fence in `style`.
+    pub fn fence_price(&self, style: u8) -> i64 {
+        self.fences.get(style as usize).map_or(self.fence, |s| s.price)
+    }
+
+    /// A gate in `style`: a metre of that fence plus the gate.
+    pub fn gate_price(&self, style: u8) -> i64 {
+        self.fence_price(style) + self.gate
     }
 
     /// Price of a door in `style` (the plain door price without styles).
@@ -663,6 +679,8 @@ struct ContentFile {
     door_styles: Vec<BuildStyleRaw>,
     #[serde(default)]
     window_styles: Vec<BuildStyleRaw>,
+    #[serde(default)]
+    fence_styles: Vec<BuildStyleRaw>,
     #[serde(default)]
     floor_coverings: Vec<BuildStyleRaw>,
     #[serde(default)]
@@ -822,6 +840,9 @@ struct BuildRaw {
     door: Option<i64>,
     window: Option<i64>,
     remove: Option<i64>,
+    /// Fence per metre and gate, without fence styles.
+    fence: Option<i64>,
+    gate: Option<i64>,
 }
 
 #[derive(Deserialize)]
@@ -1628,6 +1649,9 @@ impl Content {
             door: raw.build.door.unwrap_or(150),
             window: raw.build.window.unwrap_or(120),
             remove: raw.build.remove.unwrap_or(10),
+            fence: raw.build.fence.unwrap_or(25),
+            gate: raw.build.gate.unwrap_or(100),
+            fences: build_styles(&raw.fence_styles, "fence style")?,
             coverings: build_styles(&raw.wall_coverings, "wall covering")?,
             doors: build_styles(&raw.door_styles, "door style")?,
             windows: build_styles(&raw.window_styles, "window style")?,

@@ -8191,6 +8191,14 @@
       "type": "icon",
       "url": "icons/eyedropper.svg"
     },
+    "icon.ui.fence": {
+      "type": "icon",
+      "url": "icons/fence.svg"
+    },
+    "icon.ui.gate": {
+      "type": "icon",
+      "url": "icons/gate.svg"
+    },
     "icon.ui.search": {
       "type": "icon",
       "url": "icons/magnifier.svg"

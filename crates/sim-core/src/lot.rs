@@ -28,17 +28,27 @@ pub enum Edge {
     Door,
     /// A wall with a window: blocks walking and separates rooms like a wall.
     Window,
+    /// A garden fence: blocks walking but makes no rooms (a fenced garden stays outdoors).
+    Fence,
+    /// A gate in a fence: walked through; makes no rooms.
+    Gate,
 }
 
 impl Edge {
     /// Whether Sims can't cross this edge.
     pub fn blocks(self) -> bool {
-        matches!(self, Edge::Wall | Edge::Window)
+        matches!(self, Edge::Wall | Edge::Window | Edge::Fence)
     }
 
-    /// Whether a wall stands on this edge (plain, or with a door or window in it).
+    /// Whether a wall stands on this edge (plain, or with a door or window in it). Walls make
+    /// rooms; fences and gates don't.
     pub fn is_wall(self) -> bool {
-        self != Edge::Open
+        matches!(self, Edge::Wall | Edge::Door | Edge::Window)
+    }
+
+    /// Whether a fence or a gate stands on this edge.
+    pub fn is_fence(self) -> bool {
+        matches!(self, Edge::Fence | Edge::Gate)
     }
 }
 
@@ -588,7 +598,7 @@ impl Lot {
                         touches_border = true;
                         continue;
                     }
-                    if self.edge_between(x, z, nx, nz) != Edge::Open {
+                    if self.edge_between(x, z, nx, nz).is_wall() {
                         continue;
                     }
                     let n = self.tile_index(nx, nz);

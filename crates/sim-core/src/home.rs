@@ -42,6 +42,8 @@ fn edge_kind(kind: EdgeKind) -> Edge {
         EdgeKind::Door => Edge::Door,
         EdgeKind::Window => Edge::Window,
         EdgeKind::Open => Edge::Open,
+        EdgeKind::Fence => Edge::Fence,
+        EdgeKind::Gate => Edge::Gate,
     }
 }
 
@@ -582,6 +584,9 @@ impl World {
             check_look(rules, e)?;
             let target = edge_kind(e.kind);
             let diagonal = e.axis.diagonal();
+            if target.is_fence() && diagonal.is_some() {
+                return Err(Error::new("fences and gates run along the grid"));
+            }
             let (a, b) = sides(e);
             if e.kind != EdgeKind::Open && diagonal.is_some() && object_at(a.0, a.1).is_some() {
                 return Err(Error::new("a wall can't go through furniture"));
@@ -614,6 +619,11 @@ impl World {
                 }
             }
             let current = edge_at(&self.lot, e.axis, e.x, e.z);
+            if target.is_fence() && current.is_wall() {
+                return Err(Error::new(
+                    "a wall stands there — take it down before putting up a fence",
+                ));
+            }
             if matches!(target, Edge::Door | Edge::Window)
                 && !current.is_wall()
                 && !walled_beside(e)
@@ -656,6 +666,8 @@ impl World {
                     }
                     Edge::Door => rules.door_price(look.style),
                     Edge::Window => rules.window_price(look.style),
+                    Edge::Fence => rules.fence_price(look.style),
+                    Edge::Gate => rules.gate_price(look.style),
                     Edge::Open => rules.remove,
                 };
             } else if target != Edge::Open && look != old {
@@ -663,6 +675,8 @@ impl World {
                 cost += match target {
                     Edge::Door => rules.door_price(look.style),
                     Edge::Window => rules.window_price(look.style),
+                    Edge::Fence => rules.fence_price(look.style),
+                    Edge::Gate => rules.gate_price(look.style),
                     _ => wall_price,
                 };
             }
@@ -695,7 +709,7 @@ impl World {
         if !self.keeps_reach(plot, &before, None) {
             self.lot = saved;
             return Err(Error::new(
-                "that would shut a resident or an object in — add a door",
+                "that would shut a resident or an object in — add a door or a gate",
             ));
         }
         self.lot.compute_rooms();
@@ -866,12 +880,13 @@ fn check_look(rules: &crate::content::BuildRules, e: &EdgeEdit) -> Result<(), Er
     let styles = match e.kind {
         EdgeKind::Door => rules.doors.len(),
         EdgeKind::Window => rules.windows.len(),
+        EdgeKind::Fence | EdgeKind::Gate => rules.fences.len(),
         _ => return Ok(()),
     };
     if e.style.is_some_and(|s| s as usize >= styles.max(1)) {
-        return Err(Error::new("unknown door or window style"));
+        return Err(Error::new("unknown style for that"));
     }
-    if e.form == Some(FORM_HALF) {
+    if matches!(e.kind, EdgeKind::Door | EdgeKind::Window) && e.form == Some(FORM_HALF) {
         return Err(Error::new("doors and windows need a full-height wall"));
     }
     Ok(())
@@ -882,6 +897,13 @@ fn check_look(rules: &crate::content::BuildRules, e: &EdgeEdit) -> Result<(), Er
 fn next_look(current: Edge, target: Edge, old: EdgeLook, e: &EdgeEdit) -> EdgeLook {
     match target {
         Edge::Open => EdgeLook::default(),
+        // Fences and gates have only a style; a gate put into a fence keeps the fence's.
+        Edge::Fence | Edge::Gate => EdgeLook {
+            style: e
+                .style
+                .unwrap_or(if current.is_fence() { old.style } else { 0 }),
+            ..EdgeLook::default()
+        },
         _ if current == Edge::Open => {
             let cover = e.cover.unwrap_or(0);
             EdgeLook {

@@ -363,6 +363,18 @@ traits whose `tagPreference` dislikes an activity's tags skip it more. A pack's 
   `energetic`, `lazy`, `cheerful`, `gloomy`, `natureLover`, `outgoing`, `loner`,
   `romantic`, `hotHeaded`, `kind`.
 
+## Fence styles
+
+`fenceStyles` lists the looks of Build mode's Fence and Gate tools; a fence's (or gate's) style
+is an index into this list, saved by `id`.
+
+```json
+{"id": "picket", "label": "White picket", "kind": "picket", "color": "#F2F0EA", "height": 1.0, "price": 25}
+```
+
+`kind` is how it's drawn: `picket`, `rails`, `slats`, `iron` or `stone`; `price` is per metre
+(default `build.fence`), and a gate costs a metre plus `build.gate`.
+
 ## Balance guidance
 
 Money: households start with $2,500 (`economy.startingFunds`), plus $10,000 to build with when

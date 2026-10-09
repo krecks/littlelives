@@ -105,7 +105,7 @@ export interface EdgePreview {
   axis: 'h' | 'v' | 'dp' | 'dn';
   x: number;
   z: number;
-  kind: 'wall' | 'door' | 'window' | 'open';
+  kind: 'wall' | 'door' | 'window' | 'open' | 'fence' | 'gate';
   /** Walls: 1 previews a half wall. */
   form?: number;
 }

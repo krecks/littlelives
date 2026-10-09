@@ -72,6 +72,7 @@ import type {
   WallMode,
 } from '../types';
 import { createLighting, lightingAt } from './environment';
+import { buildFences } from './fences';
 import { HALF_WALL_HEIGHT, HouseBuilder, WALL_HEIGHT, WALL_STUB } from './house';
 import { Street } from './street';
 import { MaterialLibrary } from './materials';
@@ -88,6 +89,8 @@ import { TiltShift } from './tiltShift';
 const ACCENT = Color3.FromHexString('#5B7CFA');
 /** Helpers are parked below the ground instead of toggling visibility (keeps snapshots valid). */
 const HIDDEN_Y = -100;
+/** Height of the fence and gate preview while drawing. */
+const FENCE_PREVIEW_HEIGHT = 1.0;
 /** Game minutes between lighting updates (with / without snapshot rendering). */
 const LIGHT_STEP = 0.5;
 const LIGHT_STEP_SNAPSHOT = 5;
@@ -258,8 +261,8 @@ export class BabylonRenderer implements Renderer {
   private ghostAge = 0;
   private ghostSpawn = 0;
   private fx!: BuildEffects;
-  private previewMeshes!: Record<EdgePreview['kind'], Mesh>;
-  private previewBuffers!: Record<EdgePreview['kind'], Float32Array>;
+  private previewMeshes!: Record<'wall' | 'door' | 'window' | 'open', Mesh>;
+  private previewBuffers!: Record<'wall' | 'door' | 'window' | 'open', Float32Array>;
   private previewValid = true;
   private grid!: Mesh;
   private gridOn = false;
@@ -376,6 +379,8 @@ export class BabylonRenderer implements Renderer {
     this.templatesInUse.clear();
     this.buildStreets(world);
     const houseCasters = this.buildLot(world);
+    const fences = buildFences(this.scene, world.fences ?? [], this.deps.content.fenceStyles);
+    if (fences) this.worldMeshes.push(fences);
     const streetCasters = await this.street.build(world, this.view);
     await this.buildObjects(world);
     await this.buildSims(world);
@@ -584,20 +589,33 @@ export class BabylonRenderer implements Renderer {
   setEdgePreview(edges: readonly EdgePreview[], valid: boolean): void {
     const counts = { wall: 0, door: 0, window: 0, open: 0 };
     for (const e of edges) {
-      let buf = this.previewBuffers[e.kind];
-      const n = counts[e.kind]++;
+      // Fences show as low walls, gates as low doors.
+      const kind = e.kind === 'fence' ? 'wall' : e.kind === 'gate' ? 'door' : e.kind;
+      let buf = this.previewBuffers[kind];
+      const n = counts[kind]++;
       if ((n + 1) * 16 > buf.length) {
         const grown = new Float32Array(buf.length * 2);
         grown.set(buf);
-        buf = this.previewBuffers[e.kind] = grown;
-        this.previewMeshes[e.kind].thinInstanceSetBuffer('matrix', buf, 16, false);
+        buf = this.previewBuffers[kind] = grown;
+        this.previewMeshes[kind].thinInstanceSetBuffer('matrix', buf, 16, false);
       }
       // Unit slab (1 x 1 x 1 centred box) scaled to the edge: walls full height, doors a
       // door-sized slab, windows a glassy pane between sill and head, removals a red sleeve
       // just around the existing wall.
-      const h = e.kind === 'door' ? 2.1 : e.kind === 'window' ? 1.2 : e.kind === 'open' ? WALL_HEIGHT + 0.06 : e.form ? HALF_WALL_HEIGHT : WALL_HEIGHT;
+      const h =
+        e.kind === 'fence' || e.kind === 'gate'
+          ? FENCE_PREVIEW_HEIGHT
+          : e.kind === 'door'
+            ? 2.1
+            : e.kind === 'window'
+              ? 1.2
+              : e.kind === 'open'
+                ? WALL_HEIGHT + 0.06
+                : e.form
+                  ? HALF_WALL_HEIGHT
+                  : WALL_HEIGHT;
       const y0 = e.kind === 'window' ? 0.9 : 0;
-      const t = e.kind === 'open' ? 0.22 : e.kind === 'window' ? 0.2 : 0.16;
+      const t = e.kind === 'open' ? 0.22 : e.kind === 'window' ? 0.2 : e.kind === 'fence' || e.kind === 'gate' ? 0.08 : 0.16;
       const o = n * 16;
       buf.fill(0, o, o + 16);
       if (e.axis === 'dp' || e.axis === 'dn') {

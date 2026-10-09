@@ -14,8 +14,8 @@
 //! one town-wide free-will switch, no story, a fresh start in every job); 9 = planners
 //! (routines, goals, how blocks went, wishes) and household routine templates (absent: none);
 //! 10 = the game mode (`mode`: Living or Creative; absent: Living), and the player's household
-//! may have nobody living in it yet; 11 = objects turned freely (`turn`, absent: 0). Older
-//! files load. Saves written before feelings
+//! may have nobody living in it yet; 11 = objects turned freely (`turn`, absent: 0), fences
+//! and gates (edges `4` and `5`, their fence style in `looks`). Older files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
 use std::collections::{BTreeMap, HashMap};
@@ -819,6 +819,8 @@ fn encode(edges: &[Edge]) -> String {
             Edge::Wall => '1',
             Edge::Door => '2',
             Edge::Window => '3',
+            Edge::Fence => '4',
+            Edge::Gate => '5',
         })
         .collect()
 }
@@ -848,6 +850,7 @@ fn encode_looks(lot: &Lot, content: &Content) -> Vec<LookSave> {
             let styles = match edge {
                 Edge::Door => &b.doors,
                 Edge::Window => &b.windows,
+                Edge::Fence | Edge::Gate => &b.fences,
                 _ => &Vec::new(),
             };
             let (tag, x, z) = match at {
@@ -893,6 +896,7 @@ fn decode_looks(lot: &mut Lot, content: &Content, looks: &[LookSave]) {
         let styles: &[crate::content::BuildStyle] = match edge {
             Edge::Door => &b.doors,
             Edge::Window => &b.windows,
+            Edge::Fence | Edge::Gate => &b.fences,
             _ => &[],
         };
         let side = |id: &str| index(&b.coverings, id).map_or(0, |i| i as u8 + 1);
@@ -988,6 +992,8 @@ fn decode(s: &str) -> Result<Vec<Edge>, Error> {
             '1' => Ok(Edge::Wall),
             '2' => Ok(Edge::Door),
             '3' => Ok(Edge::Window),
+            '4' => Ok(Edge::Fence),
+            '5' => Ok(Edge::Gate),
             _ => Err(Error::new("corrupt lot edges in save")),
         })
         .collect()

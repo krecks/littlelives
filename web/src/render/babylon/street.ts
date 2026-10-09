@@ -73,7 +73,7 @@ const overlaps = (a: Rect, b: Rect, m = 0) => a.x - m < b.x + b.w && a.x + a.w +
  * placed at x/z with a yaw, and a plain finish (colour + roughness/metalness in the vertex
  * alpha, see `encodeFinish`).
  */
-class Painter {
+export class Painter {
   private ox = 0;
   private oy = 0;
   private oz = 0;

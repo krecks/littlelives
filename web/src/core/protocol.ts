@@ -149,12 +149,22 @@ export interface EdgeEdit {
   axis: WallEdge['axis'] | DiagonalAxis;
   x: number;
   z: number;
-  kind: 'wall' | 'door' | 'window' | 'open';
+  kind: 'wall' | 'door' | 'window' | 'open' | 'fence' | 'gate';
   /** New walls: covering of both faces. */
   cover?: number;
   /** Walls: 0 full height, 1 half wall. */
   form?: number;
-  /** Doors and windows: style index. */
+  /** Doors and windows: style index; fences and gates: fence style index. */
+  style?: number;
+}
+
+/** A fence or gate on a grid edge (as `WallEdge`); not a wall: it makes no rooms. */
+export interface FenceEdge {
+  axis: 'h' | 'v';
+  x: number;
+  z: number;
+  kind: 'fence' | 'gate';
+  /** Index into the content's fence styles. */
   style?: number;
 }
 
@@ -273,6 +283,8 @@ export interface WorldStructure {
   openings: Opening[];
   /** Diagonal walls (absent from older structures). */
   diagonals?: DiagonalWall[];
+  /** Fences and gates (absent from older structures). */
+  fences?: FenceEdge[];
   /** Floor coverings: `[x, z, covering]` per tile that has one (absent: automatic floors). */
   floors?: [number, number, number][];
   /** Presentation data carried by the simulation unchanged (see `game/town.ts`). */
@@ -366,7 +378,7 @@ export interface Catalog {
     upgradeSkillPerLevel: number;
     resale: number;
   };
-  build: { wall: number; door: number; window: number; remove: number; diagonalWall?: number };
+  build: { wall: number; door: number; window: number; remove: number; diagonalWall?: number; fence?: number; gate?: number };
 }
 
 export interface CareerEntry {

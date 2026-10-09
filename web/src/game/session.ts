@@ -1054,7 +1054,7 @@ export async function startSession(
       /** Sim-clock minute of the newest snapshot (changes when one arrives). */
       snapshotMinute: () => bridge.latest()[bridge.layout.header.minute],
       renderer,
-      structure: () => ({ walls: world?.walls?.length ?? 0, openings: world?.openings?.map((o) => o.kind) ?? [], diagonals: world?.diagonals?.map((d) => `${d.axis}:${d.x}:${d.z}:${d.kind}`) ?? [], funds: game.funds }),
+      structure: () => ({ fences: world?.fences?.map((f) => `${f.kind}:${f.axis}:${f.x}:${f.z}:${f.style ?? 0}`) ?? [], walls: world?.walls?.length ?? 0, openings: world?.openings?.map((o) => o.kind) ?? [], diagonals: world?.diagonals?.map((d) => `${d.axis}:${d.x}:${d.z}:${d.kind}`) ?? [], funds: game.funds }),
       townFile: () => ('lot' in source ? source.lot : null),
       objects: () => game.objects.map((o) => ({ id: o.id, def: o.def, x: o.x, z: o.z, rot: o.rot, turn: o.turn ?? 0 })),
       steps: () => ({ undo: game.undoSteps, redo: game.redoSteps }),

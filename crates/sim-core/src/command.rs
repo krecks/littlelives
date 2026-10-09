@@ -254,8 +254,12 @@ pub enum EdgeKind {
     Door,
     /// A window in a wall (Sims can't pass).
     Window,
-    /// No wall: tears down a wall, door or window.
+    /// No wall: tears down a wall, door, window, fence or gate.
     Open,
+    /// A garden fence (blocks walking, makes no rooms); `style` is a fence style.
+    Fence,
+    /// A gate (walked through); `style` is a fence style.
+    Gate,
 }
 
 impl Command {

@@ -15,7 +15,7 @@ export interface MenuState {
 
 /** Live: play. Buy: furnish (place, move, upgrade, sell). Build: walls, rooms, doors and windows. */
 export type GameMode = 'live' | 'buy' | 'build';
-export type BuildTool = 'wall' | 'room' | 'paint' | 'floor' | 'door' | 'window' | 'remove';
+export type BuildTool = 'wall' | 'room' | 'fence' | 'gate' | 'paint' | 'floor' | 'door' | 'window' | 'remove';
 
 /** What Build mode puts up: wall covering (0: automatic, else wall covering + 1) and form, door and window style. */
 export interface BuildLook {
@@ -26,6 +26,8 @@ export interface BuildLook {
   form: number;
   door: number;
   window: number;
+  /** Fence style (fences and gates). */
+  fence: number;
 }
 
 /** An object being placed in buy mode: a new purchase, or an owned object being moved. */
@@ -105,7 +107,7 @@ class GameState {
   /** Build mode's tool (kept between visits). */
   buildTool = $state<BuildTool>('wall');
   /** The looks Build mode's tools use (kept between visits). */
-  buildLook = $state<BuildLook>({ cover: 0, floor: 1, form: 0, door: 0, window: 0 });
+  buildLook = $state<BuildLook>({ cover: 0, floor: 1, form: 0, door: 0, window: 0, fence: 0 });
   /** Paint tool: wall faces under the preview, and whether Shift (a whole room) is held. */
   paintFaces = $state(0);
   /** Floor tool: tiles under the preview. */
