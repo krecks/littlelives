@@ -26,7 +26,7 @@ import type { Command, EdgeEdit, FacePaint, FloorPaint, ObjectPlacement, PlotInf
 import type { BuildEffect, Renderer, ViewRect } from '../render/types';
 import { styledModel } from '../ui/buy/catalog';
 import type { Sound } from '../ui/sfx';
-import { game } from '../ui/state.svelte';
+import { game, type BuildTool } from '../ui/state.svelte';
 
 /** Preview calls the renderer offers in buy mode. */
 interface BuildPreview {
@@ -46,6 +46,12 @@ type Point = { x: number; z: number };
 export type PaintFace = FacePaint & { half: boolean };
 /** A wall's look as the structure sends it. */
 type Look = { faces?: [number, number]; form?: number; style?: number };
+
+/** What the eyedropper picked up: a build tool with its look set, or an object to buy again. */
+export type Picked = { kind: 'tool'; tool: BuildTool } | { kind: 'object'; def: string; style: number; rot: number; turn: number };
+
+/** The eyedropper takes a wall (rather than the floor) within this distance of it (tiles). */
+const PICK_WALL = 0.4;
 type EdgeState = EdgeEdit['kind'];
 type Axis = EdgeEdit['axis'];
 
@@ -70,7 +76,13 @@ export class BuildBuyInput {
   private floors = new Map<string, number>();
   private floorStart: Point | null = null;
   private shift = false;
+  /** Alt (Option) held: a click picks up a look (the eyedropper). */
+  private alt = false;
   private readonly onKey = (e: KeyboardEvent) => {
+    if (this.alt !== e.altKey) {
+      this.alt = e.altKey;
+      if (!this.alt && !game.eyedropper) game.pickHint = null;
+    }
     if (this.shift === e.shiftKey) return;
     this.shift = e.shiftKey;
     if (this.lastHover && game.mode === 'build' && (game.buildTool === 'paint' || game.buildTool === 'floor')) this.hoverBuild(this.lastHover);
@@ -186,7 +198,13 @@ export class BuildBuyInput {
     return this.building() && game.buildTool === 'floor';
   }
 
-  hover(ground: Point | null): void {
+  hover(ground: Point | null, objectId: number | null = null): void {
+    if (this.picking()) {
+      this.clearPreviews();
+      game.pickHint = this.pickLabel(ground, objectId);
+      return;
+    }
+    if (game.pickHint !== null) game.pickHint = null;
     // While drawing, keep the last preview when the pointer strays off the lot.
     if (!ground && this.pressed) return;
     this.lastHover = ground;
@@ -194,6 +212,63 @@ export class BuildBuyInput {
     if (this.pressed) this.lastGround = ground;
     if (this.building()) this.hoverBuild(ground);
     else if (game.mode === 'buy') this.hoverBuy(ground);
+  }
+
+  /** The next click picks up a look (E, or Alt held) instead of building or placing. */
+  picking(): boolean {
+    return game.mode !== 'live' && (game.eyedropper || this.alt);
+  }
+
+  /**
+   * The eyedropper: what's under the pointer, as something to build or buy again. A wall gives
+   * its covering and form (a door or window, its style), a floor its covering; an object, another
+   * of it in the same style and at the same angle. Null: nothing to pick there.
+   */
+  pick(ground: Point | null, objectId: number | null, apply = true): Picked | null {
+    const look = game.buildLook;
+    const obj = objectId === null ? undefined : game.objects.find((o) => o.id === objectId);
+    if (obj && this.content.object(obj.def)?.price !== undefined) {
+      return { kind: 'object', def: obj.def, style: obj.style, rot: obj.rot, turn: obj.turn ?? 0 };
+    }
+    if (!ground) return null;
+    const e = this.nearestEdge(ground);
+    const state = this.edgeState(e);
+    const away = e.axis === 'h' ? Math.abs(ground.z - e.z) : e.axis === 'v' ? Math.abs(ground.x - e.x) : 0;
+    if (state !== 'open' && away < PICK_WALL) {
+      const l = this.lookOf(e);
+      if (state === 'door' || state === 'window') {
+        if (apply) game.buildLook = { ...look, [state]: l.style ?? 0 };
+        return { kind: 'tool', tool: state };
+      }
+      const face = this.faceAt(ground);
+      if (apply) game.buildLook = { ...look, cover: l.faces?.[face?.side ?? 0] ?? 0, form: l.form ?? 0 };
+      return { kind: 'tool', tool: game.buildTool === 'wall' || game.buildTool === 'room' ? game.buildTool : 'paint' };
+    }
+    const t = this.tileOf(ground);
+    if (this.indoors(t.x, t.z)) {
+      if (apply) game.buildLook = { ...look, floor: this.floors.get(`${t.x}:${t.z}`) ?? 0 };
+      return { kind: 'tool', tool: 'floor' };
+    }
+    return null;
+  }
+
+  /** What the eyedropper would pick up here, for the cursor tag. */
+  private pickLabel(ground: Point | null, objectId: number | null): string {
+    const p = this.pick(ground, objectId, false);
+    if (!p) return 'Nothing to pick up here';
+    if (p.kind === 'object') return `Another ${this.content.object(p.def)?.name ?? p.def}`;
+    if (p.tool === 'floor') {
+      const t = this.tileOf(ground!);
+      const c = this.floors.get(`${t.x}:${t.z}`) ?? 0;
+      return c ? (this.content.floorCoverings[c - 1]?.label ?? 'This floor') : 'Room default floor';
+    }
+    const e = this.nearestEdge(ground!);
+    const l = this.lookOf(e);
+    if (p.tool === 'door') return this.content.doorStyles[l.style ?? 0]?.label ?? 'This door';
+    if (p.tool === 'window') return this.content.windowStyles[l.style ?? 0]?.label ?? 'This window';
+    const c = l.faces?.[this.faceAt(ground!)?.side ?? 0] ?? 0;
+    const label = c ? (this.content.wallCoverings[c - 1]?.label ?? 'This wall') : 'House default wall';
+    return l.form ? `${label} · half wall` : label;
   }
 
   /** Returns true when the click was used. */
@@ -272,7 +347,7 @@ export class BuildBuyInput {
   private hoverBuy(ground: Point): void {
     const p = this.placement(ground);
     if (!p) return this.preview.setPlacementGhost?.(null);
-    const style = p && game.placing?.objectId != null ? (game.objects.find((o) => o.id === game.placing!.objectId)?.style ?? 0) : game.householdStyle;
+    const style = p && game.placing?.objectId != null ? (game.objects.find((o) => o.id === game.placing!.objectId)?.style ?? 0) : (game.placing?.style ?? game.householdStyle);
     this.preview.setPlacementGhost?.({ model: this.styledModel(p.def, style), x: p.x, z: p.z, rot: p.rot, turn: p.turn, w: p.w, d: p.d, valid: p.valid });
     if (game.placeValid !== p.valid) game.placeValid = p.valid;
     if (game.placeHint !== p.reason) game.placeHint = p.reason;
@@ -289,7 +364,7 @@ export class BuildBuyInput {
         this.preview.setPlacementGhost?.(null);
       } else {
         // New purchases stay on the cursor so several can be placed in a row.
-        this.send({ type: 'buy', household: game.home, object: p.def.id, at: [p.x, p.z, p.rot], style: game.householdStyle, ...(p.turn ? { turn: p.turn } : {}) });
+        this.send({ type: 'buy', household: game.home, object: p.def.id, at: [p.x, p.z, p.rot], style: placing.style ?? game.householdStyle, ...(p.turn ? { turn: p.turn } : {}) });
       }
       return true;
     }

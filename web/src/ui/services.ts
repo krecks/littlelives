@@ -64,6 +64,8 @@ export interface GameControls {
   restyle(objectId: number, style: number): void;
   setHouseholdStyle(style: number): void;
   upgrade(objectId: number): void;
+  /** Build and Buy mode: arms (or disarms) the eyedropper: the next click picks up a look (E). */
+  toggleEyedropper(): void;
   /** Build mode: pick a tool (walls, rooms, doors, windows, remove); switches to Build mode. */
   setBuildTool(tool: BuildTool): void;
   build(edits: EdgeEdit[]): void;

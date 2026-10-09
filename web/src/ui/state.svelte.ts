@@ -34,6 +34,8 @@ export interface Placing {
   rot: number;
   /** Degrees past `rot`, for objects that turn freely. */
   turn: number;
+  /** Style for a new purchase (picked up with the eyedropper); default: the household's favourite. */
+  style?: number;
   /** Set when moving an object the household already owns. */
   objectId: number | null;
 }
@@ -108,6 +110,10 @@ class GameState {
   paintFaces = $state(0);
   /** Floor tool: tiles under the preview. */
   floorTiles = $state(0);
+  /** The eyedropper is armed (E): the next click picks up a look instead of building or placing. */
+  eyedropper = $state(false);
+  /** While picking: what a click would pick up (the cursor tag). */
+  pickHint = $state<string | null>(null);
   /** Build and buy edits that can be taken back (until time moves on). */
   undoSteps = $state(0);
   /** Edits taken back that can be made again (until the next edit, or time moves on). */
@@ -199,6 +205,8 @@ class GameState {
     this.buySelection = null;
     this.buildTool = 'wall';
     this.buildStart = null;
+    this.eyedropper = false;
+    this.pickHint = null;
     this.undoSteps = 0;
     this.redoSteps = 0;
     this.jobBoardOpen = false;

@@ -9,6 +9,7 @@ Build depth: more control while building.
 ### New
 - **Redo** in Build and Buy mode: the button next to Undo, or Ctrl+Shift+Z / ⌘⇧Z (Ctrl+Y works too). What you undid can be made again until you make another change or time moves on.
 - **Free rotation for decor:** plants, flowers, trees, shrubs, lamps and garden ornaments (1×1 things from the decor, garden and outdoor categories) turn in 15° steps with Shift+R, or *Turn 15°* on a placed one; R still turns a quarter. The angle is for looks; residents use them as before. Content packs can set `freeRotation` on an object, or list categories in `objectRules.freeRotation`.
+- **Eyedropper** in Build and Buy mode: press E (or the button next to Undo), or hold Alt, and click something to build or buy more of the same: a wall gives its covering and height, a door or window its style, a floor its covering, and an object puts another one in hand in the same style and at the same angle. A tag at the cursor says what a click will pick up.
 
 ### Changed
 - Saves are now version 11 (objects' angles); older saves load as before.

@@ -23,7 +23,7 @@ import { aboutUs } from '../ui/story';
 import { BubbleLayer } from './bubbles';
 import { VoiceDirector } from '../voice';
 import { Director } from './director';
-import { BuildBuyInput, editFeedback } from './buildmode';
+import { BuildBuyInput, editFeedback, type Picked } from './buildmode';
 import { styledModel } from '../ui/buy/catalog';
 import { play } from '../ui/sfx';
 import { householdBonds, householdSpawns, type HouseholdDraft } from './household';
@@ -381,6 +381,8 @@ export async function startSession(
       if (mode !== 'live' && game.follow !== null) controls.follow(null);
       const fromLive = game.mode === 'live';
       buildBuy.cancel();
+      game.eyedropper = false;
+      game.pickHint = null;
       game.mode = mode;
       play(mode === 'live' ? 'close' : fromLive ? 'open' : 'tab');
       game.menu = null;
@@ -474,6 +476,17 @@ export async function startSession(
       if (game.mode !== 'buy') return;
       bridge.send({ type: 'upgrade', household: game.home, object: objectId });
       game.menu = null;
+    },
+    toggleEyedropper() {
+      if (game.mode === 'live') return;
+      game.eyedropper = !game.eyedropper;
+      if (!game.eyedropper) game.pickHint = null;
+      else {
+        game.placing = null;
+        game.buildStart = null;
+        buildBuy.clearPreviews();
+      }
+      play('tab');
     },
     setBuildTool(tool) {
       controls.setMode('build');
@@ -718,6 +731,8 @@ export async function startSession(
       game.socialMenu = null;
       if (game.mode !== 'live') {
         const hit = renderer.pick(x, y);
+        const ground = hit.ground && inLot(hit.ground.x, hit.ground.z) ? hit.ground : null;
+        if (buildBuy.picking()) return usePicked(buildBuy.pick(ground, hit.objectId));
         buildBuy.click(hit.ground, hit.objectId);
         return;
       }
@@ -744,9 +759,10 @@ export async function startSession(
       } else if (!direct) controls.inspect(null);
     },
     hover(x, y) {
-      const g = renderer.pick(x, y).ground;
+      const hit = renderer.pick(x, y);
+      const g = hit.ground;
       renderer.setHoverTile(g && inLot(g.x, g.z) && !game.pauseMenu ? { x: Math.floor(g.x), z: Math.floor(g.z) } : null);
-      if (game.mode !== 'live') buildBuy.hover(g && inLot(g.x, g.z) ? g : null);
+      if (game.mode !== 'live') buildBuy.hover(g && inLot(g.x, g.z) ? g : null, hit.objectId);
     },
     leave() {
       renderer.setHoverTile(null);
@@ -754,7 +770,8 @@ export async function startSession(
     },
     // Wall and Remove tools: press, drag, release (see `BuildBuyInput.press`).
     press(x, y) {
-      if (game.pauseMenu || game.mode === 'live') return false;
+      // The eyedropper picks with a plain click.
+      if (game.pauseMenu || game.mode === 'live' || buildBuy.picking()) return false;
       const g = renderer.pick(x, y).ground;
       return buildBuy.press(g && inLot(g.x, g.z) ? g : null);
     },
@@ -764,6 +781,20 @@ export async function startSession(
     },
     cancel: () => buildBuy.cancelDrawing(),
   });
+
+  /** Puts what the eyedropper picked up in hand: a build tool with its look, or another object. */
+  function usePicked(p: Picked | null) {
+    game.eyedropper = false;
+    game.pickHint = null;
+    if (!p) {
+      play('error');
+      return toast('Nothing to pick up there. Point at a wall, a floor or something you can buy.');
+    }
+    play('pick');
+    if (p.kind === 'tool') return controls.setBuildTool(p.tool);
+    controls.startPlacing(p.def);
+    if (game.placing) game.placing = { ...game.placing, rot: p.rot, turn: p.turn, style: p.style };
+  }
 
   const onKey = (e: KeyboardEvent) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -775,6 +806,7 @@ export async function startSession(
     if (e.key === 'Escape') {
       if (game.townOpen) return void (game.townOpen = false);
       if (game.jobBoardOpen) return void (game.jobBoardOpen = false);
+      if (game.eyedropper) return controls.toggleEyedropper();
       // Step back: drop what's in hand, then leave Buy or Build mode.
       if (buildBuy.cancel()) return;
       if (game.mode !== 'live') return controls.setMode('live');
@@ -842,6 +874,9 @@ export async function startSession(
       case 'r':
       case 'R':
         return controls.rotatePlacing(e.shiftKey);
+      case 'e':
+      case 'E':
+        return controls.toggleEyedropper();
       case 'Delete':
       case 'Backspace':
         if (game.mode === 'buy' && game.buySelection !== null) controls.sell(game.buySelection);
@@ -1023,6 +1058,7 @@ export async function startSession(
       townFile: () => ('lot' in source ? source.lot : null),
       objects: () => game.objects.map((o) => ({ id: o.id, def: o.def, x: o.x, z: o.z, rot: o.rot, turn: o.turn ?? 0 })),
       steps: () => ({ undo: game.undoSteps, redo: game.redoSteps }),
+      build: () => ({ mode: game.mode, tool: game.buildTool, look: { ...game.buildLook }, placing: game.placing, eyedropper: game.eyedropper, hint: game.pickHint }),
       sims: () =>
         game.sims.map((x) => {
           const snap = bridge.latest();

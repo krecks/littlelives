@@ -72,6 +72,16 @@
       >
         <span class="mirror"><Icon name="icon.ui.undo" size={16} /></span>
       </button>
+      <button
+        class="undo redo"
+        class:on={game.eyedropper}
+        aria-pressed={game.eyedropper}
+        title="Eyedropper (E, or hold Alt): click a wall, floor, door, window or object to build or buy more of the same"
+        aria-label="Eyedropper"
+        onclick={() => services.controls.toggleEyedropper()}
+      >
+        <Icon name="icon.ui.eyedropper" size={16} />
+      </button>
     {:else}
       <div class="segmented">
         {#each speeds as s (s.value)}
@@ -262,6 +272,10 @@
   }
   .undo.redo {
     padding: 0 10px;
+  }
+  .undo.on {
+    background: var(--accent);
+    color: #fff;
   }
   .mirror {
     display: inline-flex;

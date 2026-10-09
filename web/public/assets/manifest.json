@@ -8187,6 +8187,10 @@
       "type": "icon",
       "url": "icons/undo.svg"
     },
+    "icon.ui.eyedropper": {
+      "type": "icon",
+      "url": "icons/eyedropper.svg"
+    },
     "icon.ui.search": {
       "type": "icon",
       "url": "icons/magnifier.svg"

@@ -26,6 +26,7 @@
 
   const tag = $derived.by((): { text: string; sub?: string; bad: boolean } | null => {
     if (game.mode === 'live' || !onCanvas) return null;
+    if (game.pickHint !== null) return { text: 'Pick up', sub: game.pickHint, bad: game.pickHint.startsWith('Nothing') };
     const placing = game.placing;
     if (game.mode === 'buy') {
       if (!placing) return null;
