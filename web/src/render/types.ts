@@ -169,6 +169,12 @@ export interface LotHighlight {
   outlines: boolean;
 }
 
+export interface RoomOverlayTile {
+  x: number;
+  z: number;
+  rgb: [number, number, number];
+}
+
 export interface Renderer {
   init(canvas: HTMLCanvasElement): Promise<void>;
   /**
@@ -200,6 +206,8 @@ export interface Renderer {
   setPaintPreview(faces: readonly PaintPreviewFace[], color: string | null): void;
   /** Build mode's Floor tool: a film of `color` over the floor tiles it would cover (null: none). */
   setFloorPreview(tiles: readonly { x: number; z: number }[], color: string | null): void;
+  /** Build mode's room-score overlay: a film over each tile in its colour (`rgb` 0..1); empty hides it. */
+  setRoomOverlay(tiles: readonly RoomOverlayTile[]): void;
   /** Build/buy mode: subtle tile grid over a tile rectangle (null hides it). */
   setBuildGrid(rect: ViewRect | null): void;
   /** Build/buy mode: plays a placement, upgrade, sale or construction effect (after `setWorld` showed the change). */

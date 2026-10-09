@@ -24,6 +24,10 @@ export interface GameControls {
   frameHouse(): void;
   /** Opens or closes the journal (the story so far). */
   toggleJournal(): void;
+  /** Opens or closes the Our home panel (the rooms and how they're doing). */
+  toggleHome(): void;
+  /** Build mode: shows or hides room scores on the floor (`on`: set). */
+  toggleRoomScores(on?: boolean): void;
   /** Shows the people of a story event, if they're at home. */
   showEvent(event: SocialEvent): void;
   /** Opens the planner on a resident (default: the one looked at) or the household's template. */

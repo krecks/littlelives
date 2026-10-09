@@ -121,11 +121,16 @@ the object's icon or the need's icon, and residents say a line for each.
 
 ## Interface
 
-- **Our home** panel (top bar): every room of the house with its kind, size and the five scores
-  as bars, its overall score, who loves or dislikes it, its wishes, what's broken (Repair) and
-  how dirty it is. The garden too.
-- **Room scores overlay** in Build mode (a toggle): each room's floor tinted from red to green
-  by its score, with a tag showing its kind, score and weakest factor.
+- **Our home** panel (top bar in Live, `O`): the house's score (rooms weighted by size), then
+  every room worst first with its kind, size, overall score and the five factors as bars (the
+  weakest marked), windows, lamps and dirt, what's off (two rooms in one, a missing essential,
+  nothing that says what it's for), and who wishes what for it. Above them: broken things with
+  Repair, and wishes for another room. *See it on the floor plan* opens Build mode with the
+  overlay.
+- **Room scores overlay** in Build mode (top bar toggle, `O`): each room's floor tinted from red
+  to green by its score (`Renderer.setRoomOverlay`, one thin-instance film per tile), with a tag
+  over its centre showing its kind, score and what would help most (`game/roomOverlay.ts`).
+- Buy mode: a broken object says so, and owned worn things offer the quick fix (Repair).
 
 ## Saves
 

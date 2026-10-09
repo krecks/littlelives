@@ -6,6 +6,7 @@
   import EventFeed from './EventFeed.svelte';
   import HouseholdStrip from './HouseholdStrip.svelte';
   import Journal from './Journal.svelte';
+  import OurHome from './OurHome.svelte';
   import JobBoard from './JobBoard.svelte';
   import SocialMenu from './SocialMenu.svelte';
   import TopBar from './TopBar.svelte';
@@ -24,6 +25,7 @@
     <SimPanel />
     <NeedsPanel />
     <Journal />
+    <OurHome />
   {/if}
   <BuyPanel />
   <BuildPanel />

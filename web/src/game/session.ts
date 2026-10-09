@@ -21,6 +21,7 @@ import { game, nextWallMode, toast } from '../ui/state.svelte';
 import { saveDebugReport } from '../ui/debugReport';
 import { aboutUs } from '../ui/story';
 import { BubbleLayer } from './bubbles';
+import { RoomOverlay } from './roomOverlay';
 import { VoiceDirector } from '../voice';
 import { Director } from './director';
 import { BuildBuyInput, editFeedback, type Picked } from './buildmode';
@@ -156,6 +157,10 @@ export async function startSession(
   let viewPlot: number | null = null;
   let lastEvent = -1;
   const bubbles = new BubbleLayer(overlay, renderer, content, assets);
+  const roomOverlay = new RoomOverlay(overlay, renderer, content);
+  /** Build mode's room scores, at home, when asked for. */
+  const roomOverlayOn = () => game.mode === 'build' && game.roomScores && world !== null && worldView === homePlot();
+  const refreshRoomOverlay = () => roomOverlay.set(roomOverlayOn() ? world : null, game.rooms);
   const voices = new VoiceDirector(content, renderer);
   const buildBuy = new BuildBuyInput(renderer, content, assets, (command) => bridge.send(command));
   game.catalog = bridge.catalog;
@@ -296,7 +301,16 @@ export async function startSession(
     },
     toggleJournal() {
       game.journalOpen = !game.journalOpen;
+      if (game.journalOpen) game.homeOpen = false;
       if (game.journalOpen) void bridge.requestEvents().then((events) => (game.journal = events));
+    },
+    toggleHome() {
+      game.homeOpen = !game.homeOpen;
+      if (game.homeOpen) game.journalOpen = false;
+    },
+    toggleRoomScores(on) {
+      game.roomScores = on ?? !game.roomScores;
+      refreshRoomOverlay();
     },
     openPlanner(who) {
       if (!game.occupied) return;
@@ -396,6 +410,7 @@ export async function startSession(
       game.eyedropper = false;
       game.pickHint = null;
       game.mode = mode;
+      refreshRoomOverlay();
       play(mode === 'live' ? 'close' : fromLive ? 'open' : 'tab');
       game.menu = null;
       game.socialMenu = null;
@@ -598,6 +613,10 @@ export async function startSession(
     game.householdStyle = mine?.style ?? 0;
     game.undoSteps = mine?.undo ?? 0;
     game.redoSteps = mine?.redo ?? 0;
+    if (ui.rooms) {
+      game.rooms = ui.rooms;
+      refreshRoomOverlay();
+    }
     if (mine?.routines && JSON.stringify(mine.routines) !== JSON.stringify(game.householdRoutines)) game.householdRoutines = mine.routines;
     game.relationships = ui.relationships;
     // The view stays home; it goes along to other lots only with a resident the player follows.
@@ -623,6 +642,7 @@ export async function startSession(
     world = w;
     worldView = viewPlot;
     buildBuy.setStructure(w);
+    refreshRoomOverlay();
     const mine = w.households.find((h) => h.player);
     director.setWorld(w, mine?.plot ?? null);
     game.creative = w.mode === 'creative';
@@ -831,6 +851,7 @@ export async function startSession(
       if (game.mode !== 'live') return controls.setMode('live');
       if (game.menu || game.socialMenu) return controls.closeMenu();
       if (game.journalOpen) return void (game.journalOpen = false);
+      if (game.homeOpen) return void (game.homeOpen = false);
       if (game.follow !== null) return controls.follow(null);
       if (game.inspected !== null && liveSettings.directControl !== 'always') return controls.inspect(null);
       game.pauseMenu = !game.pauseMenu;
@@ -867,6 +888,11 @@ export async function startSession(
       case 'j':
       case 'J':
         if (game.mode === 'live') controls.toggleJournal();
+        return;
+      case 'o':
+      case 'O':
+        if (game.mode === 'live') controls.toggleHome();
+        else if (game.mode === 'build') controls.toggleRoomScores();
         return;
       case 'p':
       case 'P':
@@ -935,6 +961,7 @@ export async function startSession(
     if (!revealed) return;
     bubbles.update(frame);
     voices.update(frame);
+    if (roomOverlayOn()) roomOverlay.update();
     if (game.watching) {
       // Menus and other modes end watching (opening them is input, but not all of it is ours).
       if (!canWatch() && !director.active) stopWatching();
@@ -1049,6 +1076,7 @@ export async function startSession(
       renderer.followSim(null);
       pointer?.dispose();
       bubbles.dispose();
+      roomOverlay.dispose();
       voices.dispose();
       buildBuy.dispose();
       await building;

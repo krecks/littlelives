@@ -101,6 +101,18 @@
       >
         <Icon name="icon.ui.eyedropper" size={16} />
       </button>
+      {#if game.mode === 'build'}
+        <button
+          class="undo redo"
+          class:on={game.roomScores}
+          aria-pressed={game.roomScores}
+          title="Room scores (O): each room tinted by how it's doing, and what would help"
+          aria-label="Room scores"
+          onclick={() => services.controls.toggleRoomScores()}
+        >
+          <Icon name="icon.need.environment" size={16} />
+        </button>
+      {/if}
     {:else}
       <div class="segmented">
         {#each speeds as s (s.value)}
@@ -122,6 +134,9 @@
           <Icon name="icon.ui.calendar" />
         </button>
       {/if}
+      <button class="tool" class:active={game.homeOpen} title="Our home (O): the rooms and how they're doing" aria-label="Our home" aria-pressed={game.homeOpen} onclick={() => services.controls.toggleHome()}>
+        <Icon name="icon.need.environment" />
+      </button>
       <button class="tool" class:active={game.journalOpen} title="Journal (J)" aria-label="Journal" aria-pressed={game.journalOpen} onclick={() => services.controls.toggleJournal()}>
         <Icon name="icon.ui.journal" />
       </button>

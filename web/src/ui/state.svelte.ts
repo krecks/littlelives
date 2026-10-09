@@ -1,6 +1,6 @@
 /** Reactive UI state. Written by the game layer at ~10 Hz, read by components. */
 
-import type { Catalog, HouseholdInfo, ObjectPlacement, PlotInfo, RelationshipView, Routine, SimInfo, SimView, SocialEvent, SocialOption } from '../core/protocol';
+import type { Catalog, HouseholdInfo, ObjectPlacement, PlotInfo, RelationshipView, RoomView, Routine, SimInfo, SimView, SocialEvent, SocialOption } from '../core/protocol';
 import type { RenderStats, WallMode } from '../render/types';
 
 export interface MenuState {
@@ -155,6 +155,12 @@ class GameState {
   /** The mouse moved lately: a quiet interface shows itself again for a moment. */
   hudAwake = $state(false);
   journalOpen = $state(false);
+  /** The Our home panel: every room of the house with its scores. */
+  homeOpen = $state(false);
+  /** Build mode: rooms tinted by their score. */
+  roomScores = $state(false);
+  /** The rooms and garden of the player's home, with their scores. */
+  rooms = $state.raw<RoomView[]>([]);
   /** The planner is open, on a resident (id) or the household's template. */
   plannerOpen = $state(false);
   plannerFor = $state<number | 'household'>('household');
@@ -204,6 +210,9 @@ class GameState {
     this.watching = false;
     this.watchMode = true;
     this.journalOpen = false;
+    this.homeOpen = false;
+    this.roomScores = false;
+    this.rooms = [];
     this.journal = [];
     this.plannerOpen = false;
     this.moveInOpen = false;

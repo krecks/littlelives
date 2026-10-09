@@ -62,6 +62,7 @@ import type {
   GameShot,
   LiveRenderOptions,
   PaintPreviewFace,
+  RoomOverlayTile,
   LotHighlight,
   PickResult,
   PlacementGhost,
@@ -299,6 +300,9 @@ export class BabylonRenderer implements Renderer {
   private paintBuffer = new Float32Array(64 * 16);
   private floorPreview!: Mesh;
   private floorBuffer = new Float32Array(64 * 16);
+  private roomOverlay: Mesh | null = null;
+  private roomMatrices = new Float32Array(0);
+  private roomColors = new Float32Array(0);
 
   // Scratch objects for allocation-free updates.
   private readonly mOut = new Matrix();
@@ -812,6 +816,50 @@ export class BabylonRenderer implements Renderer {
     }
   }
 
+  setRoomOverlay(tiles: readonly RoomOverlayTile[]): void {
+    const n = tiles.length;
+    if (!this.roomOverlay && n === 0) return;
+    let mesh = this.roomOverlay;
+    if (!mesh) {
+      // One film per tile, tinted per instance; just under the floor tool's film.
+      mesh = MeshBuilder.CreateGround('room-overlay', { width: 1, height: 1 }, this.scene);
+      const mat = new StandardMaterial('room-overlay', this.scene);
+      mat.disableLighting = true;
+      mat.emissiveColor = Color3.White();
+      mat.alpha = 0.45;
+      mesh.material = mat;
+      mesh.isPickable = false;
+      mesh.alwaysSelectAsActiveMesh = true;
+      this.roomOverlay = mesh;
+    }
+    if (n * 16 > this.roomMatrices.length) {
+      const cap = Math.max(n, 64) * 2;
+      this.roomMatrices = new Float32Array(cap * 16);
+      this.roomColors = new Float32Array(cap * 4);
+      mesh.thinInstanceSetBuffer('matrix', this.roomMatrices, 16, false);
+      mesh.thinInstanceSetBuffer('color', this.roomColors, 4, false);
+    }
+    const m = this.roomMatrices;
+    const c = this.roomColors;
+    tiles.forEach((t, i) => {
+      const o = i * 16;
+      m.fill(0, o, o + 16);
+      m[o] = 1;
+      m[o + 5] = 1;
+      m[o + 10] = 1;
+      m[o + 12] = t.x + 0.5;
+      m[o + 13] = 0.025;
+      m[o + 14] = t.z + 0.5;
+      m[o + 15] = 1;
+      c.set([t.rgb[0], t.rgb[1], t.rgb[2], 1], i * 4);
+    });
+    mesh.thinInstanceCount = n;
+    mesh.thinInstanceBufferUpdated('matrix');
+    mesh.thinInstanceBufferUpdated('color');
+    if (mesh.isEnabled(false) !== n > 0) mesh.setEnabled(n > 0);
+    this.resetSnapshot();
+  }
+
   /** Build tools: whether a left-drag turns the camera (off while a wall is being drawn). */
   setLeftDragCamera(on: boolean): void {
     const pointers = this.camera.inputs.attached.pointers as ArcRotateCameraPointersInput | undefined;
@@ -937,6 +985,7 @@ export class BabylonRenderer implements Renderer {
     this.setEdgePreview([], true);
     this.setPaintPreview([], null);
     this.setFloorPreview([], null);
+    this.setRoomOverlay([]);
     this.setBuildGrid(null);
     this.cameraPlaced = false;
     this.framedView = '';
