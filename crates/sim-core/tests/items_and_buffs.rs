@@ -216,7 +216,7 @@ fn a_pack_can_bring_more_than_32_tags() {
         objects.join(",")
     );
     let content = Content::from_json(&merge_content(base, &[&pack]).unwrap()).unwrap();
-    assert_eq!(content.tags.len(), 41, "40 + visit");
+    assert_eq!(content.tags.len(), 43, "40 + visit + chores and cleaning (tidying up)");
     let last = &content.objects[39].interactions[0];
     assert_eq!(last.tags, 1 << 39);
     let mods = content.character_modifiers(&["odd".into()], &[]).unwrap();

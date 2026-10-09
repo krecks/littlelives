@@ -65,6 +65,7 @@ mod tests {
             feeling: None,
             feeling_min_skill: 0.0,
             anim: None,
+            dirt: 0.0,
         }
     }
 

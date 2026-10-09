@@ -2169,7 +2169,7 @@ mod tests {
         assert_eq!(c.object_index("fridge"), Some(0));
         assert_eq!(
             c.tags,
-            ["food", "screen", "fun", "social", "friendly", "visit"]
+            ["food", "screen", "fun", "social", "friendly", "visit", "chores", "cleaning"]
         );
         assert_eq!(c.objects[1].interactions[0].tags, 0b110);
         assert_eq!(c.socials[0].success.feeling, Some(0));
