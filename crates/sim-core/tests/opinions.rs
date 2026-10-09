@@ -17,9 +17,9 @@ const CONTENT: &str = r#"{
         {"id":"sit","label":"Sit","minutes":30,"tags":["lounge"]}]},
       {"id":"vase","name":"Vase","price":30,"category":"decor","decor":2}],
     "roomKinds":[
-      {"id":"bathroom","tags":["bathroom"],"essentials":[["bathroom"]],"size":[3,6],"exclusive":true,"another":true},
+      {"id":"bathroom","tags":["bathroom"],"essentials":[["bathroom"]],"size":[3,6],"exclusive":true},
       {"id":"living","tags":["lounge"],"size":[12,20]}],
-    "accidents":[{"id":"wetSelf","need":"bladder","cooldownHours":2,"graceMinutes":600}],
+    "accidents":[{"id":"wetSelf","need":"bladder","anotherRoom":"bathroom","cooldownHours":2,"graceMinutes":600}],
     "roomRules":{"decorByCategory":{"decor":1},"love":0.8,"dislike":0.66,
                  "loveFeeling":"lovesRoom","dislikeFeeling":"dislikesRoom"},
     "economy":{"startingFunds":10000}}"#;

@@ -363,3 +363,34 @@ fn gardening_feeds_the_household_and_trains_its_skill() {
     assert!(world.sims[0].needs[hunger] > 0.4, "a fresh harvest fed them");
     assert!(world.sims[0].skills[gardening] > 0.0, "and taught some Gardening");
 }
+
+/// Every house template's bathroom has walls: the room with the toilet is a bathroom of its
+/// own, not part of the living room or kitchen (Oakridge's bathroom wall once stopped halfway).
+#[test]
+fn house_templates_have_closed_bathrooms() {
+    let content = content();
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../web/public/content");
+    let houses: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(dir.join("houses.json")).unwrap()).unwrap();
+    let (w, d) = (&houses["plot"]["width"], &houses["plot"]["depth"]);
+    for h in houses["houses"].as_array().unwrap() {
+        let lot = serde_json::json!({
+            "width": w, "depth": d,
+            "plots": [{"name": "Home", "x": 0, "z": 0, "w": w, "d": d}],
+            "walls": h["walls"], "doors": h["doors"], "windows": h["windows"], "objects": h["objects"],
+        });
+        let world = World::from_json(&content, &lot.to_string(), 1).unwrap();
+        let bathroom = world.content.room_kinds.iter().position(|k| k.id == "bathroom");
+        for o in world.objects.iter().filter(|o| world.content.objects[o.def].id == "toilet") {
+            let room = world.room_at_tile(o.x, o.z).expect("the toilet is indoors");
+            assert!(
+                room.kind == bathroom && !room.mixed,
+                "{}: the toilet's room is {:?} (mixed {}, {} tiles)",
+                h["id"],
+                room.kind.map(|k| &world.content.room_kinds[k].id),
+                room.mixed,
+                room.tiles
+            );
+        }
+    }
+}

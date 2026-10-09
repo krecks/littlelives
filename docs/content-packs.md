@@ -360,7 +360,9 @@ traits whose `tagPreference` dislikes an activity's tags skip it more. A pack's 
   `houseplants`), `wellness` (example pack). Add a category with
   `"buyCategories": [{ "id": "...", "label": "...", "icon": "icon.category.<id>" }]` only if
   none fits (`icon` is optional: the catalog tab's icon, an `icon` asset key; `groups`
-  optional: `[{ "id": "...", "label": "..." }]`, chips that objects pick with `group`).
+  optional: `[{ "id": "...", "label": "..." }]`, chips that objects pick with `group`;
+  `"outside": true` on a category or group marks garden things, which wishes for a room don't
+  offer: base game `outdoor` and the garden's `trees`, `shrubs`, `flowers`, `edibles`).
 - **Activities** (routine blocks): `sleep`, `eat`, `cook`, `wash`, `train` (names a skill),
   `workout`, `read`, `create`, `fun`, `relax`, `garden`, `chores`, `social`, `visit`.
 - **Traits** (for `traitPatches`): `foodie`, `bookworm`, `couchPotato`, `neat`, `slob`,
@@ -398,12 +400,12 @@ How the house shows up in residents' lives (see `docs/design/house-matters.md`).
 
 ```json
 {"id": "bathroom", "label": "Bathroom", "icon": "icon.category.bathroom", "tags": ["bathroom"],
- "essentials": [["bathroom"], ["hygiene"]], "size": [3, 6], "exclusive": true, "another": true}
+ "essentials": [["bathroom"], ["hygiene"]], "size": [3, 6], "exclusive": true}
 ```
 
 `essentials`: tag groups something in the room must offer for full function; `size`:
 `[cramped, comfortable]` in tiles; `exclusive`: can't share a room with another exclusive kind
-(a bed in the kitchen); `another`: residents who keep finding it taken wish for a second one.
+(a bed in the kitchen).
 
 **Scoring** (`roomRules`, an object, so a pack can change single keys): `weights` of size, light,
 decor, cleanliness and function; `windowTiles` and `lampTiles` (tiles one window or lamp lights
@@ -429,7 +431,9 @@ home has nothing working for it.
 
 `effects` change needs at once, `dirt` leaves a mess where it happened, `feeling` is granted,
 `cost` is charged, `rest` is something they do right away (asleep on the floor), `story` puts it
-in the journal. `crowdedGraceMinutes` also lets it happen when the home has the essential but it's
+in the journal. `anotherRoom` (a room kind id): residents who badly need it and find what fills
+it taken, on two different days within a week, wish for another room of that kind (the base
+game's `wetSelf`: a second bathroom). `crowdedGraceMinutes` also lets it happen when the home has the essential but it's
 taken. At most 8.
 
 ## Balance guidance

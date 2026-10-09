@@ -3115,7 +3115,7 @@
     {"id": "glass", "label": "French glass", "leaf": "glass", "color": "#3C3F44", "price": 260}
   ],
   "accidents": [
-    {"id": "wetSelf", "need": "bladder", "story": "had an accident", "effects": {"bladder": 1.0, "hygiene": -0.6}, "dirt": 1.0, "feeling": "hadAccident", "cooldownHours": 2, "graceMinutes": 45},
+    {"id": "wetSelf", "need": "bladder", "anotherRoom": "bathroom", "story": "had an accident", "effects": {"bladder": 1.0, "hygiene": -0.6}, "dirt": 1.0, "feeling": "hadAccident", "cooldownHours": 2, "graceMinutes": 45},
     {"id": "fellAsleep", "need": "energy", "story": "fell asleep on the floor", "feeling": "soreBack", "cooldownHours": 4, "graceMinutes": 60,
      "rest": {"label": "Asleep on the floor", "minutes": 120, "pose": "lie", "anim": "sleep", "gains": {"energy": 0.45}, "tags": ["sleep", "rest"]}},
     {"id": "takeout", "need": "hunger", "story": "ordered takeout", "cost": 25, "cooldownHours": 2, "graceMinutes": 60,
@@ -3123,7 +3123,7 @@
     {"id": "grubby", "need": "hygiene", "feeling": "grubby", "cooldownHours": 3, "graceMinutes": 60}
   ],
   "roomKinds": [
-    {"id": "bathroom", "icon": "icon.category.bathroom", "label": "Bathroom", "tags": ["bathroom"], "essentials": [["bathroom"], ["hygiene"]], "size": [3, 6], "exclusive": true, "another": true},
+    {"id": "bathroom", "icon": "icon.category.bathroom", "label": "Bathroom", "tags": ["bathroom"], "essentials": [["bathroom"], ["hygiene"]], "size": [3, 6], "exclusive": true},
     {"id": "kitchen", "icon": "icon.category.kitchen", "label": "Kitchen", "tags": ["cooking"], "essentials": [["cooking"]], "size": [6, 12], "exclusive": true},
     {"id": "bedroom", "icon": "icon.category.bedroom", "label": "Bedroom", "tags": ["sleep"], "essentials": [["sleep"]], "size": [6, 12], "exclusive": true},
     {"id": "living", "icon": "icon.category.living", "label": "Living room", "tags": ["lounge", "entertainment", "screen"], "size": [9, 20]},
@@ -3222,8 +3222,7 @@
     {
       "id": "outdoor",
       "label": "Outdoor",
-      "icon": "icon.category.outdoor"
-    }
+      "icon": "icon.category.outdoor", "outside": true}
   ],
   "include": [
     "careers.json",

@@ -109,9 +109,12 @@ Once an hour each awake resident at home forms an opinion of the room they're in
   - cleanliness → "A tidier kitchen" (nothing to buy: someone should tidy up),
   - function → "Everything a kitchen needs" (*Find in catalog*: its essentials).
 - A broken object at home → "The shower fixed" (Repair: the paid quick fix) and a thought.
-- Finding the bathroom taken while badly needing it (a need with an accident, below 0.15) on two
-  different days within a week → "A second bathroom" (Build). Only room kinds with
-  `another: true` ask for this; without the repeat rule nearly every shared home wished for one.
+- Finding the toilet taken while badly needing it (below 0.15) on two different days within a
+  week → "A second bathroom" (Build). The accident names the room it asks for
+  (`anotherRoom` on `wetSelf`). Over 30 days, households with one bathroom wish for a second
+  one: 0 of 38 living alone, 8 of 43 couples, 16 of 24 threesomes, 2 of 3 foursomes.
+- Catalog wishes for a room offer only what belongs indoors (houseplants yes, lanterns and
+  trees no): buy categories and their groups say `outside: true` for garden things.
 
 Home wishes (at most four per resident, saved by id) come true and go when the room's factor
 reaches 0.6, the thing is fixed, or there are two rooms of the kind (or nobody waited for two

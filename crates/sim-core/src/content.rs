@@ -160,6 +160,9 @@ pub struct AccidentDef {
     /// None: never then.
     pub crowded_grace_ticks: Option<u64>,
     pub rest: Option<AccidentRest>,
+    /// Residents who badly need it and keep finding what fills it taken wish for another room
+    /// of this kind (the toilet: a second bathroom).
+    pub another_room: Option<usize>,
 }
 
 /// A little while of doing it on the spot (sleeping on the floor, eating takeout).
@@ -187,8 +190,6 @@ pub struct RoomKind {
     pub size: [f32; 2],
     /// A room can't be two exclusive kinds at once (a bed in the kitchen makes it `mixed`).
     pub exclusive: bool,
-    /// Residents who badly need what it's for and find it taken wish for another (a bathroom).
-    pub another: bool,
 }
 
 /// How rooms are scored (content `roomRules`; see `rooms.rs`).
@@ -1007,6 +1008,8 @@ struct AccidentRaw {
     crowded_grace_minutes: Option<f32>,
     #[serde(default)]
     rest: Option<AccidentRestRaw>,
+    #[serde(default)]
+    another_room: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -1038,8 +1041,6 @@ struct RoomKindRaw {
     size: Option<[f32; 2]>,
     #[serde(default)]
     exclusive: bool,
-    #[serde(default)]
-    another: bool,
 }
 
 #[derive(Deserialize, Default)]
@@ -1975,6 +1976,16 @@ impl Content {
                     cooldown_ticks: (a.cooldown_hours.unwrap_or(2.0).max(0.0) * 60.0 / crate::MINUTES_PER_TICK) as u64,
                     grace_ticks: (a.grace_minutes.unwrap_or(30.0).max(0.0) / crate::MINUTES_PER_TICK) as u64,
                     crowded_grace_ticks: a.crowded_grace_minutes.map(|m| (m.max(0.0) / crate::MINUTES_PER_TICK) as u64),
+                    another_room: a
+                        .another_room
+                        .as_ref()
+                        .map(|id| {
+                            raw.room_kinds
+                                .iter()
+                                .position(|k| &k.id == id)
+                                .ok_or_else(|| Error::new(format!("{ctx}: unknown room kind '{id}'")))
+                        })
+                        .transpose()?,
                     rest: a
                         .rest
                         .as_ref()
@@ -2003,7 +2014,6 @@ impl Content {
                 essentials: k.essentials.iter().map(|e| tag_mask(e)).filter(|&m| m != 0).collect(),
                 size: k.size.unwrap_or([4.0, 9.0]),
                 exclusive: k.exclusive,
-                another: k.another,
             })
             .collect();
         let rr = &raw.room_rules;

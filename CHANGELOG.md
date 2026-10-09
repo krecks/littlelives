@@ -12,13 +12,14 @@ The house matters: what you build changes how your residents live, and they tell
 - **Dirt and tidying up:** cooking, eating, washing and the bathroom leave a mess around them. When a room gets dirty, residents *Tidy up* (neat ones gladly, slobs rarely), and a planned *Chores* block does the cleaning.
 - **Wear and repairs:** things wear with use (bathroom things fastest, better quality slower; plants and decor never) and break in the end: a broken thing doesn't work and doesn't count for its room. Residents repair it themselves (training handiness; with little skill it may take two tries), or pay for a quick fix in Buy mode (30% of the price; free in Creative). A broken thing sells for half.
 - **When the home lacks an essential:** with no working toilet, a resident who can't hold it any longer has an accident (a puddle and an embarrassing day); with no bed they fall asleep on the floor (and wake with a sore back); with no fridge they order takeout ($25); with no shower they feel grubby. All of it lands in the journal.
-- **Opinions and wishes:** residents love or dislike the room they're in (a thought bubble, a feeling, a line), and wish a disliked room better in what it lacks most: more light, something nice, more space, a tidier room, or what a room like it needs. They wish broken things fixed, and a household that keeps finding the bathroom taken wishes for a second one. Wishes show in the planner next to the activity wishes, each with what to do about it (*Find in catalog* with just the things that help, *Build*, *Repair*), and go once they come true.
+- **Opinions and wishes:** residents love or dislike the room they're in (a thought bubble, a feeling, a line), and wish a disliked room better in what it lacks most: more light, something nice, more space, a tidier room, or what a room like it needs. They wish broken things fixed, and a household that keeps finding the bathroom taken wishes for a second one (mostly larger households). Room wishes offer only what belongs in a room (houseplants yes, garden lanterns no). Wishes show in the planner next to the activity wishes, each with what to do about it (*Find in catalog* with just the things that help, *Build*, *Repair*), and go once they come true.
 - **Our home** (top bar in Live, or O): every room with its scores as bars, what's off, who wishes what, broken things with Repair, and the house's overall score.
 - **Room scores on the floor plan:** in Build mode, the button next to the eyedropper (or O) tints each room from red to green by its score, with a tag naming what would help most.
 
 ### Changed
 - Saves are now version 12 (dirt, wear, the Surroundings need, home wishes); older saves load clean and unworn, with Surroundings at a neutral level.
-- Content packs can add room kinds (`roomKinds`), tune how rooms are scored (`roomRules`), set wear and repairs (`objectRules.wear`, `objectRules.repair`), and add accidents (`accidents`).
+- **Oakridge House** has a proper bathroom: its wall stopped halfway, so the toilet and shower stood in the living room.
+- Content packs can add room kinds (`roomKinds`), tune how rooms are scored (`roomRules`), set wear and repairs (`objectRules.wear`, `objectRules.repair`), add accidents (`accidents`, with `anotherRoom`), and mark buy categories or groups as garden things (`outside`).
 
 ## Unreleased (0.10.0)
 

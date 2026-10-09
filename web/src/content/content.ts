@@ -83,7 +83,9 @@ export interface BuyCategory {
   /** Icon asset key for the catalog tab. */
   icon?: string;
   /** Sub-groups shown as chips when the category is open; objects name theirs in `group`. */
-  groups?: { id: string; label: string }[];
+  groups?: { id: string; label: string; outside?: boolean }[];
+  /** Its things belong in the garden (wishes for a room don't offer them); a group can say otherwise. */
+  outside?: boolean;
 }
 
 /** A wall covering (Build mode's paint): a finish (texture) tinted with a colour. Price per face. */
@@ -113,8 +115,6 @@ export interface RoomKindDef {
   essentials?: string[][];
   size?: [number, number];
   exclusive?: boolean;
-  /** Residents who find it taken when they badly need it wish for another. */
-  another?: boolean;
 }
 
 /** A roof style (Build mode's Roof tool): the shape and, for pitched roofs, the pitch in degrees. */
@@ -408,6 +408,13 @@ export class Content {
 
   activity(id: string): ActivityDef | undefined {
     return this.activities.find((a) => a.id === id);
+  }
+
+  /** Whether an object belongs in the garden rather than a room (outdoor-only, or its category or group says so). */
+  belongsOutside(def: ObjectDef): boolean {
+    if (def.outdoors) return true;
+    const category = this.buyCategories.find((c) => c.id === def.category);
+    return category?.groups?.find((g) => g.id === def.group)?.outside ?? category?.outside ?? false;
   }
 
   /** Decor points an object gives the room it stands in (sim-core `ObjectDef::decor`). */

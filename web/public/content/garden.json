@@ -16,19 +16,23 @@
       "groups": [
         {
           "id": "trees",
-          "label": "Trees"
+          "label": "Trees",
+          "outside": true
         },
         {
           "id": "shrubs",
-          "label": "Shrubs & hedges"
+          "label": "Shrubs & hedges",
+          "outside": true
         },
         {
           "id": "flowers",
-          "label": "Flowers"
+          "label": "Flowers",
+          "outside": true
         },
         {
           "id": "edibles",
-          "label": "Fruit & veg"
+          "label": "Fruit & veg",
+          "outside": true
         },
         {
           "id": "houseplants",

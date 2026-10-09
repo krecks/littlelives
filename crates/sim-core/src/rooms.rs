@@ -366,10 +366,12 @@ pub(crate) fn opinions(w: &mut World) {
                     thought = Some((ThoughtKind::Broken, def));
                 }
             }
-            // Badly needing what's taken (the toilet): another room for it, for kinds that ask.
+            // Badly needing what's taken (the toilet): another room for it, where content asks.
             let me = i as u32;
             for acc in &w.content.accidents {
-                if w.sims[i].needs[acc.need] >= 0.15 {
+                let Some(kind) = acc.another_room else { continue };
+                let have = rooms.iter().filter(|r| !r.garden && r.kind == Some(kind)).count();
+                if w.sims[i].needs[acc.need] >= 0.15 || have >= 2 {
                     continue;
                 }
                 let fillers: Vec<&crate::world::ObjectInstance> = w
@@ -385,8 +387,7 @@ pub(crate) fn opinions(w: &mut World) {
                     .collect();
                 let busy = !fillers.is_empty()
                     && fillers.iter().all(|o| o.users().any(|u| u != me) && !o.has_free_slot(w.content.objects[o.def].slots));
-                let kind = fillers.first().and_then(|o| w.room_at_tile(o.x, o.z)).and_then(|r| r.kind);
-                if busy && let Some(kind) = kind.filter(|&k| w.content.room_kinds[k].another) {
+                if busy {
                     // Once is bad luck; again on another day this week, they'd like a second one.
                     let again = waited.is_some_and(|d| d < today && today <= d + WAIT_REPEAT_DAYS);
                     let wish = HomeWish::Another { kind };
