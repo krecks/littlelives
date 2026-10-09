@@ -309,6 +309,9 @@ export async function startSession(
     setLifespan(lifespan) {
       bridge.send({ type: 'setLifespan', lifespan });
     },
+    setPlayerMoves(enabled) {
+      bridge.send({ type: 'setPlayerMoves', enabled });
+    },
     toggleHome() {
       game.homeOpen = !game.homeOpen;
       if (game.homeOpen) game.journalOpen = false;
@@ -610,6 +613,7 @@ export async function startSession(
     game.minute = ui.minute;
     game.speed = ui.speed;
     game.lifespan = ui.lifespan ?? 'off';
+    game.playerMoves = ui.playerMoves ?? true;
     game.sims = ui.sims;
     game.weekday = ui.weekday;
     const mine = ui.households.find((h) => game.households[h.id]?.player);

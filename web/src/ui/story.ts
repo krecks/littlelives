@@ -35,9 +35,12 @@ const ICONS: Record<string, string> = {
   grewOlder: 'icon.ui.calendar',
   retired: 'icon.ui.career',
   died: 'icon.emotion.sad',
+  movedInWith: 'icon.bubble.love',
+  movedOut: 'icon.ui.home',
+  movedAway: 'icon.ui.home',
 };
 
-const LOVE = new Set(['crush', 'firstKiss', 'startedDating']);
+const LOVE = new Set(['crush', 'firstKiss', 'startedDating', 'movedInWith']);
 const BAD = new Set(['died', 'becameEnemies', 'brokeUp', 'fight', 'jealous', 'proposalRejected', 'missedWork', 'rentDebt', 'fired', 'broke', 'accident']);
 
 export function storyIcon(e: SocialEvent): string {

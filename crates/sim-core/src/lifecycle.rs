@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::clock;
 use crate::social::{self, EventKind, Kin};
-use crate::world::{GoneWhy, World};
+use crate::world::{GoneWhy, Household, World};
 
 /// How fast residents age (a per-game option): `Off` nobody does; the others scale content
 /// `life.daysPerYear` (the *Normal* speed).
@@ -45,6 +45,12 @@ pub fn default_age(rules: &crate::content::LifeRules, name: &str, slot: usize) -
 /// Once a day at midnight: everyone a year-fraction older; a new life stage is a story event
 /// and a feeling, and changes what the stage does to them.
 pub(crate) fn update(w: &mut World) {
+    if let Some(rules) = w.content.life.moving
+        && clock::tick_at(clock::day(w.tick), rules.hour * 60.0) == Some(w.tick)
+        && w.autonomy
+    {
+        moving(w, &rules);
+    }
     let Some(days_per_year) = w.lifespan.days_per_year(w.content.life.days_per_year) else { return };
     let day = clock::day(w.tick);
     if clock::tick_at(day, 0.0) != Some(w.tick) {
@@ -132,4 +138,171 @@ pub fn pass_away(w: &mut World, i: usize) {
     }
     w.events.push_detail(w.tick, EventKind::Died, i, None, None);
     w.depart(i, GoneWhy::Died);
+}
+
+// ---- Moving --------------------------------------------------------------------------------
+
+/// Residents of household `h` who are here.
+fn members(w: &World, h: usize) -> Vec<usize> {
+    (0..w.sims.len()).filter(|&i| w.sims[i].here() && w.sims[i].household as usize == h).collect()
+}
+
+/// Beds (sleeping places) in the home on `plot`.
+fn beds(w: &World, plot: u32) -> usize {
+    let sleep = w.content.day_rhythm.sleep_tags;
+    w.objects
+        .iter()
+        .zip(&w.object_plot)
+        .filter(|(o, p)| **p == Some(plot) && !o.broken())
+        .filter(|(o, _)| w.content.objects[o.def].interactions.iter().any(|it| it.tags & sleep != 0))
+        .map(|(o, _)| usize::from(w.content.objects[o.def].slots))
+        .sum()
+}
+
+/// Whether household `h`'s home has a bed and room for `more` residents.
+fn has_room(w: &World, h: usize, more: usize) -> bool {
+    let Some(plot) = w.households[h].plot else { return false };
+    let n = members(w, h).len() + more;
+    n <= w.content.rules.max_household && beds(w, plot) >= n
+}
+
+/// Whether a resident's household lets them move on their own (the player can say no).
+fn may_move(w: &World, i: usize) -> bool {
+    let s = &w.sims[i];
+    s.here() && s.away_until.is_none() && s.visiting.is_none() && (w.player_moves || !w.households[s.household as usize].player)
+}
+
+/// A house nobody lives in (not a park, not the player's home), with beds for `n`.
+fn vacant_plot(w: &World, n: usize) -> Option<u32> {
+    w.plots
+        .iter()
+        .filter(|p| !p.public)
+        .filter(|p| {
+            !w.households.iter().enumerate().any(|(h, hh)| hh.plot == Some(p.id) && (hh.player || !members(w, h).is_empty()))
+        })
+        .find(|p| beds(w, p.id) >= n)
+        .map(|p| p.id)
+}
+
+/// A household for the house on `plot`: the empty one already there, else a new one.
+fn household_for(w: &mut World, plot: u32, name: &str, style: u8) -> usize {
+    if let Some(h) = w.households.iter().position(|hh| hh.plot == Some(plot)) {
+        let hh = &mut w.households[h];
+        hh.name = name.to_string();
+        hh.funds = 0;
+        hh.routines.clear();
+        return h;
+    }
+    let id = w.households.len() as u32;
+    w.households.push(Household {
+        id,
+        name: name.to_string(),
+        plot: Some(plot),
+        player: false,
+        funds: 0,
+        style,
+        free_will: true,
+        routines: Vec::new(),
+    });
+    id as usize
+}
+
+/// Moves resident `i` into household `to`, with their share of their old household's money.
+fn move_to(w: &mut World, i: usize, to: usize) {
+    let from = w.sims[i].household as usize;
+    if from == to {
+        return;
+    }
+    let share = w.households[from].funds.max(0) / members(w, from).len().max(1) as i64;
+    w.households[from].funds -= share;
+    w.households[to].funds += share;
+    let id = i as u32;
+    for o in &mut w.objects {
+        o.release(id);
+    }
+    let arrive = w.households[to].plot.map(|p| w.plots[p as usize].arrival_point());
+    let sim = &mut w.sims[i];
+    sim.household = to as u32;
+    sim.clear_activity();
+    sim.planner.run = None;
+    if let Some(pos) = arrive {
+        sim.pos = pos;
+    }
+    w.structure_version += 1;
+}
+
+/// Partners move in together; grown children move out (or away).
+fn moving(w: &mut World, rules: &crate::content::MovingRules) {
+    let tick = w.tick;
+    let n = w.sims.len();
+    // Partners in different homes.
+    for a in 0..n {
+        for b in a + 1..n {
+            let (ra, rb) = (*w.relationships.get(a, b), *w.relationships.get(b, a));
+            if !ra.partners || !may_move(w, a) || !may_move(w, b) || w.sims[a].household == w.sims[b].household {
+                continue;
+            }
+            if ra.romance.min(rb.romance) < rules.romance || w.rng.next_f32() >= rules.partners {
+                continue;
+            }
+            let (ha, hb) = (w.sims[a].household as usize, w.sims[b].household as usize);
+            let into_b = has_room(w, hb, 1);
+            let into_a = has_room(w, ha, 1);
+            // The player's home first, else the one from the fuller home moves.
+            let mover = match (into_a, into_b) {
+                (true, true) if w.households[ha].player => Some(b),
+                (true, true) if w.households[hb].player => Some(a),
+                (true, true) => Some(if members(w, ha).len() >= members(w, hb).len() { a } else { b }),
+                (true, false) => Some(b),
+                (false, true) => Some(a),
+                (false, false) => None,
+            };
+            if let Some(m) = mover {
+                let partner = if m == a { b } else { a };
+                let to = w.sims[partner].household as usize;
+                move_to(w, m, to);
+                w.events.push(tick, EventKind::MovedInWith, m, partner, None);
+            } else if let Some(plot) = vacant_plot(w, 2) {
+                let name = w.households[ha].name.clone();
+                let style = w.households[ha].style;
+                let h = household_for(w, plot, &name, style);
+                move_to(w, a, h);
+                move_to(w, b, h);
+                w.events.push(tick, EventKind::MovedInWith, a, b, None);
+            }
+        }
+    }
+    // Grown children living with a parent.
+    for i in 0..n {
+        let (age, h, working) = {
+            let s = &w.sims[i];
+            (s.age, s.household as usize, s.job.is_some() || s.retired)
+        };
+        if !may_move(w, i) || age < rules.leave_home_age || !working {
+            continue;
+        }
+        let with_parent = (0..n).any(|j| w.sims[j].here() && w.sims[j].household as usize == h && w.relationships.kin(i, j) == Kin::Parent);
+        if !with_parent || w.rng.next_f32() >= rules.leave_home {
+            continue;
+        }
+        let partner = (0..n).find(|&j| w.sims[j].here() && w.sims[j].household as usize == h && w.relationships.get(i, j).partners);
+        let going = 1 + usize::from(partner.is_some());
+        if let Some(plot) = vacant_plot(w, going) {
+            let name = w.households[h].name.clone();
+            let style = w.households[h].style;
+            let new = household_for(w, plot, &name, style);
+            move_to(w, i, new);
+            if let Some(p) = partner {
+                move_to(w, p, new);
+            }
+            w.events.push_detail(tick, EventKind::MovedOut, i, None, None);
+        } else if age >= rules.leave_town_age && !w.households[h].player && w.rng.next_f32() < rules.leave_town {
+            w.events.push_detail(tick, EventKind::MovedAway, i, None, None);
+            w.depart(i, GoneWhy::MovedAway);
+            if let Some(p) = partner {
+                w.events.push_detail(tick, EventKind::MovedAway, p, None, None);
+                w.depart(p, GoneWhy::MovedAway);
+            }
+        }
+    }
 }

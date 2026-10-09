@@ -54,6 +54,9 @@ pub struct SaveFile {
     /// How fast residents age (absent before v13: off).
     #[serde(default)]
     pub lifespan: Option<crate::lifecycle::Lifespan>,
+    /// Whether the player's residents move on their own (absent: yes).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub player_moves: Option<bool>,
     pub rng: u32,
     pub lot: LotSave,
     pub objects: Vec<ObjectSave>,
@@ -563,6 +566,7 @@ impl World {
             speed: self.speed,
             autonomy: self.autonomy,
             lifespan: Some(self.lifespan),
+            player_moves: (!self.player_moves).then_some(false),
             rng: self.rng.state(),
             lot: LotSave {
                 width: self.lot.width,
@@ -655,6 +659,7 @@ impl World {
         let legacy_free_will = save.version < 8;
         world.autonomy = save.autonomy || legacy_free_will;
         world.lifespan = save.lifespan.unwrap_or(crate::lifecycle::Lifespan::Off);
+        world.player_moves = save.player_moves.unwrap_or(true);
         world.meta = save.meta.clone();
         world.exits = save.exits.clone();
         world.plots = save

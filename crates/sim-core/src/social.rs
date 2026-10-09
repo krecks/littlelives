@@ -748,6 +748,12 @@ pub enum EventKind {
     Retired,
     /// `a` passed away.
     Died,
+    /// `a` moved in with their partner `b`.
+    MovedInWith,
+    /// `a` moved out of their family's home into a house of their own.
+    MovedOut,
+    /// `a` left town.
+    MovedAway,
 }
 
 impl EventKind {
@@ -756,7 +762,8 @@ impl EventKind {
         use EventKind::*;
         match self {
             FirstKiss | StartedDating | BrokeUp | BecameBestFriends | Promoted | JobFound
-            | Fired | GoalReached | MovedIn | GrewOlder | Retired | Died => 2,
+            | Fired | GoalReached | MovedIn | GrewOlder | Retired | Died | MovedInWith | MovedOut
+            | MovedAway => 2,
             BecameFriends | BecameGoodFriends | BecameEnemies | Crush | ProposalRejected
             | Fight | Jealous | QuitJob | RentDebt | Broke | Accident => 1,
             Met | MissedWork | SkillUp | PaidRent | Upgraded | Visited | GoalSuggested | Repaired => 0,

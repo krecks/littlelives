@@ -54,6 +54,10 @@ pub enum Command {
     SetLifespan {
         lifespan: crate::lifecycle::Lifespan,
     },
+    /// Whether the player's residents move in with partners and out of home on their own.
+    SetPlayerMoves {
+        enabled: bool,
+    },
     /// Queue an interaction on an object for a Sim.
     Use {
         sim: u32,

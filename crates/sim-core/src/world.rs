@@ -105,7 +105,7 @@ impl ObjectInstance {
         }
     }
 
-    fn release(&mut self, sim: u32) {
+    pub(crate) fn release(&mut self, sim: u32) {
         for u in &mut self.users {
             if *u == Some(sim) {
                 *u = None;
@@ -358,6 +358,17 @@ impl Sim {
         })
     }
 
+    /// Stops whatever they're doing and drops what they meant to do (their object slots are
+    /// released by the caller).
+    pub(crate) fn clear_activity(&mut self) {
+        self.current = None;
+        self.queue.clear();
+        self.engaged_with = None;
+        self.transition = None;
+        self.visiting = None;
+        self.pose = Pose::Stand;
+    }
+
     /// Still in town (not dead or moved away).
     pub fn here(&self) -> bool {
         self.gone.is_none()
@@ -530,8 +541,6 @@ pub struct Household {
     pub routines: Vec<crate::planner::Routine>,
 }
 
-/// Per-tick snapshot of other Sims, so each Sim can reason about the others
-/// without aliasing the mutable Sim list. Reused between ticks.
 /// A resident who is no longer in town: they died or moved away (see `lifecycle.rs`).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -556,6 +565,8 @@ pub struct Former {
     pub household: String,
 }
 
+/// Per-tick snapshot of other Sims, so each Sim can reason about the others
+/// without aliasing the mutable Sim list. Reused between ticks.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SimBrief {
     pub pos: [f32; 2],
@@ -588,6 +599,9 @@ pub struct World {
     pub autonomy: bool,
     /// How fast residents age (a per-game option).
     pub lifespan: crate::lifecycle::Lifespan,
+    /// Whether the player's residents move in with partners and out of the family home on
+    /// their own (a per-game option; others always do).
+    pub player_moves: bool,
     /// People whose slot someone new took, for the story (`social::FORMER` references).
     pub former: Vec<Former>,
     /// Bumped per slot when someone new takes it (views rebuild that resident).
@@ -765,6 +779,7 @@ impl World {
             speed: 1,
             autonomy: true,
             lifespan: Default::default(),
+            player_moves: true,
             former: Vec::new(),
             generations: Vec::new(),
             rng,
@@ -1071,14 +1086,9 @@ impl World {
         }
         let day = crate::clock::day(self.tick);
         let sim = &mut self.sims[i];
-        sim.current = None;
-        sim.queue.clear();
-        sim.engaged_with = None;
+        sim.clear_activity();
         sim.away_until = None;
-        sim.visiting = None;
-        sim.transition = None;
         sim.job = None;
-        sim.pose = Pose::Stand;
         sim.planner.run = None;
         sim.planner.thought = None;
         sim.gone = Some(Gone { why, day });
@@ -1460,6 +1470,7 @@ impl World {
             cmd,
             Command::SetSpeed { .. }
                 | Command::SetLifespan { .. }
+                | Command::SetPlayerMoves { .. }
                 | Command::SetAutonomy { .. }
                 | Command::SetAutoFast { .. }
                 | Command::SetRoutines { .. }
@@ -1552,6 +1563,7 @@ impl World {
                 }
             }
             Command::SetLifespan { lifespan } => self.lifespan = lifespan,
+            Command::SetPlayerMoves { enabled } => self.player_moves = enabled,
             Command::SetAutonomy { enabled, household } => {
                 if let Some(h) = household {
                     self.households

@@ -75,6 +75,8 @@ class GameState {
   speed = $state(1);
   /** How fast residents age in this game. */
   lifespan = $state<Lifespan>('normal');
+  /** Whether the player's residents move on their own in this game. */
+  playerMoves = $state(true);
   /** Replaced wholesale on each update; raw avoids deep proxies. */
   /** A debug report is being saved. */
   debugSaving = $state(false);

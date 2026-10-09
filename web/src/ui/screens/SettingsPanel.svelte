@@ -14,8 +14,12 @@
 
   // This game's lifespan (sent to the simulation when picked).
   let lifespan = $state<Lifespan>(game.lifespan);
+  let playerMoves = $state(game.playerMoves);
   $effect(() => {
     if (app.screen === 'game' && lifespan !== game.lifespan) services.controls.setLifespan(lifespan);
+  });
+  $effect(() => {
+    if (app.screen === 'game' && playerMoves !== game.playerMoves) services.controls.setPlayerMoves(playerMoves);
   });
 
   const tabs = ['Graphics', 'Gameplay', 'Watching', 'Interface', 'Audio', 'Controls'] as const;
@@ -152,6 +156,10 @@
               { value: 'long', label: 'Long' },
             ]}
           />
+        </div>
+        <div class="row">
+          <div><b>Moving</b><span>Your residents move in with partners and out of the family home on their own.</span></div>
+          <Toggle label="Moving" bind:checked={playerMoves} />
         </div>
       {/if}
       <div class="row">

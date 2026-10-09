@@ -183,6 +183,23 @@ pub struct LifeRules {
     pub death: Option<DeathRules>,
     /// How those left behind feel.
     pub grief: GriefRules,
+    /// Moving in together, moving out and leaving town (None: nobody moves on their own).
+    pub moving: Option<MovingRules>,
+}
+
+/// Once a day at `hour`: partners in different homes move in together (`partners` chance a
+/// day once their romance is at least `romance`), residents living with a parent move out at
+/// `leave_home_age` (`leave_home` chance a day, with a job), and with no house free, from
+/// `leave_town_age` they may leave town (`leave_town` chance a day).
+#[derive(Debug, Clone, Copy)]
+pub struct MovingRules {
+    pub hour: f32,
+    pub partners: f32,
+    pub romance: f32,
+    pub leave_home_age: f32,
+    pub leave_home: f32,
+    pub leave_town_age: f32,
+    pub leave_town: f32,
 }
 
 /// From `from` years, a yearly chance of `per_year`, growing by `growth` (×e^growth) a year.
@@ -1064,6 +1081,19 @@ struct LifeRaw {
     retire_feeling: Option<String>,
     death: Option<DeathRaw>,
     grief: GriefRaw,
+    moving: Option<MovingRaw>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct MovingRaw {
+    hour: Option<f32>,
+    partners: Option<f32>,
+    romance: Option<f32>,
+    leave_home_age: Option<f32>,
+    leave_home: Option<f32>,
+    leave_town_age: Option<f32>,
+    leave_town: Option<f32>,
 }
 
 #[derive(Deserialize)]
@@ -1899,6 +1929,15 @@ impl Content {
                 close: raw.life.grief.close.unwrap_or(60.0),
                 friend: raw.life.grief.friend.unwrap_or(35.0),
             },
+            moving: raw.life.moving.as_ref().map(|m| MovingRules {
+                hour: m.hour.unwrap_or(11.0).clamp(0.0, 23.9),
+                partners: m.partners.unwrap_or(0.2).clamp(0.0, 1.0),
+                romance: m.romance.unwrap_or(60.0),
+                leave_home_age: m.leave_home_age.unwrap_or(23.0),
+                leave_home: m.leave_home.unwrap_or(0.1).clamp(0.0, 1.0),
+                leave_town_age: m.leave_town_age.unwrap_or(30.0),
+                leave_town: m.leave_town.unwrap_or(0.05).clamp(0.0, 1.0),
+            }),
         };
         let valid_shift = |start: f32, hours: f32, days_ok: bool| {
             (0.0..24.0).contains(&start) && hours > 0.0 && hours <= 16.0 && days_ok

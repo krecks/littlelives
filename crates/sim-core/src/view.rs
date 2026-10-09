@@ -23,6 +23,8 @@ struct UiState<'a> {
     autonomy: bool,
     /// How fast residents age.
     lifespan: crate::lifecycle::Lifespan,
+    /// Whether the player's residents move on their own.
+    player_moves: bool,
     sims: Vec<SimView<'a>>,
     households: Vec<FundsView<'a>>,
     relationships: Vec<RelView>,
@@ -613,6 +615,7 @@ pub fn ui_state_json(world: &World) -> String {
         speed: world.speed,
         autonomy: world.autonomy,
         lifespan: world.lifespan,
+        player_moves: world.player_moves,
         sims,
         households: world
             .households
