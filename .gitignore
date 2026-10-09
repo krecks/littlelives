@@ -2,5 +2,7 @@
 node_modules
 /web/dist
 /web/src/core/wasm-pkg
+/web/src/voice/wasm-pkg
+/web/public/voice
 .DS_Store
 /debug-reports

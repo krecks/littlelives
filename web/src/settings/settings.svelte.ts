@@ -43,6 +43,12 @@ export interface Settings {
    * panel); `always` gives orders straight away, as before.
    */
   directControl: 'inspect' | 'always';
+  /** Residents speak out loud (docs/design/voices.md). Downloads the voice model when first on. */
+  voices: boolean;
+  voiceLanguage: 'en';
+  voiceModel: 'paradee-8m';
+  /** 0..1. */
+  voiceVolume: number;
 }
 
 export const RESTART_KEYS: readonly (keyof Settings)[] = ['quality', 'renderer', 'ambientOcclusion'];
@@ -72,6 +78,10 @@ export const DEFAULT_SETTINGS: Settings = {
   autoSlow: true,
   skipQuietHours: true,
   directControl: 'inspect',
+  voices: false,
+  voiceLanguage: 'en',
+  voiceModel: 'paradee-8m',
+  voiceVolume: 0.8,
 };
 
 function load(): Settings {

@@ -1,0 +1,483 @@
+{
+  "_comment": "Spoken lines for English (docs/design/voices.md), keyed by id: social interaction ids, animation tags (`action`), emotion ids and planner thought kinds. Other languages get their own file (content/voice/<lang>.json) with the same keys. {name} is the other resident's first name, {me} the speaker's. A line may fix a pronunciation with [word](/phonemes/) (Misaki's alphabet). Optional tone per group: happy, sad, angry, flirty.",
+  "social": {
+    "introduce": {
+      "start": [
+        "Hi, I'm {me}. Nice to meet you!",
+        "Hello there! I don't think we've met.",
+        "Hey, I'm {me}. And you are?"
+      ],
+      "good": [
+        "Nice to meet you too, {me}!",
+        "Hi! Lovely to meet you."
+      ],
+      "bad": [
+        "Uh, okay. Hi.",
+        "Sorry, I'm a bit busy."
+      ]
+    },
+    "chat": {
+      "start": [
+        "How was your day, {name}?",
+        "Did you see the weather today?",
+        "So, what have you been up to?",
+        "Have you tried the new café in town?"
+      ],
+      "good": [
+        "Pretty good, thanks for asking!",
+        "Oh, you won't believe it!",
+        "Not bad at all. How about you?"
+      ],
+      "bad": [
+        "I'd rather not talk right now.",
+        "Hmm. Fine, I guess."
+      ]
+    },
+    "joke": {
+      "start": [
+        "Want to hear a joke? Why did the scarecrow win a prize? He was outstanding in his field!",
+        "What do you call a sleeping dinosaur? A dino snore!",
+        "I told my plants a joke. They didn't laugh, but they grew a little."
+      ],
+      "good": [
+        "Ha! That's a good one!",
+        "Oh no, that's terrible. I love it!"
+      ],
+      "bad": [
+        "That's not funny.",
+        "Was that supposed to be a joke?"
+      ],
+      "tone": "happy"
+    },
+    "compliment": {
+      "start": [
+        "You look great today, {name}!",
+        "I really like your style.",
+        "You always make me smile."
+      ],
+      "good": [
+        "Aw, thank you! That's so sweet.",
+        "You just made my day!"
+      ],
+      "bad": [
+        "Um, thanks, I guess.",
+        "Are you making fun of me?"
+      ],
+      "tone": "happy"
+    },
+    "deepTalk": {
+      "start": [
+        "Do you ever wonder what we're all here for?",
+        "What's the one thing you'd change about your life?",
+        "Can I tell you something personal?"
+      ],
+      "good": [
+        "I think about that all the time.",
+        "I'm really glad you told me."
+      ],
+      "bad": [
+        "That's a bit too deep for me right now.",
+        "I don't really want to get into that."
+      ]
+    },
+    "hug": {
+      "start": [
+        "Come here, you need a hug!",
+        "Hug?"
+      ],
+      "good": [
+        "Aww, I needed that.",
+        "You give the best hugs."
+      ],
+      "bad": [
+        "Whoa, personal space please!",
+        "Let's not."
+      ],
+      "tone": "happy"
+    },
+    "flirt": {
+      "start": [
+        "Has anyone told you your eyes are lovely?",
+        "Is it warm in here, or is it just you?",
+        "I could listen to you all day, {name}."
+      ],
+      "good": [
+        "You're quite charming yourself.",
+        "Oh, stop it. Actually, don't."
+      ],
+      "bad": [
+        "Let's keep it friendly, okay?",
+        "Nice try."
+      ],
+      "tone": "flirty"
+    },
+    "sweetTalk": {
+      "start": [
+        "You make every day better, {name}.",
+        "I keep thinking about you."
+      ],
+      "good": [
+        "You always know what to say.",
+        "I feel the same way."
+      ],
+      "bad": [
+        "That's a little much.",
+        "Maybe slow down a bit."
+      ],
+      "tone": "flirty"
+    },
+    "kiss": {
+      "start": [
+        "Come here, you.",
+        "Can I kiss you?"
+      ],
+      "good": [
+        "Mmm. Again?",
+        "That was wonderful."
+      ],
+      "bad": [
+        "Whoa, not now!",
+        "I'm not ready for that."
+      ],
+      "tone": "flirty"
+    },
+    "askPartner": {
+      "start": [
+        "{name}, will you be my partner?",
+        "I want us to be together. What do you say?"
+      ],
+      "good": [
+        "Yes! Of course, yes!",
+        "I thought you'd never ask!"
+      ],
+      "bad": [
+        "I'm sorry. I don't feel the same way.",
+        "I need some time to think."
+      ],
+      "tone": "happy"
+    },
+    "breakUp": {
+      "start": [
+        "We need to talk about us.",
+        "I think we should go our separate ways."
+      ],
+      "good": [
+        "Maybe you're right.",
+        "I understand."
+      ],
+      "bad": [
+        "What? How could you?",
+        "I can't believe this is happening."
+      ],
+      "tone": "sad"
+    },
+    "insult": {
+      "start": [
+        "You really are a piece of work, {name}.",
+        "Did you get dressed in the dark?",
+        "Wow. Just wow."
+      ],
+      "good": [
+        "Ha, fair enough.",
+        "Takes one to know one."
+      ],
+      "bad": [
+        "How dare you!",
+        "That was mean."
+      ],
+      "tone": "angry"
+    },
+    "argue": {
+      "start": [
+        "You're wrong, and you know it!",
+        "Why do you always do this?",
+        "We need to settle this right now."
+      ],
+      "good": [
+        "Fine, maybe you have a point.",
+        "Okay, okay. Let's calm down."
+      ],
+      "bad": [
+        "I'm not listening to this!",
+        "You never listen to me!"
+      ],
+      "tone": "angry"
+    },
+    "prank": {
+      "start": [
+        "Hey {name}, look over there!",
+        "Ha! Gotcha!"
+      ],
+      "good": [
+        "Okay, you got me. Nice one!",
+        "I'll get you back for that."
+      ],
+      "bad": [
+        "That's not funny at all.",
+        "Grow up!"
+      ],
+      "tone": "happy"
+    },
+    "fight": {
+      "start": [
+        "That's it, I've had enough of you!",
+        "Come on then!"
+      ],
+      "good": [
+        "Ow! Okay, okay, I give up!",
+        "You'll pay for that."
+      ],
+      "bad": [
+        "Get away from me!",
+        "Ow! Stop it!"
+      ],
+      "tone": "angry"
+    },
+    "apologize": {
+      "start": [
+        "I'm sorry, {name}. I didn't mean it.",
+        "Can you forgive me?"
+      ],
+      "good": [
+        "It's okay. I forgive you.",
+        "Thank you for saying that."
+      ],
+      "bad": [
+        "Sorry isn't enough.",
+        "I'm not ready to forgive you."
+      ],
+      "tone": "sad"
+    }
+  },
+  "action": {
+    "eat": [
+      "Mmm, this is delicious.",
+      "Finally, some food!",
+      "I was so hungry."
+    ],
+    "cook": [
+      "Time to cook something tasty.",
+      "Let's see what we have in the fridge.",
+      "Dinner is coming right up!"
+    ],
+    "wash": [
+      "Better wash up.",
+      "Clean hands, happy life."
+    ],
+    "shower": [
+      "A nice hot shower. Just what I needed.",
+      "Time to freshen up."
+    ],
+    "bath": [
+      "A long bath sounds perfect right now.",
+      "Bubbles!"
+    ],
+    "toilet": [
+      "Excuse me for a moment.",
+      "Be right back!"
+    ],
+    "sleep": [
+      "I'm so tired. Good night.",
+      "Time for bed.",
+      "I can barely keep my eyes open."
+    ],
+    "nap": [
+      "Just a quick nap.",
+      "Five more minutes."
+    ],
+    "sit": [
+      "Ah, it feels good to sit down."
+    ],
+    "type": [
+      "Let me check my messages.",
+      "Back to work."
+    ],
+    "read": [
+      "Where was I? Oh yes, chapter three.",
+      "I love a good book."
+    ],
+    "watch": [
+      "What's on TV tonight?",
+      "Ooh, I love this show!"
+    ],
+    "play": [
+      "Game on!",
+      "One more round!"
+    ],
+    "paint": [
+      "Let's make something beautiful.",
+      "A little more blue, I think."
+    ],
+    "exercise": [
+      "Let's get moving!",
+      "Feel the burn!"
+    ],
+    "run": [
+      "Gotta keep my legs moving.",
+      "Just one more lap."
+    ],
+    "lift": [
+      "Come on, just one more!",
+      "Getting stronger every day."
+    ],
+    "dance": [
+      "I love this song!",
+      "Look at me go!"
+    ],
+    "clean": [
+      "This place is a mess. Somebody has to clean it.",
+      "Tidy house, tidy mind."
+    ],
+    "garden": [
+      "The garden needs some love.",
+      "Time to get my hands dirty."
+    ],
+    "water": [
+      "There you go, little plants.",
+      "Drink up!"
+    ],
+    "tend": [
+      "Let's see how the plants are doing."
+    ],
+    "harvest": [
+      "Look at these! Fresh from the garden.",
+      "What a harvest!"
+    ],
+    "prune": [
+      "Just a little trim."
+    ],
+    "smell": [
+      "Mmm, these flowers smell lovely."
+    ],
+    "admire": [
+      "Isn't that beautiful?",
+      "I could look at this all day."
+    ],
+    "music": [
+      "Let me play you something.",
+      "I've been practicing this one."
+    ],
+    "tinker": [
+      "Now, how does this work?",
+      "I can fix this."
+    ],
+    "drink": [
+      "Ah, refreshing.",
+      "Cheers!"
+    ],
+    "relax": [
+      "Ah, this is the life.",
+      "Finally, some peace and quiet."
+    ],
+    "phone": [
+      "Let me call someone.",
+      "Who should I call?"
+    ],
+    "sing": [
+      "La la la!",
+      "I'm a natural!"
+    ],
+    "write": [
+      "Let me write this down before I forget.",
+      "Dear diary."
+    ],
+    "listen": [
+      "I love this song."
+    ],
+    "meditate": [
+      "Breathe in. Breathe out.",
+      "Let it all go."
+    ]
+  },
+  "emotion": {
+    "happy": {
+      "lines": [
+        "What a wonderful day!",
+        "I feel great!",
+        "Life is good."
+      ],
+      "tone": "happy"
+    },
+    "flirty": {
+      "lines": [
+        "I'm in a romantic mood.",
+        "Is it just me, or is love in the air?"
+      ],
+      "tone": "flirty"
+    },
+    "angry": {
+      "lines": [
+        "Ugh, everything is annoying me today!",
+        "I'm so angry right now!"
+      ],
+      "tone": "angry"
+    },
+    "sad": {
+      "lines": [
+        "I just feel so down.",
+        "Today is not my day."
+      ],
+      "tone": "sad"
+    },
+    "embarrassed": {
+      "lines": [
+        "Oh no, that was so embarrassing.",
+        "I want to hide."
+      ]
+    },
+    "focused": {
+      "lines": [
+        "I'm really in the zone today.",
+        "Let's get things done."
+      ]
+    },
+    "inspired": {
+      "lines": [
+        "I've got a brilliant idea!",
+        "I feel so inspired!"
+      ],
+      "tone": "happy"
+    },
+    "energized": {
+      "lines": [
+        "I've got so much energy!",
+        "Let's do something!"
+      ],
+      "tone": "happy"
+    },
+    "relaxed": {
+      "lines": [
+        "I feel so relaxed.",
+        "Nothing can bother me today."
+      ]
+    }
+  },
+  "thought": {
+    "skipped": {
+      "lines": [
+        "I really don't feel like it today.",
+        "Maybe tomorrow."
+      ]
+    },
+    "noPlace": {
+      "lines": [
+        "I wish we had somewhere to do that.",
+        "There's nowhere to do that here."
+      ]
+    },
+    "kept": {
+      "lines": [
+        "Right on schedule!",
+        "I'm keeping to my plan."
+      ],
+      "tone": "happy"
+    },
+    "goal": {
+      "lines": [
+        "I did it! I actually did it!",
+        "Another goal reached!"
+      ],
+      "tone": "happy"
+    }
+  }
+}

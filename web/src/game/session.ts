@@ -21,6 +21,7 @@ import { game, nextWallMode, toast } from '../ui/state.svelte';
 import { saveDebugReport } from '../ui/debugReport';
 import { aboutUs } from '../ui/story';
 import { BubbleLayer } from './bubbles';
+import { VoiceDirector } from '../voice';
 import { Director } from './director';
 import { BuildBuyInput, editFeedback } from './buildmode';
 import { styledModel } from '../ui/buy/catalog';
@@ -147,6 +148,7 @@ export async function startSession(
   let viewPlot: number | null = null;
   let lastEvent = -1;
   const bubbles = new BubbleLayer(overlay, renderer, content, assets);
+  const voices = new VoiceDirector(content, renderer);
   const buildBuy = new BuildBuyInput(renderer, content, assets, (command) => bridge.send(command));
   game.catalog = bridge.catalog;
   /** Sims the player controls. */
@@ -343,6 +345,7 @@ export async function startSession(
     socialize(target, social) {
       if (game.mode !== 'live') return;
       bridge.send({ type: 'social', sim: game.selected, target, social });
+      voices.playerConversation(game.selected, target);
       game.socialMenu = null;
     },
     useObject(objectId, interaction) {
@@ -808,6 +811,7 @@ export async function startSession(
     renderer.update(frame);
     if (!revealed) return;
     bubbles.update(frame);
+    voices.update(frame);
     if (game.watching) {
       // Menus and other modes end watching (opening them is input, but not all of it is ours).
       if (!canWatch() && !director.active) stopWatching();
@@ -908,6 +912,7 @@ export async function startSession(
       renderer.followSim(null);
       pointer?.dispose();
       bubbles.dispose();
+      voices.dispose();
       buildBuy.dispose();
       await building;
       renderer.clear();

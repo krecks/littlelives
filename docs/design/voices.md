@@ -1,11 +1,32 @@
 # Resident voices
 
-*Plan for residents speaking their thoughts and conversations out loud. Status: planned, not
-started (2026-10-09). Research behind the choices is summarised at the end.*
+*Plan for residents speaking their thoughts and conversations out loud. Status (2026-10-09):
+phases 1 and parts of 2–4 are in (see "Built so far"); the hand-written engine (phase 5) and
+Babble are next. Measurements and research behind the choices are at the end.*
+
+## Built so far
+
+- **Engine (`crates/voice`, `crates/voice-wasm`):** Misaki's English rules ported to Rust
+  (`g2p.rs`; matches Python Misaki 0.9.4 on all 25 test sentences in `tests/data`), the merged
+  Misaki dictionary, letter-to-sound guesses for unknown names (`rules.rs`), and Paradee-8M run
+  with `tract`, patched with a `pitch` input and seeded noise (`model.rs`). `npm run voice`
+  fetches the pinned files into `web/public/voice/` and builds the WASM; `npm run test:voice`
+  runs the tests.
+- **Browser (`web/src/voice/`):** voice worker with a Cache API download (`tts.worker.ts`),
+  app-wide service and speed test (`service.svelte.ts`), the director with the "who may speak"
+  rules (`index.ts`), lines per language (`content/voice/en.json`, keyed by ids), per-resident
+  pitch and speed (`voices.ts`), stereo playback (`player.ts`). Settings → Audio.
+- **Measured in Chrome (M-series Mac):** about 1 s per typical line, 3.8× faster than real
+  time on one thread, no frame over 17 ms while speaking. Download: 18.3 MB engine WASM (3.9 MB
+  gzipped), 9 MB model, 1.3 MB dictionary, cached after the first time.
+- **Not yet:** formant shift (lower voices still sound like a pitched-down woman), Babble,
+  Kokoro-82M as a second model, the live watchdog, the F3 line, idle unloading.
 
 Residents speak with a text-to-speech model that runs **entirely in the browser**: no server, no
-API key, nothing leaves the player's computer. English uses **Kokoro-82M**; a made-up language,
-**Babble**, needs no download and works on every machine.
+API key, nothing leaves the player's computer. English uses **Paradee-8M** (9 MB), run by **our
+own Rust engine** compiled to WebAssembly. A made-up language, **Babble**, needs no download and
+works on every machine. Kokoro-82M, the model Paradee was distilled from, stays an optional
+download for more voices.
 
 > **Naming:** "Simlish" is Electronic Arts' word. Following the naming rules in `PLAN.md`, the
 > made-up language is called **Babble** everywhere a player or pack author reads it.
@@ -13,7 +34,8 @@ API key, nothing leaves the player's computer. English uses **Kokoro-82M**; a ma
 ## Goals and rules
 
 - **Performance first.** Speech must never cost frames. It runs in its own worker, on the CPU or
-  the GPU depending on what this computer handles better, and a benchmark in Settings decides.
+  the GPU depending on the model and on what this computer handles better, and a benchmark in
+  Settings decides.
 - **Quiet by default.** Residents only speak when:
   1. **a resident is selected** (their Inspect panel is open, `game.inspected`): they speak their
      thoughts, and they and whoever they are talking to speak their conversation; or
@@ -25,8 +47,151 @@ API key, nothing leaves the player's computer. English uses **Kokoro-82M**; a ma
   picked with a hash of the resident id and event, not the sim's random number generator, so
   saves and replays are unaffected and `sim-core` needs no changes.
 - **Every resident sounds different**, and always the same, across sessions and saves.
-- **Download on request.** The model (about 92 MB) is only fetched when the player turns English
-  voices on.
+- **Small download, on request.** Paradee (9 MB) is fetched when the player turns English voices
+  on; Kokoro-82M (92–326 MB) only if they choose it.
+
+## The model: Paradee-8M
+
+[Paradee-8M v1.0](https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.0) is Kokoro-82M shrunk
+to a tenth: the same architecture (Kokoro's own code) at smaller widths, 8.07M parameters,
+distilled from Kokoro's `af_heart` voice.
+
+| | |
+|---|---|
+| Licence | Apache-2.0 (weights and code), like Kokoro |
+| Files | `paradee_int8.onnx` 9.0 MB (recommended), `paradee.onnx` 37 MB, PyTorch `text_side.pt` + `decoder.pt` |
+| Input | Phoneme ids in **Misaki's** alphabet (178 symbols, max 512) and `speed` |
+| Output | 24 kHz mono audio |
+| Quality (paper) | UTMOS 4.41 vs Kokoro 4.52; word error rate 5.7 %, same as Kokoro |
+| Speed (paper) | about 18× faster than real time, int8 ONNX, one CPU thread |
+| Limits | American English only, **one voice** (female), a faint buzz on some voiced sounds |
+
+It needs no GPU, so the GPU stays with Babylon.
+
+What we measured ourselves (M-series Mac, one thread, "Hello! I'm hungry, I should cook
+something.", 2.95 s of audio):
+
+| Runtime | Time | Real-time factor |
+|---|---|---|
+| ONNX Runtime (Python, native) | 0.21–0.25 s | 12–14× faster than real time |
+| `tract` 0.23 (pure Rust, native, unoptimised plan) | 0.75 s | 4× |
+| `tract` 0.23 compiled to **WebAssembly** with SIMD, in Node | 1.5–1.6 s | 1.9× |
+
+- `tract` output matches ONNX Runtime: same length and loudness, spectra correlate 0.988 (the
+  model adds random noise, so the two are never bit-identical).
+- `tract`'s optimiser rejects the graph (a `Range` op with a symbolic length); only the slower
+  unoptimised plan runs. The test `.wasm` was 20 MB before stripping.
+- **Pitch control works:** the graph has Kokoro's explicit pitch path (`/F0_proj/Conv` predicts
+  the pitch curve, the decoder synthesises from it). Multiplying that curve by an extra `pitch`
+  input gave a median pitch of 157 Hz at ×0.7, 209 Hz at ×1.0 and 261 Hz at ×1.3, with the same
+  length and intact audio.
+
+## Our engine (`crates/voice`)
+
+ONNX Runtime Web would run Paradee, but it is a JavaScript dependency with its own multi-megabyte
+WASM runtime (larger than the model), and it treats the model as a black box. `tract` runs it in
+pure Rust today, but slowly. So we build a small engine for exactly this architecture.
+
+**Crate layout** (no dependency on `sim-core`; its own `voice-wasm` build, loaded lazily in the
+voice worker so the sim's WASM stays small):
+
+| Part | Job |
+|---|---|
+| `g2p` | Text to Misaki phonemes (see "Phonemizer") |
+| `model` | Weights and the network |
+| `dsp` | Pitch, formant and noise controls; inverse STFT |
+| `lib.rs` | `speak(text, voice) -> Vec<f32>` (24 kHz), exposed with `wasm-bindgen` |
+
+**Two stages:**
+
+1. **Baseline with `tract`** (days). Runs the unmodified `paradee_int8.onnx` plus build-time
+   graph edits (a `pitch` input, as tested). Already measured at 1.9× real time in WASM on one
+   thread: a 3-second line in about 1.5 s. Good enough to build everything around it, and the
+   reference the hand-written engine is tested against.
+2. **Hand-written inference** (about 1–2 weeks). A build script (`tools/voice/export.py`) reads
+   the ONNX initialisers into one flat file (int8 weights with per-channel scales, float norms;
+   about 9 MB). Rust implements the layer types the graph uses: embedding, the ALBERT-style text
+   encoder (attention, layer norm, GELU), 1-D convolutions and transposed convolutions,
+   bidirectional LSTMs (6), instance norm with style (AdaIN), leaky ReLU, upsampling, the
+   harmonic sine source driven by the pitch curve, and the inverse STFT (magnitude and phase
+   to audio). Shapes are known from the token count, so all buffers are allocated once and
+   reused; matrix kernels use WASM SIMD128.
+
+**Why our own engine pays off:**
+
+- **Speed:** native ONNX Runtime already reaches 12–14×; a fixed-architecture engine with SIMD
+  should reach **8× or more in the browser on one thread** (an estimate to confirm), i.e. a
+  3-second line in under 0.4 s.
+- **Size:** the WASM should be well under 1.5 MB (estimate), against about 20 MB for the `tract`
+  test build.
+- **Voice controls built in:** pitch (scale the pitch curve; tested), speed (scale durations),
+  and **formant shift** (warp the magnitude spectrum along the frequency axis before the inverse
+  STFT; untested). Together these turn one voice into many.
+- **Deterministic audio:** the noise source takes a seed, so the same line and voice always give
+  the same clip. That makes clips cacheable and lets tests compare against golden output.
+- **Same architecture as Kokoro-82M,** so the engine can later run Kokoro's CPU path too, with a
+  style vector input instead of a baked-in voice.
+
+**Tests:** golden tests run the same phoneme ids through the engine and through `tract` (noise
+disabled): durations and pitch curves must match exactly, audio within a set signal-to-noise
+ratio. A benchmark test fails if real-time factor regresses.
+
+If the hand-written engine stalls, the `tract` baseline ships.
+
+## Voices from one model
+
+Paradee speaks one female voice. Each resident gets a voice derived from their **stable resident
+id** (release 0.7), gender and (later) age, computed on the main thread and never saved:
+
+```ts
+interface VoiceSpec { pitch: number; formant: number; speed: number; seed: number }
+```
+
+- **Pitch:** female voices ×0.9–1.2, male voices ×0.55–0.7 (about 115–145 Hz), others across the
+  whole range; children higher, elders slightly lower (life-cycle releases).
+- **Formant:** shifts the vocal tract size, so male voices don't sound like a pitched-down woman
+  and children sound small. This is the biggest risk: it needs stage 2 and is untested.
+- **Speed:** 0.9–1.1, and per line by tone (excited faster, sad slower).
+- **If male voices still sound wrong:** Paradee's training code is public and ran on one MacBook,
+  so we can distil a second, male voice (e.g. Kokoro's `am_michael`) into another 9 MB model.
+- **Kokoro-82M** (optional model): two of its 28 English voices blended per resident (a voice is a
+  style vector, so blending is a linear mix), plus speed. More variety, much larger download.
+- **Babble:** base pitch, formant and rate from the same hash, so a resident's Babble voice
+  matches the character of their English one.
+
+## Phonemizer: our own, in Rust, without espeak-ng
+
+Paradee, like Kokoro, needs **Misaki** phonemes. `kokoro-js` gets phonemes from **espeak-ng
+compiled to WASM, which is GPL-3**, and needs a conversion step (`web/misaki.js` in the Paradee
+repo; without it Whisper mishears about 31 % of words). Littlelives is MIT. We don't use
+espeak-ng.
+
+Existing Rust options (checked 2026-10-09):
+
+- **`misaki-rs`** (MIT, latest 0.6.0, September 2026): a port of Misaki with the dictionaries and
+  a part-of-speech tagger built in. espeak is an optional feature that is on by default; without
+  it, unknown words are spelled out letter by letter. Unclear whether it builds for `wasm32`
+  (docs.rs has failed to build it since 0.3.0); about 40 MB of source; small project (10 stars).
+- **Kokoros** (Apache-2.0), a Rust Kokoro runtime, builds espeak-ng in (`espeak-rs-sys`): same
+  GPL problem.
+- Not Rust: `@piper-plus/g2p` (MIT, rule-based, runs in the browser) outputs Piper's phonemes.
+
+**Plan: `g2p` inside `crates/voice`** (MIT):
+
+1. **Dictionary:** Misaki's English dictionaries (`us_gold`, `us_silver`; Apache-2.0, credited in
+   `CREDITS.md`). They are already in the alphabet Paradee takes, so no mapping is needed. Ship
+   them compressed; trim rare words if size matters.
+2. **Text clean-up:** punctuation, contractions, possessive and plural "s", "-ed" and "-ing"
+   endings (Misaki's suffix rules), numbers to words.
+3. **Unknown words** (mostly residents' names): public-domain letter-to-sound rules (the 1976
+   NRL rules), written in Misaki's alphabet. A tiny trained model can replace them later.
+4. **Words with two pronunciations** ("read", "live"): content lines can mark the pronunciation
+   (Misaki's `[word](/phonemes/)` markup); dynamic text accepts the occasional slip.
+5. **Build-time check:** every line in the content is phonemized in a test, and a word that falls
+   back to the rules fails it, so hand-written lines always sound right.
+
+Phase 1 also tries `misaki-rs` with `default-features = false`. If it builds for `wasm32` at an
+acceptable size, we use it (or a fork) and add only steps 3 and 5.
 
 ## Settings
 
@@ -36,27 +201,27 @@ from Interface. Everything applies live, so nothing is added to `RESTART_KEYS`.
 | Row | Control | Notes |
 |---|---|---|
 | Resident voices | Toggle | Default off. |
-| Language | English · Babble | English needs the voice model; Babble needs nothing. |
-| Voice model | Kokoro-82M | One entry for now (others can be added later). Shows its state: "Not downloaded · 92 MB", "Downloading 45 %", "Ready". Disabled for Babble. A **Delete download** button frees the space. |
-| Runs on | Auto · CPU · GPU | Auto uses the benchmark's choice. GPU is disabled when WebGPU is unavailable. |
-| Benchmark | **Test this computer** button | Shows the last result, e.g. "CPU: 1.1 s per line · GPU: 0.2 s per line, smooth · Auto chose GPU". |
+| Language | English · Babble | English needs a voice model; Babble needs nothing. |
+| Voice model | Paradee-8M · Kokoro-82M | Paradee: 9 MB, fast, one voice shaped per resident (default). Kokoro: 92–326 MB, 28 voices. Shows the state: "Not downloaded · 9 MB", "Downloading 45 %", "Ready", and a **Delete download** button. Disabled for Babble. |
+| Runs on | Auto · CPU · GPU | Paradee runs on the CPU only (an 8M model gains nothing from the GPU), so GPU is disabled with that explanation. For Kokoro, Auto uses the benchmark's choice; GPU is disabled without WebGPU. |
+| Benchmark | **Test this computer** button | Shows the last result, e.g. "Paradee: 0.3 s per line · Kokoro CPU: 2.9 s · Kokoro GPU: 0.3 s, smooth". |
 | Voice volume | Slider | Separate from sound effects. |
 
 New keys in `settings.svelte.ts`:
 
 ```ts
-voices: boolean;                       // false
-voiceLanguage: 'en' | 'babble';        // 'en'
-voiceModel: 'kokoro-82m';              // 'kokoro-82m'
-voiceDevice: 'auto' | 'cpu' | 'gpu';   // 'auto'
-voiceVolume: number;                   // 0.8
+voices: boolean;                          // false
+voiceLanguage: 'en' | 'babble';           // 'en'
+voiceModel: 'paradee-8m' | 'kokoro-82m';  // 'paradee-8m'
+voiceDevice: 'auto' | 'cpu' | 'gpu';      // 'auto'
+voiceVolume: number;                      // 0.8
 ```
 
 The benchmark result is stored under its own localStorage key (`littlelives.voiceBench`), not in
 `Settings`, so "Reset to defaults" does not throw away a measurement.
 
-Turning voices on with English the first time: download the model (progress in the row), then run
-the benchmark automatically, then speak. Until the model is ready, residents speak Babble.
+Turning voices on with English the first time: download the model (progress in the row), run the
+benchmark automatically, then speak. Until the model is ready, residents speak Babble.
 
 ## Performance
 
@@ -65,42 +230,43 @@ the benchmark automatically, then speak. Until the model is ready, residents spe
 | Work | Thread | Cost |
 |---|---|---|
 | Deciding who speaks, picking lines, playback | Main thread | Microseconds, event-driven (no per-frame work) |
-| Kokoro inference | **Own module worker** (`voice/tts.worker.ts`), separate from the sim worker | 0.1–2 s per line, never blocks a frame |
+| Phonemes and Paradee inference | **Own module worker** (`voice/tts.worker.ts`) running `voice-wasm`, separate from the sim worker | Target under 0.4 s per line, never blocks a frame |
+| Kokoro-82M (optional) | Same worker; CPU via our engine or ONNX Runtime WASM, GPU via ONNX Runtime WebGPU | 0.3–3 s per line |
 | Babble synthesis | Web Audio on the audio thread | Negligible |
 
-- **CPU mode:** ONNX Runtime WASM with the **q8** model (92 MB), multithreaded. Threads =
-  `clamp(navigator.hardwareConcurrency - 3, 1, 4)`, leaving cores for the main thread, the sim
-  worker and the browser. Threads work because the app is already cross-origin isolated
-  (`web/vite.config.ts`). Keeps speech completely off the GPU that Babylon draws with.
-- **GPU mode:** ONNX Runtime WebGPU with the **fp32** model (326 MB; quantized models are not
-  supported on WebGPU). About ten times faster, but it shares the GPU with rendering, so it is
-  only chosen when the benchmark shows frames stay smooth.
-- The ONNX Runtime `.wasm` files are **self-hosted** (bundled by Vite), not fetched from a CDN,
-  following the "self-host all assets" rule. Model weights load from Hugging Face by default (its
-  CORS headers satisfy our COEP header) and can be pointed at a self-hosted copy through the
-  asset manifest. The browser cache keeps them after the first download.
+- **Paradee:** one thread is enough. Two voices at once can use two engine instances if the
+  benchmark shows spare cores (`navigator.hardwareConcurrency` ≥ 6), leaving cores for the main
+  thread, the sim worker and the browser.
+- **Kokoro on the GPU** shares the GPU with rendering, so it is only chosen when the benchmark
+  shows frames stay smooth. Any WASM runtime files are self-hosted (bundled by Vite), following
+  the "self-host all assets" rule.
+- Model files load from Hugging Face by default (its CORS headers satisfy our COEP header) and
+  can be pointed at a self-hosted copy through the asset manifest. The browser cache keeps them.
 
 ### Benchmark ("Test this computer")
 
-Runs from Settings, in the main menu (the live 3D town is drawing behind it, so GPU contention is
-realistic) or in a game (speech is paused while it runs). About 15–30 s after the download.
+Runs from Settings, in the main menu (the live 3D town draws behind it, so contention is
+realistic) or in a game (speech pauses while it runs). Paradee alone takes a few seconds.
 
-1. Download the model files for each mode being tested, if missing (progress shown).
-2. For each available mode (CPU always; GPU if `navigator.gpu` gives an adapter):
-   1. Load the model and say one warm-up line (measures cold start).
+1. Download the model files being tested, if missing (progress shown). Kokoro is only tested if
+   it is downloaded or the player asks.
+2. For each available mode (Paradee on CPU; Kokoro on CPU, and on GPU if `navigator.gpu` gives
+   an adapter):
+   1. Load and say one warm-up line (measures cold start).
    2. Say five fixed test lines of typical lengths (3, 8, 12, 20 and 30 words).
    3. Record per line: time to finished clip and **real-time factor** (RTF = generation time ÷
       audio length).
    4. Meanwhile measure frame times with `requestAnimationFrame`: 2 s before as a baseline,
       then during inference. Record the rise in 95th-percentile frame time and frames over 50 ms.
-3. Choose:
-   - **GPU** if its median RTF ≤ 0.33 (a 3-second line is ready within 1 s) **and** frame time
-     p95 rises ≤ 2 ms with no frames over 50 ms;
+3. Choose, per model:
+   - **GPU** (Kokoro only) if its median RTF ≤ 0.33 (a 3-second line ready within 1 s) **and**
+     frame time p95 rises ≤ 2 ms with no frames over 50 ms;
    - otherwise **CPU** if its median RTF ≤ 0.5;
-   - otherwise English is **too slow on this computer**: Auto falls back to Babble and the row
-     says so. The player can still force CPU or GPU.
-4. Store `{ model, modelVersion, device, rtf, firstLineMs, frameP95RiseMs, cores, gpuAdapter, date }`.
-   The benchmark re-runs automatically when the model version, core count or GPU adapter changes.
+   - otherwise the model is **too slow on this computer**: Auto falls back (Kokoro to Paradee,
+     Paradee to Babble) and the row says so. The player can still force a mode.
+4. Store `{ model, modelVersion, engineVersion, device, rtf, firstLineMs, frameP95RiseMs, cores,
+   gpuAdapter, date }`. The benchmark re-runs automatically when the model, the engine, the core
+   count or the GPU adapter changes.
 
 ### Guards while playing
 
@@ -108,13 +274,16 @@ realistic) or in a game (speech is paused while it runs). About 15–30 s after 
 - A line that is not ready within **2 s** is dropped (the moment has passed).
 - No generation while in Build or Buy mode, while the tab is hidden, or at speed 3× and above
   (except the conversation the player started).
-- **Live watchdog:** the speech scheduler tracks each line's RTF and the renderer's frame times
+- **Live watchdog:** the scheduler tracks each line's RTF and the renderer's frame times
   (`game.stats`). If three lines in a row are late, or frame time rises past the budget while
-  inference runs, voices switch to Babble for the session and a toast says why once.
-- **Memory:** the worker and model are unloaded after 5 minutes without speech, and when voices
-  are turned off. Finished clips are kept in an in-memory LRU cache as 16-bit audio, capped at
-  about 8 MB (a few hundred lines), keyed by `hash(modelVersion, voice, text)`.
-- The performance overlay (F3) shows a voice line: mode, last RTF, queue length, cache hits.
+  inference runs, voices step down (as in the benchmark) for the session and a toast says why
+  once.
+- **Memory:** the worker is unloaded after 5 minutes without speech, and when voices are turned
+  off. Finished clips are kept in an in-memory LRU cache as 16-bit audio, capped at about 8 MB
+  (a few hundred lines), keyed by `hash(model, engineVersion, voice, text)`. Because the engine is
+  deterministic, a cached clip is exactly what would be generated again.
+- The performance overlay (F3) shows a voice line: model, mode, last RTF, queue length, cache
+  hits.
 
 ## What residents say
 
@@ -127,28 +296,10 @@ Today's bubbles are icons only (`game/bubbles.ts`), so speech needs text. First 
 - **Thoughts of the selected resident:** a line when they start an action (`action`), when their
   emotion changes (`emotion`), and when a need becomes urgent.
 - **Later sources plug into the same pipeline:** the thoughts and wishes of release 0.8 (Planner),
-  and the optional in-browser language model for thoughts (see "Later").
+  and the optional in-browser language model for thoughts (see `PLAN.md`, "Smarter thoughts").
 
-Each line has an optional tone (`happy`, `sad`, `angry`, `flirty`, `question`) that Babble uses for
-intonation and Kokoro uses for speed.
-
-## Voices
-
-Each resident gets a voice derived from their **stable resident id** (release 0.7) and gender,
-computed on the main thread and never saved:
-
-```ts
-interface VoiceSpec { a: string; b: string; mix: number; speed: number; pitch: number }
-```
-
-- **Kokoro:** two base voices from a gendered pool of the model's best-rated English voices
-  (`af_heart`, `af_bella`, `af_nicole`, `bf_emma`; `am_fenrir`, `am_michael`, `am_puck`,
-  `bm_george`; both pools for other genders), blended by `mix` (a Kokoro voice is a style vector,
-  so blending is a linear mix), and `speed` 0.9–1.1. Kokoro has no pitch control.
-- **Babble:** base pitch, formant shift and speaking rate from the same hash, so a resident's
-  Babble voice matches the character of their English one.
-- Children and elders (life cycle releases): Babble with higher or slower voices; Kokoro has no
-  child voices.
+Each line has an optional tone (`happy`, `sad`, `angry`, `flirty`, `question`) that adjusts speed
+and pitch, and Babble's intonation.
 
 ## Babble
 
@@ -169,48 +320,37 @@ A small Web Audio synthesiser (`voice/babble.ts`), no samples and no model:
 - Each speaking resident gets a `PannerNode` at their head position (`renderer.simHead`),
   updated about 10 times a second, so voices come from where the resident stands.
 - The speech bubble appears straight away; the voice follows when its clip is ready.
-- Talking animations already exist; lip sync is a later improvement.
+- Talking animations already exist; lip sync from phoneme durations (which the engine knows) is a
+  later improvement.
 
 ## Modules
 
-All new code lives in `web/src/voice/`, behind one small interface used by the game session:
+Rust: `crates/voice` (engine, phonemizer, DSP) and `crates/voice-wasm` (the `wasm-bindgen`
+wrapper), built by a `pnpm voice` script next to the existing `wasm` script.
+
+Web code lives in `web/src/voice/`, behind one small interface used by the game session:
 
 | File | Job |
 |---|---|
 | `voice/index.ts` | `VoiceDirector`: watches the frame state and UI state, applies the "who may speak" rules and guards, queues lines. The only thing `game/session.ts` talks to. |
 | `voice/lines.ts` | Picks a line for an event from content (hash-based). |
-| `voice/voices.ts` | `VoiceSpec` from resident id and gender. |
-| `voice/tts.ts` + `voice/tts.worker.ts` | Worker client and worker: load model (mode, dtype, threads), `speak(text, voice) → Float32Array` (transferred, 24 kHz), unload. |
+| `voice/voices.ts` | `VoiceSpec` from resident id, gender and age. |
+| `voice/tts.ts` + `voice/tts.worker.ts` | Worker client and worker: load model, `speak(text, voice) → Float32Array` (transferred, 24 kHz), unload. |
 | `voice/benchmark.ts` | The benchmark and the device choice. |
 | `voice/babble.ts` | Babble synthesiser. |
 | `voice/player.ts` | Voice bus, panners, clip cache. |
-
-New dependency: `kokoro-js` (Apache-2.0), pinned, or Transformers.js v4 directly. The spike picks
-one: `kokoro-js` is simplest but has had no release since May 2025, and voice blending may need a
-small patch either way.
-
-## Open question: phonemizer licence
-
-Kokoro needs text turned into phonemes first. `kokoro-js` does this with **espeak-ng compiled to
-WASM, which is GPL-3**; Littlelives is MIT. Options, to be decided in the spike:
-
-1. A permissively licensed English phonemizer (a pronunciation dictionary such as CMUdict, which
-   is BSD-licensed, plus a fallback for unknown words), mapped to Kokoro's phoneme set. English
-   only, which is all we need.
-2. Keep espeak-ng, but as a separately downloaded optional module, after checking with the
-   project owner that this is acceptable.
-
-Option 1 is preferred.
 
 ## Phases
 
 | Phase | Scope | Done when |
 |---|---|---|
-| 1. Spike (1–2 days) | Kokoro in a worker next to the running game: q8 on CPU and fp32 on WebGPU; voice blending; phonemizer decision. | Measured RTF and frame-time impact on our machines; kokoro-js vs Transformers.js and the phonemizer chosen. |
-| 2. Babble and rules | Settings tab, `VoiceDirector` with the "who may speak" rules and guards, lines content, Babble, voice bus with panning. | Selecting a resident or starting a conversation makes them babble; nobody else does; no frame cost. |
-| 3. English | TTS worker, download with progress, voice blending, clip cache, model unloading, fall back to Babble while loading. | Selected residents speak English in their own voice; every resident sounds different. |
-| 4. Benchmark | "Test this computer", Auto mode, re-run on hardware change, live watchdog, F3 line. | Auto picks the faster mode without frame drops; a slow machine falls back to Babble with a clear message. |
-| Later | Thoughts from the Planner (0.8) and from an in-browser language model; lip sync from phoneme timings; persistent clip cache (IndexedDB, Opus via WebCodecs); more languages and voice models. | |
+| 1. Baseline (2–3 days) | `crates/voice` with `tract` running Paradee plus the `pitch` graph edit, in a worker next to the running game; try `misaki-rs` without espeak on `wasm32`. | Paradee speaks hand-written phonemes in the browser; RTF and frame impact measured in Chrome, Firefox and Safari; `misaki-rs` or our own `g2p` chosen. |
+| 2. Phonemizer (2–4 days) | `g2p` (or `misaki-rs` plus our fallback). | Every content line phonemizes from the dictionary; names get a plausible reading; no GPL code shipped. |
+| 3. Babble and rules | Settings tab, `VoiceDirector` with the "who may speak" rules and guards, lines content, Babble, voice bus with panning. | Selecting a resident or starting a conversation makes them babble; nobody else does; no frame cost. |
+| 4. English | Download with progress, `VoiceSpec` (pitch, speed), clip cache, unloading, Babble while loading. | Selected residents speak English; residents sound different from each other. |
+| 5. Own engine (1–2 weeks) | Hand-written inference, golden tests against `tract`, formant shift, seeded noise. | At least 8× real time in the browser on one thread; WASM under 1.5 MB; male voices that sound male (or decide to distil a male voice). |
+| 6. Benchmark | "Test this computer", Auto mode, re-run on change, live watchdog, F3 line; Kokoro-82M as the optional model (CPU and GPU). | Auto picks the right mode without frame drops; a slow machine steps down with a clear message. |
+| Later | Thoughts from the Planner (0.8) and from an in-browser language model; lip sync; persistent clip cache (IndexedDB, Opus via WebCodecs); a distilled male voice; more languages. | |
 
 Every phase keeps `pnpm check` clean and the frame-time budget checked, with voices on and off.
 
@@ -218,17 +358,21 @@ Every phase keeps `pnpm check` clean and the frame-time budget checked, with voi
 
 | Option | Verdict |
 |---|---|
-| **Kokoro-82M** | Chosen. Apache-2.0; q8 92 MB, fp32 326 MB; about real time on CPU with 4 threads, about 10× faster than real time on WebGPU (M1 Max). 28 English voices that can be blended. |
-| Piper / VITS | Big multi-speaker model, but that voice is trained on a dataset that forbids commercial use; lower quality. |
-| Kitten TTS | Small (25–78 MB) but only 8 voices, and the maker calls the browser builds legacy. |
+| **Paradee-8M** | Chosen. Apache-2.0, 9 MB int8, 12–14× real time on one CPU thread (our native test), quality close to Kokoro. One voice; Misaki phonemes. |
+| Kokoro-82M | Optional larger model. Apache-2.0; q8 92 MB, fp32 326 MB; about real time on CPU with 4 threads, about 10× on WebGPU (M1 Max). 28 English voices that can be blended. |
+| Kokoro-7M-Distill | 30 MB, faster (35×) but lower quality (UTMOS 4.18) than Paradee (Paradee paper). |
+| Piper / VITS | The multi-speaker English voice is trained on a dataset that forbids commercial use; lower quality. |
+| Kitten TTS | 25–78 MB, only 8 voices; the maker calls the browser builds legacy. |
 | Supertonic | Archived in September 2026; restrictive licence. |
 | MMS-TTS | Non-commercial licence. |
 | Chatterbox, OuteTTS, CSM, Dia, Orpheus | Too big or too slow next to a 3D game. |
 | Browser `speechSynthesis` | Free, but voices differ per player, it can't be positioned in 3D and only one voice plays at a time. |
 
-Sources: [Kokoro-82M ONNX](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX),
-[kokoro-js](https://www.npmjs.com/package/kokoro-js),
+Sources: [Paradee-8M](https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.0),
+[Paradee code](https://github.com/sahilmahendrakar/paradee),
+[Kokoro-82M ONNX](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX),
+[Misaki](https://github.com/hexgrad/misaki),
+[misaki-rs](https://github.com/MicheleYin/misaki-rs),
+[tract](https://github.com/sonos/tract),
 [browser TTS benchmarks](https://briantung.me/blog/tts-engines-in-the-browser/),
-[Kokoro for game characters in three.js](https://discourse.threejs.org/t/local-browser-tts-with-kokoro-for-npc-dialogue-and-narration/91424),
-[Transformers.js](https://github.com/huggingface/transformers.js),
 [lessac dataset licence](https://www.cstr.ed.ac.uk/projects/blizzard/2013/lessac_blizzard2013/license.html).

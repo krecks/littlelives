@@ -1,0 +1,13 @@
+[package]
+name = "voice-wasm"
+description = "Thin wasm-bindgen layer exposing the voice engine to the voice worker."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+voice = { path = "../voice", features = ["getrandom-js"] }
+wasm-bindgen = "=0.2.129"

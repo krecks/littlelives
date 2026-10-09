@@ -1,0 +1,17 @@
+[package]
+name = "voice"
+description = "Resident voices: English text to Misaki phonemes, and Paradee-8M speech synthesis."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+serde_json.workspace = true
+tract-onnx = { version = "=0.23.8", default-features = false }
+
+[features]
+# Browsers: `getrandom` (pulled in by tract) needs its JS backend on wasm32-unknown-unknown.
+getrandom-js = ["tract-onnx/getrandom-js"]
+
+[dev-dependencies]
+flate2 = "1"

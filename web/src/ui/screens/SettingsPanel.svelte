@@ -4,8 +4,11 @@
   import { app } from '../app.svelte';
   import Segmented from '../kit/Segmented.svelte';
   import Toggle from '../kit/Toggle.svelte';
+  import { benchVerdict, runBenchmark, synthesize, voiceStatus } from '../../voice/service.svelte';
+  import { playClip } from '../../voice/player';
+  import { voiceFor } from '../../voice/voices';
 
-  const tabs = ['Graphics', 'Gameplay', 'Watching', 'Interface', 'Controls'] as const;
+  const tabs = ['Graphics', 'Gameplay', 'Watching', 'Interface', 'Audio', 'Controls'] as const;
   let tab = $state<(typeof tabs)[number]>('Graphics');
 
   // Remember restart-only values when opened during a game, to show a notice if they change.
@@ -16,6 +19,35 @@
   $effect(() => {
     if (preset !== settings.quality) applyPreset(preset);
   });
+
+  const modelStatus = $derived(
+    voiceStatus.state === 'loading'
+      ? `Downloading… ${Math.round(voiceStatus.progress * 100)} %`
+      : voiceStatus.state === 'ready'
+        ? 'Ready. Runs on the CPU: a model this small doesn\'t need the GPU.'
+        : voiceStatus.state === 'error'
+          ? `Couldn't load the voice: ${voiceStatus.error}`
+          : 'Small and fast (9 MB). One voice, made higher or lower for each resident.',
+  );
+  const VERDICT = { good: 'Smooth', ok: 'Lines may start a moment late', slow: 'Too slow: voices will lag on this computer' };
+  const benchText = $derived.by(() => {
+    const b = voiceStatus.bench;
+    if (voiceStatus.benchmarking) return 'Testing…';
+    if (!b) return 'Measures how fast this computer makes speech while the game keeps drawing.';
+    return `${(b.lineMs / 1000).toFixed(1)} s per line · ${(1 / b.rtf).toFixed(1)}× faster than real time · ${VERDICT[benchVerdict(b)]}`;
+  });
+  let sampleBusy = $state(false);
+  let sampleCount = 0;
+  async function sample() {
+    sampleBusy = true;
+    try {
+      const male = sampleCount++ % 2 === 1;
+      const text = male ? "Hey! I'm one of your residents. Is this what I sound like?" : "Hi! I'm one of your residents. This is how I sound.";
+      playClip(await synthesize(text, voiceFor(sampleCount, male ? 'male' : 'female')));
+    } finally {
+      sampleBusy = false;
+    }
+  }
 
   const keys = [
     ['Left-click a resident / Tab', 'Look at a resident'],
@@ -191,9 +223,38 @@
         <div><b>Reduce motion</b><span>Turns off interface animations.</span></div>
         <Toggle label="Reduce motion" bind:checked={settings.reducedMotion} />
       </div>
+    {:else if tab === 'Audio'}
       <div class="row">
         <div><b>Sound effects</b><span>Little sounds when you buy, build and place things.</span></div>
         <Toggle label="Sound effects" bind:checked={settings.sound} />
+      </div>
+      <div class="row">
+        <div>
+          <b>Resident voices <em>experimental</em></b>
+          <span>The resident you're looking at, and conversations you start, are spoken out loud. Runs on this computer; downloads about 29 MB once.</span>
+        </div>
+        <Toggle label="Resident voices" bind:checked={settings.voices} />
+      </div>
+      <div class="row">
+        <div><b>Language</b><span>More languages, and Babble (a made-up language), come later.</span></div>
+        <Segmented label="Language" bind:value={settings.voiceLanguage} options={[{ value: 'en', label: 'English' }]} />
+      </div>
+      <div class="row">
+        <div><b>Voice model</b><span>{modelStatus}</span></div>
+        <Segmented label="Voice model" bind:value={settings.voiceModel} options={[{ value: 'paradee-8m', label: 'Paradee-8M' }]} />
+      </div>
+      <label class="row">
+        <div><b>Voice volume · {Math.round(settings.voiceVolume * 100)}%</b><span>Separate from sound effects.</span></div>
+        <input class="slider" type="range" min="0" max="1" step="0.05" bind:value={settings.voiceVolume} />
+      </label>
+      <div class="row">
+        <div><b>Speed test</b><span>{benchText}</span></div>
+        <div class="buttons">
+          <button class="btn ghost" disabled={!settings.voices || sampleBusy} onclick={sample}>Hear a sample</button>
+          <button class="btn ghost" disabled={!settings.voices || voiceStatus.benchmarking} onclick={() => void runBenchmark().catch(() => {})}>
+            Test this computer
+          </button>
+        </div>
       </div>
     {:else}
       <label class="row">
@@ -299,5 +360,10 @@
   footer {
     display: flex;
     justify-content: flex-end;
+  }
+  .row > .buttons {
+    flex-direction: row;
+    gap: 8px;
+    flex: none;
   }
 </style>

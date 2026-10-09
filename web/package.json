@@ -6,11 +6,13 @@
   "type": "module",
   "scripts": {
     "wasm": "cd .. && cargo build -p sim-wasm --target wasm32-unknown-unknown --release && wasm-bindgen target/wasm32-unknown-unknown/release/sim_wasm.wasm --target web --out-dir web/src/core/wasm-pkg",
-    "dev": "npm run wasm && vite",
-    "build": "npm run wasm && vite build",
+    "dev": "npm run wasm && npm run voice && vite",
+    "build": "npm run wasm && npm run voice && vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "test:sim": "cd .. && cargo test -p sim-core"
+    "test:sim": "cd .. && cargo test -p sim-core",
+    "voice": "node ../tools/voice/fetch.mjs && cd .. && cargo build -p voice-wasm --target wasm32-unknown-unknown --release && wasm-bindgen target/wasm32-unknown-unknown/release/voice_wasm.wasm --target web --out-dir web/src/voice/wasm-pkg",
+    "test:voice": "cd .. && cargo test -p voice --release"
   },
   "dependencies": {
     "@babylonjs/core": "9.29.0",

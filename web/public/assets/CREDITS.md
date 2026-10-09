@@ -107,3 +107,14 @@ Trees (oak, maple, birch, cherry blossom, apple, Japanese maple, magnolia, weepi
 | Small-leaf sprigs (bushes, hedges) | Leaf Set 002 (1K) | ambientCG (Lennart Demes) | https://ambientcg.com/view?id=LeafSet002 | CC0 |
 | Birch cluster | Leaf Set 004 (1K) | ambientCG (Lennart Demes) | https://ambientcg.com/view?id=LeafSet004 | CC0 |
 | Conifer fronds | Leaf Set 019 (1K) | ambientCG (Lennart Demes) | https://ambientcg.com/view?id=LeafSet019 | CC0 |
+
+## Resident voices (`../voice/`, fetched by `tools/voice/fetch.mjs`)
+
+Unlike the art above, these are **Apache-2.0** (attribution required). They are downloaded at build time, pinned and checked by SHA-256, and are not stored in git.
+
+| File | Source | Authors | URL | Licence |
+|---|---|---|---|---|
+| `paradee-8m.onnx`, `paradee-8m.json` | Paradee-8M v1.0 (int8 ONNX), distilled from Kokoro-82M | Sahil Mahendrakar; Kokoro-82M by hexgrad | https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.0 | Apache-2.0 |
+| `en-us.lexz` | Misaki US English dictionaries (`us_gold`, `us_silver`), merged and gzipped | hexgrad | https://github.com/hexgrad/misaki | Apache-2.0 |
+
+The phonemizer in `crates/voice/src/g2p.rs` ports the English rules of Misaki (Apache-2.0); no espeak-ng code is used.
