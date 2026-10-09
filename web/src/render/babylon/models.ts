@@ -33,6 +33,7 @@ import {
 } from './core';
 import './loaders';
 import type { Material } from './core';
+import { optimizedUrl } from '../../assets/registry';
 import type { ModelEntry, PlaceholderPart, Vec3 } from '../../assets/types';
 import { bakeFoliageCards } from './foliageCards';
 import { DEFAULT_FINISH, encodeFinish, MaterialLibrary } from './materials';
@@ -457,9 +458,21 @@ interface MaterialOverride {
   hide?: boolean;
 }
 
+/** The build's compressed copy of the file if there is one; the file itself if that fails to load. */
+async function importModel(url: string, scene: Scene): ReturnType<typeof ImportMeshAsync> {
+  const copy = optimizedUrl(url);
+  if (copy === url) return ImportMeshAsync(url, scene);
+  try {
+    return await ImportMeshAsync(copy, scene);
+  } catch (err) {
+    console.warn(`[render] compressed ${copy} failed, loading ${url}`, err);
+    return ImportMeshAsync(url, scene);
+  }
+}
+
 async function loadGltf(scene: Scene, name: string, entry: ModelEntry): Promise<ModelTemplate> {
   const extras = entry as ModelEntry & ModelExtras;
-  const result = await ImportMeshAsync(entry.url!, scene);
+  const result = await importModel(entry.url!, scene);
   const fit = extras.fit;
   const s = fit ? 1 : (entry.scale ?? 1);
   const [ox, oy, oz] = entry.offset ?? [0, 0, 0];

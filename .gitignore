@@ -6,3 +6,4 @@ node_modules
 /web/public/voice
 .DS_Store
 /debug-reports
+/web/.assets

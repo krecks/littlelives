@@ -30,6 +30,7 @@ import type { FrameState } from '../../core/bridge';
 import type { SimInfo } from '../../core/protocol';
 import type { SnapshotLayout } from '../../core/snapshot';
 import { Characters, MAX_CHARACTERS } from '../babylon/characters';
+import { compressedTextureFeatures } from '../babylon/loaders';
 import { MaterialLibrary } from '../babylon/materials';
 import type { SimLook } from '../types';
 
@@ -99,7 +100,7 @@ export class Studio {
     let webgpu = false;
     const forceWebGL = deps.backend() === 'webgl' || new URLSearchParams(location.search).get('renderer') === 'webgl';
     if (!forceWebGL && (await WebGPUEngine.IsSupportedAsync)) {
-      const gpu = new WebGPUEngine(canvas, { antialias: true, adaptToDeviceRatio: true, premultipliedAlpha: true });
+      const gpu = new WebGPUEngine(canvas, { antialias: true, adaptToDeviceRatio: true, premultipliedAlpha: true, ...compressedTextureFeatures() });
       await gpu.initAsync();
       engine = gpu;
       webgpu = true;

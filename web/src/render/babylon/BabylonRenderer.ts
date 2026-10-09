@@ -80,6 +80,7 @@ import { HALF_WALL_HEIGHT, HouseBuilder, houseObjectKey, placeLights, WALL_HEIGH
 import { Street } from './street';
 import { MaterialLibrary } from './materials';
 import { buildModel, placementVariation, type ModelTemplate } from './models';
+import { compressedTextureFeatures } from './loaders';
 import { Characters, MAX_CHARACTERS } from './characters';
 import { installNature, Landscape, natureDecor, Sky } from './nature';
 import { LAYER_ALL, LAYER_TOWN, LAYER_WORLD } from './layers';
@@ -354,7 +355,7 @@ export class BabylonRenderer implements Renderer {
     this.canvas = canvas;
     const forceWebGL = this.deps.backend === 'webgl' || new URLSearchParams(location.search).get('renderer') === 'webgl';
     if (!forceWebGL && (await WebGPUEngine.IsSupportedAsync)) {
-      const engine = new WebGPUEngine(canvas, { antialias: true, adaptToDeviceRatio: true, powerPreference: 'high-performance' });
+      const engine = new WebGPUEngine(canvas, { antialias: true, adaptToDeviceRatio: true, powerPreference: 'high-performance', ...compressedTextureFeatures() });
       await engine.initAsync();
       this.engine = this.webgpu = engine;
     } else {

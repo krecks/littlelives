@@ -46,6 +46,14 @@ jobs:
       - name: Simulation tests
         run: cargo test -p sim-core
 
+      # Compressed asset copies (tools/assets/optimize.mjs, run by the build), cached by content
+      # hash so only changed files are encoded again.
+      - uses: actions/cache@v4
+        with:
+          path: web/.assets/cache
+          key: assets-${{ hashFiles('tools/assets/optimize.mjs', 'web/public/assets/**') }}
+          restore-keys: assets-
+
       - name: Build
         working-directory: web
         run: |

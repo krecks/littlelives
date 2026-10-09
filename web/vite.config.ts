@@ -1,8 +1,8 @@
 import { defineConfig, type Plugin } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
 
 // SharedArrayBuffer (zero-copy sim -> render snapshots) requires cross-origin isolation.
@@ -68,8 +68,37 @@ function debugReports(): Plugin {
   };
 }
 
+/**
+ * Compressed copies of the assets (KTX2 textures, meshopt models, gzipped character data; see
+ * tools/assets/optimize.mjs): encoded when the build starts (only files that changed since the
+ * last build, the rest come from web/.assets/cache) and copied into dist/assets when it ends,
+ * next to the sources. `LL_ASSETS=source` builds without them. The dev server serves sources.
+ */
+function optimizedAssets(): Plugin {
+  const skip = process.env.LL_ASSETS === 'source';
+  let outDir = '';
+  let copies = '';
+  return {
+    name: 'optimized-assets',
+    apply: 'build',
+    configResolved(config) {
+      outDir = resolve(config.root, config.build.outDir);
+    },
+    async buildStart() {
+      if (skip) return;
+      // Imported by URL so it runs from its own file (it starts worker threads on itself).
+      const tool = await import(new URL('../tools/assets/optimize.mjs', import.meta.url).href);
+      await tool.optimizeAssets({ log: (line: string) => this.info(line) });
+      copies = tool.OUT;
+    },
+    async closeBundle() {
+      if (copies) await cp(copies, join(outDir, 'assets'), { recursive: true });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [svelte(), debugReports()],
+  plugins: [svelte(), debugReports(), optimizedAssets()],
   // The game's version (one number for web and Rust; `node ../tools/release/version.mjs <x.y.z>` bumps it).
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   server: { headers: crossOriginIsolation },
