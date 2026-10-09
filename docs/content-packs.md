@@ -91,6 +91,8 @@ fields) load unchanged: both mergers rename the keys first (`LEGACY_KEYS` in `pa
 | `slots` | How many residents use it at once, 1 or 2 (double bed, sofa, hot tub). Default 1. |
 | `light` | Lamps: `{"range": 4.5, "intensity": 1, "height": 1.55}` makes it a light at night (reach in metres, relative brightness, bulb height). |
 | `freeRotation` | `true` lets the player turn it to any angle in 15° steps (only for looks). Default: 1×1 objects whose category is listed in `objectRules.freeRotation` (base game: `decor`, `garden`, `outdoor`). |
+| `decor` | Decor points it gives the room it stands in (see [Rooms](#rooms-wear-and-accidents)). Default: by category, `roomRules.decorByCategory`. |
+| `wearPerUse` | Wear added by each completed use; at 1 it breaks. Default: by category, `objectRules.wear` (nothing wears out that nobody uses). |
 | `description` | Catalog text: say what it's for and what makes it special. |
 | `interactions` | What residents can do with it (below). Can be empty for decor. |
 
@@ -128,6 +130,7 @@ fields) load unchanged: both mergers rename the keys first (`LEGACY_KEYS` in `pa
 | `skill` | Skill id that makes this interaction better: need gains and skill gains are multiplied by `1 + skillRules.effectPerLevel × level` (0.05 per whole level: level 4 = ×1.2, level 8 = ×1.4). Autonomy knows this, so good cooks prefer cooking. |
 | `feeling` | Feeling id granted when the interaction finishes after at least half its `minutes` (not when cancelled early). |
 | `feelingMinSkill` | Only grant `feeling` if the resident's whole level in `skill` is at least this (needs `skill` and `feeling`). Default 0. |
+| `dirt` | Mess each use leaves on the tiles around the object (0..1). Default: by tag, `roomRules.dirt` (cooking 0.12, food 0.06, bathroom 0.05, hygiene 0.04). |
 
 ### How the multipliers stack
 
@@ -386,6 +389,48 @@ is an index into this list, saved by `id`.
 ```
 
 `shape` is `gable`, `hip` or `flat`; `pitch` is in degrees (default 34).
+
+## Rooms, wear and accidents
+
+How the house shows up in residents' lives (see `docs/design/house-matters.md`).
+
+**Room kinds** (`roomKinds`): a room is of the first kind whose `tags` something in it offers.
+
+```json
+{"id": "bathroom", "label": "Bathroom", "icon": "icon.category.bathroom", "tags": ["bathroom"],
+ "essentials": [["bathroom"], ["hygiene"]], "size": [3, 6], "exclusive": true, "another": true}
+```
+
+`essentials`: tag groups something in the room must offer for full function; `size`:
+`[cramped, comfortable]` in tiles; `exclusive`: can't share a room with another exclusive kind
+(a bed in the kitchen); `another`: residents who keep finding it taken wish for a second one.
+
+**Scoring** (`roomRules`, an object, so a pack can change single keys): `weights` of size, light,
+decor, cleanliness and function; `windowTiles` and `lampTiles` (tiles one window or lamp lights
+fully); `decorPerTile` and `gardenDecorPerTile` (decor points for full decor); `decorByCategory`;
+`love` and `dislike` (overall scores that make residents love or dislike a room) with
+`loveFeeling` and `dislikeFeeling`; `drift` (how fast the `environment` need follows the room,
+per hour) and `away` (its target at work); `preference` (how much the AI prefers nicer rooms);
+`dirt` (mess by tag); `clean` (the *Tidy up* action: `label`, `minutes`, `threshold`, `amount`,
+`interest`). A need with `"room": true` is the one that follows the room.
+
+**Wear and repairs** (`objectRules.wear`: `perUse`, `byCategory`, `perQuality`;
+`objectRules.repair`: `label`, `minutes`, `skill`, `skillGainPerHour`, `chance`,
+`chancePerLevel`, `interest`, `cost` as a share of the price for the paid quick fix, `tags`).
+
+**Accidents** (`accidents`): what happens when a need has been empty for `graceMinutes` and the
+home has nothing working for it.
+
+```json
+{"id": "takeout", "need": "hunger", "story": "ordered takeout", "cost": 25, "cooldownHours": 2,
+ "graceMinutes": 60, "rest": {"label": "Eat takeout", "minutes": 20, "pose": "stand", "anim": "eat",
+ "gains": {"hunger": 0.7}, "tags": ["food"]}}
+```
+
+`effects` change needs at once, `dirt` leaves a mess where it happened, `feeling` is granted,
+`cost` is charged, `rest` is something they do right away (asleep on the floor), `story` puts it
+in the journal. `crowdedGraceMinutes` also lets it happen when the home has the essential but it's
+taken. At most 8.
 
 ## Balance guidance
 
