@@ -138,7 +138,7 @@ fn object_ids_stay_valid_after_a_sell() {
     let (x, z) = (w.objects[1].x, w.objects[1].z);
 
     // Selling an object listed before it shifts its id down by one.
-    w.apply(Command::Sell { sim: 0, object: 0 }).unwrap();
+    w.apply(Command::Sell { household: 0, object: 0 }).unwrap();
     let (object, act) = row(&w, 0);
     assert_eq!(object, 0.0);
     assert_eq!(act, action(&w, "eat"), "still eating");
@@ -147,7 +147,7 @@ fn object_ids_stay_valid_after_a_sell() {
     assert!(used.users().any(|u| u == 0));
 
     // Selling the object in use stops the Sim.
-    w.apply(Command::Sell { sim: 0, object: 0 }).unwrap();
+    w.apply(Command::Sell { household: 0, object: 0 }).unwrap();
     assert_eq!(row(&w, 0), (-1.0, -1.0));
 }
 

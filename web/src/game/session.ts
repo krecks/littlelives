@@ -7,7 +7,7 @@
 import { AssetRegistry } from '../assets/registry';
 import { Content } from '../content/content';
 import { SimBridge } from '../core/bridge';
-import type { GameSource, SocialEvent, WorldStructure } from '../core/protocol';
+import type { GameKind, GameSource, SocialEvent, WorldStructure } from '../core/protocol';
 import { AUTOSAVE_ID, readSave, writeSave, type SaveRecord } from '../persistence/saves';
 import { recentLog } from '../debug/log';
 import { deliverReport, gpuInfo, takePendingPose, type DebugReport } from '../debug/report';
@@ -26,7 +26,7 @@ import { Director } from './director';
 import { BuildBuyInput, editFeedback } from './buildmode';
 import { styledModel } from '../ui/buy/catalog';
 import { play } from '../ui/sfx';
-import type { HouseholdDraft } from './household';
+import { householdBonds, householdSpawns, type HouseholdDraft } from './household';
 import { PointerInput } from './input';
 import { assembleTown, loadTemplates, type NeighbourhoodDraft } from './town';
 
@@ -39,10 +39,13 @@ export type StartRequest =
   | {
       kind: 'new';
       town: NeighbourhoodDraft;
-      household: HouseholdDraft;
+      /** Null: build first, a family moves in later (the home is named after its address until then). */
+      household: HouseholdDraft | null;
       slot: number;
       /** `household` already lives in `town` at `slot`: the player takes it over instead of moving a new one in. */
       existing?: boolean;
+      /** Living (default) or Creative. */
+      mode?: GameKind;
     }
   | { kind: 'load'; saveId: string };
 
@@ -69,6 +72,7 @@ export interface GameSession {
   applySettings(settings: Settings): void;
   /** Pauses for menus; `false` restores the previous speed. */
   setMenuPause(paused: boolean): void;
+  /** The player's household (its address until a family moves in). */
   readonly household: string;
   /** Resolves when the world is built and drawn and the HUD's portraits exist: revealing is then instant. */
   readonly ready: Promise<void>;
@@ -115,9 +119,9 @@ export async function startSession(
   let household: string;
   if (request.kind === 'new') {
     const templates = await loadTemplates();
-    const lot = assembleTown(content, templates, request.town, request.household, request.slot, request.existing);
+    const lot = assembleTown(content, templates, request.town, request.household, request.slot, { existing: request.existing, mode: request.mode });
     source = { lot, seed: Number(params.get('seed')) || (Math.random() * 2 ** 31) >>> 0 };
-    household = request.household.name.trim();
+    household = request.household?.name.trim() ?? request.town.slots[request.slot].name;
   } else {
     const record = await readSave(request.saveId);
     if (!record) throw new Error('That save no longer exists.');
@@ -281,6 +285,7 @@ export async function startSession(
       if (game.journalOpen) void bridge.requestEvents().then((events) => (game.journal = events));
     },
     openPlanner(who) {
+      if (!game.occupied) return;
       takeBack();
       const mine = playerSims();
       game.plannerFor = who ?? (game.inspected !== null && mine.includes(game.inspected) ? game.inspected : (mine[0] ?? 'household'));
@@ -418,7 +423,7 @@ export async function startSession(
         play('rotate');
       } else if (game.buySelection !== null) {
         const obj = game.objects.find((o) => o.id === game.buySelection);
-        if (obj) bridge.send({ type: 'moveObject', sim: game.selected, object: obj.id, x: obj.x, z: obj.z, rot: (obj.rot + 1) % 4 });
+        if (obj) bridge.send({ type: 'moveObject', household: game.home, object: obj.id, x: obj.x, z: obj.z, rot: (obj.rot + 1) % 4 });
       }
     },
     cancelPlacing() {
@@ -426,7 +431,7 @@ export async function startSession(
     },
     sell(objectId) {
       if (game.mode !== 'buy') return;
-      bridge.send({ type: 'sell', sim: game.selected, object: objectId });
+      bridge.send({ type: 'sell', household: game.home, object: objectId });
       game.buySelection = null;
       game.menu = null;
     },
@@ -437,19 +442,19 @@ export async function startSession(
       game.buildStart = null;
       game.buySelection = null;
       buildBuy.clearPreviews();
-      bridge.send({ type: 'undo', sim: game.selected });
+      bridge.send({ type: 'undo', household: game.home });
     },
     restyle(objectId, style) {
-      bridge.send({ type: 'restyle', sim: game.selected, object: objectId, style });
+      bridge.send({ type: 'restyle', household: game.home, object: objectId, style });
     },
     setHouseholdStyle(style) {
-      bridge.send({ type: 'setStyle', sim: game.selected, style });
+      bridge.send({ type: 'setStyle', household: game.home, style });
       game.householdStyle = style;
     },
     /** Buy mode: buy the next quality level (instant). */
     upgrade(objectId) {
       if (game.mode !== 'buy') return;
-      bridge.send({ type: 'upgrade', sim: game.selected, object: objectId });
+      bridge.send({ type: 'upgrade', household: game.home, object: objectId });
       game.menu = null;
     },
     setBuildTool(tool) {
@@ -461,10 +466,33 @@ export async function startSession(
       buildBuy.clearPreviews();
     },
     build(edits) {
-      bridge.send({ type: 'build', sim: game.selected, edits });
+      bridge.send({ type: 'build', household: game.home, edits });
     },
     paint(faces) {
-      bridge.send({ type: 'paint', sim: game.selected, faces });
+      bridge.send({ type: 'paint', household: game.home, faces });
+    },
+    moveIn(draft) {
+      const home = buildBuy.home();
+      if (!home) return;
+      const [x, z] = home.entry ?? [home.x + home.w / 2, home.z + 1.5];
+      // Everyone arrives at the front of the lot, side by side within the entry tile.
+      const n = draft.members.length;
+      const spawns = draft.members.map((_, i): [number, number] => [x + (n > 1 ? (i / (n - 1) - 0.5) * 0.6 : 0), z]);
+      bridge.send({
+        type: 'moveIn',
+        household: game.home,
+        name: draft.name.trim(),
+        sims: householdSpawns(draft, game.home, spawns),
+        bonds: householdBonds(draft, 0),
+      });
+      // Closing the creator must not bring back the pause it held (taken in Build mode, the
+      // speed is 0): Live mode resumes the speed from before building, or the creator's own.
+      const resume = speedBeforeMenu;
+      speedBeforeMenu = null;
+      game.moveInOpen = false;
+      if (game.mode !== 'live') controls.setMode('live');
+      else if (resume !== null) bridge.send({ type: 'setSpeed', speed: resume });
+      play('open');
     },
     async debugReport(note) {
       const scale = Math.min(window.devicePixelRatio || 1, 2);
@@ -544,7 +572,13 @@ export async function startSession(
     world = w;
     worldView = viewPlot;
     buildBuy.setStructure(w);
-    director.setWorld(w, w.households.find((h) => h.player)?.plot ?? null);
+    const mine = w.households.find((h) => h.player);
+    director.setWorld(w, mine?.plot ?? null);
+    game.creative = w.mode === 'creative';
+    if (mine) {
+      game.home = mine.id;
+      household = game.household = mine.name;
+    }
     game.objects = w.objects;
     if (game.buySelection !== null && !w.objects.some((o) => o.id === game.buySelection)) game.buySelection = null;
     game.roster = w.sims;
@@ -559,13 +593,19 @@ export async function startSession(
     if (!focused) {
       focused = true;
       const first = playerSims()[0];
-      if (first !== undefined) {
-        game.selected = first;
-        if (liveSettings.directControl === 'always') controls.inspect(first);
-      }
+      // Nobody lives at home yet (build first): nobody to give orders to.
+      game.selected = first ?? -1;
+      if (first !== undefined && liveSettings.directControl === 'always') controls.inspect(first);
       // Start on the home lot; its geometry arrives in the next world message.
       const home = w.households.find((h) => h.player)?.plot;
       if (home != null && w.plots[home]) return showPlot(home);
+    } else if (!playerSims().includes(game.selected)) {
+      // A family just moved in: the first of them is the one to look at.
+      const first = playerSims()[0];
+      if (first !== undefined) {
+        game.selected = first;
+        controls.inspect(first);
+      }
     }
     const plot = viewPlot === null ? null : w.plots[viewPlot];
     const build = renderer.setWorld(w, plot ? { x: plot.x, z: plot.z, w: plot.w, d: plot.d } : null);
@@ -708,6 +748,11 @@ export async function startSession(
 
   const onKey = (e: KeyboardEvent) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    // The household creator is open over the game: its keys are its own.
+    if (game.moveInOpen) {
+      if (e.key === 'Escape') game.moveInOpen = false;
+      return;
+    }
     if (e.key === 'Escape') {
       if (game.townOpen) return void (game.townOpen = false);
       if (game.jobBoardOpen) return void (game.jobBoardOpen = false);
@@ -825,7 +870,9 @@ export async function startSession(
   });
 
   const session: GameSession = {
-    household,
+    get household() {
+      return household;
+    },
     ready,
     reveal() {
       if (revealed) return;
@@ -842,6 +889,13 @@ export async function startSession(
       window.addEventListener('pointermove', onMove, { passive: true });
       lastInput = performance.now();
       bridge.send({ type: 'setSpeed', speed: resumeSpeed ?? 1 });
+      // Nobody lives here yet, or there's no house (an empty lot): the game starts with
+      // building (time stands still until Live).
+      const home = homePlot();
+      if (!game.occupied || (home !== null && !game.plots[home]?.house)) {
+        game.speed = resumeSpeed ?? 1;
+        controls.setMode('build');
+      }
       prefetchTimer = setTimeout(() => {
         if (disposed) return;
         services.items.prefetch(content.shop.map((def) => ({ model: styledModel(content, assets, def, game.householdStyle), footprint: def.footprint ?? [1, 1] })));

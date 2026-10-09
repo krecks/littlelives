@@ -90,9 +90,9 @@ pub enum Command {
         sim: u32,
         index: usize,
     },
-    /// Buy an object for the Sim's home: at `at` (`[x, z, rot]`) or wherever it fits.
+    /// Buy an object for the household's home: at `at` (`[x, z, rot]`) or wherever it fits.
     Buy {
-        sim: u32,
+        household: u32,
         object: String,
         #[serde(default)]
         at: Option<[i32; 3]>,
@@ -102,12 +102,12 @@ pub enum Command {
     },
     /// Sell an object at home for part of what was paid.
     Sell {
-        sim: u32,
+        household: u32,
         object: u32,
     },
     /// Move or rotate an object at home.
     MoveObject {
-        sim: u32,
+        household: u32,
         object: u32,
         x: i32,
         z: i32,
@@ -115,38 +115,49 @@ pub enum Command {
     },
     /// Change how an object looks (free; effects stay the same).
     Restyle {
-        sim: u32,
+        household: u32,
         object: u32,
         style: u8,
     },
     /// Set the household's favourite style (used for new purchases).
     SetStyle {
-        sim: u32,
+        household: u32,
         style: u8,
     },
-    /// Buy mode: buy the next quality level for an object at the Sim's home (instant).
+    /// Buy mode: buy the next quality level for an object at home (instant).
     Upgrade {
-        sim: u32,
+        household: u32,
         object: u32,
     },
-    /// Build mode: change wall edges on the Sim's home plot.
+    /// Build mode: change wall edges on the household's home plot.
     Build {
-        sim: u32,
+        household: u32,
         edits: Vec<EdgeEdit>,
     },
-    /// Build mode: cover wall faces on the Sim's home plot (paint, wallpaper, brick...).
+    /// Build mode: cover wall faces on the home plot (paint, wallpaper, brick...).
     Paint {
-        sim: u32,
+        household: u32,
         faces: Vec<FacePaint>,
     },
-    /// Build mode: cover floor tiles indoors on the Sim's home plot (wood, tile, carpet...).
+    /// Build mode: cover floor tiles indoors on the home plot (wood, tile, carpet...).
     PaintFloor {
-        sim: u32,
+        household: u32,
         tiles: Vec<FloorPaint>,
     },
     /// Build and buy mode: take back the household's last edit (see `World::undo`).
     Undo {
-        sim: u32,
+        household: u32,
+    },
+    /// New residents move into a household that has a home (an empty one, after building
+    /// first): they arrive where `sims` stand (their `household` is ignored), with `bonds`
+    /// between them (indices into `sims`). `name` renames the household.
+    MoveIn {
+        household: u32,
+        #[serde(default)]
+        name: Option<String>,
+        sims: Vec<crate::lot::SimSpawn>,
+        #[serde(default)]
+        bonds: Vec<crate::lot::BondRaw>,
     },
 }
 
@@ -238,18 +249,18 @@ pub enum EdgeKind {
 }
 
 impl Command {
-    /// The Sim whose home a build or buy edit changes (edits can be undone), if this is one.
+    /// The household whose home a build or buy edit changes (edits can be undone), if this is one.
     pub fn home_edit(&self) -> Option<u32> {
         match *self {
-            Command::Buy { sim, .. }
-            | Command::Sell { sim, .. }
-            | Command::MoveObject { sim, .. }
-            | Command::Restyle { sim, .. }
-            | Command::SetStyle { sim, .. }
-            | Command::Upgrade { sim, .. }
-            | Command::Build { sim, .. }
-            | Command::Paint { sim, .. }
-            | Command::PaintFloor { sim, .. } => Some(sim),
+            Command::Buy { household, .. }
+            | Command::Sell { household, .. }
+            | Command::MoveObject { household, .. }
+            | Command::Restyle { household, .. }
+            | Command::SetStyle { household, .. }
+            | Command::Upgrade { household, .. }
+            | Command::Build { household, .. }
+            | Command::Paint { household, .. }
+            | Command::PaintFloor { household, .. } => Some(household),
             _ => None,
         }
     }

@@ -131,6 +131,8 @@ export interface CareerCategory {
 
 export interface Economy {
   startingFunds: number;
+  /** Extra money to build with when a household starts on an empty lot (Living games). */
+  emptyLotFunds?: number;
   currency: string;
   rent?: { weekday: number; hour: number; base: number; perTile: number; billsBase?: number; billsRate?: number };
 }

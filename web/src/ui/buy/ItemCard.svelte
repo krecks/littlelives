@@ -51,7 +51,7 @@
   /** A pack's own icon wins; otherwise a placeholder glyph until the 3D picture arrives. */
   const custom = $derived(def.icon && services.assets.has(def.icon, 'icon') ? def.icon : null);
   const glyph = $derived(info.boosts[0]?.need.icon ?? (info.trains[0] ? content.skill(info.trains[0].skill)?.icon : undefined) ?? 'icon.ui.buy');
-  const short = $derived(Math.max(0, (def.price ?? 0) - game.funds));
+  const short = $derived(game.creative ? 0 : Math.max(0, (def.price ?? 0) - game.funds));
 
   let popped = $state(false);
   let shake = $state(false);
@@ -80,7 +80,7 @@
   class:shake
   style="--hue:{tint}"
   aria-disabled={!affordable}
-  aria-label="{def.name}, {money(def.price ?? 0)}{affordable ? '' : `, ${money(short)} short`}"
+  aria-label="{def.name}, {game.creative ? 'free' : money(def.price ?? 0)}{affordable ? '' : `, ${money(short)} short`}"
   title={affordable ? (def.description ?? def.name) : `${money(short)} short of ${def.name}`}
   onclick={pick}
   onanimationend={(e) => {
@@ -117,7 +117,7 @@
   <span class="text">
     <span class="name">{def.name}</span>
     <span class="meta">
-      <span class="price tabular">{money(def.price ?? 0)}</span>
+      <span class="price tabular">{game.creative ? 'Free' : money(def.price ?? 0)}</span>
       {#if !affordable}<span class="need tabular">{money(short)} short</span>
       {:else if info.useCost}<span class="use tabular" title="Costs money each time it's used">+{money(info.useCost.min)}/use</span>{/if}
       {#if info.slots > 1}<span class="slots" title="{info.slots} residents at once"><Icon name="icon.ui.relationships" size={11} />{info.slots}</span>{/if}

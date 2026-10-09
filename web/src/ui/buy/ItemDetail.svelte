@@ -16,7 +16,7 @@
   const info = $derived(summarize(content, def));
   const rules = $derived(game.catalog?.objectRules);
   const price = $derived(def.price ?? 0);
-  const short = $derived(owned ? 0 : Math.max(0, price - game.funds));
+  const short = $derived(owned || game.creative ? 0 : Math.max(0, price - game.funds));
   const category = $derived.by(() => {
     const c = content.buyCategories.find((c) => c.id === def.category);
     const group = c?.groups?.find((g) => g.id === def.group)?.label;
@@ -50,13 +50,13 @@
   const upgradeCost = $derived(rules ? Math.round(price * rules.upgradeCost) : 0);
   /** Bills grow with what the household owns, so new things (and upgrades) raise them a little. */
   const billsRate = content.economy.rent?.billsRate ?? 0;
-  const addedBills = $derived(Math.round((owned ? upgradeCost : price) * billsRate));
+  const addedBills = $derived(game.creative ? 0 : Math.round((owned ? upgradeCost : price) * billsRate));
   const upgradeBlocker = $derived(
     !owned || !rules
       ? null
       : quality >= rules.maxQuality
         ? 'Already top quality'
-        : upgradeCost > game.funds
+        : !game.affords(upgradeCost)
           ? `Can't afford — ${money(upgradeCost - game.funds)} short`
           : null,
   );
@@ -72,9 +72,9 @@
       {#if category}<span class="eyebrow">{category}</span>{/if}
     </div>
     {#if owned}
-      {#if owned.sellValue !== null}<span class="price tabular" title="What selling returns">worth {money(owned.sellValue)}</span>{/if}
+      {#if owned.sellValue !== null && !game.creative}<span class="price tabular" title="What selling returns">worth {money(owned.sellValue)}</span>{/if}
     {:else}
-      <span class="price tabular" class:short={short > 0}>{money(price)}</span>
+      <span class="price tabular" class:short={short > 0}>{game.creative ? 'Free' : money(price)}</span>
     {/if}
   </div>
   {#if short > 0}<p class="warn">Can't afford — {money(short)} short</p>{/if}
@@ -106,7 +106,7 @@
   {#if upgradable && rules}
     <div class="quality">
       <span class="stars" title="Quality {quality} of {rules.maxQuality}">{stars(quality, rules.maxQuality)}</span>
-      <span class="muted">Each ★ +{Math.round(rules.qualityBonus * 100)}% to everything it gives · {money(upgradeCost)} per ★</span>
+      <span class="muted">Each ★ +{Math.round(rules.qualityBonus * 100)}% to everything it gives · {game.creative ? 'free' : `${money(upgradeCost)} per ★`}</span>
       {#if owned}
         <button
           class="btn small upgrade"
@@ -115,7 +115,7 @@
           onclick={() => services.controls.upgrade(owned.id)}
         >
           <Icon name="icon.ui.upgrade" size={14} />
-          {quality >= rules.maxQuality ? 'Top quality' : `Upgrade to ★${quality + 1} · ${money(upgradeCost)}`}
+          {quality >= rules.maxQuality ? 'Top quality' : `Upgrade to ★${quality + 1}${game.creative ? '' : ` · ${money(upgradeCost)}`}`}
         </button>
         {#if upgradeBlocker && quality < rules.maxQuality}<small class="reason">{upgradeBlocker}</small>{/if}
       {/if}
@@ -128,7 +128,7 @@
         <button class="btn ghost small" onclick={() => services.controls.startMoving(owned.id)}>Move</button>
         <button class="btn ghost small" title="Rotate (R)" onclick={() => services.controls.rotatePlacing()}>Rotate</button>
         {#if owned.sellValue !== null}
-          <button class="btn ghost small danger" title="Sell (Delete)" onclick={() => services.controls.sell(owned.id)}>Sell · {money(owned.sellValue)}</button>
+          <button class="btn ghost small danger" title="Sell (Delete)" onclick={() => services.controls.sell(owned.id)}>{game.creative ? 'Sell' : `Sell · ${money(owned.sellValue)}`}</button>
         {/if}
       </div>
     </div>

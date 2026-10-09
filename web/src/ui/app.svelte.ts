@@ -1,12 +1,14 @@
 /** Top-level navigation: which screen is shown, and which modal is open on top of it. */
 
+import type { GameKind } from '../core/protocol';
 import type { HouseholdDraft } from '../game/household';
 import type { StartRequest } from '../game/session';
-import type { NeighbourhoodDraft } from '../game/town';
+import { EMPTY_LOT, withLot, type NeighbourhoodDraft } from '../game/town';
 
 /**
- * New game: neighbourhood → household → home → game, or neighbourhood → play (take over a
- * household that already lives there) → game.
+ * New game: neighbourhood → household → home → game; neighbourhood → home → game (build first,
+ * a family moves in later); or neighbourhood → play (take over a household that already lives
+ * there) → game.
  */
 export type Screen = 'menu' | 'neighbourhood' | 'create' | 'home' | 'play' | 'game';
 export type Overlay = 'settings' | 'load' | 'credits' | null;
@@ -27,6 +29,12 @@ class AppState {
   /** Drafts kept while moving back and forth through the new-game steps. */
   town = $state.raw<NeighbourhoodDraft | null>(null);
   household = $state.raw<HouseholdDraft | null>(null);
+  /** Living (the residents earn the money) or Creative (building is free). */
+  mode = $state<GameKind>('living');
+  /** Build first: the new game starts without a household (the draft is kept for going back). */
+  buildFirst = $state(false);
+  /** The home is an empty lot (its house cleared away) rather than the house as it stands. */
+  emptyLot = $state(false);
   /** House picked on the home screen (prepared in the background). */
   homeSlot = $state<number | null>(null);
   /** Home of the neighbour household picked to play (prepared in the background). */
@@ -46,7 +54,24 @@ class AppState {
     this.town = null;
     this.household = null;
     this.playSlot = null;
+    this.buildFirst = false;
+    this.emptyLot = false;
     this.screen = 'neighbourhood';
+  }
+
+  /** The town as the home screen shows it: the chosen lot cleared when starting on an empty lot. */
+  homeTown(slot: number): NeighbourhoodDraft | null {
+    const town = this.town;
+    if (!town) return null;
+    return this.emptyLot ? withLot(town, slot, EMPTY_LOT) : town;
+  }
+
+  /** The new game the home screen starts on `slot` (also prepared in the background). */
+  homeRequest(slot: number): StartRequest | null {
+    const town = this.homeTown(slot);
+    const household = this.buildFirst ? null : this.household;
+    if (!town || (!household && !this.buildFirst)) return null;
+    return { kind: 'new', town, household, slot, mode: this.mode };
   }
 
   start(request: StartRequest): void {

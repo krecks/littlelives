@@ -259,7 +259,7 @@ export class BuildBuyInput {
       [fx + 1, fz],
     ][rot % 4];
     if (this.wallBetween(back[0], back[1], fx, fz)) return 'Faces a wall';
-    return moving !== null || game.funds >= (def.price ?? Infinity) ? true : null;
+    return moving !== null || (def.price !== undefined && game.affords(def.price)) ? true : null;
   }
 
   /** Whether a wall (with or without a door or window) stands between two neighbouring tiles. */
@@ -284,12 +284,12 @@ export class BuildBuyInput {
       const p = ground && this.placement(ground);
       if (!p) return true;
       if (placing.objectId !== null) {
-        this.send({ type: 'moveObject', sim: game.selected, object: placing.objectId, x: p.x, z: p.z, rot: p.rot });
+        this.send({ type: 'moveObject', household: game.home, object: placing.objectId, x: p.x, z: p.z, rot: p.rot });
         game.placing = null;
         this.preview.setPlacementGhost?.(null);
       } else {
         // New purchases stay on the cursor so several can be placed in a row.
-        this.send({ type: 'buy', sim: game.selected, object: p.def.id, at: [p.x, p.z, p.rot], style: game.householdStyle });
+        this.send({ type: 'buy', household: game.home, object: p.def.id, at: [p.x, p.z, p.rot], style: game.householdStyle });
       }
       return true;
     }
@@ -507,10 +507,10 @@ export class BuildBuyInput {
     const cover = game.buildLook.cover;
     const color = cover ? (this.content.wallCoverings[cover - 1]?.color ?? '#FFFFFF') : '#FFFFFF';
     this.preview.setPaintPreview?.(faces, faces.length ? color : null);
-    game.buildCost = this.paintCost(faces);
+    game.buildCost = game.creative ? 0 : this.paintCost(faces);
     game.paintFaces = faces.length;
     game.buildEdges = faces.length;
-    game.buildValid = faces.length > 0 && game.funds >= game.buildCost;
+    game.buildValid = faces.length > 0 && game.affords(game.buildCost);
   }
 
   private commitPaint(ground: Point | null): void {
@@ -521,7 +521,7 @@ export class BuildBuyInput {
       if (face) faces.push(...(this.shift ? this.roomFaces(face) : [face]));
     }
     const onHome = faces.filter((f) => this.edgesOnHome([{ ...f, kind: 'wall' }]));
-    if (onHome.length) this.send({ type: 'paint', sim: game.selected, faces: onHome.map(({ axis, x, z, side, covering }) => ({ axis, x, z, side, covering })) });
+    if (onHome.length) this.send({ type: 'paint', household: game.home, faces: onHome.map(({ axis, x, z, side, covering }) => ({ axis, x, z, side, covering })) });
   }
 
   // ---- Floor ----------------------------------------------------------------------
@@ -566,26 +566,26 @@ export class BuildBuyInput {
     const floor = game.buildLook.floor;
     const color = floor ? (this.content.floorCoverings[floor - 1]?.color ?? '#FFFFFF') : '#FFFFFF';
     this.preview.setFloorPreview?.(tiles, tiles.length ? color : null);
-    game.buildCost = this.floorCost(tiles);
+    game.buildCost = game.creative ? 0 : this.floorCost(tiles);
     game.floorTiles = tiles.length;
     game.buildEdges = tiles.length;
-    game.buildValid = tiles.length > 0 && game.funds >= game.buildCost;
+    game.buildValid = tiles.length > 0 && game.affords(game.buildCost);
   }
 
   private commitFloor(ground: Point | null): void {
     const tiles = ground ? this.floorTiles(ground) : [];
     this.floorStart = null;
-    if (tiles.length) this.send({ type: 'paintFloor', sim: game.selected, tiles });
+    if (tiles.length) this.send({ type: 'paintFloor', household: game.home, tiles });
   }
 
   private hoverBuild(ground: Point): void {
     if (this.paintTool()) return this.hoverPaint(ground);
     if (this.floorTool()) return this.hoverFloor(ground);
     const edges = this.edits(ground);
-    game.buildCost = this.cost(edges);
+    game.buildCost = game.creative ? 0 : this.cost(edges);
     // Doors and windows need a full-height wall to go into (the simulation re-checks everything).
     const inWall = !this.opening() || edges.every((e) => this.edgeState(e) !== 'open' && !(this.edgeState(e) === 'wall' && this.lookOf(e).form));
-    const valid = inWall && this.edgesOnHome(edges) && this.diagonalsFit(edges) && game.funds >= game.buildCost;
+    const valid = inWall && this.edgesOnHome(edges) && this.diagonalsFit(edges) && game.affords(game.buildCost);
     this.preview.setEdgePreview?.(edges, valid);
     game.buildEdges = edges.length;
     game.buildValid = valid;
@@ -598,13 +598,13 @@ export class BuildBuyInput {
   private commit(ground: Point): void {
     const edges = this.edits(ground);
     game.buildStart = null;
-    if (edges.length) this.send({ type: 'build', sim: game.selected, edits: edges });
+    if (edges.length) this.send({ type: 'build', household: game.home, edits: edges });
     this.clearPreviews();
   }
 
   private clickBuild(ground: Point): boolean {
     if (this.opening()) {
-      this.send({ type: 'build', sim: game.selected, edits: this.edits(ground) });
+      this.send({ type: 'build', household: game.home, edits: this.edits(ground) });
       return true;
     }
     if (!game.buildStart) {
@@ -682,7 +682,7 @@ export class BuildBuyInput {
       const state = this.edgeState(e);
       if (state === 'door' || state === 'window') {
         game.buildStart = null;
-        this.send({ type: 'build', sim: game.selected, edits: [{ ...e, kind: 'wall' }] });
+        this.send({ type: 'build', household: game.home, edits: [{ ...e, kind: 'wall' }] });
         this.clearPreviews();
         return this.hoverBuild(g);
       }

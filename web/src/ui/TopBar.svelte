@@ -20,7 +20,9 @@
   ] as const;
   const rent = services.content.economy.rent;
   const fundsTitle = $derived(
-    game.rent !== null && rent
+    game.creative
+      ? 'Household funds · Creative game: building and buying are free, and your home pays no rent or bills.'
+      : game.rent !== null && rent
       ? `Household funds · rent ${money(game.rent)} + bills ${money(game.bills ?? 0)} every ${WEEKDAYS[rent.weekday]} at ${clock(rent.hour * 60, settings.clock24h)}. Bills grow with the value of everything you own and with how many of you there are.`
       : 'Household funds',
   );
@@ -37,6 +39,11 @@
         </button>
       {/each}
     </div>
+    {#if !game.occupied}
+      <button class="move-in" title="Nobody lives here yet: create a family to move in" onclick={() => (game.moveInOpen = true)}>
+        <Icon name="icon.ui.plus" size={14} />Move a family in
+      </button>
+    {/if}
   </div>
 
   <div class="glass group center">
@@ -82,9 +89,11 @@
       <button class="tool" title="Whole house (H)" aria-label="Show the whole house" onclick={() => services.controls.frameHouse()}>
         <Icon name="icon.ui.home" />
       </button>
-      <button class="tool" class:active={game.plannerOpen} title="Planner (P): routines and goals" aria-label="Planner" onclick={() => services.controls.openPlanner()}>
-        <Icon name="icon.ui.calendar" />
-      </button>
+      {#if game.occupied}
+        <button class="tool" class:active={game.plannerOpen} title="Planner (P): routines and goals" aria-label="Planner" onclick={() => services.controls.openPlanner()}>
+          <Icon name="icon.ui.calendar" />
+        </button>
+      {/if}
       <button class="tool" class:active={game.journalOpen} title="Journal (J)" aria-label="Journal" aria-pressed={game.journalOpen} onclick={() => services.controls.toggleJournal()}>
         <Icon name="icon.ui.journal" />
       </button>
@@ -92,7 +101,7 @@
     {/if}
     <span class="funds tabular" class:debt={game.funds < 0} title={fundsTitle}>
       <Icon name="icon.ui.funds" size={16} />{money(game.funds)}
-      {#if game.rent !== null}<small>rent + bills {money(game.rent + (game.bills ?? 0))}/wk</small>{/if}
+      {#if game.creative}<small>Creative · building is free</small>{:else if game.rent !== null}<small>rent + bills {money(game.rent + (game.bills ?? 0))}/wk</small>{/if}
     </span>
     <button
       class="tool"
@@ -190,6 +199,23 @@
     font-size: 18px;
     font-weight: 650;
     letter-spacing: -0.01em;
+  }
+  .move-in {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+  .move-in:hover {
+    filter: brightness(1.08);
   }
   .funds {
     display: inline-flex;

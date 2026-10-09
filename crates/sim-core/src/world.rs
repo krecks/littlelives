@@ -8,6 +8,7 @@ use crate::content::{Content, MAX_NEEDS, MAX_SKILLS, MAX_SLOTS, Modifiers, Pose,
 use crate::lot::{BondRaw, Lot, LotFile, SimSpawn};
 use crate::path::NavGrid;
 use crate::rng::Rng;
+use serde::{Deserialize, Serialize};
 use crate::social::{self, ActiveFeeling, EventLog, Prefer, Relationships};
 use crate::{Command, Error, MINUTES_PER_TICK, TICKS_PER_SECOND, ai, conversation};
 
@@ -432,6 +433,18 @@ impl Plot {
     }
 }
 
+/// How a game treats money for building: chosen once per game.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GameMode {
+    /// The residents earn the money: build and buy are paid from household funds.
+    #[default]
+    Living,
+    /// Building is free: build and buy cost nothing (selling brings nothing back), and the
+    /// player's home pays no rent or bills.
+    Creative,
+}
+
 #[derive(Debug, Clone)]
 pub struct Household {
     pub id: u32,
@@ -465,6 +478,8 @@ pub(crate) struct SimBrief {
 
 pub struct World {
     pub content: Content,
+    /// Living or Creative (see `GameMode`).
+    pub mode: GameMode,
     pub lot: Lot,
     pub objects: Vec<ObjectInstance>,
     /// Plot index per object (`None` when outside every plot).
@@ -531,6 +546,7 @@ impl World {
 
     pub fn new(content: Content, lot_file: &LotFile, seed: u32) -> Result<Self, Error> {
         let mut world = Self::empty(content, Lot::from_file(lot_file)?, Rng::new(seed));
+        world.mode = lot_file.mode;
         world.meta = lot_file.meta.clone();
         world.exits = lot_file.exits.clone();
         world.plots = lot_file
@@ -604,6 +620,7 @@ impl World {
         let tiles = lot.width * lot.depth;
         Self {
             content,
+            mode: GameMode::Living,
             lot,
             objects: Vec::new(),
             object_plot: Vec::new(),
@@ -831,12 +848,79 @@ impl World {
         Ok(self.sims.len() as u32 - 1)
     }
 
+    /// New residents move into household `household`'s home (see `Command::MoveIn`): all of
+    /// them or, if any can't (unknown traits, a bad bond), none.
+    pub fn move_in(
+        &mut self,
+        household: u32,
+        name: Option<String>,
+        sims: &[SimSpawn],
+        bonds: &[BondRaw],
+    ) -> Result<(), Error> {
+        let (h, _) = self.home_of(household)?;
+        if sims.is_empty() {
+            return Err(Error::new("nobody to move in"));
+        }
+        let members = self.sims.iter().filter(|s| s.household as usize == h).count();
+        let most = self.content.rules.max_household;
+        if members + sims.len() > most {
+            return Err(Error::new(format!("at most {most} residents per household")));
+        }
+        if self.sims.len() + sims.len() > MAX_SIMS {
+            return Err(Error::new(format!("at most {MAX_SIMS} residents per town")));
+        }
+        let first = self.sims.len();
+        let (relationships, rng) = (self.relationships.clone(), self.rng.clone());
+        let moved = sims
+            .iter()
+            .try_for_each(|s| {
+                let spawn = SimSpawn {
+                    household,
+                    ..s.clone()
+                };
+                self.spawn_sim(&spawn).map(|_| ())
+            })
+            .and_then(|()| {
+                if bonds.iter().any(|b| b.a >= sims.len() || b.b >= sims.len()) {
+                    return Err(Error::new("a bond refers to someone who isn't moving in"));
+                }
+                let bonds: Vec<BondRaw> = bonds
+                    .iter()
+                    .map(|b| BondRaw {
+                        a: first + b.a,
+                        b: first + b.b,
+                        preset: b.preset.clone(),
+                    })
+                    .collect();
+                self.init_relationships_from(first, &bonds)
+            });
+        if let Err(e) = moved {
+            self.sims.truncate(first);
+            self.relationships = relationships;
+            self.rng = rng;
+            return Err(e);
+        }
+        if let Some(name) = name.as_deref().map(str::trim).filter(|n| !n.is_empty()) {
+            self.households[h].name = name.to_string();
+        }
+        self.structure_version += 1;
+        self.events
+            .push_detail(self.tick, social::EventKind::MovedIn, first, None, None);
+        Ok(())
+    }
+
     /// Chemistry for every pair, household bonds, then explicit bonds from the lot file.
     pub(crate) fn init_relationships(&mut self, bonds: &[BondRaw]) -> Result<(), Error> {
+        self.init_relationships_from(0, bonds)
+    }
+
+    /// Chemistry and household bonds for every pair with a resident from index `first` on (the
+    /// ones before already have theirs), then `bonds` (indices into the whole list).
+    fn init_relationships_from(&mut self, first: usize, bonds: &[BondRaw]) -> Result<(), Error> {
         let n = self.sims.len();
         let default_bond = self.content.social_rules.default_bond;
         for a in 0..n {
-            for b in a + 1..n {
+            for b in (a + 1).max(first)..n {
                 let (sa, sb) = (&self.sims[a], &self.sims[b]);
                 let shared = sa.traits.iter().filter(|t| sb.traits.contains(t)).count() as f32;
                 let clashes = sa
@@ -990,10 +1074,10 @@ impl World {
     /// Applies a player command. Build and buy edits can be undone (`Command::Undo`) until time
     /// moves on or the player gives the household another kind of order.
     pub fn apply(&mut self, cmd: Command) -> Result<(), Error> {
-        if let Command::Undo { sim } = cmd {
-            return self.undo(sim);
+        if let Command::Undo { household } = cmd {
+            return self.undo(household);
         }
-        let snapshot = cmd.home_edit().and_then(|sim| self.home_snapshot(sim));
+        let snapshot = cmd.home_edit().and_then(|h| self.home_snapshot(h));
         let keeps_history = matches!(
             cmd,
             Command::SetSpeed { .. }
@@ -1189,33 +1273,43 @@ impl World {
             }
             Command::GoHome { sim } => self.enqueue(sim, TaskKind::GoHome)?,
             Command::Buy {
-                sim,
+                household,
                 object,
                 at,
                 style,
             } => {
-                self.buy(sim, &object, at, style)?;
+                self.buy(household, &object, at, style)?;
             }
-            Command::Sell { sim, object } => self.sell(sim, object)?,
+            Command::Sell { household, object } => self.sell(household, object)?,
             Command::MoveObject {
-                sim,
+                household,
                 object,
                 x,
                 z,
                 rot,
-            } => self.move_object(sim, object, x, z, rot)?,
-            Command::Restyle { sim, object, style } => self.restyle(sim, object, style)?,
-            Command::SetStyle { sim, style } => {
-                let h = self.home_of(sim)?.0;
+            } => self.move_object(household, object, x, z, rot)?,
+            Command::Restyle {
+                household,
+                object,
+                style,
+            } => self.restyle(household, object, style)?,
+            Command::SetStyle { household, style } => {
+                let h = self.home_of(household)?.0;
                 self.households[h].style = self.check_style(style)?;
             }
-            Command::Upgrade { sim, object } => {
-                self.upgrade(sim, object)?;
+            Command::Upgrade { household, object } => {
+                self.upgrade(household, object)?;
             }
-            Command::Build { sim, edits } => self.build(sim, &edits)?,
-            Command::Paint { sim, faces } => self.paint(sim, &faces)?,
-            Command::PaintFloor { sim, tiles } => self.paint_floor(sim, &tiles)?,
-            Command::Undo { sim } => self.undo(sim)?,
+            Command::Build { household, edits } => self.build(household, &edits)?,
+            Command::Paint { household, faces } => self.paint(household, &faces)?,
+            Command::PaintFloor { household, tiles } => self.paint_floor(household, &tiles)?,
+            Command::Undo { household } => self.undo(household)?,
+            Command::MoveIn {
+                household,
+                name,
+                sims,
+                bonds,
+            } => self.move_in(household, name, &sims, &bonds)?,
             Command::Cancel { sim, index } => {
                 let World {
                     sims,

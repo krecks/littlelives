@@ -80,6 +80,10 @@ class GameState {
   pauseMenu = $state(false);
   townOpen = $state(false);
   weekday = $state(0);
+  /** The player's household (build and buy are addressed to it; nobody may live there yet). */
+  home = $state(0);
+  /** A Creative game: building and buying are free, and the home pays no rent or bills. */
+  creative = $state(false);
   funds = $state(0);
   /** Weekly rent of the player's home (null if none is charged). */
   rent = $state<number | null>(null);
@@ -135,6 +139,8 @@ class GameState {
   /** The planner is open, on a resident (id) or the household's template. */
   plannerOpen = $state(false);
   plannerFor = $state<number | 'household'>('household');
+  /** The household creator is open over the game: a family moving into the home. */
+  moveInOpen = $state(false);
   /** The player household's routine template. */
   householdRoutines = $state.raw<Routine[]>([]);
   /** Buy mode shows only what this filter allows (a wish, a goal); null: everything. */
@@ -147,6 +153,14 @@ class GameState {
   stats = $state.raw<RenderStats | null>(null);
   sharedMemory = $state(false);
   toasts = $state.raw<Toast[]>([]);
+
+  /** Whether the household can pay `cost` for building or buying (always, in Creative). */
+  affords(cost: number): boolean {
+    return this.creative || cost <= this.funds;
+  }
+
+  /** Somebody lives in the player's home (false: build first, a family moves in later). */
+  occupied = $derived(this.roster.some((s) => this.households[s.household]?.player));
 
   selectedSim = $derived(this.sims.find((s) => s.id === this.selected) ?? null);
   inspectedSim = $derived(this.inspected === null ? null : (this.sims.find((s) => s.id === this.inspected) ?? null));
@@ -172,6 +186,7 @@ class GameState {
     this.journalOpen = false;
     this.journal = [];
     this.plannerOpen = false;
+    this.moveInOpen = false;
     this.buyFilter = null;
     this.day = 1;
     this.minute = 480;
@@ -184,6 +199,8 @@ class GameState {
     this.jobBoardOpen = false;
     this.objects = [];
     this.catalog = null;
+    this.home = 0;
+    this.creative = false;
   }
 }
 

@@ -220,7 +220,7 @@ fn buying_selling_and_moving_objects() {
     );
     assert!(w.buy(0, "rock", None, None).is_err(), "not for sale");
     w.apply(Command::MoveObject {
-        sim: 0,
+        household: 0,
         object: id,
         x: 4,
         z: 3,
@@ -230,7 +230,7 @@ fn buying_selling_and_moving_objects() {
     let moved = w.objects.iter().find(|o| o.x == 4 && o.z == 3).unwrap();
     assert_eq!(moved.rot, 2);
     let id = moved.id;
-    w.apply(Command::Sell { sim: 0, object: id }).unwrap();
+    w.apply(Command::Sell { household: 0, object: id }).unwrap();
     assert_eq!(w.households[0].funds, 700, "half back");
     assert_eq!(w.objects.len(), 3);
     assert_eq!(
@@ -250,7 +250,7 @@ fn upgrades_are_instant_purchases_that_make_objects_better() {
     let mut w = world();
     w.autonomy = false;
     let version = w.structure_version();
-    w.apply(Command::Upgrade { sim: 0, object: 2 }).unwrap();
+    w.apply(Command::Upgrade { household: 0, object: 2 }).unwrap();
     assert_eq!(w.objects[2].quality, 1, "no Sim task: done at once");
     assert_eq!(w.households[0].funds, 700, "costs half the price");
     assert_eq!(w.objects[2].value, 900);
@@ -266,13 +266,13 @@ fn upgrades_are_instant_purchases_that_make_objects_better() {
             .any(|e| e.kind == EventKind::Upgraded && e.n == Some(1))
     );
     assert!(w.sims[0].current().is_none() && w.sims[0].queue().next().is_none());
-    w.apply(Command::Upgrade { sim: 0, object: 2 }).unwrap();
+    w.apply(Command::Upgrade { household: 0, object: 2 }).unwrap();
     assert!(
-        w.apply(Command::Upgrade { sim: 0, object: 2 }).is_err(),
+        w.apply(Command::Upgrade { household: 0, object: 2 }).is_err(),
         "max quality 2"
     );
     assert!(
-        w.apply(Command::Upgrade { sim: 0, object: 3 }).is_err(),
+        w.apply(Command::Upgrade { household: 0, object: 3 }).is_err(),
         "unknown object"
     );
     // A better shower cleans faster.
@@ -336,7 +336,7 @@ fn garden_things_only_go_outdoors() {
     let id = w.buy(0, "sapling", Some([6, 8, 0]), None).unwrap();
     // Moving it indoors fails and leaves it where it was.
     let moved = w.apply(Command::MoveObject {
-        sim: 0,
+        household: 0,
         object: id,
         x: 2,
         z: 5,
@@ -444,12 +444,12 @@ fn skills_quality_and_style_survive_saving() {
     w.sims[0].skills[1] = 3.5;
     w.objects[2].quality = 2;
     w.apply(Command::Restyle {
-        sim: 0,
+        household: 0,
         object: 2,
         style: 1,
     })
     .unwrap();
-    w.apply(Command::SetStyle { sim: 0, style: 1 }).unwrap();
+    w.apply(Command::SetStyle { household: 0, style: 1 }).unwrap();
     let loaded = World::from_save_json(CONTENT, &w.save_json()).unwrap();
     assert_eq!(loaded.sims[0].skills[1], 3.5);
     assert_eq!(loaded.objects[2].quality, 2);

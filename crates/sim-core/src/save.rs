@@ -12,8 +12,9 @@
 //! (`lot.floors`, by content id; absent: automatic floors); 8 = free will per household,
 //! the story log (`events`), job satisfaction and missed shifts, visits always end (absent:
 //! one town-wide free-will switch, no story, a fresh start in every job); 9 = planners
-//! (routines, goals, how blocks went, wishes) and household routine templates (absent: none).
-//! Older files load. Saves written before feelings
+//! (routines, goals, how blocks went, wishes) and household routine templates (absent: none);
+//! 10 = the game mode (`mode`: Living or Creative; absent: Living), and the player's household
+//! may have nobody living in it yet. Older files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
 use std::collections::{BTreeMap, HashMap};
@@ -26,15 +27,18 @@ use crate::lot::{DiagDir, Diagonal, Edge, EdgeLook, EdgeRef, Lot, SimSpawn};
 use crate::rng::Rng;
 use crate::social::{self, Relationship};
 use crate::planner::{BlockResult, Goal, Outcome, Planner, Reason, Routine};
-use crate::world::{Household, Plot, Task, TaskKind, World};
+use crate::world::{GameMode, Household, Plot, Task, TaskKind, World};
 use crate::{Error, MINUTES_PER_TICK, clock::MAX_SPEED};
 
-pub const SAVE_VERSION: u32 = 9;
+pub const SAVE_VERSION: u32 = 10;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SaveFile {
     pub version: u32,
+    /// Living or Creative (absent before v10: Living).
+    #[serde(default)]
+    pub mode: GameMode,
     pub tick: u64,
     pub speed: u8,
     pub autonomy: bool,
@@ -436,6 +440,7 @@ impl World {
         }
         SaveFile {
             version: SAVE_VERSION,
+            mode: self.mode,
             tick: self.tick,
             speed: self.speed,
             autonomy: self.autonomy,
@@ -516,6 +521,7 @@ impl World {
         decode_looks(&mut lot, &content, &save.lot.looks);
         decode_floors(&mut lot, &content, &save.lot.floors);
         let mut world = World::empty(content, lot, Rng::new(save.rng));
+        world.mode = save.mode;
         world.tick = save.tick;
         world.speed = save.speed.min(MAX_SPEED);
         // Before v8 the one free-will switch was the player's setting; now each household has one.

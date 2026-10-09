@@ -680,6 +680,8 @@ pub enum EventKind {
     GoalReached,
     /// `a` would like to take on a goal (the player can accept it).
     GoalSuggested,
+    /// `a`'s household moved into its home (`a` is the first of them).
+    MovedIn,
 }
 
 impl EventKind {
@@ -688,7 +690,7 @@ impl EventKind {
         use EventKind::*;
         match self {
             FirstKiss | StartedDating | BrokeUp | BecameBestFriends | Promoted | JobFound
-            | Fired | GoalReached => 2,
+            | Fired | GoalReached | MovedIn => 2,
             BecameFriends | BecameGoodFriends | BecameEnemies | Crush | ProposalRejected
             | Fight | Jealous | QuitJob | RentDebt => 1,
             Met | MissedWork | SkillUp | PaidRent | Upgraded | Visited | GoalSuggested => 0,

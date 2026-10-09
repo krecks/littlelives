@@ -33,14 +33,14 @@
       if (!def) return null;
       const misfit = game.placeHint ?? "Doesn't fit here";
       if (placing.objectId !== null) return { text: `Move ${def.name}`, sub: game.placeValid ? undefined : misfit, bad: !game.placeValid };
-      const short = (def.price ?? 0) - game.funds;
+      const short = game.creative ? 0 : (def.price ?? 0) - game.funds;
       if (short > 0) return { text: def.name, sub: `${money(short)} short`, bad: true };
-      return { text: money(def.price ?? 0), sub: game.placeValid ? def.name : misfit, bad: !game.placeValid };
+      return { text: game.creative ? 'Free' : money(def.price ?? 0), sub: game.placeValid ? def.name : misfit, bad: !game.placeValid };
     }
     const tool = game.buildTool;
     if (game.buildEdges === 0) return null;
     const cost = game.buildCost;
-    const short = cost > game.funds;
+    const short = !game.affords(cost);
     if (tool === 'paint') {
       const n = game.paintFaces;
       const cover = game.buildLook.cover;

@@ -1688,6 +1688,7 @@
   },
   "economy": {
     "startingFunds": 2500,
+    "emptyLotFunds": 10000,
     "currency": "$",
     "rent": {
       "weekday": 6,
@@ -1724,7 +1725,8 @@
     "quitJob": "{a} quit their job as {job}",
     "fired": "{a} was let go from their job as {job}",
     "goalReached": "{a} reached a goal: {goal}",
-    "goalSuggested": "{a} has a new idea: {goal}"
+    "goalSuggested": "{a} has a new idea: {goal}",
+    "movedIn": "{a}'s household moved in"
   },
   "activities": [
     {

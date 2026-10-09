@@ -67,7 +67,16 @@
   function next() {
     if (!town) return;
     keep();
+    app.buildFirst = false;
     app.screen = 'create';
+  }
+
+  /** Build first: straight to the home, a family moves in later. */
+  function buildFirst() {
+    if (!town) return;
+    keep();
+    app.buildFirst = true;
+    app.screen = 'home';
   }
 
   /** The other path: take over a household that already lives here. */
@@ -135,10 +144,13 @@
     <div class="title">
       <span class="eyebrow">Step 1 of 3 · Your neighbourhood</span>
       <input class="input town-name" aria-label="Town name" bind:value={name} maxlength="24" />
-      <p class="lede">Play one of the households who live here, or create your own.</p>
+      <p class="lede">Play one of the households who live here, create your own, or build a home first.</p>
     </div>
     <div class="actions">
       <button class="btn" onclick={() => generate()}><Icon name="icon.ui.dice" size={18} /> New neighbours</button>
+      <button class="btn" disabled={!town || vacant.length === 0} title="Pick a lot and build; a family can move in later" onclick={buildFirst}>
+        <Icon name="icon.ui.build" size={18} /> Build first
+      </button>
       <button class="btn primary" disabled={!town || vacant.length === 0} onclick={next}>Create your household →</button>
     </div>
   </header>
@@ -152,6 +164,18 @@
       {/if}
       {#if town && templates}
         <div class="controls menu-glass" use:avoid>
+          <div class="control">
+            <span class="eyebrow">Game</span>
+            <Segmented
+              label="Game"
+              bind:value={app.mode}
+              options={[
+                { value: 'living', label: 'Living' },
+                { value: 'creative', label: 'Creative' },
+              ]}
+            />
+            <span class="hint">{app.mode === 'creative' ? 'Building is free. No rent or bills at home.' : 'Your residents earn the money to build with.'}</span>
+          </div>
           <div class="control">
             <span class="eyebrow">Town size</span>
             <Segmented
@@ -329,6 +353,11 @@
     flex-direction: column;
     gap: 8px;
     min-width: 200px;
+  }
+  .hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    max-width: 210px;
   }
   .controls .eyebrow,
   .list-head .eyebrow {

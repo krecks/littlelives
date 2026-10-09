@@ -145,8 +145,8 @@
     if (!app.dataReady || app.booting) return;
     const screen = app.screen;
     const town = app.town;
-    const household = app.household;
     const slot = app.homeSlot;
+    const home = slot === null ? null : app.homeRequest(slot);
     const playSlot = app.playSlot;
     const snapshot = $state.snapshot(settings);
     let cancelled = false;
@@ -156,11 +156,11 @@
         const latest = await latestSave().catch(() => undefined);
         if (cancelled || !latest || app.screen !== 'menu') return;
         await host.prepare({ kind: 'load', saveId: latest.id }, snapshot).catch(() => {});
-      } else if (screen === 'home' && town && household && slot !== null) {
-        await host.prepare({ kind: 'new', town, household, slot }, snapshot).catch(() => {});
+      } else if (screen === 'home' && home) {
+        await host.prepare(home, snapshot).catch(() => {});
       } else if (screen === 'play' && town && playSlot !== null) {
         const existing = town.households.find((h) => h.slot === playSlot)?.household;
-        if (existing) await host.prepare({ kind: 'new', town, household: existing, slot: playSlot, existing: true }, snapshot).catch(() => {});
+        if (existing) await host.prepare({ kind: 'new', town, household: existing, slot: playSlot, existing: true, mode: app.mode }, snapshot).catch(() => {});
       }
     }, 500);
     return () => {

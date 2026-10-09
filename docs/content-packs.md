@@ -364,7 +364,9 @@ traits whose `tagPreference` dislikes an activity's tags skip it more. A pack's 
 
 ## Balance guidance
 
-Money: households start with $2,500; rent is about $200 a week on a house plot; an
+Money: households start with $2,500 (`economy.startingFunds`), plus $10,000 to build with when
+they start on an empty lot in a Living game (`economy.emptyLotFunds`; a ready-made house is worth
+about $7,500–12,000); rent is about $200 a week on a house plot; an
 entry-level job pays roughly $70–150 a shift (grades run from $12/h to $52/h). Running costs
 come as weekly **bills**, paid with the rent: `economy.rent.billsBase` ($25) plus `billsRate`
 (1.5%) of what the household's objects are worth (price plus upgrades) plus `perResident`

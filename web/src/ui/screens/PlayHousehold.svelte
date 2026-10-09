@@ -67,7 +67,7 @@
   function play() {
     if (!chosen) return;
     menuScene.highlight({});
-    app.start({ kind: 'new', town, household: chosen.household, slot: chosen.slot, existing: true });
+    app.start({ kind: 'new', town, household: chosen.household, slot: chosen.slot, existing: true, mode: app.mode });
   }
 
   onMount(async () => {

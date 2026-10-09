@@ -38,6 +38,18 @@
 {/snippet}
 
 <section class="strip" aria-label="Household">
+  {#if !game.occupied}
+    <div class="card glass empty">
+      <button class="main" title="Create a family to live here" onclick={() => (game.moveInOpen = true)}>
+        <span class="face add"><Icon name="icon.ui.plus" size={18} /></span>
+        <span class="text">
+          <span class="name">Nobody lives here yet</span>
+          <span class="doing">Move a family in</span>
+          <span class="where">Build first, or let them help</span>
+        </span>
+      </button>
+    </div>
+  {/if}
   {#each household as s (s.id)}
     {@const action = doing(s)}
     {@const need = low(s)}
@@ -112,6 +124,15 @@
   }
   .card.away {
     opacity: 0.82;
+  }
+  .card.empty {
+    width: 230px;
+  }
+  .face.add {
+    display: grid;
+    place-items: center;
+    color: var(--accent);
+    box-shadow: 0 0 0 2px var(--glass-strong), 0 0 0 4px var(--accent);
   }
   .main {
     display: flex;

@@ -3,12 +3,17 @@
   import { menuScene } from '../../game/menuScene';
   import { houseTemplate, loadTemplates, vacantSlots, type PlotSlot, type Templates } from '../../game/town';
   import { app } from '../app.svelte';
+  import { money } from '../format';
   import Icon from '../Icon.svelte';
+  import Segmented from '../kit/Segmented.svelte';
   import TownStage, { type LotLabel } from '../kit/TownStage.svelte';
+  import { services } from '../services';
 
   let templates = $state.raw<Templates | null>(null);
   const town = app.town!;
-  const household = app.household!;
+  /** Null: build first, a family moves in later. */
+  const household = app.buildFirst ? null : app.household;
+  const economy = services.content.economy;
   const vacant = vacantSlots(town);
   const vacantIds = vacant.map((v) => v.index);
   let selected = $state<PlotSlot | null>(vacant.find((v) => v.index === app.homeSlot) ?? vacant[0] ?? null);
@@ -17,6 +22,11 @@
   let close = $state(true);
   $effect(() => {
     app.homeSlot = selected?.index ?? null;
+  });
+  /** The house as it stands, or an empty lot to build on. */
+  let lot = $state<'house' | 'empty'>(app.emptyLot ? 'empty' : 'house');
+  $effect(() => {
+    app.emptyLot = lot === 'empty';
   });
   const house = $derived(templates && selected ? houseTemplate(templates, selected.template) : undefined);
   const neighbours = $derived(
@@ -27,13 +37,20 @@
           .slice(0, 3)
       : [],
   );
+  /** What the household has to build with on an empty lot (Living), or "free" (Creative). */
+  const budget = $derived(
+    app.mode === 'creative'
+      ? 'Free: this is a Creative game'
+      : money(economy.startingFunds + (lot === 'empty' ? (economy.emptyLotFunds ?? 0) : 0)),
+  );
+  const mine = household ? `The ${household.name}s` : 'Your lot';
 
   const labels = $derived<LotLabel[]>(
     town.slots.map((s) => {
       const h = town.households.find((x) => x.slot === s.index);
       if (s.kind === 'park') return { plot: s.index, title: s.name, kind: 'park' };
       if (h) return { plot: s.index, title: `The ${h.household.name}s`, kind: 'home' };
-      if (selected?.index === s.index) return { plot: s.index, title: `The ${household.name}s`, sub: 'Your new home', kind: 'mine' };
+      if (selected?.index === s.index) return { plot: s.index, title: mine, sub: lot === 'empty' ? 'An empty lot' : 'Your new home', kind: 'mine' };
       return { plot: s.index, title: 'For sale', sub: bedrooms(s), kind: 'sale' };
     }),
   );
@@ -54,16 +71,25 @@
   }
 
   function moveIn() {
-    if (!selected) return;
+    const request = selected && app.homeRequest(selected.index);
+    if (!request) return;
     menuScene.highlight({});
-    app.start({ kind: 'new', town, household, slot: selected.index });
+    app.start(request);
+  }
+
+  function back() {
+    app.screen = household ? 'create' : 'neighbourhood';
   }
 
   onMount(async () => {
     templates = await loadTemplates();
   });
 
-  void menuScene.show(town);
+  // The 3D town shows the chosen lot cleared when starting on an empty lot.
+  $effect(() => {
+    const shown = selected ? app.homeTown(selected.index) : town;
+    if (shown) void menuScene.show(shown);
+  });
   $effect(() => {
     menuScene.highlight({ hover, selected: selected?.index ?? null, marked: vacantIds, outlines: false });
   });
@@ -75,12 +101,12 @@
 <div class="screen scaled">
   <div class="haze" aria-hidden="true"></div>
   <header>
-    <button class="btn ghost back" onclick={() => (app.screen = 'create')}><Icon name="icon.ui.back" size={18} /> Household</button>
+    <button class="btn ghost back" onclick={back}><Icon name="icon.ui.back" size={18} /> {household ? 'Household' : 'Neighbourhood'}</button>
     <div class="title">
-      <span class="eyebrow">Step 3 of 3 · Choose a home</span>
-      <h1>Where will the {household.name}s live?</h1>
+      <span class="eyebrow">{household ? 'Step 3 of 3' : 'Step 2 of 2'} · Choose a home</span>
+      <h1>{household ? `Where will the ${household.name}s live?` : 'Where will you build?'}</h1>
     </div>
-    <button class="btn primary large move" disabled={!selected} onclick={moveIn}>Move in →</button>
+    <button class="btn primary large move" disabled={!selected} onclick={moveIn}>{household ? 'Move in →' : 'Start building →'}</button>
   </header>
 
   <main>
@@ -106,17 +132,37 @@
 
     <aside class="details menu-glass">
       {#if selected && house}
-        {#key selected.index}
+        <Segmented
+          label="Start with"
+          bind:value={lot}
+          options={[
+            { value: 'house', label: 'The house' },
+            { value: 'empty', label: 'An empty lot' },
+          ]}
+        />
+        {#key `${selected.index}:${lot}`}
           <div class="card">
             <span class="eyebrow">{town.name}</span>
             <h2>{selected.name}</h2>
-            <b class="house">{house.name}</b>
-            <p>{house.description}</p>
+            {#if lot === 'empty'}
+              <b class="house">An empty lot</b>
+              <p>The house is cleared away: build your own from the ground up.{household ? '' : ' A family can move in whenever you like.'}</p>
+            {:else}
+              <b class="house">{house.name}</b>
+              <p>{house.description}</p>
+            {/if}
             <dl>
-              <dt>Bedrooms</dt>
-              <dd>{house.bedrooms}</dd>
-              <dt>Your household</dt>
-              <dd>{household.members.map((m) => m.name).join(', ')}</dd>
+              {#if lot === 'empty' && templates}
+                <dt>Lot</dt>
+                <dd>{templates.plot.width} × {templates.plot.depth} m</dd>
+              {:else}
+                <dt>Bedrooms</dt>
+                <dd>{house.bedrooms}</dd>
+              {/if}
+              <dt>To build with</dt>
+              <dd>{budget}</dd>
+              <dt>{household ? 'Your household' : 'Living here'}</dt>
+              <dd>{household ? household.members.map((m) => m.name).join(', ') : 'Nobody yet: move a family in later'}</dd>
             </dl>
             {#if neighbours.length}
               <span class="eyebrow">Closest neighbours</span>

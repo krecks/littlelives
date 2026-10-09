@@ -89,7 +89,7 @@ fn the_structure_lists_floor_coverings() {
     room(&mut w);
     let version = w.structure_version();
     w.apply(Command::PaintFloor {
-        sim: 0,
+        household: 0,
         tiles: vec![tile(2, 2, 2)],
     })
     .unwrap();

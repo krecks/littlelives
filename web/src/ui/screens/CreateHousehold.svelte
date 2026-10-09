@@ -58,8 +58,32 @@
     .filter((k) => content.bondPresets.includes(k))
     .map((value) => ({ value, label: bondLabels[value] }));
 
-  const neighbourNames = (app.town?.households ?? []).map((h) => h.household.name);
-  const initial = app.household ? structuredClone(app.household) : randomHousehold(content, assets, 2, neighbourNames);
+  /**
+   * Step 2 of a new game by default (the draft in `app`, back to the neighbourhood, on to the
+   * home). In a game, a family moving into the home: the caller says where back and next lead.
+   */
+  let {
+    eyebrow = 'Step 2 of 3 · Create your household',
+    backLabel = 'Neighbourhood',
+    nextLabel = 'Choose a home →',
+    avoidNames = (app.town?.households ?? []).map((h) => h.household.name),
+    draft = app.household,
+    onback = (h: HouseholdDraft) => ((app.household = h), (app.screen = 'neighbourhood')),
+    onnext = (h: HouseholdDraft) => ((app.household = h), (app.screen = 'home')),
+  }: {
+    eyebrow?: string;
+    backLabel?: string;
+    nextLabel?: string;
+    /** Household names already in town (a new one is named differently). */
+    avoidNames?: string[];
+    /** Where editing starts (null: a random household of two). */
+    draft?: HouseholdDraft | null;
+    onback?: (household: HouseholdDraft) => void;
+    onnext?: (household: HouseholdDraft) => void;
+  } = $props();
+
+  const neighbourNames = untrack(() => avoidNames);
+  const initial = untrack(() => (draft ? structuredClone(draft) : randomHousehold(content, assets, 2, neighbourNames)));
   for (const m of initial.members) ensureOutfit(m);
   let household = $state<HouseholdDraft>(initial);
   let active = $state(0);
@@ -170,25 +194,24 @@
       showProblems = true;
       return;
     }
-    app.household = $state.snapshot(household);
-    app.screen = 'home';
+    onnext($state.snapshot(household));
   }
 </script>
 
 <div class="cas scaled">
   <header>
-    <button class="btn ghost" onclick={() => ((app.household = $state.snapshot(household)), (app.screen = 'neighbourhood'))}>
-      <Icon name="icon.ui.back" size={18} /> Neighbourhood
+    <button class="btn ghost" onclick={() => onback($state.snapshot(household))}>
+      <Icon name="icon.ui.back" size={18} /> {backLabel}
     </button>
     <div class="title">
-      <span class="eyebrow">Step 2 of 3 · Create your household</span>
+      <span class="eyebrow">{eyebrow}</span>
       <input class="input family" aria-label="Household name" placeholder="Household name" bind:value={household.name} maxlength="24" />
     </div>
     <div class="actions">
       <button class="btn" onclick={surprise}>
         <Icon name="icon.ui.dice" size={18} /> Surprise me
       </button>
-      <button class="btn primary" onclick={next}>Choose a home →</button>
+      <button class="btn primary" onclick={next}>{nextLabel}</button>
     </div>
   </header>
 

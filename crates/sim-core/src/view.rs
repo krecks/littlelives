@@ -583,6 +583,8 @@ pub fn ui_state_json(world: &World) -> String {
 #[serde(rename_all = "camelCase")]
 struct StructureView<'a> {
     version: u32,
+    /// `living` or `creative`.
+    mode: crate::world::GameMode,
     width: usize,
     depth: usize,
     objects: Vec<ObjectView<'a>>,
@@ -888,6 +890,7 @@ pub fn structure_json(world: &World) -> String {
     let diagonals = diagonals(&world.lot);
     serde_json::to_string(&StructureView {
         version: world.structure_version(),
+        mode: world.mode,
         width: world.lot.width,
         depth: world.lot.depth,
         objects,

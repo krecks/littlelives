@@ -2,6 +2,19 @@
 
 All notable changes to Littlelives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
+## Unreleased (0.9.0)
+
+The builder's start: begin with a lot, not a family.
+
+### New
+- **Creative or Living**, chosen per game on the first step of a new game. Living: your residents earn the money to build with. Creative: building and buying are free (selling brings nothing back), and your home pays no rent or bills.
+- **Start on an empty lot:** on the home step, choose *An empty lot* instead of the house: the house is cleared away and you build your own. In a Living game you get $10,000 to build with on top of the usual $2,500 (a ready-made house is worth about $7,500–12,000). Games on an empty lot start in Build mode.
+- **Build first, move a family in later:** *Build first* on the neighbourhood step skips creating a household. The home is named after its address, pays nothing, gets no visitors, and the game starts in Build mode. *Move a family in* (top bar, or the card at the bottom) opens the household creator over the game; the family arrives at the front of the lot, the home takes their name, and the journal notes that they moved in.
+
+### Changed
+- Build and buy now belong to the household rather than to whoever is selected, so they work while nobody lives at home.
+- Saves are now version 10 (the game mode; a household may have nobody living in it yet). Older saves load as Living games.
+
 ## Unreleased (0.8.0)
 
 The planner: steer your residents without giving orders.

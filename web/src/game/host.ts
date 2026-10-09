@@ -23,7 +23,7 @@ function requestKey(r: StartRequest): string {
   // The whole town counts: going back and changing the neighbours needs a new session.
   const town = `${r.town.name}:${r.town.seed}:${r.town.slots.map((s) => s.template).join(',')}:${r.town.households.map((h) => `${h.slot}=${members(h.household)}`).join(';')}`;
   // A household edited after its session was prepared (back to step 2) needs a new one too.
-  return `${r.existing ? 'play' : 'new'}:${town}:${r.slot}:${JSON.stringify(r.household)}`;
+  return `${r.existing ? 'play' : 'new'}:${r.mode ?? 'living'}:${town}:${r.slot}:${JSON.stringify(r.household)}`;
 }
 
 /** Seconds the camera takes to fly from the menu's view of a lot into the game. */

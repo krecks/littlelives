@@ -1,7 +1,9 @@
 //! Build and buy: changing a household's home. Buying, selling, moving, restyling and
 //! upgrading objects, and building walls, doors and windows.
 //!
-//! Every change is checked against the home plot and paid from household funds. Nothing
+//! Edits are addressed to a household (it may have nobody living in it yet: build first, move
+//! a family in later). Every change is checked against its home plot and paid from household
+//! funds, except in Creative games, where building is free. Nothing
 //! may cut Sims off from what they could reach before (an object's front tile, a room).
 //! With diagonal walls the same rule holds: a tile crossed by a diagonal wall can't be stood
 //! on, so walling across an object's front tile or around a resident is refused.
@@ -13,7 +15,7 @@ use crate::command::{EdgeAxis, EdgeEdit, EdgeKind, FacePaint, FloorPaint};
 use crate::lot::{Diagonal, Edge, EdgeLook, EdgeRef, FORM_HALF, OUTDOORS};
 use crate::path::NavGrid;
 use crate::social::EventKind;
-use crate::world::{ObjectInstance, Task, TaskKind, World, end_activity};
+use crate::world::{GameMode, ObjectInstance, Task, TaskKind, World, end_activity};
 
 /// Tiles around a plot that still count when checking who can reach what (the path from the street).
 const REACH_MARGIN: i32 = 2;
@@ -68,9 +70,9 @@ fn task_object_mut(t: &mut Task) -> Option<&mut u32> {
 }
 
 impl World {
-    /// The state a build or buy edit by `sim` may change (None if the Sim has no home).
-    pub(crate) fn home_snapshot(&self, sim: u32) -> Option<HomeSnapshot> {
-        let (household, _) = self.home_of(sim).ok()?;
+    /// The state a build or buy edit by `household` may change (None if it has no home).
+    pub(crate) fn home_snapshot(&self, household: u32) -> Option<HomeSnapshot> {
+        let (household, _) = self.home_of(household).ok()?;
         Some(HomeSnapshot {
             household,
             lot: self.lot.clone(),
@@ -99,15 +101,15 @@ impl World {
         self.undo.push(before);
     }
 
-    /// Build and buy edits the Sim's household can take back.
+    /// Build and buy edits the household can take back.
     pub fn undo_steps(&self, household: usize) -> usize {
         self.undo.iter().filter(|s| s.household == household).count()
     }
 
     /// Takes back the household's last build or buy edit: walls, furniture, money and residents
     /// are as they were before it (a sold object comes back where it stood, at its old price).
-    pub fn undo(&mut self, sim: u32) -> Result<(), Error> {
-        let (h, _) = self.home_of(sim)?;
+    pub fn undo(&mut self, household: u32) -> Result<(), Error> {
+        let (h, _) = self.home_of(household)?;
         if self.undo.last().is_none_or(|s| s.household != h) {
             return Err(Error::new("nothing to undo"));
         }
@@ -123,16 +125,38 @@ impl World {
     }
 
     /// The Sim's household index and home plot.
-    pub(crate) fn home_of(&self, sim: u32) -> Result<(usize, u32), Error> {
-        let s = self
-            .sims
-            .get(sim as usize)
-            .ok_or_else(|| Error::new(format!("unknown resident {sim}")))?;
-        let h = s.household as usize;
-        let plot = self.households[h]
+    /// The household's index and its home plot.
+    pub(crate) fn home_of(&self, household: u32) -> Result<(usize, u32), Error> {
+        let h = household as usize;
+        let plot = self
+            .households
+            .get(h)
+            .ok_or_else(|| Error::new(format!("unknown household {household}")))?
             .plot
             .ok_or_else(|| Error::new("this household has no home"))?;
         Ok((h, plot))
+    }
+
+    /// What a build or buy edit costs in this game: nothing in Creative.
+    pub fn build_price(&self, price: i64) -> i64 {
+        match self.mode {
+            GameMode::Living => price,
+            GameMode::Creative => 0,
+        }
+    }
+
+    /// Checks that household `h` can pay `cost` for an edit (free in Creative); `Ok` means
+    /// the edit may go ahead and be paid with `pay`.
+    fn can_pay(&self, h: usize, cost: i64, refusal: impl FnOnce() -> String) -> Result<(), Error> {
+        let cost = self.build_price(cost);
+        if cost > 0 && self.households[h].funds < cost {
+            return Err(Error::new(refusal()));
+        }
+        Ok(())
+    }
+
+    fn pay(&mut self, h: usize, cost: i64) {
+        self.households[h].funds -= self.build_price(cost);
     }
 
     pub(crate) fn check_style(&self, style: u8) -> Result<u8, Error> {
@@ -143,8 +167,8 @@ impl World {
         }
     }
 
-    fn home_object(&self, sim: u32, object: u32) -> Result<(usize, u32), Error> {
-        let (h, plot) = self.home_of(sim)?;
+    fn home_object(&self, household: u32, object: u32) -> Result<(usize, u32), Error> {
+        let (h, plot) = self.home_of(household)?;
         if object as usize >= self.objects.len() {
             return Err(Error::new(format!("unknown object {object}")));
         }
@@ -329,15 +353,15 @@ impl World {
         spots.into_iter().map(|(_, x, z, r)| (x, z, r)).collect()
     }
 
-    /// Buys an object for the Sim's household. Returns the new object's id.
+    /// Buys an object for the household's home. Returns the new object's id.
     pub fn buy(
         &mut self,
-        sim: u32,
+        household: u32,
         def_id: &str,
         at: Option<[i32; 3]>,
         style: Option<u8>,
     ) -> Result<u32, Error> {
-        let (h, plot) = self.home_of(sim)?;
+        let (h, plot) = self.home_of(household)?;
         let def = self
             .content
             .object_index(def_id)
@@ -346,9 +370,7 @@ impl World {
         let price = d
             .price
             .ok_or_else(|| Error::new(format!("{} isn't for sale", d.name)))?;
-        if self.households[h].funds < price {
-            return Err(Error::new(format!("not enough money for the {}", d.name)));
-        }
+        self.can_pay(h, price, || format!("not enough money for the {}", d.name))?;
         let style = self.check_style(style.unwrap_or(self.households[h].style))?;
         let id = match at {
             Some([x, z, rot]) => self.place_at_home(plot, def, x, z, rot as u8, style, 0, price)?,
@@ -361,33 +383,33 @@ impl World {
                 })
                 .ok_or_else(|| Error::new("there's no free spot for that at home"))?,
         };
-        self.households[h].funds -= price;
+        self.pay(h, price);
         Ok(id)
     }
 
-    /// Sells an object at home for part of what was spent on it.
-    pub fn sell(&mut self, sim: u32, object: u32) -> Result<(), Error> {
-        let (h, _) = self.home_object(sim, object)?;
+    /// Sells an object at home for part of what was spent on it (nothing in Creative).
+    pub fn sell(&mut self, household: u32, object: u32) -> Result<(), Error> {
+        let (h, _) = self.home_object(household, object)?;
         let obj = &self.objects[object as usize];
         if self.content.objects[obj.def].price.is_none() {
             return Err(Error::new("that can't be sold"));
         }
         let refund = (obj.value as f32 * self.content.object_rules.resale).round() as i64;
         self.remove_object(object);
-        self.households[h].funds += refund;
+        self.households[h].funds += self.build_price(refund);
         Ok(())
     }
 
     /// Moves or rotates an object at home. Its look, quality and value stay.
     pub fn move_object(
         &mut self,
-        sim: u32,
+        household: u32,
         object: u32,
         x: i32,
         z: i32,
         rot: u8,
     ) -> Result<(), Error> {
-        let (_, plot) = self.home_object(sim, object)?;
+        let (_, plot) = self.home_object(household, object)?;
         let old = self.remove_object(object);
         let moved = self.place_at_home(plot, old.def, x, z, rot, old.style, old.quality, old.value);
         if let Err(e) = moved {
@@ -406,16 +428,16 @@ impl World {
         Ok(())
     }
 
-    pub fn restyle(&mut self, sim: u32, object: u32, style: u8) -> Result<(), Error> {
-        self.home_object(sim, object)?;
+    pub fn restyle(&mut self, household: u32, object: u32, style: u8) -> Result<(), Error> {
+        self.home_object(household, object)?;
         self.objects[object as usize].style = self.check_style(style)?;
         self.structure_version += 1;
         Ok(())
     }
 
     /// Buys the next quality level for an object at home (Buy mode, instant). Returns the new quality.
-    pub fn upgrade(&mut self, sim: u32, object: u32) -> Result<u8, Error> {
-        let (h, _) = self.home_object(sim, object)?;
+    pub fn upgrade(&mut self, household: u32, object: u32) -> Result<u8, Error> {
+        let (h, _) = self.home_object(household, object)?;
         let rules = &self.content.object_rules;
         let obj = &self.objects[object as usize];
         let def = &self.content.objects[obj.def];
@@ -429,25 +451,24 @@ impl World {
             )));
         }
         let cost = rules.upgrade_price(price);
-        if self.households[h].funds < cost {
-            return Err(Error::new(format!(
-                "not enough money to upgrade the {}",
-                def.name
-            )));
-        }
-        self.households[h].funds -= cost;
+        let name = def.name.clone();
+        self.can_pay(h, cost, || format!("not enough money to upgrade the {name}"))?;
+        self.pay(h, cost);
         let obj = &mut self.objects[object as usize];
         obj.quality += 1;
         obj.value += cost;
         let quality = obj.quality;
         self.structure_version += 1;
-        self.events.push_detail(
-            self.tick,
-            EventKind::Upgraded,
-            sim as usize,
-            Some(quality as i64),
-            None,
-        );
+        // Told about the household's first resident (nobody may live there yet).
+        if let Some(member) = self.sims.iter().position(|s| s.household as usize == h) {
+            self.events.push_detail(
+                self.tick,
+                EventKind::Upgraded,
+                member,
+                Some(quality as i64),
+                None,
+            );
+        }
         Ok(quality)
     }
 
@@ -466,8 +487,8 @@ impl World {
     /// a new door or window its `style`. On a standing wall, a different `form` rebuilds it (the
     /// wall price); on a standing door or window, a different `style` replaces it (its price).
     /// Doors and windows only go into full-height walls. Faces are re-covered with [`World::paint`].
-    pub fn build(&mut self, sim: u32, edits: &[EdgeEdit]) -> Result<(), Error> {
-        let (h, plot) = self.home_of(sim)?;
+    pub fn build(&mut self, household: u32, edits: &[EdgeEdit]) -> Result<(), Error> {
+        let (h, plot) = self.home_of(household)?;
         let edge_at = |lot: &crate::lot::Lot, axis: EdgeAxis, x: i32, z: i32| match axis {
             EdgeAxis::H => lot.h_edge(x as usize, z as usize),
             EdgeAxis::V => lot.v_edge(x as usize, z as usize),
@@ -604,9 +625,7 @@ impl World {
                 looks.push((at, look));
             }
         }
-        if self.households[h].funds < cost {
-            return Err(Error::new("not enough money to build that"));
-        }
+        self.can_pay(h, cost, || "not enough money to build that".into())?;
         let before = self.reach_signature(plot);
         let saved = self.lot.clone();
         for e in edits {
@@ -635,7 +654,7 @@ impl World {
             ));
         }
         self.lot.compute_rooms();
-        self.households[h].funds -= cost;
+        self.pay(h, cost);
         self.structure_version += 1;
         Ok(())
     }
@@ -643,8 +662,8 @@ impl World {
     /// Covers wall faces on the home plot (paint, wallpaper, brick...), paying each covering's
     /// price per face that changes. Every face must belong to a wall (with or without a door or
     /// window); a face listed twice counts once.
-    pub fn paint(&mut self, sim: u32, faces: &[FacePaint]) -> Result<(), Error> {
-        let (h, plot) = self.home_of(sim)?;
+    pub fn paint(&mut self, household: u32, faces: &[FacePaint]) -> Result<(), Error> {
+        let (h, plot) = self.home_of(household)?;
         let rules = &self.content.build;
         let mut changes: Vec<(EdgeRef, usize, u8)> = Vec::new();
         let mut cost = 0;
@@ -679,9 +698,7 @@ impl World {
                 changes.push((at, side, f.covering));
             }
         }
-        if self.households[h].funds < cost {
-            return Err(Error::new("not enough money to paint that"));
-        }
+        self.can_pay(h, cost, || "not enough money to paint that".into())?;
         if changes.is_empty() {
             return Ok(());
         }
@@ -690,7 +707,7 @@ impl World {
             look.sides[side] = covering;
             self.lot.set_look(at, look);
         }
-        self.households[h].funds -= cost;
+        self.pay(h, cost);
         self.structure_version += 1;
         Ok(())
     }
@@ -698,8 +715,8 @@ impl World {
     /// Covers floor tiles on the home plot (wood, tile, carpet...), paying each covering's price
     /// per tile that changes. Every tile must be indoors (a tile split by a diagonal wall counts
     /// when either half is); a tile listed twice counts once.
-    pub fn paint_floor(&mut self, sim: u32, tiles: &[FloorPaint]) -> Result<(), Error> {
-        let (h, plot) = self.home_of(sim)?;
+    pub fn paint_floor(&mut self, household: u32, tiles: &[FloorPaint]) -> Result<(), Error> {
+        let (h, plot) = self.home_of(household)?;
         let rules = &self.content.build;
         let p = &self.plots[plot as usize];
         let mut changes: Vec<(u16, u16, u8)> = Vec::new();
@@ -723,16 +740,14 @@ impl World {
                 changes.push((x, z, t.covering));
             }
         }
-        if self.households[h].funds < cost {
-            return Err(Error::new("not enough money for that floor"));
-        }
+        self.can_pay(h, cost, || "not enough money for that floor".into())?;
         if changes.is_empty() {
             return Ok(());
         }
         for (x, z, covering) in changes {
             self.lot.set_floor(x, z, covering);
         }
-        self.households[h].funds -= cost;
+        self.pay(h, cost);
         self.structure_version += 1;
         Ok(())
     }

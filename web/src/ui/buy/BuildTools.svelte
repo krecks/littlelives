@@ -21,6 +21,7 @@
   /** What the tool costs with the look picked (per metre for walls, per face for paint, per tile for floors). */
   const price = (id: BuildTool): string => {
     if (!prices) return '';
+    if (game.creative) return 'Free';
     const look = game.buildLook;
     const p =
       id === 'wall' || id === 'room'
@@ -41,7 +42,7 @@
     return p ? money(p) : 'Free';
   };
   const tool = $derived(tools.find((t) => t.id === game.buildTool) ?? tools[0]);
-  const short = $derived(game.buildCost > game.funds);
+  const short = $derived(!game.affords(game.buildCost));
 
   function pick(id: BuildTool) {
     play('tab');
@@ -86,7 +87,7 @@
     </div>
     <p class="muted">
       {#if game.buildTool === 'wall' && prices}
-        A diagonal wall costs {money(prices.diagonalWall ?? Math.round(prices.wall * 1.414))} a tile; furniture can't stand on tiles it crosses.
+        A diagonal wall {game.creative ? 'is free' : `costs ${money(prices.diagonalWall ?? Math.round(prices.wall * 1.414))} a tile`}; furniture can't stand on tiles it crosses.
       {:else if game.buildTool === 'room'}
         An empty room can be closed off; residents and furniture can't be shut in.
       {:else if game.buildTool === 'paint'}

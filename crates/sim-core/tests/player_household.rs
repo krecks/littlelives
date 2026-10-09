@@ -49,7 +49,7 @@ fn a_neighbour_household_can_be_the_players() {
     assert!(w.sims[1].job.is_some(), "keeps the job it had");
 
     // Buying furnishes their own lot and is paid from their funds.
-    let shower = w.buy(2, "shower", None, None).unwrap();
+    let shower = w.buy(1, "shower", None, None).unwrap();
     let o = &w.objects[shower as usize];
     assert_eq!(w.plot_at(o.x, o.z), Some(1));
     assert_eq!(w.households[1].funds, 400);

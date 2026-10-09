@@ -11,7 +11,7 @@ use crate::MINUTES_PER_TICK;
 use crate::clock;
 use crate::content::{CareerLevel, Content, MAX_NEEDS, MAX_SKILLS, WorkweekRule};
 use crate::social::{self, EventKind};
-use crate::world::{Task, TaskKind, World, end_activity, practise};
+use crate::world::{GameMode, Task, TaskKind, World, end_activity, practise};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -443,11 +443,15 @@ fn report_skill_ups(w: &mut World, i: usize) {
 }
 
 /// What household `h` pays each week: `(rent, bills)`, or `None` if it has no home or
-/// nothing is charged. Bills grow with the value of everything the household owns and with
-/// how many live there.
+/// nothing is charged (nobody lives there yet, or it's the player's home in a Creative game). Bills grow with the value of
+/// everything the household owns and with how many live there.
 pub fn weekly_costs(w: &World, h: usize) -> Option<(i64, i64)> {
     let rent = w.content.rent.as_ref()?;
-    let plot = w.households.get(h)?.plot?;
+    let household = w.households.get(h)?;
+    if household.player && w.mode == GameMode::Creative {
+        return None;
+    }
+    let plot = household.plot?;
     let p = &w.plots[plot as usize];
     let home_value: i64 = w
         .objects
@@ -457,6 +461,9 @@ pub fn weekly_costs(w: &World, h: usize) -> Option<(i64, i64)> {
         .map(|(o, _)| o.value)
         .sum();
     let residents = w.sims.iter().filter(|s| s.household as usize == h).count();
+    if residents == 0 {
+        return None;
+    }
     Some((rent.amount(p.w * p.d), rent.bills(home_value, residents)))
 }
 

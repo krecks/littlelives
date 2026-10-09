@@ -7,6 +7,7 @@
 
 import type { AssetRegistry } from '../assets/registry';
 import type { Content } from '../content/content';
+import type { GameKind } from '../core/protocol';
 import { fetchText } from '../content/content';
 import { householdBonds, householdSpawns, randomHousehold, type HouseholdDraft, type SimSpawn } from './household';
 
@@ -109,6 +110,15 @@ const pick = <T>(list: readonly T[]): T => list[Math.floor(Math.random() * list.
 
 export function houseTemplate(t: Templates, id: string): HouseTemplate | undefined {
   return t.houses.find((h) => h.id === id);
+}
+
+/** Template id of a lot with nothing on it yet (no house template has it): build from the ground up. */
+export const EMPTY_LOT = 'empty';
+
+/** The draft with the house on `slot` cleared away (an empty lot), or put back (`template`). */
+export function withLot(town: NeighbourhoodDraft, slot: number, template: string): NeighbourhoodDraft {
+  if (town.slots[slot]?.template === template) return town;
+  return { ...town, slots: town.slots.map((s) => (s.index === slot ? { ...s, template } : s)) };
 }
 
 export function generateNeighbourhood(
@@ -280,18 +290,26 @@ export function layoutTown(content: Content, t: Templates, town: NeighbourhoodDr
   return { walls, doors, windows, objects, paths, plots };
 }
 
+export interface AssembleOptions {
+  /** `player` is the neighbour household already living at the player's slot. */
+  existing?: boolean;
+  mode?: GameKind;
+}
+
 /**
  * Builds the simulation's town file. A new player household moves in as household 0, before the
- * neighbours. With `existing`, `player` is the neighbour household already living at `playerSlot`:
- * it stays where it is in the list (with its jobs and history) and only becomes the player's.
+ * neighbours; with no `player` (build first) household 0 is the player's home with nobody living
+ * in it yet, named after its address. With `existing`, `player` is the neighbour household already
+ * living at `playerSlot`: it stays where it is in the list (with its jobs and history) and only
+ * becomes the player's. A new household on an empty lot gets money to build with in Living games.
  */
 export function assembleTown(
   content: Content,
   t: Templates,
   town: NeighbourhoodDraft,
-  player: HouseholdDraft,
+  player: HouseholdDraft | null,
   playerSlot: number,
-  existing = false,
+  { existing = false, mode = 'living' }: AssembleOptions = {},
 ): string {
   const { width: pw } = t.plot;
   const { walls, doors, windows, objects, paths, plots } = layoutTown(content, t, town, playerSlot);
@@ -301,10 +319,19 @@ export function assembleTown(
   if (existing && !town.households.some((h) => h.slot === playerSlot)) throw new Error('Nobody lives in that house.');
   // A new household first, then the neighbours (one of whom may be the player's).
   const neighbours = town.households.map((h) => ({ ...h, player: existing && h.slot === playerSlot }));
+  const home = town.slots[playerSlot];
+  const newcomer: HouseholdDraft = player ?? { name: home.name, members: [], bonds: [] };
   const residents: { household: HouseholdDraft; slot: number; player: boolean }[] = existing
     ? neighbours
-    : [{ household: player, slot: playerSlot, player: true }, ...neighbours];
-  const households = residents.map((r) => ({ name: r.household.name.trim(), plot: r.slot, player: r.player }));
+    : [{ household: newcomer, slot: playerSlot, player: true }, ...neighbours];
+  const { startingFunds, emptyLotFunds = 0 } = content.economy;
+  const emptyLot = !houseTemplate(t, home.template);
+  const households = residents.map((r, i) => ({
+    name: r.household.name.trim(),
+    plot: r.slot,
+    player: r.player,
+    ...(!existing && i === 0 && emptyLot && mode === 'living' ? { funds: startingFunds + emptyLotFunds } : {}),
+  }));
   const sims: (SimSpawn & { job?: { career: string; level: number } })[] = [];
   const relationships: { a: number; b: number; preset: string }[] = [];
   residents.forEach((r, index) => {
@@ -325,7 +352,7 @@ export function assembleTown(
   });
 
   // Neighbours have history with each other; a newly arrived player household doesn't.
-  const newcomers = existing ? 0 : player.members.length;
+  const newcomers = existing ? 0 : newcomer.members.length;
   for (let a = newcomers; a < sims.length; a++) {
     for (let b = a + 1; b < sims.length; b++) {
       if (sims[a].household === sims[b].household) continue;
@@ -339,5 +366,5 @@ export function assembleTown(
   // Residents leave town (for work) at both ends of the street.
   const street = town.streets[0];
   const exits = street ? [[0.5, street.z + street.d / 2], [town.width - 0.5, street.z + street.d / 2]] : [];
-  return JSON.stringify({ width: town.width, depth: town.depth, walls, doors, windows, objects, plots, households, sims, relationships, exits, meta });
+  return JSON.stringify({ mode, width: town.width, depth: town.depth, walls, doors, windows, objects, plots, households, sims, relationships, exits, meta });
 }

@@ -198,7 +198,7 @@ fn painting_covers_one_face_and_charges_per_changed_face() {
         covering,
     };
     w.apply(Command::Paint {
-        sim: 0,
+        household: 0,
         faces: vec![
             face(EdgeAxis::H, 1, 2, 1, 2),
             // Listed twice: paid once.

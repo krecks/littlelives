@@ -30,7 +30,7 @@ fn world() -> World {
 
 fn buy(w: &mut World, def: &str, x: i32, z: i32) {
     w.apply(Command::Buy {
-        sim: 0,
+        household: 0,
         object: def.into(),
         at: Some([x, z, 0]),
         style: None,
@@ -39,7 +39,7 @@ fn buy(w: &mut World, def: &str, x: i32, z: i32) {
 }
 
 fn undo(w: &mut World) {
-    w.apply(Command::Undo { sim: 0 }).unwrap();
+    w.apply(Command::Undo { household: 0 }).unwrap();
 }
 
 fn funds(w: &World) -> i64 {
@@ -61,7 +61,7 @@ fn undo_takes_back_a_purchase_and_refunds_it_in_full() {
     assert!(w.objects.is_empty());
     assert_eq!(funds(&w), 1000);
     assert_eq!(w.undo_steps(0), 0);
-    let err = w.apply(Command::Undo { sim: 0 }).unwrap_err();
+    let err = w.apply(Command::Undo { household: 0 }).unwrap_err();
     assert!(err.to_string().contains("nothing to undo"), "{err}");
 }
 
@@ -72,7 +72,7 @@ fn undoing_a_sale_puts_the_object_back_in_its_place_and_takes_the_money_back() {
     buy(&mut w, "lamp", 3, 1);
     buy(&mut w, "chair", 5, 1);
     let before = (objects(&w), funds(&w));
-    w.apply(Command::Sell { sim: 0, object: 1 }).unwrap();
+    w.apply(Command::Sell { household: 0, object: 1 }).unwrap();
     assert_eq!(w.objects.len(), 2);
     undo(&mut w);
     assert_eq!((objects(&w), funds(&w)), before, "same objects, same ids, same money");
@@ -91,7 +91,7 @@ fn undo_reverses_moves_walls_and_floors_one_step_at_a_time() {
     let mut w = world();
     buy(&mut w, "chair", 1, 1);
     w.apply(Command::MoveObject {
-        sim: 0,
+        household: 0,
         object: 0,
         x: 2,
         z: 6,
@@ -107,9 +107,9 @@ fn undo_reverses_moves_walls_and_floors_one_step_at_a_time() {
         edits.push(EdgeEdit::new(EdgeAxis::V, 1, z, EdgeKind::Wall));
         edits.push(EdgeEdit::new(EdgeAxis::V, 4, z, EdgeKind::Wall));
     }
-    w.apply(Command::Build { sim: 0, edits }).unwrap();
+    w.apply(Command::Build { household: 0, edits }).unwrap();
     w.apply(Command::PaintFloor {
-        sim: 0,
+        household: 0,
         tiles: vec![FloorPaint {
             x: 2,
             z: 2,
@@ -138,7 +138,7 @@ fn edits_that_change_nothing_or_fail_leave_no_step() {
     // Painting a floor outdoors fails; selling something unknown fails.
     assert!(w
         .apply(Command::PaintFloor {
-            sim: 0,
+            household: 0,
             tiles: vec![FloorPaint {
                 x: 6,
                 z: 6,
@@ -146,10 +146,10 @@ fn edits_that_change_nothing_or_fail_leave_no_step() {
             }]
         })
         .is_err());
-    assert!(w.apply(Command::Sell { sim: 0, object: 9 }).is_err());
+    assert!(w.apply(Command::Sell { household: 0, object: 9 }).is_err());
     // Building nothing changes nothing.
     w.apply(Command::Build {
-        sim: 0,
+        household: 0,
         edits: Vec::new(),
     })
     .unwrap();
@@ -176,7 +176,7 @@ fn history_ends_when_time_moves_on_or_residents_get_orders() {
     })
     .unwrap();
     assert_eq!(w.undo_steps(0), 0, "an order for a resident");
-    assert!(w.apply(Command::Undo { sim: 0 }).is_err());
+    assert!(w.apply(Command::Undo { household: 0 }).is_err());
 }
 
 #[test]
@@ -192,7 +192,7 @@ fn undo_keeps_a_limited_number_of_steps() {
         undo(&mut w);
     }
     assert_eq!(w.objects.len(), 5, "the oldest five purchases stay");
-    assert!(w.apply(Command::Undo { sim: 0 }).is_err());
+    assert!(w.apply(Command::Undo { household: 0 }).is_err());
 }
 
 #[test]

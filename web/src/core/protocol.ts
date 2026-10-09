@@ -1,6 +1,6 @@
 /** Messages between the main thread and the sim worker. */
 
-import type { Appearance } from '../game/household';
+import type { Appearance, SimSpawn } from '../game/household';
 import type { SnapshotLayout } from './snapshot';
 
 /** Mirrors `sim-core/src/command.rs`. */
@@ -18,16 +18,19 @@ export type Command =
   | { type: 'visit'; sim: number; plot: number }
   | { type: 'goHome'; sim: number }
   | { type: 'cancel'; sim: number; index: number }
-  | { type: 'buy'; sim: number; object: string; at?: [number, number, number]; style?: number }
-  | { type: 'sell'; sim: number; object: number }
-  | { type: 'moveObject'; sim: number; object: number; x: number; z: number; rot: number }
-  | { type: 'restyle'; sim: number; object: number; style: number }
-  | { type: 'setStyle'; sim: number; style: number }
-  | { type: 'upgrade'; sim: number; object: number }
-  | { type: 'build'; sim: number; edits: EdgeEdit[] }
-  | { type: 'paint'; sim: number; faces: FacePaint[] }
-  | { type: 'paintFloor'; sim: number; tiles: FloorPaint[] }
-  | { type: 'undo'; sim: number }
+  /** Build and buy are addressed to a household: its home may have nobody living in it yet. */
+  | { type: 'buy'; household: number; object: string; at?: [number, number, number]; style?: number }
+  | { type: 'sell'; household: number; object: number }
+  | { type: 'moveObject'; household: number; object: number; x: number; z: number; rot: number }
+  | { type: 'restyle'; household: number; object: number; style: number }
+  | { type: 'setStyle'; household: number; style: number }
+  | { type: 'upgrade'; household: number; object: number }
+  | { type: 'build'; household: number; edits: EdgeEdit[] }
+  | { type: 'paint'; household: number; faces: FacePaint[] }
+  | { type: 'paintFloor'; household: number; tiles: FloorPaint[] }
+  | { type: 'undo'; household: number }
+  /** New residents move into the household's home (`bonds` index into `sims`); `name` renames the household. */
+  | { type: 'moveIn'; household: number; name?: string; sims: SimSpawn[]; bonds: { a: number; b: number; preset: string }[] }
   /** The resident's own routine blocks (the whole list). */
   | { type: 'setRoutines'; sim: number; routines: RoutineIn[] }
   /** The routine template of the resident's household. */
@@ -246,8 +249,12 @@ export interface PlotInfo {
 }
 
 /** Sent when walls or objects change (rare). */
+/** Living: the residents earn the money for building. Creative: building is free. */
+export type GameKind = 'living' | 'creative';
+
 export interface WorldStructure {
   version: number;
+  mode: GameKind;
   width: number;
   depth: number;
   objects: ObjectPlacement[];

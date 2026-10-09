@@ -83,7 +83,7 @@
   /** Items passing the search, "Affordable" and "For us" filters, across all categories. */
   const matching = $derived(
     content.shop.filter((def) => {
-      if (affordableOnly && (def.price ?? 0) > game.funds) return false;
+      if (affordableOnly && !game.affords(def.price ?? 0)) return false;
       if (lovedOnly && !lovers.has(def.id)) return false;
       if (wanted && !content.offers(def, wanted, game.buyFilter?.skill)) return false;
       if (!terms.length) return true;
@@ -192,7 +192,9 @@
               {game.buyFilter.label} <Icon name="icon.ui.close" size={10} />
             </button>
           {/if}
-          <button class="chip" class:active={affordableOnly} aria-pressed={affordableOnly} onclick={() => (affordableOnly = !affordableOnly)}>Affordable</button>
+          {#if !game.creative}
+            <button class="chip" class:active={affordableOnly} aria-pressed={affordableOnly} onclick={() => (affordableOnly = !affordableOnly)}>Affordable</button>
+          {/if}
           {#if lovers.size}
             <button
               class="chip love"
@@ -235,7 +237,7 @@
                   <ItemCard
                     {def}
                     model={styledModel(content, services.assets, def, game.householdStyle)}
-                    affordable={game.funds >= (def.price ?? 0)}
+                    affordable={game.affords(def.price ?? 0)}
                     active={game.placing?.def === def.id && game.placing.objectId === null}
                     category={category === ALL && terms.length ? categoryLabel(categoryOf(def)) : null}
                     owned={owned.get(def.id) ?? 0}

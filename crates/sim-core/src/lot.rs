@@ -138,6 +138,9 @@ pub enum Axis {
 /// Lot description as stored in lot JSON files.
 #[derive(Debug, Deserialize)]
 pub struct LotFile {
+    /// Living (default) or Creative.
+    #[serde(default)]
+    pub mode: crate::world::GameMode,
     pub width: u16,
     pub depth: u16,
     /// Wall segments `[x0, z0, x1, z1]` along grid lines.

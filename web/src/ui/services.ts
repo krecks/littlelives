@@ -4,6 +4,7 @@ import type { AssetRegistry } from '../assets/registry';
 import type { EdgeEdit, FacePaint, GoalIn, RoutineIn, SocialEvent } from '../core/protocol';
 import type { BuildTool, BuyFilter, GameMode } from './state.svelte';
 import type { Content } from '../content/content';
+import type { HouseholdDraft } from '../game/household';
 import type { ItemPreviews, SimPreviews, WallMode } from '../render/types';
 
 export interface GameControls {
@@ -65,6 +66,8 @@ export interface GameControls {
   build(edits: EdgeEdit[]): void;
   /** Build mode: cover wall faces (paint, wallpaper, brick...). */
   paint(faces: FacePaint[]): void;
+  /** A family moves into the home (it arrives at the front of the lot); Live mode shows them arrive. */
+  moveIn(household: HouseholdDraft): void;
   /** Saves a debug report (screenshot, game state, log) and returns where it went. */
   debugReport(note: string): Promise<string>;
 }
