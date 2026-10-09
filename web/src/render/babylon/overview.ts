@@ -13,7 +13,7 @@
  * game world is on screen, and the other way round (see `BabylonRenderer.showTown`).
  */
 
-import { ArcRotateCamera, Color3, Constants, Matrix, Quaternion, StandardMaterial, Vector3, type Mesh, type Scene } from '@babylonjs/core';
+import { ArcRotateCamera, Color3, Constants, Matrix, Quaternion, StandardMaterial, Vector3, type Mesh, type Scene } from './core';
 import type { AssetRegistry } from '../../assets/registry';
 import type { Content } from '../../content/content';
 import { groundDepth, type ObjectPlacement, type PlotInfo, type WorldStructure } from '../../core/protocol';

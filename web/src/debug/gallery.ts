@@ -22,7 +22,7 @@ import {
   ShadowGenerator,
   Vector3,
   WebGPUEngine,
-} from '@babylonjs/core';
+} from '../render/babylon/core';
 import { AssetRegistry } from '../assets/registry';
 import { MaterialLibrary } from '../render/babylon/materials';
 import { buildModel } from '../render/babylon/models';

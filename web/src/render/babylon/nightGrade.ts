@@ -9,7 +9,7 @@
  * texture read), attached only while it is getting dark.
  */
 
-import { Constants, PostProcess, ShaderLanguage, ShaderStore, Texture, type AbstractEngine, type Camera } from '@babylonjs/core';
+import { Constants, PostProcess, ShaderLanguage, ShaderStore, Texture, type AbstractEngine, type Camera } from './core';
 
 const GLSL = `
 varying vec2 vUV;

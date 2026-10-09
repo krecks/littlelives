@@ -25,7 +25,7 @@ import {
   Scene,
   ShadowGenerator,
   Vector3,
-} from '@babylonjs/core';
+} from '../render/babylon/core';
 import { AssetRegistry } from '../assets/registry';
 import type { FrameState } from '../core/bridge';
 import type { ObjectPlacement, SimInfo } from '../core/protocol';

@@ -24,7 +24,7 @@ import {
   WebGPUEngine,
   type AbstractEngine,
   type Mesh,
-} from '@babylonjs/core';
+} from '../babylon/core';
 import type { AssetRegistry } from '../../assets/registry';
 import type { FrameState } from '../../core/bridge';
 import type { SimInfo } from '../../core/protocol';

@@ -50,7 +50,7 @@ import {
   Viewport,
   WebGPUEngine,
   type AbstractEngine,
-} from '@babylonjs/core';
+} from './core';
 import type { FrameState } from '../../core/bridge';
 import { groundDepth, type MeshArrays, type ObjectPlacement, type WorldStructure } from '../../core/protocol';
 import type { QualitySettings } from '../quality';

@@ -21,7 +21,7 @@ import {
   type Material,
   type Nullable,
   type Scene,
-} from '@babylonjs/core';
+} from '../core';
 
 /** Nominal width (m) of the quilt's top; instances scale it to the slot. */
 export const BLANKET_WIDTH = 1.0;

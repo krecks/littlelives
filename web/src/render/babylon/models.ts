@@ -30,9 +30,9 @@ import {
   VertexBuffer,
   VertexData,
   type Scene,
-} from '@babylonjs/core';
-import '@babylonjs/loaders/glTF';
-import type { Material } from '@babylonjs/core';
+} from './core';
+import './loaders';
+import type { Material } from './core';
 import type { ModelEntry, PlaceholderPart, Vec3 } from '../../assets/types';
 import { bakeFoliageCards } from './foliageCards';
 import { DEFAULT_FINISH, encodeFinish, MaterialLibrary } from './materials';

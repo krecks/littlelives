@@ -34,7 +34,7 @@ import {
   type Scene,
   type SubMesh,
   type UniformBuffer,
-} from '@babylonjs/core';
+} from './core';
 import type { AssetRegistry } from '../../assets/registry';
 import type { MaterialEntry } from '../../assets/types';
 

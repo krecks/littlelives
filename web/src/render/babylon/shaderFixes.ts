@@ -3,7 +3,7 @@
  * Each names the Babylon version it was found in; drop a fix once an upgrade has it upstream.
  */
 
-import { ShaderStore } from '@babylonjs/core';
+import { ShaderStore } from './core';
 import '@babylonjs/core/Shaders/ShadersInclude/pbrClusteredLightingFunctions.js';
 import '@babylonjs/core/ShadersWGSL/ShadersInclude/pbrClusteredLightingFunctions.js';
 

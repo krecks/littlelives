@@ -18,7 +18,7 @@
  * - Primitive builds only (no downloads), plus a CC0 concrete texture for the sidewalks.
  */
 
-import { Color3, Constants, DynamicTexture, Matrix, Quaternion, StandardMaterial, Vector3, type Material, type Mesh, type Scene } from '@babylonjs/core';
+import { Color3, Constants, DynamicTexture, Matrix, Quaternion, StandardMaterial, Vector3, type Material, type Mesh, type Scene } from './core';
 import type { AssetRegistry } from '../../assets/registry';
 import type { ModelEntry } from '../../assets/types';
 import { groundDepth, type PlotInfo, type WorldStructure } from '../../core/protocol';

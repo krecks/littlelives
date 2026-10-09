@@ -41,7 +41,7 @@ import {
   Matrix,
   VertexData,
   type Scene,
-} from '@babylonjs/core';
+} from './core';
 import { BakedVertexAnimationManager } from '@babylonjs/core/BakedVertexAnimation/bakedVertexAnimationManager';
 import type { AssetRegistry } from '../../assets/registry';
 import type { FrameState } from '../../core/bridge';

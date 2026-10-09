@@ -28,7 +28,7 @@ import {
   TransformNode,
   Vector3,
   type Mesh,
-} from '@babylonjs/core';
+} from '../babylon/core';
 import type { AssetRegistry } from '../../assets/registry';
 import { MaterialLibrary } from '../babylon/materials';
 import { buildModel } from '../babylon/models';
