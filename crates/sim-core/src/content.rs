@@ -86,9 +86,19 @@ pub struct Interaction {
     /// Mess it leaves around the object when finished (0..1 of a tile's dirt): its `dirt`,
     /// else the most any of its tags makes (`roomRules.dirt`).
     pub dirt: f32,
+    /// The place a baby lies (only babies use it; nobody else ever).
+    pub baby: bool,
+    /// Needs this fills for the baby lying in the object, over the whole interaction (feeding,
+    /// changing); only with a baby there, and only grown-ups do it.
+    pub care: [f32; MAX_NEEDS],
 }
 
 impl Interaction {
+    /// Whether this looks after a baby lying in the object.
+    pub fn cares(&self) -> bool {
+        self.care.iter().any(|&g| g > 0.0)
+    }
+
     pub fn trains_skills(&self) -> bool {
         self.skill_gain.iter().any(|&g| g > 0.0)
     }
@@ -1486,6 +1496,10 @@ struct InteractionRaw {
     #[serde(default)]
     dirt: Option<f32>,
     #[serde(default)]
+    baby: bool,
+    #[serde(default)]
+    care: HashMap<String, f32>,
+    #[serde(default)]
     effects: HashMap<String, f32>,
     #[serde(default)]
     pose: Pose,
@@ -1805,6 +1819,10 @@ impl Content {
                 for (need, gain) in &it.effects {
                     total_gain[lookup(&need_index, need, &ctx, "need")?] = *gain;
                 }
+                let mut care = [0.0; MAX_NEEDS];
+                for (need, gain) in &it.care {
+                    care[lookup(&need_index, need, &ctx, "need")?] = gain.max(0.0);
+                }
                 let mut mask: TagMask = 0;
                 for t in &it.tags {
                     mask |= 1 << tag_index[t.as_str()];
@@ -1856,6 +1874,8 @@ impl Content {
                     feeling_min_skill: it.feeling_min_skill,
                     anim,
                     dirt: it.dirt.unwrap_or(-1.0),
+                    baby: it.baby,
+                    care,
                 });
             }
             if object_index.insert(obj.id.clone(), objects.len()).is_some() {

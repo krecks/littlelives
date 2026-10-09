@@ -503,6 +503,12 @@
         "Oh, this is embarrassing.",
         "That wasn't supposed to happen."
       ]
+    },
+    "crying": {
+      "lines": [
+        "Waaah!",
+        "Wah, wah, waaah!"
+      ]
     }
   }
 }

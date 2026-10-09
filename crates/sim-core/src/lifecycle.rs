@@ -77,6 +77,13 @@ pub(crate) fn update(w: &mut World) {
         if let Some(f) = rules.stages[stage].feeling {
             social::add_feeling(&mut sim.feelings, f, &w.content.feelings, w.tick);
         }
+        // Out of the crib.
+        if rules.stages[before].baby && !rules.stages[stage].baby {
+            sim.clear_activity();
+            for o in &mut w.objects {
+                o.release(i as u32);
+            }
+        }
         w.refresh_base_mods(i);
         w.structure_version += 1;
         w.events.push_detail(w.tick, EventKind::GrewOlder, i, Some(stage as i64), None);
@@ -460,4 +467,25 @@ fn random_character(w: &mut World) -> (Vec<String>, Vec<String>) {
         }
     }
     (traits, perks)
+}
+
+// ---- Babies --------------------------------------------------------------------------------
+
+/// Every baby of household `h` needs a crib at home: one is delivered for each baby without a
+/// free one (story: a crib arrived). Babies with no room for a crib stay with their parents.
+pub(crate) fn cribs_for_babies(w: &mut World, h: usize) {
+    let Some(plot) = w.households[h].plot else { return };
+    let Some(crib) = w.content.objects.iter().position(|d| d.price.is_some() && d.interactions.iter().any(|it| it.baby)) else { return };
+    let babies = members(w, h).into_iter().filter(|&i| w.content.life.baby(w.sims[i].age)).count();
+    let cribs = w
+        .objects
+        .iter()
+        .zip(&w.object_plot)
+        .filter(|(o, p)| **p == Some(plot) && w.content.objects[o.def].interactions.iter().any(|it| it.baby))
+        .count();
+    for _ in cribs..babies {
+        if w.deliver(h as u32, crib).is_none() {
+            break;
+        }
+    }
 }

@@ -66,6 +66,8 @@ mod tests {
             feeling_min_skill: 0.0,
             anim: None,
             dirt: 0.0,
+            baby: false,
+            care: [0.0; MAX_NEEDS],
         }
     }
 

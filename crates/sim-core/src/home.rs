@@ -451,6 +451,17 @@ impl World {
         Ok(id)
     }
 
+    /// Puts `def` into the household's home at the first good free spot, free of charge (a
+    /// delivery: a crib for a new baby). None if there's no room.
+    pub(crate) fn deliver(&mut self, household: u32, def: usize) -> Option<u32> {
+        let (h, plot) = self.home_of(household).ok()?;
+        let style = self.households[h].style;
+        let value = self.content.objects[def].price.unwrap_or(0);
+        self.find_spot(plot, def)
+            .into_iter()
+            .find_map(|(x, z, rot)| self.place_at_home(plot, def, x, z, rot, style, 0, value).ok())
+    }
+
     /// Sells an object at home for part of what was spent on it (nothing in Creative).
     pub fn sell(&mut self, household: u32, object: u32) -> Result<(), Error> {
         let (h, _) = self.home_object(household, object)?;

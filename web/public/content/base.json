@@ -2936,6 +2936,24 @@
       "price": 120,
       "category": "decor",
       "interactions": []
+    },
+    {
+      "id": "crib",
+      "name": "Crib",
+      "model": "model.crib",
+      "description": "A crib with a changing table beside it: a baby sleeps here, and grown-ups come to feed, change and play with them.",
+      "footprint": [2, 1],
+      "price": 350,
+      "category": "bedroom",
+      "slots": 2,
+      "wearPerUse": 0,
+      "interactions": [
+        {"id": "lie", "label": "Lie in the crib", "anim": "sleep", "minutes": 720, "pose": "lie", "baby": true, "autonomous": false,
+         "effects": {"energy": 1.0, "comfort": 0.6}, "tags": ["rest"]},
+        {"id": "feed", "label": "Feed the baby", "anim": "tend", "minutes": 15, "care": {"hunger": 0.8, "social": 0.1}, "tags": ["care"]},
+        {"id": "change", "label": "Change the baby", "anim": "clean", "minutes": 10, "care": {"bladder": 1.0, "hygiene": 0.7}, "tags": ["care", "chores"]},
+        {"id": "play", "label": "Play with the baby", "anim": "play", "minutes": 20, "effects": {"fun": 0.2, "social": 0.15}, "care": {"fun": 0.6, "social": 0.5}, "tags": ["care", "social"]}
+      ]
     }
   ],
   "skills": [

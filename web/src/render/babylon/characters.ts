@@ -98,6 +98,7 @@ const DEFAULT_SEAT = { h: 0.45, fwd: 0 };
 /** Mattress / bench top height (m) for lying. */
 const BEDS: Record<string, { h: number }> = {
   bed: { h: 0.58 },
+  crib: { h: 0.56 },
   weightBench: { h: 0.5 },
   'gloomy.soakingTub': { h: 0.25 },
   'romantic.heartTub': { h: 0.35 },

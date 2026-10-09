@@ -316,6 +316,8 @@ pub struct Sim {
     /// Mess made (or, negative, cleaned) around a tile this tick; applied after the step
     /// (residents can't change the dirt while stepping).
     pub(crate) mess: Option<(i32, i32, f32)>,
+    /// Care given this tick: the baby it's for and what it fills (applied after the step).
+    pub(crate) care_out: Option<(u32, [f32; MAX_NEEDS])>,
     /// An object they broke or repaired, or an accident they had, this tick (applied after
     /// the step).
     pub(crate) news: Option<News>,
@@ -581,6 +583,9 @@ pub(crate) struct SimBrief {
     /// Plot the Sim is standing on.
     pub plot: Option<u32>,
     pub away: bool,
+    /// A baby (cared for in a crib), and their needs (so carers know what's wanted).
+    pub baby: bool,
+    pub needs: [f32; MAX_NEEDS],
 }
 
 pub struct World {
@@ -762,6 +767,10 @@ impl World {
             world.spawn_sim(s)?;
         }
         world.init_relationships(&lot_file.relationships)?;
+        // Babies come with a crib.
+        for h in 0..world.households.len() {
+            crate::lifecycle::cribs_for_babies(&mut world, h);
+        }
         world.refresh_rooms();
         Ok(world)
     }
@@ -1026,6 +1035,7 @@ impl World {
             job_search_from: 0,
             planner: Default::default(),
             mess: None,
+            care_out: None,
             news: None,
             accident_at: [0; crate::content::MAX_ACCIDENTS],
             empty_since: [0; crate::content::MAX_ACCIDENTS],
@@ -1189,6 +1199,7 @@ impl World {
             return Err(e);
         }
         let first = ids[0];
+        crate::lifecycle::cribs_for_babies(self, h);
         if let Some(name) = name.as_deref().map(str::trim).filter(|n| !n.is_empty()) {
             self.households[h].name = name.to_string();
         }
@@ -1316,6 +1327,13 @@ impl World {
     /// tile and (less) the tiles around it in the same room; cleaning clears them all.
     fn apply_messes(&mut self) {
         for i in 0..self.sims.len() {
+            if let Some((baby, gains)) = self.sims[i].care_out.take()
+                && let Some(b) = self.sims.get_mut(baby as usize)
+            {
+                for (n, g) in gains.iter().enumerate() {
+                    b.needs[n] = (b.needs[n] + g).min(1.0);
+                }
+            }
             if let Some(news) = self.sims[i].news.take() {
                 // Broken or mended: what the house offers and how it looks change.
                 self.structure_version += 1;
@@ -1402,6 +1420,8 @@ impl World {
                 household: s.household,
                 plot: plot.filter(|_| s.here()),
                 away: s.away_until.is_some() || !s.here(),
+                baby: s.here() && self.content.life.baby(s.age),
+                needs: s.needs,
             });
         }
         let hour = crate::clock::hour(tick);
@@ -1938,9 +1958,23 @@ fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
         return;
     }
 
+    // A baby whose needs run low cries for someone (a thought bubble).
+    if content.life.baby(sim.age) {
+        let lowest = (0..content.needs.len())
+            .filter(|&n| !content.needs[n].room)
+            .min_by(|&a, &b| sim.needs[a].total_cmp(&sim.needs[b]));
+        if let Some(n) = lowest
+            && sim.needs[n] < 0.3
+            && sim.planner.thought.is_none()
+        {
+            crate::planner::think(sim, crate::planner::ThoughtKind::Crying, n, ctx.tick);
+        }
+    }
+
     // A need ran out with nothing being done about it: an accident (a puddle, asleep on the
-    // floor, takeout).
-    for (a, def) in content.accidents.iter().enumerate() {
+    // floor, takeout). Not for babies: that's what carers are for.
+    let baby = content.life.baby(sim.age);
+    for (a, def) in content.accidents.iter().enumerate().filter(|_| !baby) {
         if sim.needs[def.need] > 0.0 || filling(sim, content, objects, def.need) {
             sim.empty_since[a] = 0;
             continue;
@@ -1980,8 +2014,14 @@ fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
             start_task(sim, task, ctx, objects);
         } else {
             sim.idle_ticks += 1;
-            // Babies don't choose anything: they're cared for.
-            let free_will = ctx.autonomy && ctx.households[sim.household as usize].free_will && !content.life.baby(sim.age);
+            // Babies don't choose anything: they lie in a crib and are cared for.
+            if content.life.baby(sim.age) {
+                if let Some(task) = crib_for(sim, ctx, objects) {
+                    start_task(sim, task, ctx, objects);
+                }
+                return;
+            }
+            let free_will = ctx.autonomy && ctx.households[sim.household as usize].free_will;
             if free_will && sim.idle_ticks >= AUTONOMY_DELAY_TICKS {
                 sim.idle_ticks = 0;
                 if let Some(task) = pick_autonomous(sim, ctx, objects, rng) {
@@ -2091,6 +2131,22 @@ fn pick_autonomous(
                 * 2.0
                 * (1.0 - environment);
         for (i, inter) in content.objects[obj.def].interactions.iter().enumerate() {
+            // A baby's place is only ever a baby's; caring for one is for grown-ups at home with
+            // a baby in it, the more the baby needs it.
+            let mut care = 0.0;
+            if inter.baby {
+                continue;
+            }
+            if inter.cares() {
+                let baby = obj.users().find(|&u| ctx.briefs.get(u as usize).is_some_and(|b| b.baby));
+                let Some(baby) = baby.filter(|_| content.life.adult(sim.age) && allowed == Access::Full) else { continue };
+                let b = &ctx.briefs[baby as usize];
+                let family = if ctx.rels.kin(me, baby as usize) != crate::social::Kin::None { 1.5 } else { 1.0 };
+                care = ai::score_gains(&b.needs[..content.needs.len()], &inter.care, distance) * family;
+                if care <= 0.0 {
+                    continue;
+                }
+            }
             if !inter.autonomous
                 || (woken && inter.tags & rhythm.sleep_tags != 0)
                 || (allowed == Access::Guest && inter.tags & content.social_rules.busy_tags != 0)
@@ -2101,7 +2157,7 @@ fn pick_autonomous(
             // Better objects and more skilled Sims get more out of it, and know it.
             let boost = object_rules.quality_factor(obj.quality)
                 * inter.skill_factor(&content.skill_rules, &sim.skills);
-            let mut s = ai::score_gains(needs, &inter.total_gain.map(|g| g * boost), distance);
+            let mut s = ai::score_gains(needs, &inter.total_gain.map(|g| g * boost), distance) + care;
             if inter.trains_skills() && allowed == Access::Full {
                 s += training_interest(sim, content, inter) * boost / (1.0 + distance * 0.08);
             }
@@ -2483,6 +2539,12 @@ fn use_object(
     // Quality and skill scale what the Sim gets out of it (not what it costs).
     let boost = content.object_rules.quality_factor(obj.quality)
         * inter.skill_factor(&content.skill_rules, &sim.skills);
+    if inter.cares()
+        && let Some(baby) = obj.users().find(|&u| u != sim.id)
+    {
+        let per_tick = inter.care.map(|g| g / inter.minutes * MINUTES_PER_TICK);
+        sim.care_out = Some((baby, per_tick));
+    }
     let (mut any_gain, mut satisfied, mut urgent, mut wakes) = (false, true, false, false);
     for n in 0..content.needs.len() {
         let g = inter.gain_per_minute[n];
@@ -2825,4 +2887,19 @@ mod tests {
         assert!(!w.objects[0].in_use());
         assert!(w.sims[0].pos[0] > 10.0, "stayed home");
     }
+}
+
+/// A free crib at home for a baby (one with no other baby in it): they're put straight in.
+fn crib_for(sim: &mut Sim, ctx: &Ctx, objects: &[ObjectInstance]) -> Option<Task> {
+    let home = ctx.households[sim.household as usize].plot?;
+    let content = ctx.content;
+    let (object, interaction) = objects.iter().find_map(|o| {
+        let def = &content.objects[o.def];
+        let i = def.interactions.iter().position(|it| it.baby)?;
+        let taken = o.users().any(|u| ctx.briefs.get(u as usize).is_some_and(|b| b.baby));
+        (ctx.object_plot[o.id as usize] == Some(home) && !o.broken() && !taken && o.has_free_slot(def.slots)).then_some((o.id, i))
+    })?;
+    let (fx, fz) = objects[object as usize].front_tile(content);
+    sim.pos = [fx as f32 + 0.5, fz as f32 + 0.5];
+    Some(Task { kind: TaskKind::Use { object, interaction }, directed: false })
 }

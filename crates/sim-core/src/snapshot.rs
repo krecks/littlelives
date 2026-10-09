@@ -60,10 +60,10 @@ pub mod sim {
     pub const MOOD: usize = 15;
     /// What the Sim is thinking about (a thought bubble): 0 nothing, 1 skipping a planned
     /// block, 2 wants somewhere to do one, 3 kept one, 4 reached a goal, 5 loves the room,
-    /// 6 dislikes it, 7 something broke, 8 had an accident (`planner::ThoughtKind`).
+    /// 6 dislikes it, 7 something broke, 8 had an accident, 9 a baby crying (`planner::ThoughtKind`).
     pub const THOUGHT: usize = 16;
     /// The thought's subject: activity index (1-3), goal definition (4), room
-    /// (`rooms::room_subject`, 5-6), object type (7) or accident (8).
+    /// (`rooms::room_subject`, 5-6), object type (7), accident (8) or need (9).
     pub const THOUGHT_SUBJECT: usize = 17;
 }
 

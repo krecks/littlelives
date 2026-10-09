@@ -13,7 +13,7 @@ import type { Renderer } from '../render/types';
 
 const MAX_SIMS = 64;
 /** Thought kinds (snapshot `thought`) to bubble tones. */
-const THOUGHT_TONES = ['', 'bad', 'wish', 'good', 'love', 'good', 'bad', 'bad', 'bad'];
+const THOUGHT_TONES = ['', 'bad', 'wish', 'good', 'love', 'good', 'bad', 'bad', 'bad', 'bad'];
 
 interface Bubble {
   /** Positioned element (transform written per frame). */
@@ -102,6 +102,9 @@ export class BubbleLayer {
         const need = this.content.accidents[subject]?.need;
         return this.content.needs.find((n) => n.id === need)?.icon || 'icon.bubble.bad';
       }
+      case 9:
+        // A baby crying for what they need most.
+        return this.content.needs[subject]?.icon || 'icon.bubble.bad';
       default:
         return this.content.activities[subject]?.icon ?? 'icon.bubble.good';
     }

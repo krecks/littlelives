@@ -447,6 +447,8 @@ pub enum ThoughtKind {
     Broken = 7,
     /// Had an accident (subject: index into content `accidents`).
     Accident = 8,
+    /// A baby crying for care (subject: the need that's lowest).
+    Crying = 9,
 }
 
 /// A wish about the home itself (beyond somewhere for a planned activity).
