@@ -3098,6 +3098,26 @@
     {"id": "halfGlass", "label": "Half-glazed", "leaf": "halfGlass", "color": "#F2F0EA", "price": 220},
     {"id": "glass", "label": "French glass", "leaf": "glass", "color": "#3C3F44", "price": 260}
   ],
+  "roomKinds": [
+    {"id": "bathroom", "label": "Bathroom", "tags": ["bathroom"], "essentials": [["bathroom"], ["hygiene"]], "size": [3, 6], "exclusive": true},
+    {"id": "kitchen", "label": "Kitchen", "tags": ["cooking"], "essentials": [["cooking"]], "size": [6, 12], "exclusive": true},
+    {"id": "bedroom", "label": "Bedroom", "tags": ["sleep"], "essentials": [["sleep"]], "size": [6, 12], "exclusive": true},
+    {"id": "living", "label": "Living room", "tags": ["lounge", "entertainment", "screen"], "size": [9, 20]},
+    {"id": "study", "label": "Study", "tags": ["reading", "training", "creative", "fitness"], "size": [4, 9]}
+  ],
+  "roomRules": {
+    "weights": [0.2, 0.2, 0.2, 0.25, 0.15],
+    "windowTiles": 6,
+    "lampTiles": 10,
+    "decorPerTile": 0.125,
+    "gardenDecorPerTile": 0.05,
+    "love": 0.75,
+    "dislike": 0.4,
+    "drift": 0.5,
+    "away": 0.6,
+    "preference": 0.5,
+    "decorByCategory": {"decor": 1, "garden": 0.8, "outdoor": 1}
+  },
   "roofStyles": [
     {"id": "gable", "label": "Gable", "shape": "gable", "pitch": 34},
     {"id": "hip", "label": "Hip", "shape": "hip", "pitch": 34},

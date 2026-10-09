@@ -409,6 +409,28 @@ export interface CareerEntry {
   }[];
 }
 
+/** A room (or the garden) of the player's home, with its scores (sim-core `rooms.rs`). */
+export interface RoomView {
+  /** Lot room id (0 for the garden); changes when walls do. */
+  id: number;
+  garden: boolean;
+  /** Index into the content's room kinds; absent: nothing tells what it's for. */
+  kind?: number;
+  /** Things of two exclusive kinds stand in it (a bed in the kitchen). */
+  mixed: boolean;
+  /** The essential of its kind nothing in it offers (index into the kind's `essentials`). */
+  missing?: number;
+  tiles: number;
+  windows: number;
+  doors: number;
+  lamps: number;
+  /** Mean dirt, 0..1. */
+  dirt: number;
+  centre: [number, number];
+  /** Size, light, decor, cleanliness, function, overall (0..1). */
+  scores: [number, number, number, number, number, number];
+}
+
 export interface UiSnapshot {
   day: number;
   /** 0 = Monday. */
@@ -422,6 +444,8 @@ export interface UiSnapshot {
   relationships: RelationshipView[];
   /** Recent story events, oldest first; ids increase monotonically (the whole log: `events` request). */
   events: SocialEvent[];
+  /** The rooms and garden of the player's home (absent from older workers). */
+  rooms?: RoomView[];
 }
 
 /** Directional: how `a` feels about `b`. Only pairs that have met. */

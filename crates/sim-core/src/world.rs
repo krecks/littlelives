@@ -22,6 +22,8 @@ const MIN_AUTONOMY_SCORE: f32 = 0.01;
 /// Sims further apart than this don't start socials on their own.
 const SOCIAL_RANGE: f32 = 45.0;
 pub const TICKS_PER_DAY: u64 = (24.0 * 60.0 / MINUTES_PER_TICK) as u64;
+/// Rooms are re-scored this often (for dirt), and whenever the structure changes.
+const ROOM_REFRESH_TICKS: u64 = (10.0 / MINUTES_PER_TICK) as u64;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ObjectInstance {
@@ -528,6 +530,12 @@ pub struct World {
     /// recomputed when the structure changes.
     pub(crate) offers: Vec<crate::planner::HouseOffer>,
     pub(crate) offers_version: u32,
+    /// Dirt per tile (0..1), from using things and accidents; cleaned by residents.
+    pub dirt: Vec<f32>,
+    /// Every room and garden with its scores (see `rooms.rs`), and the structure version they
+    /// were computed for.
+    pub(crate) rooms: Vec<crate::rooms::RoomInfo>,
+    pub(crate) rooms_version: u32,
 }
 
 /// Read-only context for one Sim's update.
@@ -631,6 +639,7 @@ impl World {
             world.spawn_sim(s)?;
         }
         world.init_relationships(&lot_file.relationships)?;
+        world.refresh_rooms();
         Ok(world)
     }
 
@@ -662,6 +671,9 @@ impl World {
             auto_fast: false,
             offers: Vec::new(),
             offers_version: 0,
+            dirt: vec![0.0; tiles],
+            rooms: Vec::new(),
+            rooms_version: 0,
         }
     }
 
@@ -1027,10 +1039,41 @@ impl World {
             })
     }
 
+    /// Every room and garden of the town with its scores (current as of the last refresh).
+    pub fn rooms(&self) -> &[crate::rooms::RoomInfo] {
+        &self.rooms
+    }
+
+    /// The room (or garden) a tile belongs to.
+    pub fn room_at_tile(&self, x: i32, z: i32) -> Option<&crate::rooms::RoomInfo> {
+        if !self.lot.in_bounds(x, z) {
+            return None;
+        }
+        let id = self.lot.room_at(x, z);
+        if id == crate::lot::OUTDOORS {
+            let plot = self.plot_at(x, z)?;
+            self.rooms.iter().find(|r| r.garden && r.plot == Some(plot))
+        } else {
+            self.rooms.iter().find(|r| !r.garden && r.id == id)
+        }
+    }
+
+    /// Recomputes rooms and their scores (see `rooms.rs`).
+    pub fn refresh_rooms(&mut self) {
+        if self.dirt.len() != self.lot.width * self.lot.depth {
+            self.dirt = vec![0.0; self.lot.width * self.lot.depth];
+        }
+        self.rooms = crate::rooms::compute(self);
+        self.rooms_version = self.structure_version;
+    }
+
     pub fn tick_once(&mut self) {
         // Time moves on: edits can no longer be taken back.
         self.undo.clear();
         self.redo.clear();
+        if self.rooms_version != self.structure_version || self.tick.is_multiple_of(ROOM_REFRESH_TICKS) {
+            self.refresh_rooms();
+        }
         self.tick += 1;
         let tick = self.tick;
 
@@ -1102,10 +1145,15 @@ impl World {
     /// Applies a player command. Build and buy edits can be undone (`Command::Undo`) until time
     /// moves on or the player gives the household another kind of order.
     pub fn apply(&mut self, cmd: Command) -> Result<(), Error> {
-        match cmd {
-            Command::Undo { household } => return self.undo(household),
-            Command::Redo { household } => return self.redo(household),
-            _ => {}
+        let history = match cmd {
+            Command::Undo { household } => Some(self.undo(household)),
+            Command::Redo { household } => Some(self.redo(household)),
+            _ => None,
+        };
+        if let Some(result) = history {
+            result?;
+            self.refresh_rooms();
+            return Ok(());
         }
         let snapshot = cmd.home_edit().and_then(|h| self.home_snapshot(h));
         let keeps_history = matches!(
@@ -1122,6 +1170,9 @@ impl World {
                 | Command::DismissSuggestion { .. }
         );
         self.apply_command(cmd)?;
+        if self.rooms_version != self.structure_version {
+            self.refresh_rooms();
+        }
         match snapshot {
             Some(s) => self.remember(s),
             None if !keeps_history => {

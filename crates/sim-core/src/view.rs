@@ -26,6 +26,32 @@ struct UiState<'a> {
     relationships: Vec<RelView>,
     /// Most recent story events, oldest first.
     events: Vec<EventView<'a>>,
+    /// The rooms and garden of the player's home, with their scores.
+    rooms: Vec<RoomView>,
+}
+
+/// A room of the player's home (see `rooms.rs`). `scores`: size, light, decor, cleanliness,
+/// function, overall (0..1).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RoomView {
+    /// Lot room id (0 for the garden); changes when walls do.
+    id: u16,
+    garden: bool,
+    /// Room kind (index into `roomKinds`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    kind: Option<usize>,
+    mixed: bool,
+    /// The kind's essential nothing offers (index into its `essentials`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    missing: Option<usize>,
+    tiles: f32,
+    windows: u16,
+    doors: u16,
+    lamps: u16,
+    dirt: f32,
+    centre: [f32; 2],
+    scores: [f32; 6],
 }
 
 /// A story event plus how much it matters (0 everyday, 1 notable, 2 a milestone).
@@ -577,6 +603,31 @@ pub fn ui_state_json(world: &World) -> String {
             .collect(),
         relationships,
         events,
+        rooms: {
+            let home = world.households.iter().find(|h| h.player).and_then(|h| h.plot);
+            world
+                .rooms()
+                .iter()
+                .filter(|r| home.is_some() && r.plot == home)
+                .map(|r| {
+                    let s = r.scores;
+                    RoomView {
+                        id: r.id,
+                        garden: r.garden,
+                        kind: r.kind,
+                        mixed: r.mixed,
+                        missing: r.missing,
+                        tiles: r.tiles,
+                        windows: r.windows,
+                        doors: r.doors,
+                        lamps: r.lamps,
+                        dirt: r.dirt,
+                        centre: r.centre,
+                        scores: [s.size, s.light, s.decor, s.clean, s.function, s.overall],
+                    }
+                })
+                .collect()
+        },
     })
     .expect("UI state serializes")
 }

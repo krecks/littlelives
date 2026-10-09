@@ -793,6 +793,7 @@ impl World {
             (known(e.a) && known(e.b) && e.c.is_none_or(known)).then_some(e)
         });
         world.events = social::EventLog::restore(save.next_event_id, events);
+        world.refresh_rooms();
         Ok(world)
     }
 

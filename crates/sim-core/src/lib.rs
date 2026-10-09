@@ -20,6 +20,7 @@ pub mod pack;
 pub mod path;
 pub mod planner;
 pub mod rng;
+pub mod rooms;
 pub mod save;
 pub mod snapshot;
 pub mod social;

@@ -93,6 +93,16 @@ export interface WallCoveringDef {
   price?: number;
 }
 
+/** What a room is for, from the tags of what stands in it (sim-core `RoomKind`). */
+export interface RoomKindDef {
+  id: string;
+  label?: string;
+  tags: string[];
+  essentials?: string[][];
+  size?: [number, number];
+  exclusive?: boolean;
+}
+
 /** A roof style (Build mode's Roof tool): the shape and, for pitched roofs, the pitch in degrees. */
 export interface RoofStyleDef {
   id: string;
@@ -269,6 +279,7 @@ interface ContentFile {
   fenceStyles?: FenceStyleDef[];
   roofStyles?: RoofStyleDef[];
   roofColors?: RoofColorDef[];
+  roomKinds?: RoomKindDef[];
   economy?: Partial<Economy>;
   objectRules?: { freeRotation?: string[] };
   /** Animation tags interactions can use as `anim` (the snapshot layout's `actions`). */
@@ -301,6 +312,7 @@ export class Content {
   readonly fenceStyles: readonly FenceStyleDef[];
   readonly roofStyles: readonly RoofStyleDef[];
   readonly roofColors: readonly RoofColorDef[];
+  readonly roomKinds: readonly RoomKindDef[];
   readonly windowStyles: readonly WindowStyleDef[];
   readonly economy: Economy;
   /** Animation tags, in the order the snapshot's `sim.action` indexes them. */
@@ -340,6 +352,7 @@ export class Content {
     this.fenceStyles = file.fenceStyles ?? [];
     this.roofStyles = file.roofStyles ?? [];
     this.roofColors = file.roofColors ?? [];
+    this.roomKinds = file.roomKinds ?? [];
     this.economy = { startingFunds: 0, currency: '$', ...file.economy };
     this.animations = [...new Set(file.animations ?? [])];
     this.shop = file.objects.filter((o) => o.price !== undefined);

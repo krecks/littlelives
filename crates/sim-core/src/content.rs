@@ -118,6 +118,50 @@ pub struct ObjectDef {
     /// Turns freely (decor, plants): besides its four facings it can stand at any angle
     /// (`ObjectInstance::turn`). The angle is only for looks; the footprint stays on tiles.
     pub turns: bool,
+    /// Decor points it gives the room it stands in (plants, lamps, decor; see `RoomRules`).
+    pub decor: f32,
+    /// Gives light at night (content `light`): counts for its room's light.
+    pub lamp: bool,
+    /// Every tag its interactions have (what the room it stands in can be used for).
+    pub tags: TagMask,
+}
+
+/// What a room is for, from what stands in it (content `roomKinds`, in order of priority).
+#[derive(Debug, Clone)]
+pub struct RoomKind {
+    pub id: String,
+    pub label: String,
+    /// A room is of this kind if an object in it offers one of these tags.
+    pub tags: TagMask,
+    /// Each entry must be offered by something in the room for it to work fully (a bathroom:
+    /// `bathroom` and `hygiene`).
+    pub essentials: Vec<TagMask>,
+    /// `[cramped, comfortable]` in tiles.
+    pub size: [f32; 2],
+    /// A room can't be two exclusive kinds at once (a bed in the kitchen makes it `mixed`).
+    pub exclusive: bool,
+}
+
+/// How rooms are scored (content `roomRules`; see `rooms.rs`).
+#[derive(Debug, Clone)]
+pub struct RoomRules {
+    /// Weights of size, light, decor, cleanliness and function in the overall score.
+    pub weights: [f32; 5],
+    /// Tiles one window lights fully by day, and one lamp by night.
+    pub window_tiles: f32,
+    pub lamp_tiles: f32,
+    /// Decor points per tile for full decor, indoors and in the garden.
+    pub decor_per_tile: f32,
+    pub garden_decor_per_tile: f32,
+    /// A resident loves a room above this score, and dislikes one below this.
+    pub love: f32,
+    pub dislike: f32,
+    /// How fast the environment need moves towards where the resident is (per hour).
+    pub drift: f32,
+    /// Environment need at work or away.
+    pub away: f32,
+    /// How much the AI prefers doing things in better rooms (see `World::pick_autonomous`).
+    pub preference: f32,
 }
 
 /// Multipliers and offsets a trait, perk or emotion applies to a Sim.
@@ -613,6 +657,8 @@ pub struct Content {
     pub day_rhythm: DayRhythm,
     pub rent: Option<RentRules>,
     pub object_rules: ObjectRules,
+    pub room_kinds: Vec<RoomKind>,
+    pub room_rules: RoomRules,
     pub build: BuildRules,
     pub styles: Vec<StyleDef>,
     /// Animation tags (`"animations"`): what a Sim can be shown doing. Interactions refer
@@ -675,6 +721,10 @@ struct ContentFile {
     day_rhythm: DayRhythmRaw,
     #[serde(default)]
     object_rules: ObjectRulesRaw,
+    #[serde(default)]
+    room_kinds: Vec<RoomKindRaw>,
+    #[serde(default)]
+    room_rules: RoomRulesRaw,
     #[serde(default)]
     build: BuildRaw,
     #[serde(default)]
@@ -828,6 +878,38 @@ struct RentRaw {
     #[serde(default)]
     #[serde(alias = "debtMoodlet")] // key before the moodlet → feeling rename
     debt_feeling: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RoomKindRaw {
+    id: String,
+    #[serde(default)]
+    label: Option<String>,
+    #[serde(default)]
+    tags: Vec<String>,
+    #[serde(default)]
+    essentials: Vec<Vec<String>>,
+    #[serde(default)]
+    size: Option<[f32; 2]>,
+    #[serde(default)]
+    exclusive: bool,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct RoomRulesRaw {
+    weights: Option<[f32; 5]>,
+    window_tiles: Option<f32>,
+    lamp_tiles: Option<f32>,
+    decor_per_tile: Option<f32>,
+    garden_decor_per_tile: Option<f32>,
+    love: Option<f32>,
+    dislike: Option<f32>,
+    drift: Option<f32>,
+    away: Option<f32>,
+    preference: Option<f32>,
+    decor_by_category: HashMap<String, f32>,
 }
 
 #[derive(Deserialize, Default)]
@@ -985,6 +1067,12 @@ struct ObjectRaw {
     /// Overrides whether it turns freely.
     #[serde(default, rename = "freeRotation")]
     free_rotation: Option<bool>,
+    /// Decor points (default: by category, `roomRules.decorByCategory`).
+    #[serde(default)]
+    decor: Option<f32>,
+    /// Lamps: the renderer reads the light's look; the simulation only that it gives light.
+    #[serde(default)]
+    light: Option<serde_json::Value>,
 }
 
 fn one_slot() -> u8 {
@@ -1375,6 +1463,7 @@ impl Content {
             if obj.price.is_some_and(|p| p < 0) {
                 return Err(Error::new(format!("object '{}': negative price", obj.id)));
             }
+            let offered = interactions.iter().fold(0, |m: TagMask, it| m | it.tags);
             objects.push(ObjectDef {
                 id: obj.id.clone(),
                 name: obj.name.clone(),
@@ -1389,6 +1478,16 @@ impl Content {
                             raw.object_rules.free_rotation.iter().flatten().any(|f| f == c)
                         })
                 }),
+                decor: obj
+                    .decor
+                    .or_else(|| {
+                        let by = &raw.room_rules.decor_by_category;
+                        obj.category.as_ref().and_then(|c| by.get(c).copied())
+                    })
+                    .unwrap_or(0.0)
+                    .max(0.0),
+                lamp: obj.light.is_some(),
+                tags: offered,
             });
         }
 
@@ -1645,6 +1744,31 @@ impl Content {
                 })
             })
             .transpose()?;
+        let room_kinds = raw
+            .room_kinds
+            .iter()
+            .map(|k| RoomKind {
+                id: k.id.clone(),
+                label: k.label.clone().unwrap_or_else(|| k.id.clone()),
+                tags: tag_mask(&k.tags),
+                essentials: k.essentials.iter().map(|e| tag_mask(e)).filter(|&m| m != 0).collect(),
+                size: k.size.unwrap_or([4.0, 9.0]),
+                exclusive: k.exclusive,
+            })
+            .collect();
+        let rr = &raw.room_rules;
+        let room_rules = RoomRules {
+            weights: rr.weights.unwrap_or([0.2, 0.2, 0.2, 0.25, 0.15]),
+            window_tiles: rr.window_tiles.unwrap_or(6.0).max(0.1),
+            lamp_tiles: rr.lamp_tiles.unwrap_or(10.0).max(0.1),
+            decor_per_tile: rr.decor_per_tile.unwrap_or(0.125).max(0.001),
+            garden_decor_per_tile: rr.garden_decor_per_tile.unwrap_or(0.05).max(0.001),
+            love: rr.love.unwrap_or(0.75),
+            dislike: rr.dislike.unwrap_or(0.4),
+            drift: rr.drift.unwrap_or(0.5).max(0.0),
+            away: rr.away.unwrap_or(0.6),
+            preference: rr.preference.unwrap_or(0.5).max(0.0),
+        };
         let or = &raw.object_rules;
         let object_rules = ObjectRules {
             max_quality: or.max_quality.unwrap_or(3),
@@ -1779,6 +1903,8 @@ impl Content {
             day_rhythm,
             rent,
             object_rules,
+            room_kinds,
+            room_rules,
             build,
             styles,
             animations,
