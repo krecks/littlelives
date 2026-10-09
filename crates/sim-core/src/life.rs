@@ -24,13 +24,35 @@ pub struct Job {
     pub last_shift_day: u32,
     /// Mood when leaving for the current shift.
     pub shift_mood: f32,
+    /// How happy the Sim is in this job: a running average of the mood they leave for work in.
+    pub satisfaction: f32,
+    /// Shifts worked in this job.
+    pub shifts: u32,
+    /// Recent missed shifts (one worked shift makes up for one missed); too many and they're let go.
+    pub missed: u8,
+}
+
+impl Job {
+    /// A new job; starting today doesn't count, so the first shift is tomorrow's.
+    pub fn new(career: usize, level: usize, today: u32) -> Self {
+        Self {
+            career,
+            level,
+            performance: 0.0,
+            last_shift_day: today,
+            shift_mood: 0.5,
+            satisfaction: 0.6,
+            shifts: 0,
+            missed: 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Visit {
     pub plot: u32,
-    /// Guests head home after this tick (`u64::MAX` for player-controlled visits).
+    /// Guests head home after this tick.
     pub until: u64,
 }
 
@@ -40,7 +62,8 @@ pub enum Transition {
     /// Reached the town exit: the shift starts.
     Work,
     /// Set off to visit a plot (guest status starts now, so an interrupted trip still ends at home).
-    Visit(u32),
+    /// Visits the player asked for last longer.
+    Visit { plot: u32, directed: bool },
     /// Reached home.
     Home,
 }
@@ -151,6 +174,84 @@ pub(crate) fn update(w: &mut World) {
         report_skill_ups(w, i);
     }
     charge_rent(w, day);
+    job_market(w, day);
+}
+
+/// Once a day: unemployed residents with free will look for work, and residents who have been
+/// unhappy at work for a while may quit.
+fn job_market(w: &mut World, day: u32) {
+    let Some(market) = w.content.career_rules.market.clone() else {
+        return;
+    };
+    if clock::tick_at(day, market.hour * 60.0) != Some(w.tick) || !w.autonomy {
+        return;
+    }
+    let tick = w.tick;
+    for i in 0..w.sims.len() {
+        let h = w.sims[i].household as usize;
+        if !w.households[h].free_will || w.sims[i].away_until.is_some() {
+            continue;
+        }
+        if let Some(job) = &w.sims[i].job {
+            let unhappy = job.shifts >= market.min_shifts_before_quit
+                && job.satisfaction < market.quit_below;
+            if unhappy && w.rng.next_f32() < market.quit_chance {
+                let (career, level) = (job.career, job.level);
+                let sim = &mut w.sims[i];
+                sim.job = None;
+                sim.job_search_from = day + market.cooldown_days;
+                if let Some(m) = market.quit_feeling {
+                    social::add_feeling(&mut sim.feelings, m, &w.content.feelings, tick);
+                }
+                w.events
+                    .push_career(tick, EventKind::QuitJob, i, career, Some(level as i64));
+            }
+            continue;
+        }
+        if day < w.sims[i].job_search_from {
+            continue;
+        }
+        // Short on money: look harder.
+        let funds = w.households[h].funds;
+        let weekly = weekly_costs(w, h).map_or(0, |(rent, bills)| rent + bills);
+        let chance = market.daily_chance * if funds < weekly * 2 { 2.0 } else { 1.0 };
+        if w.rng.next_f32() >= chance {
+            continue;
+        }
+        let Some((career, level)) = find_job(w, i) else {
+            continue;
+        };
+        let sim = &mut w.sims[i];
+        sim.job = Some(Job::new(career, level, day));
+        if let Some(m) = market.hired_feeling {
+            social::add_feeling(&mut sim.feelings, m, &w.content.feelings, tick);
+        }
+        w.events
+            .push_career(tick, EventKind::JobFound, i, career, Some(level as i64));
+    }
+}
+
+/// A job Sim `i` could get: for each career the best level they're qualified for (the entry
+/// level on probation otherwise), weighed by pay with some chance.
+fn find_job(w: &mut World, i: usize) -> Option<(usize, usize)> {
+    let World {
+        content, sims, rng, ..
+    } = w;
+    let skills = &sims[i].skills;
+    let mut candidates: Vec<(f32, (usize, usize))> = Vec::new();
+    for (c, career) in content.careers.iter().enumerate() {
+        let level = career
+            .levels
+            .iter()
+            .rposition(|l| skill_fit(l, skills) >= 0.0)
+            .or_else(|| can_join(content, &career.levels[0], skills).then_some(0));
+        let Some(level) = level else { continue };
+        let def = &career.levels[level];
+        let weekly_pay = (def.pay * def.days.count_ones() as i64).max(1) as f32;
+        let score = weekly_pay.sqrt() * rng.range(0.5, 1.5);
+        candidates.push((score, (c, level)));
+    }
+    crate::ai::choose(&mut candidates, rng.next_f32(), 3)
 }
 
 /// Leave for work when it's time; count a shift as missed if the Sim never left.
@@ -176,10 +277,22 @@ fn schedule_work(w: &mut World, i: usize, day: u32) {
     if tick > late {
         job.last_shift_day = day;
         job.performance = (job.performance - content.career_rules.missed_penalty).max(0.0);
+        job.missed = job.missed.saturating_add(1);
         if let Some(m) = content.career_rules.missed_feeling {
             social::add_feeling(&mut sim.feelings, m, &content.feelings, tick);
         }
         events.push(tick, EventKind::MissedWork, i, i, None);
+        if let Some(market) = &content.career_rules.market
+            && job.missed >= market.fire_after_missed
+        {
+            let (career, level) = (job.career, job.level);
+            sim.job = None;
+            sim.job_search_from = day + market.cooldown_days;
+            if let Some(m) = market.fired_feeling {
+                social::add_feeling(&mut sim.feelings, m, &content.feelings, tick);
+            }
+            events.push_career(tick, EventKind::Fired, i, career, Some(level as i64));
+        }
         return;
     }
     if tick < leave {
@@ -218,13 +331,14 @@ fn apply_transition(w: &mut World, i: usize, transition: Transition) {
             sim.away_until = Some(end.max(start).max(tick + 1));
             sim.queue.clear();
         }
-        Transition::Visit(plot) => {
-            let player = w.households[w.sims[i].household as usize].player;
-            let until = if player {
-                u64::MAX
+        Transition::Visit { plot, directed } => {
+            let visits = &w.content.visits;
+            let hours = if directed {
+                visits.directed_hours
             } else {
-                tick + ticks(w.content.visits.hours * 60.0)
+                visits.hours
             };
+            let until = tick + ticks(hours * 60.0);
             w.sims[i].visiting = Some(Visit { plot, until });
             // Tell the story if the hosts are home.
             let host = w
@@ -281,6 +395,9 @@ fn at_work(w: &mut World, i: usize) {
     let rules = &content.career_rules;
     let fit = skill_fit(level, &sim.skills).clamp(-3.0, 3.0);
     let job = sim.job.as_mut().expect("checked above");
+    job.shifts += 1;
+    job.missed = job.missed.saturating_sub(1);
+    job.satisfaction = job.satisfaction * 0.8 + job.shift_mood * 0.2;
     job.performance = (job.performance
         + rules.performance_per_shift
         + (job.shift_mood - 0.5) * 30.0
@@ -304,7 +421,8 @@ fn at_work(w: &mut World, i: usize) {
     });
 }
 
-/// Story events for new skill levels (player households only, to keep the feed readable).
+/// Story events for new skill levels (the player's household only: across a whole town they
+/// would crowd out everything else).
 fn report_skill_ups(w: &mut World, i: usize) {
     let sim = &mut w.sims[i];
     let mut ups = std::mem::take(&mut sim.skill_ups);
@@ -360,7 +478,8 @@ fn charge_rent(w: &mut World, day: u32) {
                 EventKind::RentDebt
             };
             household.funds -= amount;
-            if household.player {
+            // Everyone's debts are news; paying on time only for the player's household.
+            if household.player || kind == EventKind::RentDebt {
                 w.events.push_detail(tick, kind, member, Some(amount), None);
             }
         }
@@ -381,9 +500,6 @@ fn end_visit_if_due(w: &mut World, i: usize, hour: f32) {
     let content = &w.content;
     let sim = &mut w.sims[i];
     let Some(visit) = sim.visiting else { return };
-    if visit.until == u64::MAX {
-        return; // the player decides when to leave
-    }
     let tired = sim.needs[..content.needs.len()].iter().any(|&n| n < 0.15);
     let late = !(6.0..22.0).contains(&hour);
     let busy = sim
@@ -518,6 +634,77 @@ mod tests {
         assert_eq!(w.sims[0].visiting.map(|v| v.plot), Some(1));
         w.apply(Command::GoHome { sim: 0 }).unwrap();
         ticks(&mut w, TICKS_PER_SECOND as u64 * 40);
+        assert!(w.sims[0].visiting.is_none());
+    }
+
+    /// The test content with a job market: hired the day they look, let go after two misses.
+    fn with_market() -> String {
+        CONTENT.replace(
+            r#""careerRules":{"promotionFeeling":"promoted","performancePerShift":60}"#,
+            r#""careerRules":{"promotionFeeling":"promoted","performancePerShift":60,
+                "market":{"hour":9.5,"dailyChance":1.0,"fireAfterMissed":2,"cooldownDays":1,
+                          "hiredFeeling":"promoted"}}"#,
+        )
+    }
+
+    #[test]
+    fn the_unemployed_find_work_on_their_own() {
+        let mut w = World::from_json(&with_market(), TOWN, 2).unwrap();
+        assert!(w.sims[1].job.is_none());
+        until_hour(&mut w, 1, 10.0);
+        let job = w.sims[1].job.as_ref().expect("found a job at 9:30");
+        assert_eq!(job.career, 0);
+        assert!(
+            w.events
+                .iter()
+                .any(|e| e.kind == EventKind::JobFound && e.a == 1 && e.career == Some(0))
+        );
+        // The first shift is tomorrow's.
+        until_hour(&mut w, 2, 10.0);
+        assert!(w.sims[1].away_until.is_some(), "at work on day 2");
+    }
+
+    #[test]
+    fn no_free_will_no_job_search() {
+        let mut w = World::from_json(&with_market(), TOWN, 2).unwrap();
+        w.apply(Command::SetAutonomy {
+            enabled: false,
+            household: Some(1),
+        })
+        .unwrap();
+        until_hour(&mut w, 3, 12.0);
+        assert!(w.sims[1].job.is_none());
+    }
+
+    #[test]
+    fn missing_shifts_gets_you_let_go() {
+        let mut w = World::from_json(&with_market(), TOWN, 1).unwrap();
+        // No free will: they don't look for a new job afterwards either.
+        w.apply(Command::SetAutonomy {
+            enabled: false,
+            household: Some(0),
+        })
+        .unwrap();
+        // Wall the worker in so they can never reach the exit.
+        for x in 0..40 {
+            w.lot.set_h(x, 6, crate::lot::Edge::Wall);
+        }
+        until_hour(&mut w, 3, 12.0);
+        assert!(w.sims[0].job.is_none(), "let go after two missed shifts");
+        assert!(w.events.iter().any(|e| e.kind == EventKind::Fired && e.a == 0));
+        // Missed on days 1 and 2; looks again from day 3.
+        assert_eq!(w.sims[0].job_search_from, 3);
+    }
+
+    #[test]
+    fn a_visit_the_player_asked_for_ends() {
+        let mut w = World::from_json(CONTENT, TOWN, 1).unwrap();
+        w.sims[0].job = None;
+        w.apply(Command::Visit { sim: 0, plot: 1 }).unwrap();
+        ticks(&mut w, TICKS_PER_SECOND as u64 * 40);
+        assert_eq!(w.sims[0].visiting.map(|v| v.plot), Some(1));
+        // Twice as long as a normal (2 h) visit, then home.
+        ticks(&mut w, (5.0 * 60.0 / crate::MINUTES_PER_TICK) as u64);
         assert!(w.sims[0].visiting.is_none());
     }
 

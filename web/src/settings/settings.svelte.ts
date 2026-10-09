@@ -28,6 +28,21 @@ export interface Settings {
   reducedMotion: boolean;
   /** Interface sounds (buying, building, picking things up). */
   sound: boolean;
+  /** Seconds without input before the camera starts watching on its own; 0: never. */
+  directorDelay: number;
+  /** How often the watching camera moves on: `calm` lingers, `lively` cuts sooner. */
+  directorPace: 'calm' | 'lively';
+  /** Fade the interface while the camera watches on its own. */
+  hideHudWhileWatching: boolean;
+  /** Slow down to normal speed for big moments (a first kiss, a new job, a fight at home). */
+  autoSlow: boolean;
+  /** Time-lapse while everyone at home sleeps or is at work. */
+  skipQuietHours: boolean;
+  /**
+   * Clicking residents and the floor: `inspect` looks at a resident first (commands from their
+   * panel); `always` gives orders straight away, as before.
+   */
+  directControl: 'inspect' | 'always';
 }
 
 export const RESTART_KEYS: readonly (keyof Settings)[] = ['quality', 'renderer', 'ambientOcclusion'];
@@ -51,6 +66,12 @@ export const DEFAULT_SETTINGS: Settings = {
   showFps: false,
   reducedMotion: false,
   sound: true,
+  directorDelay: 20,
+  directorPace: 'calm',
+  hideHudWhileWatching: false,
+  autoSlow: true,
+  skipQuietHours: true,
+  directControl: 'inspect',
 };
 
 function load(): Settings {

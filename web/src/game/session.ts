@@ -7,19 +7,21 @@
 import { AssetRegistry } from '../assets/registry';
 import { Content } from '../content/content';
 import { SimBridge } from '../core/bridge';
-import type { GameSource, WorldStructure } from '../core/protocol';
+import type { GameSource, SocialEvent, WorldStructure } from '../core/protocol';
 import { AUTOSAVE_ID, readSave, writeSave, type SaveRecord } from '../persistence/saves';
 import { recentLog } from '../debug/log';
 import { deliverReport, gpuInfo, takePendingPose, type DebugReport } from '../debug/report';
 import { plainState } from '../debug/snapshot.svelte';
 import { createSimPreviews } from '../render/preview';
 import { createItemPreviews } from '../render/preview/items';
-import type { Renderer } from '../render/types';
+import type { Renderer, WallMode } from '../render/types';
 import { settings as liveSettings, type Settings } from '../settings/settings.svelte';
 import { services, type GameControls } from '../ui/services';
 import { game, nextWallMode, toast } from '../ui/state.svelte';
 import { saveDebugReport } from '../ui/debugReport';
+import { aboutUs } from '../ui/story';
 import { BubbleLayer } from './bubbles';
+import { Director } from './director';
 import { BuildBuyInput, editFeedback } from './buildmode';
 import { styledModel } from '../ui/buy/catalog';
 import { play } from '../ui/sfx';
@@ -45,6 +47,14 @@ export type StartRequest =
 
 /** How long a story-feed entry stays visible. */
 const FEED_MS = 12_000;
+/** Story-feed entries shown at once. */
+const FEED_SIZE = 3;
+/** Fastest game speed (`clock::MAX_SPEED`). */
+const MAX_SPEED = 5;
+/** How long the interface stays after the mouse moves while it watches quietly. */
+const HUD_AWAKE_MS = 3000;
+/** How long a big moment plays at normal speed before the game speeds up again. */
+const SLOW_MS = 25_000;
 /** Frames drawn before a prepared session counts as ready (shaders compiled, textures up). */
 const WARM_FRAMES = 3;
 /** Longest wait for the household's portraits before a prepared session counts as ready anyway. */
@@ -141,6 +151,68 @@ export async function startSession(
   game.catalog = bridge.catalog;
   /** Sims the player controls. */
   const playerSims = () => game.roster.filter((s) => game.households[s.household]?.player).map((s) => s.id);
+  const homePlot = (): number | null => game.households.find((h) => h.player)?.plot ?? null;
+
+  // --- Watching: after a while without input the director takes the camera ----------------
+  const director = new Director({
+    content,
+    layout: bridge.layout,
+    snapshot: () => bridge.latest(),
+    pace: () => liveSettings.directorPace,
+    reducedMotion: () => liveSettings.reducedMotion,
+    shoot(shot, walls) {
+      renderer.setGameShot(shot);
+      if (game.wallMode !== walls) controls.setWallMode(walls);
+    },
+  });
+  /** Last time the player touched anything (ms, performance clock). */
+  let lastInput = performance.now();
+  /** The wall mode to give back when the director lets go. */
+  let playerWalls: WallMode | null = null;
+  /** Speed before a big moment slowed the game down, and until when (restored unless the player picks a speed). */
+  let slowedFrom: number | null = null;
+  let slowUntil = 0;
+  const canWatch = () =>
+    revealed &&
+    liveSettings.directorDelay > 0 &&
+    game.mode === 'live' &&
+    game.follow === null &&
+    !game.pauseMenu &&
+    !game.menu &&
+    !game.socialMenu &&
+    !game.townOpen &&
+    !game.jobBoardOpen &&
+    viewPlot !== null &&
+    viewPlot === homePlot();
+  function startWatching(now: number) {
+    if (!world) return;
+    playerWalls = game.wallMode;
+    director.setWorld(world, homePlot());
+    director.start(now);
+    game.watching = true;
+  }
+  function stopWatching() {
+    director.stop();
+    renderer.setGameShot(null);
+    game.watching = false;
+    if (playerWalls !== null && game.wallMode !== playerWalls) controls.setWallMode(playerWalls);
+    playerWalls = null;
+  }
+  /** Any input: the camera is the player's again at once. */
+  function takeBack() {
+    lastInput = performance.now();
+    if (game.watching) stopWatching();
+  }
+  const onInput = () => takeBack();
+  let hudTimer: ReturnType<typeof setTimeout> | undefined;
+  const onMove = () => {
+    // Moving the mouse doesn't take the camera, but it does count as being here (and wakes a
+    // quiet interface for a moment).
+    if (!game.watching) lastInput = performance.now();
+    game.hudAwake = true;
+    clearTimeout(hudTimer);
+    hudTimer = setTimeout(() => (game.hudAwake = false), HUD_AWAKE_MS);
+  };
   let speedBeforeMenu: number | null = null;
   /** Buy mode pauses the game; the speed to restore when leaving it. */
   let speedBeforeBuy: number | null = null;
@@ -152,7 +224,9 @@ export async function startSession(
     setSpeed(speed) {
       // Time stands still in Buy mode.
       if (game.mode !== 'live') return;
+      speed = Math.max(0, Math.min(MAX_SPEED, speed));
       if (speed > 0) lastSpeed = speed;
+      slowedFrom = null;
       bridge.send({ type: 'setSpeed', speed });
     },
     togglePause() {
@@ -162,7 +236,58 @@ export async function startSession(
       if (!playerSims().includes(id)) return;
       game.selected = id;
       game.socialMenu = null;
+      if (liveSettings.directControl === 'always') controls.inspect(id);
+    },
+    inspect(id) {
+      game.inspected = id;
+      game.socialMenu = null;
+      if (id !== null && playerSims().includes(id)) game.selected = id;
       renderer.setSelectedSim(id);
+      if (id === null && game.follow !== null) controls.follow(null);
+    },
+    follow(id) {
+      game.follow = id;
+      renderer.followSim(id);
+      if (id !== null) {
+        takeBack();
+        const plot = game.sims.find((s) => s.id === id)?.plot;
+        if (plot != null && plot !== viewPlot) showPlot(plot);
+      } else {
+        const home = buildBuy.home();
+        if (home && viewPlot !== home.id) showPlot(home.id);
+      }
+    },
+    watch() {
+      lastInput = -Infinity;
+      if (canWatch()) startWatching(performance.now());
+    },
+    frameHouse() {
+      takeBack();
+      if (game.follow !== null) controls.follow(null);
+      const plot = world && homePlot() !== null ? world.plots[homePlot()!] : null;
+      if (!plot) return;
+      const [x0, z0, x1, z1] = plot.house ?? [plot.x, plot.z, plot.x + plot.w, plot.z + plot.d];
+      renderer.setGameShot({ target: { x: (x0 + x1) / 2, z: (z0 + z1) / 2 }, beta: 0.72, radius: Math.min(60, Math.max(x1 - x0, z1 - z0) * 1.25 + 8), duration: liveSettings.reducedMotion ? 0 : 1.6 });
+      // The shot lands, then the camera is the player's again.
+      setTimeout(() => {
+        if (!director.active) renderer.setGameShot(null);
+      }, liveSettings.reducedMotion ? 0 : 1700);
+    },
+    toggleJournal() {
+      game.journalOpen = !game.journalOpen;
+      if (game.journalOpen) void bridge.requestEvents().then((events) => (game.journal = events));
+    },
+    showEvent(event) {
+      if (game.mode !== 'live') return;
+      const now = performance.now();
+      if (!director.active) {
+        playerWalls = game.wallMode;
+        game.watching = true;
+      }
+      if (!director.show(event, now)) {
+        if (!director.active) stopWatching();
+        toast("They aren't at home right now.");
+      }
     },
     joinCareer(career, level) {
       bridge.send({ type: 'joinCareer', sim: game.selected, career, level });
@@ -205,6 +330,8 @@ export async function startSession(
     },
     setMode(mode) {
       if (game.mode === mode) return;
+      takeBack();
+      if (mode !== 'live' && game.follow !== null) controls.follow(null);
       const fromLive = game.mode === 'live';
       buildBuy.cancel();
       game.mode = mode;
@@ -353,15 +480,13 @@ export async function startSession(
     game.householdStyle = mine?.style ?? 0;
     game.undoSteps = mine?.undo ?? 0;
     game.relationships = ui.relationships;
-    // The view follows the selected Sim to whichever lot they're on.
-    const selected = ui.sims.find((s) => s.id === game.selected);
-    if (selected?.plot != null && selected.plot !== viewPlot) showPlot(selected.plot);
-    // New social events go to the story feed (only the first batch is skipped as history).
+    // The view stays home; it goes along to other lots only with a resident the player follows.
+    const followed = game.follow === null ? null : ui.sims.find((s) => s.id === game.follow);
+    if (game.follow !== null && !followed) controls.follow(null);
+    else if (followed?.plot != null && followed.plot !== viewPlot) showPlot(followed.plot);
+    // New story events: the journal, the director, and the feed (only the first batch is history).
     const fresh = ui.events.filter((e) => e.id > lastEvent);
-    if (lastEvent >= 0 && fresh.length) {
-      const now = Date.now();
-      game.feed = [...game.feed.filter((f) => now - f.at < FEED_MS), ...fresh.map((event) => ({ event, at: now }))].slice(-6);
-    }
+    if (lastEvent >= 0 && fresh.length) onStory(fresh);
     if (ui.events.length) lastEvent = ui.events[ui.events.length - 1].id;
   });
   bridge.onWorld((w) => {
@@ -369,9 +494,16 @@ export async function startSession(
     // Buy mode: show what the simulation just accepted (furniture popping in, dust, money).
     const feedback = game.mode !== 'live' && world && worldView === viewPlot ? editFeedback(world, w) : null;
     if (feedback?.sound) play(feedback.sound);
+    // Things the player just placed: the director looks out for their first use.
+    if (game.mode !== 'live' && world) {
+      const before = world.objects;
+      const added = w.objects.filter((o) => !before.some((b) => b.id === o.id && b.def === o.def));
+      if (added.length) director.noteBuilt(added.map((o) => o.id), performance.now());
+    }
     world = w;
     worldView = viewPlot;
     buildBuy.setStructure(w);
+    director.setWorld(w, w.households.find((h) => h.player)?.plot ?? null);
     game.objects = w.objects;
     if (game.buySelection !== null && !w.objects.some((o) => o.id === game.buySelection)) game.buySelection = null;
     game.roster = w.sims;
@@ -386,7 +518,10 @@ export async function startSession(
     if (!focused) {
       focused = true;
       const first = playerSims()[0];
-      if (first !== undefined) controls.selectSim(first);
+      if (first !== undefined) {
+        game.selected = first;
+        if (liveSettings.directControl === 'always') controls.inspect(first);
+      }
       // Start on the home lot; its geometry arrives in the next world message.
       const home = w.households.find((h) => h.player)?.plot;
       if (home != null && w.plots[home]) return showPlot(home);
@@ -410,6 +545,24 @@ export async function startSession(
       })
       .catch((err) => toast(`Rendering failed: ${err}`));
   });
+
+  function onStory(fresh: SocialEvent[]) {
+    const now = Date.now();
+    if (game.journal.length) game.journal = [...game.journal, ...fresh];
+    director.noteEvents(fresh.filter(aboutUs), performance.now());
+    // The feed: what happens to the household, and the town's bigger news.
+    const news = fresh.filter((e) => (aboutUs(e) && e.importance >= 1) || e.importance >= 2 || (aboutUs(e) && e.kind === 'skillUp'));
+    if (news.length) game.feed = [...game.feed.filter((f) => now - f.at < FEED_MS), ...news.map((event) => ({ event, at: now }))].slice(-FEED_SIZE);
+    // Big moments at home are worth seeing at normal speed.
+    const big = fresh.find((e) => e.importance >= 2 && aboutUs(e));
+    if (big && liveSettings.autoSlow && game.mode === 'live' && game.speed >= 3) {
+      const from = game.speed;
+      controls.setSpeed(1);
+      slowedFrom = from;
+      slowUntil = performance.now() + SLOW_MS;
+      toast('Slowed down for a moment');
+    }
+  }
 
   /** Switches the view to a lot: the worker sends that lot's geometry, then the scene is rebuilt. */
   function showPlot(plot: number) {
@@ -468,20 +621,27 @@ export async function startSession(
         buildBuy.click(hit.ground, hit.objectId);
         return;
       }
+      // Watching first: a click looks at someone; orders come from their panel (or, with the
+      // classic setting, straight away).
+      const direct = liveSettings.directControl === 'always';
+      const actor = direct ? game.selected : game.inspected !== null && playerSims().includes(game.inspected) ? game.inspected : null;
       const sim = simAt(x, y);
-      if (sim !== null && sim !== game.selected) {
+      if (sim !== null && actor !== null && sim !== actor) {
         game.socialMenu = { target: sim, x, y, options: null };
-        bridge.requestSocialOptions(game.selected, sim).then((options) => {
+        bridge.requestSocialOptions(actor, sim).then((options) => {
           if (game.socialMenu?.target === sim) game.socialMenu = { ...game.socialMenu, options };
         });
         return;
       }
-      if (sim !== null) return;
+      if (sim !== null) {
+        if (!direct) controls.inspect(sim === game.inspected ? null : sim);
+        return;
+      }
       const hit = renderer.pick(x, y);
       if (hit.objectId !== null) return openMenu(hit.objectId, x, y);
-      if (hit.ground && inLot(hit.ground.x, hit.ground.z)) {
-        bridge.send({ type: 'moveTo', sim: game.selected, x: hit.ground.x, z: hit.ground.z });
-      }
+      if (actor !== null && hit.ground && inLot(hit.ground.x, hit.ground.z)) {
+        bridge.send({ type: 'moveTo', sim: actor, x: hit.ground.x, z: hit.ground.z });
+      } else if (!direct) controls.inspect(null);
     },
     hover(x, y) {
       const g = renderer.pick(x, y).ground;
@@ -514,6 +674,9 @@ export async function startSession(
       if (buildBuy.cancel()) return;
       if (game.mode !== 'live') return controls.setMode('live');
       if (game.menu || game.socialMenu) return controls.closeMenu();
+      if (game.journalOpen) return void (game.journalOpen = false);
+      if (game.follow !== null) return controls.follow(null);
+      if (game.inspected !== null && liveSettings.directControl !== 'always') return controls.inspect(null);
       game.pauseMenu = !game.pauseMenu;
       return;
     }
@@ -530,7 +693,21 @@ export async function startSession(
       case '1':
       case '2':
       case '3':
+      case '4':
+      case '5':
         return controls.setSpeed(Number(e.key));
+      case 'f':
+      case 'F':
+        if (game.mode !== 'live') return;
+        return controls.follow(game.follow === null ? (game.inspected ?? game.selected) : null);
+      case 'h':
+      case 'H':
+        if (game.mode === 'live') controls.frameHouse();
+        return;
+      case 'j':
+      case 'J':
+        if (game.mode === 'live') controls.toggleJournal();
+        return;
       case 'm':
       case 'M':
         if (game.mode === 'live') game.townOpen = !game.townOpen;
@@ -566,7 +743,10 @@ export async function startSession(
       case 'Tab': {
         e.preventDefault();
         const ids = playerSims();
-        if (ids.length) controls.selectSim(ids[(ids.indexOf(game.selected) + 1) % ids.length]);
+        if (!ids.length) return;
+        const next = ids[(ids.indexOf(game.inspected ?? game.selected) + 1) % ids.length];
+        controls.selectSim(next);
+        controls.inspect(next);
         return;
       }
     }
@@ -580,7 +760,18 @@ export async function startSession(
     bridge.sync(now);
     const frame = bridge.frame(now);
     renderer.update(frame);
-    if (revealed) bubbles.update(frame);
+    if (!revealed) return;
+    bubbles.update(frame);
+    if (game.watching) {
+      // Menus and other modes end watching (opening them is input, but not all of it is ours).
+      if (!canWatch() && !director.active) stopWatching();
+      else director.update(now);
+    } else if (canWatch() && now - lastInput > liveSettings.directorDelay * 1000) startWatching(now);
+    // After a big moment, back to the speed the player had (unless they picked another).
+    if (slowedFrom !== null && now > slowUntil) {
+      if (game.speed === 1 && game.mode === 'live') bridge.send({ type: 'setSpeed', speed: slowedFrom });
+      slowedFrom = null;
+    }
   });
 
   const session: GameSession = {
@@ -595,6 +786,11 @@ export async function startSession(
       if (pose) renderer.setCameraPose(pose);
       pointer = attachPointer();
       window.addEventListener('keydown', onKey);
+      window.addEventListener('pointerdown', onInput, true);
+      canvas.addEventListener('wheel', onInput, { capture: true, passive: true });
+      window.addEventListener('keydown', onInput, true);
+      window.addEventListener('pointermove', onMove, { passive: true });
+      lastInput = performance.now();
       bridge.send({ type: 'setSpeed', speed: resumeSpeed ?? 1 });
       prefetchTimer = setTimeout(() => {
         if (disposed) return;
@@ -628,6 +824,7 @@ export async function startSession(
         visualStyle: s.visualStyle,
       });
       bridge.send({ type: 'setAutonomy', enabled: s.autonomy });
+      bridge.send({ type: 'setAutoFast', enabled: s.skipQuietHours });
       game.perfOpen = s.showFps;
       if (s.autosaveMinutes !== autosaveMinutes) {
         autosaveMinutes = s.autosaveMinutes;
@@ -655,6 +852,14 @@ export async function startSession(
       clearInterval(statsTimer);
       clearInterval(autosaveTimer);
       window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onInput, true);
+      canvas.removeEventListener('wheel', onInput, true);
+      window.removeEventListener('keydown', onInput, true);
+      window.removeEventListener('pointermove', onMove);
+      director.stop();
+      clearTimeout(hudTimer);
+      renderer.setGameShot(null);
+      renderer.followSim(null);
       pointer?.dispose();
       bubbles.dispose();
       buildBuy.dispose();

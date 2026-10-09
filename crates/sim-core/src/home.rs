@@ -517,10 +517,19 @@ impl World {
             let target = edge_kind(e.kind);
             let diagonal = e.axis.diagonal();
             let (a, b) = sides(e);
-            if e.kind != EdgeKind::Open
-                && object_at(a.0, a.1).is_some_and(|o| object_at(b.0, b.1) == Some(o))
-            {
+            if e.kind != EdgeKind::Open && diagonal.is_some() && object_at(a.0, a.1).is_some() {
                 return Err(Error::new("a wall can't go through furniture"));
+            }
+            if e.kind != EdgeKind::Open
+                && diagonal.is_none()
+                && self.objects.iter().any(|o| {
+                    o.wall_edges(&self.content)
+                        .any(|(p, q)| (p, q) == (a, b) || (q, p) == (a, b))
+                })
+            {
+                return Err(Error::new(
+                    "a wall can't go through furniture or in front of it",
+                ));
             }
             if let Some(dir) = diagonal
                 && target != Edge::Open

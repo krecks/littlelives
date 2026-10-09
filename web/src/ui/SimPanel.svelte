@@ -8,12 +8,15 @@
   import { services } from './services';
   import { game } from './state.svelte';
 
-  const tabs = ['Now', 'People', 'Feelings', 'Career', 'Skills'] as const;
-  let tab = $state<(typeof tabs)[number]>('Now');
+  const allTabs = ['Now', 'People', 'Feelings', 'Career', 'Skills'] as const;
+  let tab = $state<(typeof allTabs)[number]>('Now');
 
+  /** The resident being looked at; orders only for the player's household. */
   const info = (id: number) => game.roster.find((r) => r.id === id);
-  const household = $derived(game.sims.filter((s) => game.households[s.household]?.player));
-  const sim = $derived(game.selectedSim);
+  const sim = $derived(game.inspectedSim);
+  const mine = $derived(!!sim && !!game.households[sim.household]?.player);
+  const tabs = $derived(mine ? allTabs : allTabs.filter((t) => t !== 'Career'));
+  const homeName = $derived(sim ? game.households[sim.household]?.name : undefined);
   const emotion = $derived(services.content.emotion(sim?.emotion ?? null));
   const people = $derived(
     sim
@@ -32,20 +35,12 @@
 {/snippet}
 
 <section class="panel">
-  <div class="household glass">
-    {#each household as s (s.id)}
-      <button class="avatar" class:selected={s.id === game.selected} title="{s.name} (Tab)" aria-label="Select {s.name}" onclick={() => services.controls.selectSim(s.id)}>
-        {@render face(s.id, 34)}
-      </button>
-    {/each}
-  </div>
-
   {#if sim}
     <div class="card glass">
       <div class="who">
         <div class="portrait">{@render face(sim.id, 46)}</div>
-        <div>
-          <div class="name">{sim.name}</div>
+        <div class="ident">
+          <div class="name">{sim.name}{#if !mine && homeName}<span class="family"> · the {homeName}s</span>{/if}</div>
           <div class="mood">
             <span class="dot" style="background:{needColor(sim.mood)}"></span>
             {moodLabel(sim.mood)}
@@ -53,6 +48,21 @@
               <span class="emotion"><Icon name={emotion.icon} size={13} />{emotion.label}</span>
             {/if}
           </div>
+        </div>
+        <div class="actions">
+          <button
+            class="icon-btn"
+            class:on={game.follow === sim.id}
+            title={game.follow === sim.id ? 'Stop following (F)' : `Follow ${sim.name} (F)`}
+            aria-label="Follow"
+            aria-pressed={game.follow === sim.id}
+            onclick={() => services.controls.follow(game.follow === sim.id ? null : sim.id)}
+          >
+            <Icon name="icon.ui.follow" size={16} />
+          </button>
+          <button class="icon-btn" title="Close (Esc)" aria-label="Close" onclick={() => services.controls.inspect(null)}>
+            <Icon name="icon.ui.close" size={14} />
+          </button>
         </div>
       </div>
 
@@ -89,14 +99,19 @@
               {#if action.active}
                 <span class="progress"><span style="width:{action.progress * 100}%"></span></span>
               {/if}
-              <button class="cancel" aria-label="Cancel {action.label}" onclick={() => services.controls.cancelAction(i)}>
-                <Icon name="icon.ui.close" size={12} />
-              </button>
+              {#if mine}
+                <button class="cancel" aria-label="Cancel {action.label}" onclick={() => services.controls.cancelAction(i)}>
+                  <Icon name="icon.ui.close" size={12} />
+                </button>
+              {/if}
             </li>
           {:else}
-            <li class="idle">Idle — click an object, a person or the floor</li>
+            <li class="idle">{sim.awayUntil !== null ? 'At work' : 'Deciding what to do next'}</li>
           {/each}
         </ol>
+        {#if mine}
+          <p class="hint">They choose for themselves. To step in, click a person to talk to, an object to use, or the floor to walk.</p>
+        {/if}
       {:else if tab === 'People'}
         <ul class="people">
           {#each people as p (p.rel.b)}
@@ -144,24 +159,56 @@
   .panel {
     position: absolute;
     left: var(--edge);
-    bottom: var(--edge);
+    /* Above the household strip. */
+    bottom: calc(var(--edge) + 76px);
     display: flex;
     flex-direction: column;
     gap: 10px;
     width: 320px;
     pointer-events: none;
   }
-  .household,
   .card {
     pointer-events: auto;
+    animation: rise var(--slow) var(--ease);
   }
-  .household {
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+  .ident {
+    flex: 1;
+    min-width: 0;
+  }
+  .family {
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .actions {
     display: flex;
-    gap: 6px;
-    padding: 6px;
+    gap: 4px;
     align-self: flex-start;
   }
-  .avatar,
+  .icon-btn {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+  }
+  .icon-btn:hover,
+  .icon-btn.on {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .hint {
+    margin: 0;
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
   .portrait,
   .mini {
     display: grid;
@@ -169,19 +216,6 @@
     border-radius: 50%;
     overflow: hidden;
     background: var(--surface-muted);
-  }
-  .avatar {
-    width: 34px;
-    height: 34px;
-    opacity: 0.7;
-    transition: opacity var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
-  }
-  .avatar:hover {
-    opacity: 1;
-  }
-  .avatar.selected {
-    opacity: 1;
-    box-shadow: 0 0 0 2px var(--glass-strong), 0 0 0 4px var(--accent);
   }
   .card {
     padding: 14px;

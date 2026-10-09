@@ -139,6 +139,24 @@ export interface TownShot {
   minute?: number;
 }
 
+/** A shot of the game world for the watching director (`Renderer.setGameShot`). */
+export interface GameShot {
+  /** Point to look at (metres). */
+  target?: { x: number; z: number };
+  /** Residents (snapshot indices) to keep in the middle while they move; falls back to `target`. */
+  follow?: number[];
+  /** Orbit angle (as the camera's alpha); omitted keeps the current one. */
+  alpha?: number;
+  /** Tilt from straight down (radians). */
+  beta?: number;
+  /** Distance from the target (metres). */
+  radius?: number;
+  /** Slow orbit, radians per second. */
+  drift?: number;
+  /** Glide time in seconds; 0 cuts. */
+  duration?: number;
+}
+
 /** Which lots of the overview glow (plot ids). */
 export interface LotHighlight {
   hover: number | null;
@@ -202,6 +220,13 @@ export interface Renderer {
   framesRendered(frames: number): Promise<void>;
   /** Slowly circles the camera (for the live menu backdrop). */
   setIdleOrbit(on: boolean): void;
+  /**
+   * Watching: the director takes the game camera and glides to `shot` (or with `cut`, jumps);
+   * null hands it straight back to the player where it is.
+   */
+  setGameShot(shot: GameShot | null, cut?: boolean): void;
+  /** Keeps resident `index` (snapshot index) in the middle while the player turns and zooms; null stops. */
+  followSim(index: number | null): void;
   /** Removes the current world (end of a session); cached meshes and the landscape are kept. */
   clear(): void;
   /**

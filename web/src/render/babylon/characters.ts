@@ -70,7 +70,9 @@ const Anim = {
   Kiss: 7,
 } as const;
 /** Sim ticks per frame step at each game speed (`clock::TICKS_PER_STEP`). */
-const GAME_RATE = [0, 1, 3, 10];
+const GAME_RATE = [0, 1, 3, 10, 30, 60];
+/** Speed while time skips through quiet hours (`clock::AUTO_FAST_SPEED`). */
+const QUIET_SPEED = 4;
 /** Larger jumps between frames snap instead of sliding. */
 const SNAP_DISTANCE = 1.6;
 const DEFAULT_FADE = 0.25;
@@ -1021,7 +1023,9 @@ export class Characters {
     this.lastNow = now;
     if (dt > 0.1) dt = 0.1;
     if (dt < 0) dt = 0;
-    const gameSpeed = curr[layout.header.speed] | 0;
+    const speed = curr[layout.header.speed] | 0;
+    const quiet = layout.header.calm !== undefined && curr[layout.header.calm] > 0;
+    const gameSpeed = quiet ? Math.max(speed, QUIET_SPEED) : speed;
     const gameRate = GAME_RATE[gameSpeed] ?? 1;
     const animRate = this.debugRate ?? Math.min(gameRate, 2.5);
     // Paused (the pause button, Buy and Build mode, menus): everyone freezes mid-motion, walk

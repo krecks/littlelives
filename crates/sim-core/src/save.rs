@@ -9,7 +9,9 @@
 //! quality/style/value, household style; 5 = diagonal walls (`lot.diagonals`, absent in
 //! older files, which load without any); 6 = wall looks (`lot.looks`: coverings, half walls,
 //! door and window styles, by content id; absent: plain walls); 7 = floor coverings
-//! (`lot.floors`, by content id; absent: automatic floors). Older files load. Saves written before feelings
+//! (`lot.floors`, by content id; absent: automatic floors); 8 = free will per household,
+//! the story log (`events`), job satisfaction and missed shifts, visits always end (absent:
+//! one town-wide free-will switch, no story, a fresh start in every job). Older files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
 use std::collections::{BTreeMap, HashMap};
@@ -24,7 +26,7 @@ use crate::social::{self, Relationship};
 use crate::world::{Household, Plot, Task, TaskKind, World};
 use crate::{Error, MINUTES_PER_TICK, clock::MAX_SPEED};
 
-pub const SAVE_VERSION: u32 = 7;
+pub const SAVE_VERSION: u32 = 8;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,6 +49,11 @@ pub struct SaveFile {
     pub meta: serde_json::Value,
     #[serde(default)]
     pub exits: Vec<[f32; 2]>,
+    /// The story so far, oldest first (absent before v8). Events name residents by index.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub events: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub next_event_id: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -99,6 +106,10 @@ fn is_zero(n: &u8) -> bool {
     *n == 0
 }
 
+fn is_zero_u32(n: &u32) -> bool {
+    *n == 0
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ObjectSave {
     pub def: String,
@@ -139,10 +150,14 @@ pub struct SimSave {
     pub skills: BTreeMap<String, f32>,
     #[serde(default)]
     pub job: Option<JobSave>,
+    /// First day to look for work again (after quitting or being let go).
+    #[serde(default, skip_serializing_if = "is_zero_u32")]
+    pub job_search_from: u32,
     /// Minutes left at work, if away.
     #[serde(default)]
     pub away_minutes: Option<f32>,
-    /// Plot being visited, and minutes left (`None` = until the player says otherwise).
+    /// Plot being visited, and minutes left (`None` in saves before v8: the player's visits
+    /// had no end).
     #[serde(default)]
     pub visiting: Option<(u32, Option<f32>)>,
     /// Current activity first, then the queue.
@@ -156,6 +171,15 @@ pub struct JobSave {
     pub level: usize,
     pub performance: f32,
     pub last_shift_day: u32,
+    #[serde(default)]
+    pub satisfaction: Option<f32>,
+    #[serde(default)]
+    pub shifts: u32,
+    #[serde(default)]
+    pub missed: u8,
+    /// Mood when leaving for the current shift (absent before v8).
+    #[serde(default)]
+    pub shift_mood: Option<f32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -207,6 +231,9 @@ pub struct HouseholdSave {
     pub funds: Option<i64>,
     #[serde(default)]
     pub style: u8,
+    /// Absent before v8, when free will was one switch for the whole town (`autonomy`).
+    #[serde(default, rename = "freeWill", skip_serializing_if = "Option::is_none")]
+    pub free_will: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -303,11 +330,16 @@ impl World {
                         level: j.level,
                         performance: j.performance,
                         last_shift_day: j.last_shift_day,
+                        satisfaction: Some(j.satisfaction),
+                        shifts: j.shifts,
+                        missed: j.missed,
+                        shift_mood: Some(j.shift_mood),
                     }),
+                    job_search_from: s.job_search_from,
                     away_minutes: s.away_until.map(minutes_left),
                     visiting: s
                         .visiting
-                        .map(|v| (v.plot, (v.until != u64::MAX).then(|| minutes_left(v.until)))),
+                        .map(|v| (v.plot, Some(minutes_left(v.until)))),
                     tasks,
                 }
             })
@@ -354,6 +386,7 @@ impl World {
                     player: h.player,
                     funds: Some(h.funds),
                     style: h.style,
+                    free_will: Some(h.free_will),
                 })
                 .collect(),
             plots: self
@@ -372,6 +405,12 @@ impl World {
             relationships,
             meta: self.meta.clone(),
             exits: self.exits.clone(),
+            events: self
+                .events
+                .iter()
+                .map(|e| serde_json::to_value(e).expect("event serializes"))
+                .collect(),
+            next_event_id: self.events.last_id(),
         }
     }
 
@@ -404,7 +443,9 @@ impl World {
         let mut world = World::empty(content, lot, Rng::new(save.rng));
         world.tick = save.tick;
         world.speed = save.speed.min(MAX_SPEED);
-        world.autonomy = save.autonomy;
+        // Before v8 the one free-will switch was the player's setting; now each household has one.
+        let legacy_free_will = save.version < 8;
+        world.autonomy = save.autonomy || legacy_free_will;
         world.meta = save.meta.clone();
         world.exits = save.exits.clone();
         world.plots = save
@@ -431,6 +472,7 @@ impl World {
                 player: true,
                 funds: starting_funds,
                 style: 0,
+                free_will: save.autonomy,
             }]
         } else {
             save.households
@@ -443,6 +485,9 @@ impl World {
                     player: h.player,
                     funds: h.funds.unwrap_or(starting_funds),
                     style: h.style,
+                    free_will: h
+                        .free_will
+                        .unwrap_or(!h.player || save.autonomy || !legacy_free_will),
                 })
                 .collect()
         };
@@ -514,19 +559,22 @@ impl World {
             sim.job = s.job.as_ref().and_then(|j| {
                 let career = content.career_index(&j.career)?;
                 let level = j.level.min(content.careers[career].levels.len() - 1);
-                Some(Job {
-                    career,
-                    level,
-                    performance: j.performance,
-                    last_shift_day: j.last_shift_day,
-                    shift_mood: 0.5,
-                })
+                let mut job = Job::new(career, level, j.last_shift_day);
+                job.performance = j.performance;
+                job.satisfaction = j.satisfaction.unwrap_or(job.satisfaction);
+                job.shifts = j.shifts;
+                job.missed = j.missed;
+                job.shift_mood = j.shift_mood.unwrap_or(job.shift_mood);
+                Some(job)
             });
+            sim.job_search_from = s.job_search_from;
             sim.away_until = s.away_minutes.filter(|_| sim.job.is_some()).map(after);
             sim.visiting = s.visiting.and_then(|(plot, left)| {
                 ((plot as usize) < plot_count).then(|| Visit {
                     plot,
-                    until: left.map_or(u64::MAX, after),
+                    // Visits without an end (player visits before v8) last as long as a
+                    // player visit does now.
+                    until: after(left.unwrap_or(content.visits.directed_hours * 60.0)),
                 })
             });
             for t in &s.tasks {
@@ -618,6 +666,14 @@ impl World {
         }
         // Spawning consumed random numbers; restore the saved stream.
         world.rng = Rng::new(save.rng);
+        // The story: events about residents who no longer exist (or of kinds this version
+        // doesn't know) are dropped.
+        let events = save.events.iter().filter_map(|v| {
+            let e: social::SocialEvent = serde_json::from_value(v.clone()).ok()?;
+            let known = |s: u32| (s as usize) < n;
+            (known(e.a) && known(e.b) && e.c.is_none_or(known)).then_some(e)
+        });
+        world.events = social::EventLog::restore(save.next_event_id, events);
         Ok(world)
     }
 
@@ -869,7 +925,7 @@ mod tests {
             interaction: 0,
         })
         .unwrap();
-        w.apply(Command::SetAutonomy { enabled: false }).unwrap();
+        w.apply(Command::SetAutonomy { enabled: false, household: None }).unwrap();
         crate::social::add_feeling(&mut w.sims[0].feelings, 0, &w.content.feelings, w.tick);
         for _ in 0..137 {
             w.tick_once();
@@ -878,7 +934,9 @@ mod tests {
         let loaded = World::from_save_json(CONTENT, &json).unwrap();
 
         assert_eq!(loaded.tick, w.tick);
-        assert!(!loaded.autonomy);
+        assert!(loaded.autonomy, "the town-wide switch stays on");
+        assert!(!loaded.households[0].free_will, "the player's household has free will off");
+        assert!(loaded.households[1].free_will);
         assert_eq!(loaded.objects.len(), 2);
         assert_eq!(loaded.households.len(), 2);
         assert_eq!(loaded.sims[1].household, 1);

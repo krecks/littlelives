@@ -58,6 +58,7 @@ import type {
   BuildEffect,
   CameraPose,
   EdgePreview,
+  GameShot,
   LiveRenderOptions,
   PaintPreviewFace,
   LotHighlight,
@@ -81,6 +82,7 @@ import { LAYER_ALL, LAYER_TOWN, LAYER_WORLD } from './layers';
 import { NightGrade } from './nightGrade';
 import { BuildEffects, type PopTarget } from './buildFx';
 import { TownOverview } from './overview';
+import { GameCameraRig } from './cameraRig';
 import { TiltShift } from './tiltShift';
 
 const ACCENT = Color3.FromHexString('#5B7CFA');
@@ -152,6 +154,11 @@ export class BabylonRenderer implements Renderer {
   private onFrame: ((now: number) => void) | null = null;
   private active = false;
   private idleOrbit = false;
+  /** The watching director's hold on the game camera (see `setGameShot`). */
+  private gameRig!: GameCameraRig;
+  /** Resident the camera keeps centred while the player turns and zooms (`followSim`). */
+  private followIndex: number | null = null;
+  private readonly followHead = { x: 0, y: 0, z: 0 };
   private frameWaiters: { left: number; resolve: () => void }[] = [];
   /**
    * Built model templates by key, kept across lot switches and sessions (building them
@@ -407,6 +414,7 @@ export class BabylonRenderer implements Renderer {
       this.lastLightMinute = minute;
       this.resetSnapshot();
     }
+    this.steerCamera(this.engine.getDeltaTime() / 1000);
     this.updateCutaway();
     this.followCamera();
     this.skyDome.drift(this.engine.getDeltaTime());
@@ -788,6 +796,28 @@ export class BabylonRenderer implements Renderer {
     this.idleOrbit = on;
   }
 
+  setGameShot(shot: GameShot | null, cut = false): void {
+    if (!shot) return this.gameRig.release();
+    this.followIndex = null;
+    this.idleOrbit = false;
+    this.gameRig.setShot(shot, cut || this.townMode);
+    this.cameraPlaced = true;
+  }
+
+  followSim(index: number | null): void {
+    this.followIndex = index;
+  }
+
+  /** The director's shot, or keeping a followed resident centred (game world only). */
+  private steerCamera(dt: number): void {
+    if (this.gameRig.active) return this.gameRig.frame(dt);
+    if (this.followIndex === null || !this.simHead(this.followIndex, this.followHead)) return;
+    const t = this.camera.target;
+    const k = 1 - Math.exp(-dt / 0.5);
+    t.x += (this.followHead.x - t.x) * k;
+    t.z += (this.followHead.z - t.z) * k;
+  }
+
   clear(): void {
     this.pauseSnapshot();
     for (const mesh of this.worldMeshes) mesh.dispose(false, false);
@@ -1102,6 +1132,7 @@ export class BabylonRenderer implements Renderer {
     // A slightly longer lens than the default flattens perspective a little: the dollhouse look.
     cam.fov = 0.7;
     cam.attachControl(true);
+    this.gameRig = new GameCameraRig(cam, { radius: RADIUS_LIMITS, beta: [0.3, 1.35] }, (i, out) => this.simHead(i, out));
     // Holds the game view while the town overview drives the camera (never drawn).
     this.parked = new ArcRotateCamera('parkedCamera', cam.alpha, cam.beta, cam.radius, Vector3.Zero(), this.scene);
     this.parked.fov = cam.fov;

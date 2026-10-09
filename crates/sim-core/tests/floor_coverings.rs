@@ -20,7 +20,7 @@ const TOWN: &str = r#"{"width":16,"depth":12,
 
 fn world() -> World {
     let mut w = World::from_json(CONTENT, TOWN, 1).unwrap();
-    w.apply(Command::SetAutonomy { enabled: false }).unwrap();
+    w.apply(Command::SetAutonomy { enabled: false, household: None }).unwrap();
     w
 }
 

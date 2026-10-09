@@ -643,7 +643,7 @@ pub fn feeling_mood(list: &[ActiveFeeling], defs: &[FeelingDef]) -> f32 {
 
 // ---- Events -----------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum EventKind {
     Met,
@@ -670,9 +670,29 @@ pub enum EventKind {
     RentDebt,
     /// `a` upgraded something at home to quality `n`.
     Upgraded,
+    /// `a` found a job in `career` at level `n`.
+    JobFound,
+    /// `a` quit their job in `career` at level `n`.
+    QuitJob,
+    /// `a` was let go from `career` (level `n`) after missing too many shifts.
+    Fired,
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+impl EventKind {
+    /// How much an event matters to someone watching: 0 everyday, 1 notable, 2 a milestone.
+    pub fn importance(self) -> u8 {
+        use EventKind::*;
+        match self {
+            FirstKiss | StartedDating | BrokeUp | BecameBestFriends | Promoted | JobFound
+            | Fired => 2,
+            BecameFriends | BecameGoodFriends | BecameEnemies | Crush | ProposalRejected
+            | Fight | Jealous | QuitJob | RentDebt => 1,
+            Met | MissedWork | SkillUp | PaidRent | Upgraded | Visited => 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct SocialEvent {
     pub id: u64,
     pub tick: u64,
@@ -686,8 +706,11 @@ pub struct SocialEvent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub n: Option<i64>,
     /// Skill index, for skill events.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub skill: Option<u32>,
+    /// Career index, for job events.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub career: Option<u32>,
 }
 
 #[derive(Debug, Default)]
@@ -696,7 +719,8 @@ pub struct EventLog {
     events: VecDeque<SocialEvent>,
 }
 
-const EVENT_LOG_CAPACITY: usize = 40;
+/// The story so far: enough for a few weeks of a whole town.
+pub const EVENT_LOG_CAPACITY: usize = 300;
 
 impl EventLog {
     pub fn push(&mut self, tick: u64, kind: EventKind, a: usize, b: usize, c: Option<usize>) {
@@ -709,6 +733,29 @@ impl EventLog {
             c: c.map(|c| c as u32),
             n: None,
             skill: None,
+            career: None,
+        });
+    }
+
+    /// A job event about one Sim.
+    pub fn push_career(
+        &mut self,
+        tick: u64,
+        kind: EventKind,
+        a: usize,
+        career: usize,
+        n: Option<i64>,
+    ) {
+        self.add(SocialEvent {
+            id: 0,
+            tick,
+            kind,
+            a: a as u32,
+            b: a as u32,
+            c: None,
+            n,
+            skill: None,
+            career: Some(career as u32),
         });
     }
 
@@ -730,20 +777,45 @@ impl EventLog {
             c: None,
             n,
             skill: skill.map(|s| s as u32),
+            career: None,
         });
     }
 
     fn add(&mut self, mut event: SocialEvent) {
         self.next_id += 1;
         event.id = self.next_id;
-        if self.events.len() == EVENT_LOG_CAPACITY {
-            self.events.pop_front();
+        if self.events.len() >= EVENT_LOG_CAPACITY {
+            // Everyday events go first, so milestones are remembered longer.
+            let old = self.events.len() / 2;
+            match self.events.iter().take(old).position(|e| e.kind.importance() == 0) {
+                Some(i) => {
+                    self.events.remove(i);
+                }
+                None => {
+                    self.events.pop_front();
+                }
+            }
         }
         self.events.push_back(event);
     }
 
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &SocialEvent> {
         self.events.iter()
+    }
+
+    /// Id of the latest event.
+    pub fn last_id(&self) -> u64 {
+        self.next_id
+    }
+
+    /// Rebuilds a log from a save (oldest first); ids carry on after `next_id`.
+    pub fn restore(next_id: u64, events: impl IntoIterator<Item = SocialEvent>) -> Self {
+        let mut events: VecDeque<SocialEvent> = events.into_iter().collect();
+        while events.len() > EVENT_LOG_CAPACITY {
+            events.pop_front();
+        }
+        let next_id = events.iter().map(|e| e.id).fold(next_id, u64::max);
+        Self { next_id, events }
     }
 }
 

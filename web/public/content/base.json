@@ -866,6 +866,27 @@
       "emotion": "sad",
       "mood": -0.12,
       "hours": 24
+    },
+    {
+      "id": "newJob",
+      "label": "Started a new job",
+      "emotion": "happy",
+      "mood": 0.15,
+      "hours": 24
+    },
+    {
+      "id": "quitJob",
+      "label": "Quit a job",
+      "emotion": "relaxed",
+      "mood": 0.05,
+      "hours": 12
+    },
+    {
+      "id": "letGo",
+      "label": "Let go from work",
+      "emotion": "sad",
+      "mood": -0.2,
+      "hours": 36
     }
   ],
   "socials": [
@@ -1509,6 +1530,18 @@
     "missedFeeling": "skippedWork",
     "performancePerFit": 3,
     "probationLevels": 2,
+    "market": {
+      "hour": 9.5,
+      "dailyChance": 0.35,
+      "quitBelow": 0.3,
+      "quitChance": 0.15,
+      "minShiftsBeforeQuit": 10,
+      "fireAfterMissed": 3,
+      "cooldownDays": 2,
+      "hiredFeeling": "newJob",
+      "quitFeeling": "quitJob",
+      "firedFeeling": "letGo"
+    },
     "workweek": [
       {
         "fit": -99,
@@ -1662,7 +1695,10 @@
     "skillUp": "{a} reached {skill} level {n}",
     "paidRent": "{a}'s household paid {money} for rent and bills",
     "rentDebt": "{a}'s household couldn't cover {money} for rent and bills and is in debt",
-    "upgraded": "{a} upgraded something at home to quality {n}"
+    "upgraded": "{a} upgraded something at home to quality {n}",
+    "jobFound": "{a} got a job: {job}",
+    "quitJob": "{a} quit their job as {job}",
+    "fired": "{a} was let go from their job as {job}"
   },
   "tags": [
     "spa"
@@ -2692,12 +2728,22 @@
       "energy": 1.8
     },
     "asleepDecay": {
+      "energy": 0,
       "hunger": 0.4,
       "bladder": 0.35,
       "hygiene": 0.5,
       "fun": 0.2,
       "comfort": 0.3,
       "social": 0.2
+    },
+    "workDecay": {
+      "hunger": 0.3,
+      "energy": 0.35,
+      "bladder": 0.1,
+      "hygiene": 0.6,
+      "fun": 0.6,
+      "comfort": 0.5,
+      "social": 0.3
     },
     "wakeBeforeWorkMinutes": 75
   },

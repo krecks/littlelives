@@ -642,12 +642,12 @@ export class OverviewCamera {
   }
 }
 
-function ease(t: number): number {
+export function ease(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
 /** Shortest signed angle from a to b. */
-function angleDelta(a: number, b: number): number {
+export function angleDelta(a: number, b: number): number {
   let d = (b - a) % (Math.PI * 2);
   if (d > Math.PI) d -= Math.PI * 2;
   if (d < -Math.PI) d += Math.PI * 2;

@@ -64,6 +64,11 @@ impl Game {
         view::social_options_json(&self.world, actor as usize, target as usize)
     }
 
+    /// The whole story log, oldest first (JSON).
+    pub fn events(&self) -> String {
+        view::events_json(&self.world)
+    }
+
     /// Every career level plus object and build rules (JSON, static per game).
     pub fn catalog(&self) -> String {
         view::catalog_json(&self.world.content)

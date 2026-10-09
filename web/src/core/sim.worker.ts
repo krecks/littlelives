@@ -37,6 +37,8 @@ scope.onmessage = (e) => {
     } else if (msg.type === 'view') {
       region = msg.region;
       if (game) postWorld();
+    } else if (msg.type === 'events' && game) {
+      scope.postMessage({ type: 'events', requestId: msg.requestId, events: JSON.parse(game.events()) });
     } else if (msg.type === 'socialOptions' && game) {
       const options = JSON.parse(game.social_options(msg.actor, msg.target));
       scope.postMessage({ type: 'socialOptions', requestId: msg.requestId, options });

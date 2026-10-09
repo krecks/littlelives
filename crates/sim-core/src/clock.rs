@@ -4,9 +4,12 @@ use crate::MINUTES_PER_TICK;
 const START_MINUTE: f64 = 8.0 * 60.0;
 const MINUTES_PER_DAY: f64 = 24.0 * 60.0;
 
-/// Ticks simulated per real step (one step = 1 / TICKS_PER_SECOND seconds) for each speed.
-pub const TICKS_PER_STEP: [u32; 4] = [0, 1, 3, 10];
-pub const MAX_SPEED: u8 = 3;
+/// Ticks simulated per real step (one step = 1 / TICKS_PER_SECOND seconds) for each speed:
+/// paused, normal, fast, faster, time-lapse, fastest.
+pub const TICKS_PER_STEP: [u32; 6] = [0, 1, 3, 10, 30, 60];
+pub const MAX_SPEED: u8 = 5;
+/// Speed of "skip quiet hours" while the player's household sleeps or is out.
+pub const AUTO_FAST_SPEED: u8 = 4;
 
 pub fn total_minutes(tick: u64) -> f64 {
     START_MINUTE + tick as f64 * MINUTES_PER_TICK as f64

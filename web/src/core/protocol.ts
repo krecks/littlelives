@@ -6,7 +6,10 @@ import type { SnapshotLayout } from './snapshot';
 /** Mirrors `sim-core/src/command.rs`. */
 export type Command =
   | { type: 'setSpeed'; speed: number }
-  | { type: 'setAutonomy'; enabled: boolean }
+  /** Free will for a household (default: the player's). */
+  | { type: 'setAutonomy'; enabled: boolean; household?: number }
+  /** "Skip quiet hours": time-lapse while the player's household sleeps or is at work. */
+  | { type: 'setAutoFast'; enabled: boolean }
   | { type: 'use'; sim: number; object: number; interaction: number }
   | { type: 'moveTo'; sim: number; x: number; z: number }
   | { type: 'social'; sim: number; target: number; social: number }
@@ -296,7 +299,7 @@ export interface UiSnapshot {
   /** `undo`: build and buy edits the household can take back (absent from older workers). */
   households: { id: number; funds: number; rent: number | null; bills: number | null; style: number; undo?: number }[];
   relationships: RelationshipView[];
-  /** Recent social events, oldest first; ids increase monotonically. */
+  /** Recent story events, oldest first; ids increase monotonically (the whole log: `events` request). */
   events: SocialEvent[];
 }
 
@@ -321,6 +324,10 @@ export interface SocialEvent {
   n?: number;
   /** Skill index. */
   skill?: number;
+  /** Career index (catalog `careers`), for job events; `n` is then the level. */
+  career?: number;
+  /** 0 everyday, 1 notable, 2 a milestone. */
+  importance: number;
 }
 
 export interface SocialOption {
@@ -339,6 +346,8 @@ export type ToWorker =
   | { type: 'command'; command: Command }
   | { type: 'save'; requestId: number }
   | { type: 'socialOptions'; requestId: number; actor: number; target: number }
+  /** The whole story log. */
+  | { type: 'events'; requestId: number }
   /** Which part of the town to build geometry for (tile rectangle); null = everything. */
   | { type: 'view'; region: [number, number, number, number] | null };
 
@@ -348,6 +357,7 @@ export type FromWorker =
   | { type: 'ui'; ui: UiSnapshot }
   | { type: 'saved'; requestId: number; data: string }
   | { type: 'socialOptions'; requestId: number; options: SocialOption[] }
+  | { type: 'events'; requestId: number; events: SocialEvent[] }
   /** Fallback transport when SharedArrayBuffer is unavailable. */
   | { type: 'snapshot'; data: Float32Array }
   | { type: 'error'; message: string; fatal: boolean };

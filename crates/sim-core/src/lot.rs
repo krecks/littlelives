@@ -524,7 +524,7 @@ impl Lot {
     }
 
     /// Edge between two orthogonally adjacent in-bounds tiles.
-    fn edge_between(&self, ax: i32, az: i32, bx: i32, bz: i32) -> Edge {
+    pub(crate) fn edge_between(&self, ax: i32, az: i32, bx: i32, bz: i32) -> Edge {
         match (bx - ax, bz - az) {
             (1, 0) => self.v_edge(bx as usize, az as usize),
             (-1, 0) => self.v_edge(ax as usize, az as usize),

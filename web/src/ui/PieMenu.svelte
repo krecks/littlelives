@@ -5,6 +5,8 @@
 
   const RADIUS = 96;
   const menu = $derived(game.menu);
+  /** Who does it: the household member last looked at. */
+  const actor = $derived(game.sims.find((s) => s.id === game.selected));
   // Keep the ring on screen.
   const cx = $derived(menu ? Math.min(Math.max(menu.x, RADIUS + 80), innerWidth - RADIUS - 80) : 0);
   const cy = $derived(menu ? Math.min(Math.max(menu.y, RADIUS + 40), innerHeight - RADIUS - 40) : 0);
@@ -19,7 +21,7 @@
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
   <div class="scrim" onclick={() => services.controls.closeMenu()}></div>
   <div class="pie" style="left:{cx}px;top:{cy}px" role="menu" aria-label={menu.title}>
-    <div class="title">{menu.title}</div>
+    <div class="title">{menu.title}{#if actor}<small> · {actor.name}</small>{/if}</div>
     {#each menu.items as item, i (item.index)}
       {@const poor = item.cost !== undefined && item.cost > game.funds}
       <button

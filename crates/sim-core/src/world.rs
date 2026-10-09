@@ -3,7 +3,7 @@
 use std::collections::VecDeque;
 use std::f32::consts::FRAC_PI_2;
 
-use crate::clock::{MAX_SPEED, TICKS_PER_STEP};
+use crate::clock::{AUTO_FAST_SPEED, MAX_SPEED, TICKS_PER_STEP};
 use crate::content::{Content, MAX_NEEDS, MAX_SKILLS, MAX_SLOTS, Modifiers, Pose, TagMask};
 use crate::lot::{BondRaw, Lot, LotFile, SimSpawn};
 use crate::path::NavGrid;
@@ -139,6 +139,32 @@ impl ObjectInstance {
         let (x0, z0) = (self.x, self.z);
         (0..d).flat_map(move |dz| (0..w).map(move |dx| (x0 + dx, z0 + dz)))
     }
+
+    /// Pairs of neighbouring tiles that must not have a wall between them: inside the
+    /// footprint, and from the footprint to the front tile.
+    pub(crate) fn wall_edges(
+        &self,
+        content: &Content,
+    ) -> impl Iterator<Item = ((i32, i32), (i32, i32))> + use<> {
+        let (w, d) = self.size(content);
+        let (x0, z0) = (self.x, self.z);
+        let inside = (0..d).flat_map(move |dz| {
+            (0..w).flat_map(move |dx| {
+                let t = (x0 + dx, z0 + dz);
+                let right = (dx + 1 < w).then_some((t, (t.0 + 1, t.1)));
+                let down = (dz + 1 < d).then_some((t, (t.0, t.1 + 1)));
+                right.into_iter().chain(down)
+            })
+        });
+        let front = self.front_tile(content);
+        let (bx, bz) = match self.rot % 4 {
+            0 => (front.0, front.1 - 1),
+            1 => (front.0 - 1, front.1),
+            2 => (front.0, front.1 + 1),
+            _ => (front.0 + 1, front.1),
+        };
+        inside.chain(std::iter::once(((bx, bz), front)))
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -247,6 +273,8 @@ pub struct Sim {
     pub(crate) skill_ups: u32,
     /// Grows while practising and fades otherwise, so Sims don't train for hours on end.
     pub(crate) practice_fatigue: f32,
+    /// The first day this Sim looks for work again (after quitting or being let go).
+    pub job_search_from: u32,
 }
 
 impl Sim {
@@ -266,6 +294,13 @@ impl Sim {
 
     pub fn current(&self) -> Option<&Activity> {
         self.current.as_ref()
+    }
+
+    /// In bed for the night (or a nap): using something tagged as sleep.
+    pub fn asleep(&self, content: &Content) -> bool {
+        self.current.as_ref().is_some_and(|a| {
+            a.tags & content.day_rhythm.sleep_tags != 0 && matches!(a.phase, Phase::Using { .. })
+        })
     }
 
     pub fn queue(&self) -> impl Iterator<Item = &Task> {
@@ -399,6 +434,8 @@ pub struct Household {
     pub funds: i64,
     /// Preferred object style for purchases (index into `Content::styles`).
     pub style: u8,
+    /// "Free will": whether this household's residents choose what to do on their own.
+    pub free_will: bool,
 }
 
 /// Per-tick snapshot of other Sims, so each Sim can reason about the others
@@ -428,7 +465,8 @@ pub struct World {
     pub(crate) blocked: Vec<bool>,
     pub tick: u64,
     pub speed: u8,
-    /// "Free will": whether idle Sims choose activities on their own.
+    /// Master switch for "free will" in the whole town (each household also has its own,
+    /// `Household::free_will`). Off is mainly for tests.
     pub autonomy: bool,
     pub(crate) rng: Rng,
     pub(crate) structure_version: u32,
@@ -439,6 +477,9 @@ pub struct World {
     pub meta: serde_json::Value,
     /// Build and buy edits that can be taken back, oldest first (see `World::undo`).
     pub(crate) undo: Vec<crate::home::HomeSnapshot>,
+    /// "Skip quiet hours": run at `AUTO_FAST_SPEED` while the player's household is asleep
+    /// or out and nothing notable happened at home in the last hour (see `World::calm`).
+    pub auto_fast: bool,
 }
 
 /// Read-only context for one Sim's update.
@@ -498,6 +539,7 @@ impl World {
                 player: true,
                 funds: starting_funds,
                 style: 0,
+                free_will: true,
             }]
         } else {
             lot_file
@@ -511,6 +553,7 @@ impl World {
                     player: h.player,
                     funds: h.funds.unwrap_or(starting_funds),
                     style: 0,
+                    free_will: true,
                 })
                 .collect()
         };
@@ -559,6 +602,7 @@ impl World {
             exits: Vec::new(),
             meta: serde_json::Value::Null,
             undo: Vec::new(),
+            auto_fast: false,
         }
     }
 
@@ -621,6 +665,12 @@ impl World {
         let (fx, fz) = obj.front_tile(&self.content);
         if !self.lot.in_bounds(fx, fz) {
             return Err(Error::new(format!("'{name}' at {x},{z} faces off the lot")));
+        }
+        // No wall may run through the footprint or between the object and where it's used from.
+        if obj.wall_edges(&self.content).any(|(a, b)| {
+            self.lot.edge_between(a.0, a.1, b.0, b.1).is_wall()
+        }) {
+            return Err(Error::new(format!("'{name}' at {x},{z} is blocked by a wall")));
         }
         Ok(obj)
     }
@@ -696,13 +746,7 @@ impl World {
                     .career_index(&j.career)
                     .ok_or_else(|| Error::new(format!("{name}: unknown career '{}'", j.career)))?;
                 let level = j.level.min(content.careers[career].levels.len() - 1);
-                Some(crate::life::Job {
-                    career,
-                    level,
-                    performance: 0.0,
-                    last_shift_day: 0,
-                    shift_mood: 0.5,
-                })
+                Some(crate::life::Job::new(career, level, 0))
             }
         };
         // Traits give a head start; explicit levels win; anyone placed in a job has the skills for it.
@@ -758,6 +802,7 @@ impl World {
             skills,
             skill_ups: 0,
             practice_fatigue: 0.0,
+            job_search_from: 0,
         });
         self.relationships.grow(self.sims.len());
         Ok(self.sims.len() as u32 - 1)
@@ -811,11 +856,41 @@ impl World {
         Ok(())
     }
 
-    /// Advances one real-time step (1 / TICKS_PER_SECOND s) at the current speed.
+    /// Advances one real-time step (1 / TICKS_PER_SECOND s) at the current speed, faster
+    /// while it's calm at home and `auto_fast` is on.
     pub fn advance(&mut self) {
-        for _ in 0..TICKS_PER_STEP[self.speed as usize] {
+        let normal = TICKS_PER_STEP[self.speed as usize];
+        let most = if self.auto_fast && normal > 0 {
+            normal.max(TICKS_PER_STEP[AUTO_FAST_SPEED as usize])
+        } else {
+            normal
+        };
+        for i in 0..most {
+            if i >= normal && !self.calm() {
+                break;
+            }
             self.tick_once();
         }
+    }
+
+    /// Whether time may skip ahead: everyone in the player's household is asleep or away at
+    /// work, and nothing notable happened to them in the last game hour.
+    pub fn calm(&self) -> bool {
+        let home = |h: u32| self.households[h as usize].player;
+        let mut members = self.sims.iter().filter(|s| home(s.household)).peekable();
+        if members.peek().is_none() {
+            return false;
+        }
+        let quiet = members.all(|s| s.away_until.is_some() || s.asleep(&self.content));
+        let hour_ago = self.tick.saturating_sub((60.0 / MINUTES_PER_TICK) as u64);
+        quiet
+            && !self.events.iter().rev().take_while(|e| e.tick >= hour_ago).any(|e| {
+                e.kind.importance() >= 1
+                    && [Some(e.a), Some(e.b), e.c]
+                        .into_iter()
+                        .flatten()
+                        .any(|s| self.sims.get(s as usize).is_some_and(|s| home(s.household)))
+            })
     }
 
     pub fn tick_once(&mut self) {
@@ -893,7 +968,10 @@ impl World {
             return self.undo(sim);
         }
         let snapshot = cmd.home_edit().and_then(|sim| self.home_snapshot(sim));
-        let keeps_history = matches!(cmd, Command::SetSpeed { .. } | Command::SetAutonomy { .. });
+        let keeps_history = matches!(
+            cmd,
+            Command::SetSpeed { .. } | Command::SetAutonomy { .. } | Command::SetAutoFast { .. }
+        );
         self.apply_command(cmd)?;
         match snapshot {
             Some(s) => self.remember(s),
@@ -911,7 +989,19 @@ impl World {
                 }
                 self.speed = speed;
             }
-            Command::SetAutonomy { enabled } => self.autonomy = enabled,
+            Command::SetAutoFast { enabled } => self.auto_fast = enabled,
+            Command::SetAutonomy { enabled, household } => {
+                if let Some(h) = household {
+                    self.households
+                        .get_mut(h as usize)
+                        .ok_or_else(|| Error::new(format!("unknown household {h}")))?
+                        .free_will = enabled;
+                } else {
+                    for h in self.households.iter_mut().filter(|h| h.player) {
+                        h.free_will = enabled;
+                    }
+                }
+            }
             Command::Use {
                 sim,
                 object,
@@ -987,15 +1077,11 @@ impl World {
                         s.name, position.title
                     )));
                 }
-                // Starting today doesn't count: the first shift is tomorrow's.
-                let today = crate::clock::day(self.tick);
-                s.job = Some(crate::life::Job {
+                s.job = Some(crate::life::Job::new(
                     career,
                     level,
-                    performance: 0.0,
-                    last_shift_day: today,
-                    shift_mood: 0.5,
-                });
+                    crate::clock::day(self.tick),
+                ));
             }
             Command::QuitCareer { sim } => {
                 self.sims
@@ -1175,10 +1261,7 @@ pub(crate) fn practise(sim: &mut Sim, content: &Content, skill: usize, per_hour:
 fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut Rng) {
     let content = ctx.content;
     let rhythm = &content.day_rhythm;
-    let asleep = sim
-        .current
-        .as_ref()
-        .is_some_and(|a| a.tags & rhythm.sleep_tags != 0 && matches!(a.phase, Phase::Using { .. }));
+    let asleep = sim.asleep(content);
     let night = !asleep && rhythm.sleep_tags != 0 && is_night(sim, ctx);
     let practising = sim.current.as_ref().is_some_and(|a| {
         matches!(a.phase, Phase::Using { .. })
@@ -1193,7 +1276,9 @@ fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
             .max(0.0)
     };
     for (n, def) in content.needs.iter().enumerate() {
-        let rhythm_factor = if asleep {
+        let rhythm_factor = if sim.away_until.is_some() {
+            rhythm.work_decay[n]
+        } else if asleep {
             rhythm.asleep_decay[n]
         } else if night {
             rhythm.night_decay[n]
@@ -1230,7 +1315,8 @@ fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
             start_task(sim, task, ctx, objects);
         } else {
             sim.idle_ticks += 1;
-            if ctx.autonomy && sim.idle_ticks >= AUTONOMY_DELAY_TICKS {
+            let free_will = ctx.autonomy && ctx.households[sim.household as usize].free_will;
+            if free_will && sim.idle_ticks >= AUTONOMY_DELAY_TICKS {
                 sim.idle_ticks = 0;
                 if let Some(task) = pick_autonomous(sim, ctx, objects, rng) {
                     start_task(sim, task, ctx, objects);
@@ -1357,11 +1443,10 @@ fn pick_autonomous(
         }
     }
 
-    // NPC households visit friends who are home. Player Sims only travel when told to.
+    // Residents visit friends who are home.
     let household = &ctx.households[sim.household as usize];
     let visits = &content.visits;
-    if !household.player
-        && sim.visiting.is_none()
+    if sim.visiting.is_none()
         && here.is_some()
         && here == household.plot
         && (visits.earliest_hour..visits.latest_hour).contains(&ctx.hour)
@@ -1452,7 +1537,10 @@ fn start_task(sim: &mut Sim, task: Task, ctx: &Ctx, objects: &mut [ObjectInstanc
             (exit, (exit[0].floor() as i32, exit[1].floor() as i32), 0)
         }
         TaskKind::Visit { plot } => {
-            sim.transition = Some(crate::life::Transition::Visit(plot));
+            sim.transition = Some(crate::life::Transition::Visit {
+                plot,
+                directed: task.directed,
+            });
             let door = ctx.plots[plot as usize].arrival_point();
             (
                 door,
@@ -1767,6 +1855,19 @@ mod tests {
     }
 
     #[test]
+    fn furniture_cannot_straddle_or_face_a_wall() {
+        let mut w = world();
+        // The wall runs along x = 6 for z 0..10: a 2-wide bed across it doesn't fit.
+        let err = w.place_object("bed", 5, 5, 0).unwrap_err();
+        assert!(err.to_string().contains("wall"), "{err}");
+        // Facing +x (rot 1) from x = 5 means using it from across the wall.
+        let err = w.place_object("fridge", 5, 7, 1).unwrap_err();
+        assert!(err.to_string().contains("wall"), "{err}");
+        // Turned away from the wall it's fine.
+        w.place_object("fridge", 5, 7, 3).unwrap();
+    }
+
+    #[test]
     fn speed_controls_tick_rate() {
         let mut w = world();
         w.apply(Command::SetSpeed { speed: 0 }).unwrap();
@@ -1776,6 +1877,35 @@ mod tests {
         w.advance();
         assert_eq!(w.tick, TICKS_PER_STEP[3] as u64);
         assert!(w.apply(Command::SetSpeed { speed: 9 }).is_err());
+    }
+
+    #[test]
+    fn quiet_hours_skip_ahead() {
+        let content = CONTENT
+            .replace(r#""pose":"lie","#, r#""pose":"lie","tags":["sleep"],"#)
+            .replace(r#""needs":["#, r#""dayRhythm":{"sleepTags":["sleep"]},"needs":["#);
+        let mut w = World::from_json(&content, LOT, 7).unwrap();
+        w.apply(Command::SetSpeed { speed: 1 }).unwrap();
+        w.apply(Command::SetAutoFast { enabled: true }).unwrap();
+        w.advance();
+        assert_eq!(w.tick, 1, "awake: normal speed");
+        w.sims[0].needs[1] = 0.0;
+        w.apply(Command::Use {
+            sim: 0,
+            object: 1,
+            interaction: 0,
+        })
+        .unwrap();
+        while !w.sims[0].asleep(&w.content) {
+            w.tick_once();
+        }
+        let before = w.tick;
+        w.advance();
+        let fast = TICKS_PER_STEP[AUTO_FAST_SPEED as usize] as u64;
+        assert_eq!(w.tick, before + fast, "asleep: time-lapse");
+        w.apply(Command::SetSpeed { speed: 0 }).unwrap();
+        w.advance();
+        assert_eq!(w.tick, before + fast, "paused stays paused");
     }
 
     #[test]

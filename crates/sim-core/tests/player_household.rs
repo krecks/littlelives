@@ -54,22 +54,17 @@ fn a_neighbour_household_can_be_the_players() {
     assert_eq!(w.plot_at(o.x, o.z), Some(1));
     assert_eq!(w.households[1].funds, 400);
 
-    // Rent and bills for their home; the story feed reports only the player's payment.
+    // Rent and bills for their home, paid from their own funds (every household's payment is
+    // in the story log).
     let (rent, bills) = life::weekly_costs(&w, 1).unwrap();
     until(&mut w, 7, 12.5);
     let paid: Vec<i64> = w
         .events
         .iter()
-        .filter(|e| e.kind == EventKind::PaidRent)
+        .filter(|e| e.kind == EventKind::PaidRent && w.sims[e.a as usize].household == 1)
         .filter_map(|e| e.n)
         .collect();
     assert_eq!(paid, [rent + bills]);
-    assert!(
-        w.events
-            .iter()
-            .filter(|e| e.kind == EventKind::PaidRent)
-            .all(|e| w.sims[e.a as usize].household == 1)
-    );
     let funds = w.households[1].funds;
 
     // Saving and loading keeps who the player is.

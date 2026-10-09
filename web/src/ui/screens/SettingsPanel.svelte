@@ -5,7 +5,7 @@
   import Segmented from '../kit/Segmented.svelte';
   import Toggle from '../kit/Toggle.svelte';
 
-  const tabs = ['Graphics', 'Gameplay', 'Interface', 'Controls'] as const;
+  const tabs = ['Graphics', 'Gameplay', 'Watching', 'Interface', 'Controls'] as const;
   let tab = $state<(typeof tabs)[number]>('Graphics');
 
   // Remember restart-only values when opened during a game, to show a notice if they change.
@@ -18,14 +18,16 @@
   });
 
   const keys = [
-    ['Left-click a resident / Tab', 'Select a resident'],
+    ['Left-click a resident / Tab', 'Look at a resident'],
     ['Left-click object', 'Interaction menu'],
-    ['Left-click floor', 'Walk there'],
+    ['Left-click floor', 'Walk there (while looking at a resident)'],
     ['Left-drag / right-drag', 'Rotate / pan camera'],
     ['Mouse wheel', 'Zoom'],
-    ['Space · 0–3', 'Pause · game speed'],
+    ['Space · 0–5', 'Pause · game speed'],
+    ['F · H', 'Follow a resident · whole house'],
+    ['J', 'Journal'],
     ['W', 'Walls up / down'],
-    ['Esc', 'Pause menu'],
+    ['Esc', 'Close · pause menu'],
     ['F3', 'Performance overlay'],
   ];
 </script>
@@ -96,7 +98,7 @@
       </div>
     {:else if tab === 'Gameplay'}
       <div class="row">
-        <div><b>Free will</b><span>Residents look after their own needs when you don't give orders.</span></div>
+        <div><b>Free will</b><span>Your residents live their own lives: needs, friends, visits and work. Neighbours always do.</span></div>
         <Toggle label="Free will" bind:checked={settings.autonomy} />
       </div>
       <div class="row">
@@ -109,6 +111,57 @@
             { value: 2, label: '2 min' },
             { value: 5, label: '5 min' },
             { value: 10, label: '10 min' },
+          ]}
+        />
+      </div>
+    {:else if tab === 'Watching'}
+      <div class="row">
+        <div><b>Watch on its own</b><span>After a while without input the camera follows what happens at home. Any click, key or scroll takes it back.</span></div>
+        <Segmented
+          label="Watch on its own"
+          bind:value={settings.directorDelay}
+          options={[
+            { value: 0, label: 'Off' },
+            { value: 20, label: '20 s' },
+            { value: 45, label: '45 s' },
+            { value: 90, label: '90 s' },
+          ]}
+        />
+      </div>
+      <div class="row">
+        <div><b>Camera pace</b><span>Calm lingers on each moment; lively moves on sooner.</span></div>
+        <Segmented
+          label="Camera pace"
+          bind:value={settings.directorPace}
+          options={[
+            { value: 'calm', label: 'Calm' },
+            { value: 'lively', label: 'Lively' },
+          ]}
+        />
+      </div>
+      <div class="row">
+        <div><b>Quiet interface</b><span>The interface fades while the camera watches; move the mouse to see it.</span></div>
+        <Toggle label="Quiet interface" bind:checked={settings.hideHudWhileWatching} />
+      </div>
+      <div class="row">
+        <div><b>Slow down for big moments</b><span>A first kiss, a new job or a fight at home plays at normal speed.</span></div>
+        <Toggle label="Slow down for big moments" bind:checked={settings.autoSlow} />
+      </div>
+      <div class="row">
+        <div><b>Skip quiet hours</b><span>Time-lapse while everyone at home sleeps or is at work.</span></div>
+        <Toggle label="Skip quiet hours" bind:checked={settings.skipQuietHours} />
+      </div>
+      <div class="row">
+        <div>
+          <b>Clicking residents</b>
+          <span>Look first: a click opens their panel and orders come from there. Give orders: clicks command the selected resident straight away.</span>
+        </div>
+        <Segmented
+          label="Clicking residents"
+          bind:value={settings.directControl}
+          options={[
+            { value: 'inspect', label: 'Look first' },
+            { value: 'always', label: 'Give orders' },
           ]}
         />
       </div>

@@ -1,8 +1,20 @@
 # Littlelives: Technical Plan
 
-*Status: M1 skeleton built (2026-10-07). See "Status" below.*
+*Status: v0.6.0 (2026-10-08). Direction changed on 2026-10-09: see "Game direction" below.*
 
-A life simulation with a classic life-sim feel that runs entirely in the browser: Rust/WASM simulation core, a GPU renderer, a Svelte 5 + CSS interface, and saves stored in the browser.
+A home-building game with a living simulation that runs entirely in the browser: Rust/WASM simulation core, a GPU renderer, a Svelte 5 + CSS interface, and saves stored in the browser.
+
+## Game direction: build your home, then watch it live
+
+**Building and designing your home is the main activity. The residents live in it on their own, and you watch them, like an aquarium or an ant farm.** You build everything; the simulation does the rest.
+
+- **Watching is the default.** Left alone, Live mode directs its own camera: it glides to conversations, fights, first kisses, someone trying out the thing you just built, guests arriving, and otherwise slowly orbits the house or looks into a room. Any input hands the camera back.
+- **You steer, you don't command.** Each resident has a **planner**: a weekly calendar of routines ("train 1 h at 18:00 Mon/Wed/Fri", "sleep 23–7", "cook dinner") and life goals ("get a job", "get promoted", "find love"). Routines are a strong nudge, not an order: urgent needs and traits can win, and mood and discipline decide how well residents stick to them. Residents also suggest goals of their own. Direct control (click an object, talk to someone) stays available from the Inspect panel.
+- **The house matters.** Room size, light, decor, cleanliness and what a room is for change how residents feel and what they choose. A missing bed or toilet has visible consequences. Residents form opinions about rooms and wish for things, and wishes and planner gaps link straight to the catalog. Watching tells you what to build next.
+- **Lives move on.** Residents find and lose jobs on their own, age, fall in love, move in together, have children, grow old, move out or pass away; newcomers arrive in empty houses. The house has to grow with the family.
+- **One home, a living town.** You build one home; the rest of the neighbourhood keeps simulating and neighbours visit.
+- **Creative or Living.** Each game is either Creative (building is free) or Living (the residents earn the money). Build and Buy mode pause time.
+- **Start from an empty lot** or a ready-made house, with a family you design, a random one, or none yet ("build first, they move in later").
 
 **Ground rules (from the project owner):**
 - **Performance is the top priority.** The CPU runs the game logic; the GPU does everything visual.
@@ -19,12 +31,19 @@ A life simulation with a classic life-sim feel that runs entirely in the browser
 | WASM bridge | Sim in a Web Worker at 20 Hz; seqlock snapshot over SharedArrayBuffer (with conversation, emotion and animation fields); requests for saves and social options. |
 | Renderer | **Only the viewed lot is drawn** (its walls/floors are generated per region; other houses appear as silhouettes; residents elsewhere or at work are hidden); the view follows the selected resident. Babylon.js 9.29 on WebGPU (WebGL2 fallback), thin instances everywhere, snapshot rendering, time-of-day lighting with a gradient sky dome and distance fog, procedural landscape (terrain hills, clustered forests, lawn detail), roads, swappable hair models, procedural conversation body language. Town plus landscape: about 105 draw calls at 60 fps. |
 | UI | Main menu, settings, credits, load/save with thumbnails, pause menu. **Menus over a live 3D town** (`render/babylon/overview.ts`, `game/menuScene.ts`): the shared renderer draws a whole-neighbourhood overview (every lot as a dressed shell, street, gardens, park; golden hour on the title screen) behind every menu screen; the neighbourhood and home steps use it as a clickable map (lot glow, tags pinned to lots, camera glides), and Move in flies the camera into the lot. New game: **neighbourhood creator → household creator (gender, attraction, skin, hair, clothes, traits, perks, bonds) → home picker**. The household creator shows the in-game 3D resident (`render/preview`: a small second engine, only alive while the stage is shown or portraits are drawn) with drag-to-turn, zoom to the face and little reactions; avatars everywhere are 3D head-and-shoulders portraits, drawn in batches and cached by look. HUD: resident panel (Now / People / Feelings), social menu with chances, story feed, speech bubbles. |
-| Not yet | Renderer bake-off (M0), cutaway walls, floors/roofs/stairs in build mode, skinned characters, knocking/greeting visitors, children and school, lamps, audio. Background simulation runs at full fidelity (cheap at town scale); a lower-detail mode for far-away lots would only matter for much larger towns. |
+| Not yet | See the roadmap in section 8. Also: renderer bake-off (M0), roofs and stairs in build mode, skinned characters, knocking/greeting visitors, lamps that give light, audio. (Cutaway walls and floor coverings are done.) Background simulation runs at full fidelity (cheap at town scale); a lower-detail mode for far-away lots would only matter for much larger towns. |
 
 ### Startup performance
 - The renderer (engine, compiled shaders and pipelines, cached object meshes, landscape) is owned by a long-lived **game host** and reused across sessions; sessions only swap world contents.
 - Sessions are **prepared in the background**, paused and without input: the latest save while the main menu is open, and the chosen house on the home screen. Their world builds hidden behind the menus' town overview (camera layer masks, `render/babylon/layers.ts`) and is drawn invisibly for a few frames so its shaders and pipelines are ready. Starting is then a reveal: a fade for a saved game, a camera flight into the lot for a new one. The overview and a new game of the same town share one landscape.
 - Measured (production build, headless Chrome, M-series Mac): Continue 286 ms with 110 + 165 ms main-thread stalls → **48 ms, no long tasks**; Move in 397 ms → **98 ms, no long tasks**. The remaining cost of a cold start is WebGPU shader/pipeline compilation, which now happens while the player is still in a menu.
+
+### Findings from the town soak test (0.7)
+`crates/sim-core/tests/soak.rs` runs a 9-house town with free will on and no orders (14 days in every test run, 60 days with `--release -- --ignored`), checking world invariants every game hour. About 600k ticks/s for 26 residents natively, so even the fastest speed (1200 ticks/s) is far from the CPU budget.
+- **Careers climb too fast and pay too much:** in 60 days residents reach the top grades and households hold $100–200k. Living mode (0.9) needs a pay and promotion rebalance, or building is never limited by money.
+- **Crowded houses wear people down:** households of four with one bathroom have the lowest needs (residents wait for the toilet with bladder near zero). That's the house mattering; 0.11 should make it visible (thoughts, wishes) rather than hide it.
+- **The story is thin on romance and conflict** over weeks (few first kisses, almost no fights); everyone ends up friends. Planner goals ("find love") and life events should give it more arcs.
+- Stable resident ids were moved from 0.7 to 0.12: nobody is removed before then, so the saved story log can keep naming residents by index and is converted when 0.12 loads it. Thought bubbles moved to 0.8 (thoughts come with the planner).
 
 ### Known issues and findings from the first build
 - **Babylon SSAO2 on WebGPU fails to bind its sampler on about 1 in 4 startups** (`randomSampler not found`, then `createBindGroup` errors and a frozen frame). It still fails when the pipeline is created late, so ambient occlusion is off by default; `?quality=ultra` turns it back on for testing upstream fixes.
@@ -227,19 +246,24 @@ The snapshot memory layout is **defined once in Rust** (`sim-core/src/snapshot.r
 
 ## 8. Milestones
 
-| # | Milestone | Done when |
-|---|---|---|
-| **M0** | **Renderer bake-off** (about 1 week). *Pending; the M1 skeleton uses Babylon.js behind the `Renderer` interface.* | One "stress lot" (2-storey house, ~1,500 objects, 30 lamps, sun shadows plus post-processing, 20 skinned residents) built in **PlayCanvas, three.js and Babylon.js (with snapshot rendering)**, judged on how much work each engine lets us move to the GPU. Measured CPU/GPU ms in Chrome, Safari and Firefox on a Mac and a Windows integrated-GPU laptop. **The winner is locked in.** |
-| M1 ✅ | Skeleton | Monorepo, Rust→WASM build, sim worker, SharedArrayBuffer bridge, renderer showing a lot with camera controls, Svelte HUD shell, cross-origin-isolated dev server. |
-| M2 ◐ | Living resident | 1 resident, 8 needs, 8 smart objects, autonomy, click-to-move, pathfinding, interaction pie menu, time controls. *Mostly done in the skeleton: 2 residents, 6 needs, 10 objects.* |
-| M3 | Look pass | Time-of-day lighting, shadows, ambient occlusion, bloom, tilt-shift, cutaway walls, UI design polish. *The "stunning" milestone.* |
-| M4 | Build and Buy | Walls/floors/doors/windows, room detection, catalog, placement, undo/redo. |
-| M5 | Household | Multiple residents, relationships, conversations, multi-resident interactions. |
-| M6 | Persistence | Save/load, autosave, multiple save slots, schema migration. |
-| M7 | Household creator | Modular characters, outfits, traits. |
-| Later | Careers, skills, neighbourhood, audio. |
+Done: M1 skeleton, living residents, look pass (lighting, shadows, tilt-shift, cutaway walls), Build and Buy (walls, diagonals, rooms, paint, floors, doors, windows, undo), household and town, persistence, household creator, careers and skills (v0.2–v0.6).
 
-Every milestone ships with: native sim tests, a perf-harness run in CI (headless Chrome), and the frame-time budget checked.
+**Roadmap for "build your home, then watch it live"** (one release each; each bumps the save version and migrates older saves):
+
+| Release | Theme | Done when |
+|---|---|---|
+| 0.7 | **Watch mode** + autonomy foundations | Stable resident ids; free will per household; the player's household visits on its own; residents find, quit and lose jobs on their own; saved story log with home and town scope; faster speeds and auto-fast at night; wall-straddle fix; town soak tests. Director camera, household strip, Inspect panel, Journal, thought bubbles, camera dock, "Watching" settings. |
+| 0.8 | **Planner** | Per-resident weekly routines (strong nudge) and household templates; life goals with progress; goals suggested by residents; thoughts and wishes; calendar UI with drag/resize, today's timeline, outcomes with reasons, catalog links. |
+| 0.9 | **Builder's start** | Creative/Living per game; empty lot; household optional ("move a family in" later); build and buy addressed to the household. |
+| 0.10 | Build depth I | Incremental world updates; redo; eyedropper; roof style and colour; lamps that give light; fences and gates; free rotation for decor. |
+| 0.11 | **The house matters** | Room scores (size, light, decor, cleanliness, function); environment need; dirt, wear and repairs; essentials with fallbacks and accidents; room opinions and wishes; room-score overlay and "Our home" panel. |
+| 0.12 | Life cycle I | Aging, elders, death or retirement, partners moving in, grown children moving out, newcomers, family relations. |
+| 0.13 | Life cycle II | Pregnancy and adoption, babies, children, teens, school; child and elder bodies. |
+| later | Bigger homes | Lot sizes, blueprints, moving a room, then multiple storeys and stairs (1.0+). |
+| later | **Resident voices** (after 0.7) | The selected resident, and conversations the player starts, are spoken aloud by a model that runs in the browser: **Kokoro-82M** for English (about 92 MB, downloaded on request) and **Babble**, a made-up language with no download. A benchmark in Settings picks CPU or GPU per machine. Presentation only, no sim changes. Plan: [docs/design/voices.md](docs/design/voices.md). |
+| later | Smarter thoughts (research) | An optional small language model in the browser (Chrome's built-in Gemini Nano, or a ~0.6–0.8B Qwen model through Transformers.js) writes thoughts and dialogue for actions the utility AI already chose, feeding Resident voices. The utility AI keeps deciding; a model may at most re-rank its top-3 shortlist, entering the sim as a recorded command so saves and replays stay deterministic. Jev/OpenJev-style decision models were assessed (2026-10-09): no browser builds, 200–800 MB and slow next to utility scoring, so not used. |
+
+Every release ships with native sim tests (including the town soak), `pnpm check`, and the frame-time budget checked.
 
 ---
 
@@ -252,7 +276,7 @@ Every milestone ships with: native sim tests, a perf-harness run in CI (headless
 | No Firefox WebGPU on Linux | WebGL2 fallback is built in and tested (`?renderer=webgl`); budgets are measured on WebGL2 too. |
 | Cross-origin isolation blocks third-party embeds | Self-host all assets; `postMessage` fallback path. |
 | Benchmark bias toward PlayCanvas | M0 bake-off on our own scene decides. |
-| Scope creep (life sims are huge) | Strict milestones; M2 + M3 make a playable, beautiful vertical slice first. |
+| Scope creep (life sims are huge) | Strict releases (section 8). Building and watching come first; direct control stays as it is. |
 | Trademark ✅ | Done: the project is called Littlelives (see "Naming" below). Use only original or licensed art. |
 
 ---

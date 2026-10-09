@@ -7,9 +7,15 @@ pub enum Command {
     SetSpeed {
         speed: u8,
     },
-    /// Turn "free will" on or off for the whole household.
+    /// "Skip quiet hours": speed up while the player's household sleeps or is at work.
+    SetAutoFast {
+        enabled: bool,
+    },
+    /// Turn "free will" on or off for a household (default: the player's).
     SetAutonomy {
         enabled: bool,
+        #[serde(default)]
+        household: Option<u32>,
     },
     /// Queue an interaction on an object for a Sim.
     Use {

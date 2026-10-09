@@ -31,9 +31,7 @@
         <b>{target.name}</b>
         <span class="sub">{mine ? 'Your household' : `The ${household?.name}s`}</span>
       </div>
-      {#if mine}
-        <button class="btn switch" onclick={() => services.controls.selectSim(target.id)}>Play as {target.name}</button>
-      {/if}
+      <button class="btn switch" onclick={() => services.controls.inspect(target.id)}>Look at {target.name}</button>
     </header>
 
     {#if rel}

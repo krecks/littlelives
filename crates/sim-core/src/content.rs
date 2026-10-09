@@ -286,6 +286,28 @@ pub struct CareerRules {
     pub workweek: Vec<WorkweekRule>,
     pub promotion_feeling: Option<usize>,
     pub missed_feeling: Option<usize>,
+    /// Residents finding, quitting and losing jobs on their own (none without it).
+    pub market: Option<JobMarket>,
+}
+
+/// How residents with free will find, quit and lose jobs.
+#[derive(Debug, Clone)]
+pub struct JobMarket {
+    /// Hour of the day the job search happens.
+    pub hour: f32,
+    /// Chance per day that an unemployed resident finds a job (doubled when money is short).
+    pub daily_chance: f32,
+    /// Job satisfaction (0..1, the mood they leave for work in) below which they may quit.
+    pub quit_below: f32,
+    pub quit_chance: f32,
+    pub min_shifts_before_quit: u32,
+    /// Missed shifts in a row (worked shifts make up for them) before being let go.
+    pub fire_after_missed: u8,
+    /// Days before someone who quit or was let go looks again.
+    pub cooldown_days: u32,
+    pub hired_feeling: Option<usize>,
+    pub quit_feeling: Option<usize>,
+    pub fired_feeling: Option<usize>,
 }
 
 #[derive(Debug)]
@@ -336,6 +358,9 @@ pub struct DayRhythm {
     pub night_decay: [f32; MAX_NEEDS],
     /// Need decay multipliers while asleep.
     pub asleep_decay: [f32; MAX_NEEDS],
+    /// Need decay multipliers while at work (there's lunch and a bathroom there; the job's
+    /// `workEffects` come on top).
+    pub work_decay: [f32; MAX_NEEDS],
     /// Sims with an early shift get up this long before they leave.
     pub wake_before_work_minutes: f32,
 }
@@ -399,6 +424,8 @@ pub struct VisitRules {
     /// Expected need gains from a visit (for autonomy scoring).
     pub gains: [f32; MAX_NEEDS],
     pub hours: f32,
+    /// How long a visit the player asked for lasts.
+    pub directed_hours: f32,
     pub min_friendship: f32,
     pub earliest_hour: f32,
     pub latest_hour: f32,
@@ -730,6 +757,7 @@ struct DayRhythmRaw {
     sleep_tags: Vec<String>,
     night_decay: HashMap<String, f32>,
     asleep_decay: HashMap<String, f32>,
+    work_decay: HashMap<String, f32>,
     wake_before_work_minutes: Option<f32>,
 }
 
@@ -822,6 +850,22 @@ struct CareerRulesRaw {
     promotion_feeling: Option<String>,
     #[serde(alias = "missedMoodlet")] // key before the moodlet → feeling rename
     missed_feeling: Option<String>,
+    market: Option<JobMarketRaw>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct JobMarketRaw {
+    hour: Option<f32>,
+    daily_chance: Option<f32>,
+    quit_below: Option<f32>,
+    quit_chance: Option<f32>,
+    min_shifts_before_quit: Option<u32>,
+    fire_after_missed: Option<u8>,
+    cooldown_days: Option<u32>,
+    hired_feeling: Option<String>,
+    quit_feeling: Option<String>,
+    fired_feeling: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -844,6 +888,7 @@ struct ScheduleRaw {
 struct VisitRaw {
     needs: HashMap<String, f32>,
     hours: Option<f32>,
+    directed_hours: Option<f32>,
     min_friendship: Option<f32>,
     earliest_hour: Option<f32>,
     latest_hour: Option<f32>,
@@ -1457,6 +1502,21 @@ impl Content {
             workweek,
             promotion_feeling: feeling(&cr.promotion_feeling, "careerRules")?,
             missed_feeling: feeling(&cr.missed_feeling, "careerRules")?,
+            market: match &cr.market {
+                None => None,
+                Some(m) => Some(JobMarket {
+                    hour: m.hour.unwrap_or(9.5),
+                    daily_chance: m.daily_chance.unwrap_or(0.35).clamp(0.0, 1.0),
+                    quit_below: m.quit_below.unwrap_or(0.3),
+                    quit_chance: m.quit_chance.unwrap_or(0.15).clamp(0.0, 1.0),
+                    min_shifts_before_quit: m.min_shifts_before_quit.unwrap_or(10),
+                    fire_after_missed: m.fire_after_missed.unwrap_or(3).max(1),
+                    cooldown_days: m.cooldown_days.unwrap_or(2),
+                    hired_feeling: feeling(&m.hired_feeling, "careerRules.market")?,
+                    quit_feeling: feeling(&m.quit_feeling, "careerRules.market")?,
+                    fired_feeling: feeling(&m.fired_feeling, "careerRules.market")?,
+                }),
+            },
         };
 
         let sr = &raw.skill_rules;
@@ -1490,6 +1550,7 @@ impl Content {
             sleep_tags: tag_mask(&dr.sleep_tags),
             night_decay: multipliers(&dr.night_decay, "dayRhythm")?,
             asleep_decay: multipliers(&dr.asleep_decay, "dayRhythm")?,
+            work_decay: multipliers(&dr.work_decay, "dayRhythm")?,
             wake_before_work_minutes: dr.wake_before_work_minutes.unwrap_or(75.0),
         };
         let rent = raw
@@ -1548,6 +1609,9 @@ impl Content {
         let visits = VisitRules {
             gains: need_array(&v.needs, "visits")?,
             hours: v.hours.unwrap_or(3.0),
+            directed_hours: v
+                .directed_hours
+                .unwrap_or(v.hours.unwrap_or(3.0) * 2.0),
             min_friendship: v.min_friendship.unwrap_or(15.0),
             earliest_hour: v.earliest_hour.unwrap_or(9.0),
             latest_hour: v.latest_hour.unwrap_or(21.0),

@@ -20,6 +20,10 @@ pub mod header {
     pub const SPEED: usize = 3;
     pub const SIM_COUNT: usize = 4;
     pub const STRUCTURE_VERSION: usize = 5;
+    /// 1 while time skips ahead because it's quiet at home (`World::calm`), else 0.
+    pub const CALM: usize = 6;
+    /// Id of the latest milestone event (importance 2) modulo 2^24, 0 if none yet.
+    pub const MAJOR_EVENT: usize = 7;
 }
 
 pub mod sim {
@@ -99,6 +103,13 @@ pub fn write(world: &World, out: &mut [f32]) {
     out[header::SPEED] = world.speed as f32;
     out[header::SIM_COUNT] = world.sims.len() as f32;
     out[header::STRUCTURE_VERSION] = world.structure_version() as f32;
+    out[header::CALM] = (world.auto_fast && world.speed > 0 && world.calm()) as u8 as f32;
+    out[header::MAJOR_EVENT] = world
+        .events
+        .iter()
+        .rev()
+        .find(|e| e.kind.importance() >= 2)
+        .map_or(0.0, |e| (e.id % (1 << 24)) as f32);
     for (i, s) in world.sims.iter().enumerate() {
         let o = &mut out[HEADER_LEN + i * SIM_STRIDE..HEADER_LEN + (i + 1) * SIM_STRIDE];
         o[sim::ID] = s.id as f32;
@@ -156,6 +167,7 @@ pub fn layout_json(content: &Content) -> String {
             "tick": header::TICK, "day": header::DAY, "minute": header::MINUTE,
             "speed": header::SPEED, "simCount": header::SIM_COUNT,
             "structureVersion": header::STRUCTURE_VERSION,
+            "calm": header::CALM, "majorEvent": header::MAJOR_EVENT,
         },
         "sim": {
             "id": sim::ID, "x": sim::X, "z": sim::Z, "yaw": sim::YAW,

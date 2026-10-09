@@ -9,7 +9,9 @@
     { value: 0, icon: 'icon.ui.pause', label: 'Pause (Space)' },
     { value: 1, icon: 'icon.ui.speed1', label: 'Normal speed (1)' },
     { value: 2, icon: 'icon.ui.speed2', label: 'Fast (2)' },
-    { value: 3, icon: 'icon.ui.speed3', label: 'Ultra (3)' },
+    { value: 3, icon: 'icon.ui.speed3', label: 'Faster (3)' },
+    { value: 4, icon: 'icon.ui.speed4', label: 'Time-lapse (4)' },
+    { value: 5, icon: 'icon.ui.speed5', label: 'Fastest (5)' },
   ];
   const modes = [
     { id: 'live', icon: 'icon.ui.live', label: 'Live', key: 'L' },
@@ -66,6 +68,25 @@
   </div>
 
   <div class="glass group">
+    {#if game.mode === 'live'}
+      <button
+        class="tool"
+        class:active={game.watching}
+        title={game.watching ? 'Watching (any input takes the camera back)' : 'Watch: the camera follows what happens at home'}
+        aria-label="Watch"
+        aria-pressed={game.watching}
+        onclick={() => services.controls.watch()}
+      >
+        <Icon name="icon.ui.watch" />
+      </button>
+      <button class="tool" title="Whole house (H)" aria-label="Show the whole house" onclick={() => services.controls.frameHouse()}>
+        <Icon name="icon.ui.home" />
+      </button>
+      <button class="tool" class:active={game.journalOpen} title="Journal (J)" aria-label="Journal" aria-pressed={game.journalOpen} onclick={() => services.controls.toggleJournal()}>
+        <Icon name="icon.ui.journal" />
+      </button>
+      <span class="divider" aria-hidden="true"></span>
+    {/if}
     <span class="funds tabular" class:debt={game.funds < 0} title={fundsTitle}>
       <Icon name="icon.ui.funds" size={16} />{money(game.funds)}
       {#if game.rent !== null}<small>rent + bills {money(game.rent + (game.bills ?? 0))}/wk</small>{/if}
@@ -191,6 +212,11 @@
     border-radius: var(--radius-sm);
     color: var(--text-muted);
     transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+  }
+  .divider {
+    width: 1px;
+    height: 22px;
+    background: var(--hairline);
   }
   .tool:disabled {
     opacity: 0.4;

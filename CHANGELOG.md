@@ -2,6 +2,27 @@
 
 All notable changes to Littlelives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
+## Unreleased (0.7.0)
+
+The game's new direction: build your home, then watch it live (see "Game direction" in PLAN.md). This release is about watching.
+
+### New
+- **Watching:** leave the game alone for 20 seconds and the camera follows what happens at home on its own: conversations, fights, first kisses, someone trying out what you just built, guests arriving. When nothing is going on it looks around the house. Any click, key or scroll takes the camera back at once. The eye button in the top bar starts it right away.
+- **Household strip:** everyone at a glance along the bottom: what they're doing, where they are, how they feel, and which need is running low. Guests on your lot show up next to it.
+- **Look first:** clicking a resident opens their panel (anyone, guests and neighbours too) instead of giving orders. From the panel you can still step in: click a person to talk to, an object to use, or the floor to walk. *Settings → Watching → Clicking residents* brings back the old way.
+- **Follow** a resident (F, or the button in their panel), also when they visit friends. Otherwise the view stays at home. **H** shows the whole house.
+- **Journal (J):** the story so far, by day: your home, everyone, or just the big moments. Click an entry to see the people involved.
+- **Faster time:** time-lapse (4) and fastest (5). *Skip quiet hours* speeds through the night and work hours when nobody is home or awake, and big moments slow the game down to normal speed for a while.
+- **Residents live on their own:** they look for work by themselves (newcomers usually find a job within days), may quit a job they're unhappy in, and are let go after missing too many shifts. Your household visits friends on its own like the neighbours do, and visits you ask for end after a while.
+- *Settings → Watching:* when the camera starts watching, how often it moves on, a quiet interface while watching, slowing down for big moments, skipping quiet hours.
+
+### Changed
+- Free will is per household now; the *Free will* setting applies to your household (the neighbours always have it).
+- Residents don't come home from work with every need at zero any more (there's lunch and a bathroom at work), and sleeping no longer makes them more tired.
+- The story feed is calmer: your household's news and the town's big moments, three at a time; clicking one shows it.
+- Furniture can't be placed across a wall or facing one, and a wall can't be built through furniture or in front of it.
+- The story is saved with the game. Saves are now version 8; older saves load as before.
+
 ## 0.6.0 — 2026-10-08
 
 **Play it in your browser:** https://krecks.github.io/littlelives/

@@ -9,7 +9,18 @@ export interface SnapshotLayout {
   simStride: number;
   maxSims: number;
   ticksPerSecond: number;
-  header: { tick: number; day: number; minute: number; speed: number; simCount: number; structureVersion: number };
+  header: {
+    tick: number;
+    day: number;
+    minute: number;
+    speed: number;
+    simCount: number;
+    structureVersion: number;
+    /** 1 while time skips ahead because it's quiet at home (missing in older layouts). */
+    calm?: number;
+    /** Id of the latest milestone event modulo 2^24 (missing in older layouts). */
+    majorEvent?: number;
+  };
   sim: {
     id: number;
     x: number;

@@ -7,8 +7,8 @@
   const needs = services.content.needs;
 </script>
 
-{#if game.selectedSim}
-  {@const values = game.selectedSim.needs}
+{#if game.inspectedSim}
+  {@const values = game.inspectedSim.needs}
   <section class="needs glass">
     <h2>Needs</h2>
     <div class="grid">

@@ -3106,6 +3106,26 @@
       "type": "icon",
       "url": "icons/speed3.svg"
     },
+    "icon.ui.speed4": {
+      "type": "icon",
+      "url": "icons/speed4.svg"
+    },
+    "icon.ui.speed5": {
+      "type": "icon",
+      "url": "icons/speed5.svg"
+    },
+    "icon.ui.watch": {
+      "type": "icon",
+      "url": "icons/eye.svg"
+    },
+    "icon.ui.follow": {
+      "type": "icon",
+      "url": "icons/follow.svg"
+    },
+    "icon.ui.journal": {
+      "type": "icon",
+      "url": "icons/book.svg"
+    },
     "icon.ui.wallsUp": {
       "type": "icon",
       "url": "icons/walls-up.svg"

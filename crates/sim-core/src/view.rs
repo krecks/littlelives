@@ -23,8 +23,34 @@ struct UiState<'a> {
     sims: Vec<SimView<'a>>,
     households: Vec<FundsView>,
     relationships: Vec<RelView>,
-    /// Most recent social events, oldest first.
-    events: Vec<&'a SocialEvent>,
+    /// Most recent story events, oldest first.
+    events: Vec<EventView<'a>>,
+}
+
+/// A story event plus how much it matters (0 everyday, 1 notable, 2 a milestone).
+#[derive(Serialize)]
+struct EventView<'a> {
+    #[serde(flatten)]
+    event: &'a SocialEvent,
+    importance: u8,
+}
+
+impl<'a> From<&'a SocialEvent> for EventView<'a> {
+    fn from(event: &'a SocialEvent) -> Self {
+        Self {
+            event,
+            importance: event.kind.importance(),
+        }
+    }
+}
+
+/// Events in the UI state (the whole log is fetched with `events_json`).
+const UI_EVENTS: usize = 30;
+
+/// The whole story log, oldest first (JSON array).
+pub fn events_json(world: &World) -> String {
+    let events: Vec<EventView> = world.events.iter().map(EventView::from).collect();
+    serde_json::to_string(&events).expect("events serialize")
 }
 
 #[derive(Serialize)]
@@ -343,8 +369,8 @@ pub fn ui_state_json(world: &World) -> String {
         }
     }
 
-    let skip = world.events.iter().count().saturating_sub(20);
-    let events: Vec<&SocialEvent> = world.events.iter().skip(skip).collect();
+    let skip = world.events.iter().count().saturating_sub(UI_EVENTS);
+    let events: Vec<EventView> = world.events.iter().skip(skip).map(EventView::from).collect();
     let day = clock::day(world.tick);
 
     serde_json::to_string(&UiState {

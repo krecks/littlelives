@@ -244,7 +244,29 @@ export class BuildBuyInput {
       [x - 1, z + Math.floor((d - 1) / 2)],
     ][rot % 4];
     if (!onPlot(front[0], front[1]) || taken(front[0], front[1])) return null;
+    // As the simulation: no wall through the footprint, or between it and where it's used from.
+    for (let tz = z; tz < z + d; tz++) {
+      for (let tx = x; tx < x + w; tx++) {
+        if (this.diagonals.has(`${tx}:${tz}`)) return null;
+        if ((tx + 1 < x + w && this.wallBetween(tx, tz, tx + 1, tz)) || (tz + 1 < z + d && this.wallBetween(tx, tz, tx, tz + 1))) return 'Blocked by a wall';
+      }
+    }
+    const [fx, fz] = front;
+    const back = [
+      [fx, fz - 1],
+      [fx - 1, fz],
+      [fx, fz + 1],
+      [fx + 1, fz],
+    ][rot % 4];
+    if (this.wallBetween(back[0], back[1], fx, fz)) return 'Faces a wall';
     return moving !== null || game.funds >= (def.price ?? Infinity) ? true : null;
+  }
+
+  /** Whether a wall (with or without a door or window) stands between two neighbouring tiles. */
+  private wallBetween(ax: number, az: number, bx: number, bz: number): boolean {
+    const edge =
+      bx !== ax ? { axis: 'v' as const, x: Math.max(ax, bx), z: az } : { axis: 'h' as const, x: ax, z: Math.max(az, bz) };
+    return this.edgeState(edge) !== 'open';
   }
 
   private hoverBuy(ground: Point): void {

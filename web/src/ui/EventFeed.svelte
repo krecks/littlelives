@@ -1,57 +1,17 @@
 <script lang="ts">
-  import type { SocialEvent } from '../core/protocol';
   import Icon from './Icon.svelte';
-  import { money } from './format';
   import { services } from './services';
   import { game } from './state.svelte';
-
-  const icons: Record<string, string> = {
-    met: 'icon.social.introduce',
-    becameFriends: 'icon.social.chat',
-    becameGoodFriends: 'icon.social.hug',
-    becameBestFriends: 'icon.social.hug',
-    becameEnemies: 'icon.social.insult',
-    crush: 'icon.bubble.love',
-    firstKiss: 'icon.social.kiss',
-    startedDating: 'icon.social.askPartner',
-    brokeUp: 'icon.social.breakUp',
-    proposalRejected: 'icon.bubble.bad',
-    fight: 'icon.social.fight',
-    jealous: 'icon.emotion.angry',
-    promoted: 'icon.ui.career',
-    missedWork: 'icon.ui.career',
-    visited: 'icon.ui.home',
-    paidRent: 'icon.ui.funds',
-    rentDebt: 'icon.ui.funds',
-    upgraded: 'icon.ui.upgrade',
-  };
-  const iconFor = (e: SocialEvent) =>
-    e.kind === 'skillUp' ? (services.content.skills[e.skill ?? -1]?.icon ?? 'icon.ui.skills') : (icons[e.kind] ?? 'icon.need.social');
-  const tone = (kind: string) =>
-    ['crush', 'firstKiss', 'startedDating'].includes(kind)
-      ? 'love'
-      : ['becameEnemies', 'brokeUp', 'fight', 'jealous', 'proposalRejected', 'missedWork', 'rentDebt'].includes(kind)
-        ? 'bad'
-        : 'good';
-
-  const name = (id: number | undefined) => game.roster.find((s) => s.id === id)?.name ?? 'Someone';
-  function text(e: SocialEvent): string {
-    const template = services.content.eventTexts[e.kind] ?? '{a} and {b}';
-    return template
-      .replace('{a}', name(e.a))
-      .replace('{b}', name(e.b))
-      .replace('{c}', name(e.c))
-      .replace('{n}', String(e.n ?? ''))
-      .replace('{money}', money(e.n ?? 0))
-      .replace('{skill}', services.content.skills[e.skill ?? -1]?.label ?? '');
-  }
+  import { storyIcon, storyText, storyTone } from './story';
 </script>
 
-<ol class="feed" aria-live="polite">
+<ol class="feed" class:hidden={game.journalOpen} aria-live="polite">
   {#each game.feed as f (f.event.id)}
-    <li class={tone(f.event.kind)}>
-      <span class="icon"><Icon name={iconFor(f.event)} size={16} /></span>
-      {text(f.event)}
+    <li class={storyTone(f.event)} class:milestone={f.event.importance >= 2}>
+      <button title="Show" onclick={() => services.controls.showEvent(f.event)}>
+        <span class="icon"><Icon name={storyIcon(f.event)} size={16} /></span>
+        {storyText(f.event)}
+      </button>
     </li>
   {/each}
 </ol>
@@ -70,11 +30,11 @@
     gap: 6px;
     pointer-events: none;
   }
+  .feed.hidden {
+    display: none;
+  }
   li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
+    pointer-events: auto;
     border-radius: var(--radius-md);
     background: var(--glass-strong);
     border: 1px solid var(--glass-border);
@@ -86,6 +46,19 @@
     animation:
       slide var(--slow) var(--ease),
       fade 12s linear forwards;
+  }
+  li.milestone {
+    border-color: var(--accent);
+  }
+  li button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    text-align: left;
+    font: inherit;
+    color: inherit;
   }
   .icon {
     display: grid;

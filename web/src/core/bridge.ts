@@ -3,7 +3,7 @@
  * into interpolatable frames for the renderer. Allocation-free per frame.
  */
 
-import type { Catalog, Command, FromWorker, GameSource, SocialOption, ToWorker, UiSnapshot, WorldStructure } from './protocol';
+import type { Catalog, Command, FromWorker, GameSource, SocialEvent, SocialOption, ToWorker, UiSnapshot, WorldStructure } from './protocol';
 import { SharedSnapshotReader, type SnapshotLayout } from './snapshot';
 
 /** What the renderer needs each frame. Reused; do not keep references across frames. */
@@ -110,6 +110,11 @@ export class SimBridge {
     return this.request<SocialOption[]>((requestId) => ({ type: 'socialOptions', requestId, actor, target }));
   }
 
+  /** The whole story log, oldest first. */
+  requestEvents(): Promise<SocialEvent[]> {
+    return this.request<SocialEvent[]>((requestId) => ({ type: 'events', requestId }));
+  }
+
   private request<T>(message: (requestId: number) => ToWorker): Promise<T> {
     const requestId = this.nextRequest++;
     return new Promise<T>((resolve) => {
@@ -209,6 +214,9 @@ export class SimBridge {
         break;
       case 'socialOptions':
         this.resolve(msg.requestId, msg.options);
+        break;
+      case 'events':
+        this.resolve(msg.requestId, msg.events);
         break;
       case 'error':
         for (const fn of this.errorListeners) fn(msg.message);

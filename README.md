@@ -1,6 +1,6 @@
 # Littlelives
 
-A life-simulation game that runs in the browser. The game logic is written in Rust and compiled to WebAssembly; rendering runs on the GPU through WebGPU, with a WebGL2 fallback. The interface is Svelte 5 with plain CSS. Desktop only.
+A home-building game with a living simulation that runs in the browser: you build and design your home, and its residents live in it on their own while you watch (see "Game direction" in [PLAN.md](PLAN.md)). The game logic is written in Rust and compiled to WebAssembly; rendering runs on the GPU through WebGPU, with a WebGL2 fallback. The interface is Svelte 5 with plain CSS. Desktop only.
 
 **▶ Play it in your browser: https://krecks.github.io/littlelives/** (desktop Chrome, Edge, Brave or Safari; other browsers use the WebGL2 fallback).
 
@@ -29,9 +29,11 @@ pnpm dev          # builds the WASM module, then starts Vite on http://localhost
 
 ## Playing
 
-**New game:** create a neighbourhood (town size, neighbour households) → either play one of the households who already live there (**Play** on its card or its lot; they keep their home, jobs and friendships) or create your household in the 3D household creator (drag to turn a resident, scroll to zoom to the face; gender, who they're attracted to, skin, hair, clothes, traits, perks, starting bonds) → choose a vacant house → move in. Everyone in town lives, works, socialises and falls in and out of love on their own; you control your household. Only the lot your selected resident is on is drawn; the rest of the town keeps simulating in the background.
+**New game:** create a neighbourhood (town size, neighbour households) → either play one of the households who already live there (**Play** on its card or its lot; they keep their home, jobs and friendships) or create your household in the 3D household creator (drag to turn a resident, scroll to zoom to the face; gender, who they're attracted to, skin, hair, clothes, traits, perks, starting bonds) → choose a vacant house → move in. Everyone in town lives, works, socialises and falls in and out of love on their own, your household included; you build their home and watch. Only your lot is drawn (or the lot of a resident you follow); the rest of the town keeps simulating in the background.
 
-- **Jobs (1000 of them):** 25 categories (journalism, detective work, fire & rescue, social media, IT, TV, mechanics, finance, …) × 4 tracks × 10 grades **A–J**. The grade sets pay per hour ($15/h at A up to $300/h at J) and the skill level the job expects. Open the job board from the *Career* tab, filter by category, grade or what your resident can take, and join any position you qualify for — up to two levels short is allowed *on probation*. Promotions need a full performance bar **and** the next grade's skills.
+- **Watching:** leave the game alone and the camera follows what happens at home (conversations, fights, first kisses, someone using what you just built, guests); any input takes it back. The household strip at the bottom shows everyone at a glance; click a resident to look closer (and step in from their panel), **F** follows them, **H** shows the whole house, **J** opens the journal. Speeds 4 and 5 are time-lapse; quiet hours (everyone asleep or at work) skip ahead.
+
+- **Jobs (1000 of them):** residents look for work on their own (and may quit or be let go); you can also pick a job yourself. 25 categories (journalism, detective work, fire & rescue, social media, IT, TV, mechanics, finance, …) × 4 tracks × 10 grades **A–J**. The grade sets pay per hour ($15/h at A up to $300/h at J) and the skill level the job expects. Open the job board from the *Career* tab, filter by category, grade or what your resident can take, and join any position you qualify for — up to two levels short is allowed *on probation*. Promotions need a full performance bar **and** the next grade's skills.
 - **Skills:** Intelligence, Strength, Endurance, Charisma, Creativity, Technology, Handiness, Cooking, Writing, Perception, Dexterity, Business and Gardening (0–10). Work trains the job's skills; at home, residents practise with things you buy (treadmill, weight bench, chess table, computer desk, easel, mirror, workbench, telescope, piano, gourmet cooking, studying, tending the garden, pruning a bonsai). Traits give starting skills and faster learning in some.
 - **Workweek:** the standard week is set by the job (mostly Mon–Fri). Skills change it: on probation residents work an extra day, two levels above the requirements a day less (*Flexible*), four levels above two days less (*Expert*). The weekly salary stays the same, so a shorter week pays more per shift.
 - **Money:** household funds are in dollars. Rent and bills are charged every Sunday at noon: rent depends on the lot size, and bills grow with the value of everything the household owns. Items cost nothing per use; only takeout, deliveries and similar purchases do. A household that can't pay goes into debt and its residents worry about money.
@@ -44,18 +46,19 @@ pnpm dev          # builds the WASM module, then starts Vite on http://localhost
 
 | Input | Action |
 |---|---|
-| Left-click your resident / avatar, Tab | Select a household member |
-| Left-click another resident | Social menu (chat, flirt, argue, …) with success chances |
+| Left-click a resident / their card, Tab | Look at them (their panel) |
+| Left-click another resident while looking at one of yours | Social menu (chat, flirt, argue, …) with success chances |
 | Left-click an object | Interaction menu |
-| Left-click the floor | Walk there |
+| Left-click the floor | Walk there (while looking at one of yours); otherwise close the panel |
+| F · H · J | Follow the resident · whole house · journal |
 | Left-drag / right-drag / wheel | Rotate / pan / zoom |
 | Left-drag on the lot (Walls, Remove) | Draw or tear down walls along the drag (at 45°: diagonal); right-click or Esc cancels. The camera then turns with middle-drag or by dragging off the lot |
-| Space, 0–3 | Pause, game speed |
+| Space, 0–5 | Pause, game speed (4, 5: time-lapse) |
 | W | Walls up → cutaway → down |
 | M | Town map (who's home, visiting) |
 | L / V / B | Live / Buy / Build mode (V or B again goes back to Live) |
 | R, Delete | Rotate / sell the object in hand or selected (Buy mode) |
-| Esc | Steps back: put down what's in hand, leave Buy or Build mode — then the pause menu (save, load, settings, quit) |
+| Esc | Steps back: put down what's in hand, leave Buy or Build mode, close the journal, stop following, close a resident's panel — then the pause menu (save, load, settings, quit) |
 | F3 | Performance overlay (with *Save debug report*) |
 | F8 | Save a debug report: screenshot, game state and recent errors. With `pnpm dev` it goes to `debug-reports/<time>/` in the project; open `?debugReport=<time>` to load it with the same camera. Other builds download it as a file. |
 

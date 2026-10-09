@@ -114,7 +114,19 @@ class GameState {
   jobBoardOpen = $state(false);
   /** Plot currently shown. */
   viewPlot = $state<number | null>(null);
+  /** Who acts on orders (a member of the player's household). */
   selected = $state(0);
+  /** Resident whose panel is open (anyone; orders only for the player's household); null: just watching. */
+  inspected = $state<number | null>(null);
+  /** Resident the camera follows (also to other lots); null: the camera stays home. */
+  follow = $state<number | null>(null);
+  /** The camera is watching on its own (the director). */
+  watching = $state(false);
+  /** The mouse moved lately: a quiet interface shows itself again for a moment. */
+  hudAwake = $state(false);
+  journalOpen = $state(false);
+  /** The story so far (the whole log, fetched when the journal opens, then kept up to date). */
+  journal = $state.raw<SocialEvent[]>([]);
   wallMode = $state<WallMode>('cutaway');
   menu = $state.raw<MenuState | null>(null);
   perfOpen = $state(false);
@@ -123,6 +135,7 @@ class GameState {
   toasts = $state.raw<Toast[]>([]);
 
   selectedSim = $derived(this.sims.find((s) => s.id === this.selected) ?? null);
+  inspectedSim = $derived(this.inspected === null ? null : (this.sims.find((s) => s.id === this.inspected) ?? null));
 
   /** Clears per-session state when leaving a game. */
   reset(): void {
@@ -139,6 +152,11 @@ class GameState {
     this.viewPlot = null;
     this.stats = null;
     this.selected = 0;
+    this.inspected = null;
+    this.follow = null;
+    this.watching = false;
+    this.journalOpen = false;
+    this.journal = [];
     this.day = 1;
     this.minute = 480;
     this.mode = 'live';

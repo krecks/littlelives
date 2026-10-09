@@ -1,7 +1,7 @@
 /** Non-reactive handles the UI needs. Set once by the game layer before the HUD mounts. */
 
 import type { AssetRegistry } from '../assets/registry';
-import type { EdgeEdit, FacePaint } from '../core/protocol';
+import type { EdgeEdit, FacePaint, SocialEvent } from '../core/protocol';
 import type { BuildTool, GameMode } from './state.svelte';
 import type { Content } from '../content/content';
 import type { ItemPreviews, SimPreviews, WallMode } from '../render/types';
@@ -9,7 +9,20 @@ import type { ItemPreviews, SimPreviews, WallMode } from '../render/types';
 export interface GameControls {
   setSpeed(speed: number): void;
   togglePause(): void;
+  /** Picks who acts on orders (a member of the player's household). */
   selectSim(id: number): void;
+  /** Opens a resident's panel (anyone; null closes it). */
+  inspect(id: number | null): void;
+  /** The camera follows a resident, also to other lots (null: back home). */
+  follow(id: number | null): void;
+  /** The camera starts watching on its own now (the director). */
+  watch(): void;
+  /** Frames the whole house. */
+  frameHouse(): void;
+  /** Opens or closes the journal (the story so far). */
+  toggleJournal(): void;
+  /** Shows the people of a story event, if they're at home. */
+  showEvent(event: SocialEvent): void;
   /** Take level `level` (grade) of career `career` (catalog index). */
   joinCareer(career: number, level: number): void;
   quitCareer(): void;
