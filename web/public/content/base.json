@@ -3145,6 +3145,7 @@
     "retireFeeling": "retired",
     "death": {"from": 75, "perYear": 0.04, "growth": 0.12},
     "grief": {"feeling": "grieving", "lightFeeling": "missesSomeone", "close": 60, "friend": 35},
+    "newcomers": {"hour": 12, "days": 3},
     "moving": {"hour": 11, "partners": 0.2, "romance": 60, "leaveHomeAge": 23, "leaveHome": 0.1, "leaveTownAge": 30, "leaveTown": 0.05},
     "stages": [
       {"id": "youngAdult", "label": "Young adult", "from": 18, "story": "is a young adult now"},

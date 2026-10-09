@@ -1193,7 +1193,7 @@ impl World {
 
     /// Chemistry and household bonds for every pair with one of the `new` residents in it (the
     /// others already have theirs; the gone have none), then `bonds` (indices into the list).
-    fn init_relationships_for(&mut self, new: &[usize], bonds: &[BondRaw]) -> Result<(), Error> {
+    pub(crate) fn init_relationships_for(&mut self, new: &[usize], bonds: &[BondRaw]) -> Result<(), Error> {
         let n = self.sims.len();
         let default_bond = self.content.social_rules.default_bond;
         for a in 0..n {

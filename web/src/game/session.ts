@@ -27,7 +27,7 @@ import { Director } from './director';
 import { BuildBuyInput, editFeedback, type Picked } from './buildmode';
 import { styledModel } from '../ui/buy/catalog';
 import { play } from '../ui/sfx';
-import { householdBonds, householdSpawns, type HouseholdDraft } from './household';
+import { householdBonds, householdSpawns, lookFromSeed, type HouseholdDraft } from './household';
 import { PointerInput } from './input';
 import { assembleTown, loadTemplates, type NeighbourhoodDraft } from './town';
 
@@ -640,6 +640,11 @@ export async function startSession(
   });
   bridge.onWorld((w) => {
     if (disposed) return;
+    // Newcomers the simulation made up carry an appearance seed: give them their look.
+    for (const s of w.sims) {
+      const seed = (s.appearance as { seed?: number } | null)?.seed;
+      if (typeof seed === 'number') s.appearance = lookFromSeed(assets, s.gender, seed);
+    }
     // Buy mode: show what the simulation just accepted (furniture popping in, dust, money).
     const feedback = game.mode !== 'live' && world && worldView === viewPlot ? editFeedback(world, w) : null;
     if (feedback?.sound) play(feedback.sound);

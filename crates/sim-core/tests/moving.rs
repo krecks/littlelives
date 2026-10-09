@@ -96,3 +96,39 @@ fn grown_children_move_into_a_house_of_their_own_or_leave_town() {
     assert!(!w.sims[3].here(), "Fin left town");
     assert!(w.events.iter().any(|e| e.kind == EventKind::MovedAway && e.a == 3));
 }
+
+#[test]
+fn newcomers_move_into_vacant_houses() {
+    let content = CONTENT.replace(
+        r#""moving":{"#,
+        r#""newcomers":{"hour":12,"days":1},"moving":{"#,
+    ).replace(
+        r#""rules":{"maxHousehold":4},"#,
+        r#""rules":{"maxHousehold":4,"minTraits":0,"maxTraits":2},
+           "traits":[{"id":"neat","label":"Neat"},{"id":"slob","label":"Slob","conflicts":["neat"]},{"id":"cheerful","label":"Cheerful"}],
+           "names":{"first":["Ana","Ben","Cleo","Dev"],"last":["Moss","Reed"]},
+           "genders":[{"id":"female","label":"Female"},{"id":"male","label":"Male"}],"#,
+    );
+    let mut w = World::from_json(&content, &town("", ""), 1).unwrap();
+    // Someone left town before: a newcomer takes the slot.
+    w.depart(0, sim_core::world::GoneWhy::MovedAway);
+    days(&mut w, 1);
+    let h = w.households.iter().position(|h| h.plot == Some(2)).expect("a household for the house that was for sale");
+    let members: Vec<usize> = (0..w.sims.len()).filter(|&i| w.sims[i].here() && w.sims[i].household as usize == h).collect();
+    assert_eq!(members.len(), 1, "one bed, one newcomer");
+    let s = &w.sims[members[0]];
+    assert_eq!(members[0], 0, "in the slot someone left");
+    assert!(["Ana", "Ben", "Cleo", "Dev"].contains(&s.name.as_str()));
+    assert!(["Moss", "Reed"].contains(&w.households[h].name.as_str()));
+    assert!(s.appearance["seed"].is_u64(), "an appearance seed for the web");
+    assert!(!(s.traits.contains(&"neat".into()) && s.traits.contains(&"slob".into())), "no clashing traits");
+    assert_eq!(w.households[h].funds, 1000);
+    assert!(w.events.iter().any(|e| e.kind == EventKind::MovedIn && e.a == 0));
+    // The player's home is never given away, even empty.
+    w.depart(1, sim_core::world::GoneWhy::MovedAway);
+    w.depart(2, sim_core::world::GoneWhy::MovedAway);
+    let player_plot = w.households[0].plot;
+    days(&mut w, 3);
+    assert!(w.sims.iter().filter(|s| s.here()).all(|s| w.households[s.household as usize].plot != player_plot || s.household == 0));
+    assert!(!w.sims.iter().any(|s| s.here() && s.household == 0), "nobody moved into the player's home");
+}

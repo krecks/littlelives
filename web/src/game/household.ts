@@ -79,7 +79,7 @@ export function palette(
   return assets.get(key, 'palette')?.colors ?? ['#CCCCCC'];
 }
 
-const pick = <T>(list: readonly T[]): T => list[Math.floor(Math.random() * list.length)];
+const pick = <T>(list: readonly T[], rand: () => number = Math.random): T => list[Math.floor(rand() * list.length)];
 
 /** The gender each appearance made by `randomSim` belongs to (for avatars given only a look). */
 const lookGenders = new WeakMap<object, string>();
@@ -88,8 +88,8 @@ export function genderOfLook(appearance: Appearance): string | undefined {
 }
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-function weighted<T>(options: readonly [T, number][]): T {
-  let roll = Math.random() * options.reduce((s, [, w]) => s + w, 0);
+function weighted<T>(options: readonly [T, number][], rand: () => number = Math.random): T {
+  let roll = rand() * options.reduce((s, [, w]) => s + w, 0);
   for (const [value, w] of options) {
     if ((roll -= w) < 0) return value;
   }
@@ -107,10 +107,10 @@ function randomAttraction(content: Content, gender: string): string[] {
   ]);
 }
 
-function randomHair(gender: string): HairStyle {
+function randomHair(gender: string, rand: () => number = Math.random): HairStyle {
   return gender === 'female'
-    ? weighted<HairStyle>([['long', 50], ['bun', 25], ['short', 25]])
-    : weighted<HairStyle>([['short', 75], ['long', 10], ['none', 15]]);
+    ? weighted<HairStyle>([['long', 50], ['bun', 25], ['short', 25]], rand)
+    : weighted<HairStyle>([['short', 75], ['long', 10], ['none', 15]], rand);
 }
 
 /** A first name that suits `gender`, avoiding `taken` names while there are others. */
@@ -161,16 +161,7 @@ export function randomSim(content: Content, assets: AssetRegistry, taken: readon
   for (const p of [...content.perks].sort(() => Math.random() - 0.5)) {
     if (content.perkCost([...perks, p.id]) <= content.rules.perkPoints && Math.random() < 0.6) perks.push(p.id);
   }
-  const appearance: Appearance = {
-    body: pick(palette(assets, 'palette.outfit')),
-    skin: pick(palette(assets, 'palette.skin')),
-    hair: pick(palette(assets, 'palette.hair')),
-    hairStyle: randomHair(gender),
-    height: Math.round((0.94 + Math.random() * 0.12) * 100) / 100,
-    beard: gender === 'male' && Math.random() < 0.2,
-    ...pickOutfit(gender),
-  };
-  lookGenders.set(appearance, gender);
+  const appearance = randomLook(assets, gender);
   return {
     uid: uid(),
     name: randomFirstName(content, gender, taken),
@@ -181,6 +172,35 @@ export function randomSim(content: Content, assets: AssetRegistry, taken: readon
     perks,
     age: randomAge(content),
   };
+}
+
+/** A random look for `gender` (the creator's dice, or seeded for the same look every time). */
+export function randomLook(assets: AssetRegistry, gender: string, rand: () => number = Math.random): Appearance {
+  const appearance: Appearance = {
+    body: pick(palette(assets, 'palette.outfit'), rand),
+    skin: pick(palette(assets, 'palette.skin'), rand),
+    hair: pick(palette(assets, 'palette.hair'), rand),
+    hairStyle: randomHair(gender, rand),
+    height: Math.round((0.94 + rand() * 0.12) * 100) / 100,
+    beard: gender === 'male' && rand() < 0.2,
+    ...pickOutfit(gender, rand),
+  };
+  lookGenders.set(appearance, gender);
+  return appearance;
+}
+
+/** The look of a resident the simulation made up (a newcomer): `{seed}` expanded, always the same. */
+export function lookFromSeed(assets: AssetRegistry, gender: string, seed: number): Appearance {
+  let state = seed >>> 0;
+  // mulberry32
+  const rand = () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  return randomLook(assets, gender, rand);
 }
 
 /** A random age: mostly adults, some young adults, a few elders (or within `stage`). */

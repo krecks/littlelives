@@ -185,6 +185,26 @@ pub struct LifeRules {
     pub grief: GriefRules,
     /// Moving in together, moving out and leaving town (None: nobody moves on their own).
     pub moving: Option<MovingRules>,
+    /// New households for vacant houses (None: nobody new comes).
+    pub newcomers: Option<NewcomerRules>,
+}
+
+/// Once a day at `hour`, each vacant house gets a household with a chance of 1 in `days`.
+#[derive(Debug, Clone, Copy)]
+pub struct NewcomerRules {
+    pub hour: f32,
+    pub days: f32,
+}
+
+/// Names for residents the simulation makes up (newcomers): content `names`.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Names {
+    /// First names for anyone, and by gender id.
+    pub first: Vec<String>,
+    pub by_gender: HashMap<String, Vec<String>>,
+    /// Household (family) names.
+    pub last: Vec<String>,
 }
 
 /// Once a day at `hour`: partners in different homes move in together (`partners` chance a
@@ -845,6 +865,7 @@ pub struct Content {
     pub accidents: Vec<AccidentDef>,
     /// Ages, life stages and life events (content `life`; see `lifecycle.rs`).
     pub life: LifeRules,
+    pub names: Names,
     pub build: BuildRules,
     pub styles: Vec<StyleDef>,
     /// Animation tags (`"animations"`): what a Sim can be shown doing. Interactions refer
@@ -913,6 +934,8 @@ struct ContentFile {
     accidents: Vec<AccidentRaw>,
     #[serde(default)]
     life: LifeRaw,
+    #[serde(default)]
+    names: Names,
     #[serde(default)]
     room_rules: RoomRulesRaw,
     #[serde(default)]
@@ -1082,6 +1105,14 @@ struct LifeRaw {
     death: Option<DeathRaw>,
     grief: GriefRaw,
     moving: Option<MovingRaw>,
+    newcomers: Option<NewcomersRaw>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct NewcomersRaw {
+    hour: Option<f32>,
+    days: Option<f32>,
 }
 
 #[derive(Deserialize, Default)]
@@ -1938,6 +1969,10 @@ impl Content {
                 leave_town_age: m.leave_town_age.unwrap_or(30.0),
                 leave_town: m.leave_town.unwrap_or(0.05).clamp(0.0, 1.0),
             }),
+            newcomers: raw.life.newcomers.as_ref().map(|n| NewcomerRules {
+                hour: n.hour.unwrap_or(12.0).clamp(0.0, 23.9),
+                days: n.days.unwrap_or(3.0).max(1.0),
+            }),
         };
         let valid_shift = |start: f32, hours: f32, days_ok: bool| {
             (0.0..24.0).contains(&start) && hours > 0.0 && hours <= 16.0 && days_ok
@@ -2391,6 +2426,7 @@ impl Content {
             room_rules,
             accidents,
             life,
+            names: raw.names.clone(),
             build,
             styles,
             animations,
