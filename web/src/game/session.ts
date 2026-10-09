@@ -182,6 +182,7 @@ export async function startSession(
     !game.socialMenu &&
     !game.townOpen &&
     !game.jobBoardOpen &&
+    !game.plannerOpen &&
     viewPlot !== null &&
     viewPlot === homePlot();
   function startWatching(now: number) {
@@ -276,6 +277,42 @@ export async function startSession(
     toggleJournal() {
       game.journalOpen = !game.journalOpen;
       if (game.journalOpen) void bridge.requestEvents().then((events) => (game.journal = events));
+    },
+    openPlanner(who) {
+      takeBack();
+      const mine = playerSims();
+      game.plannerFor = who ?? (game.inspected !== null && mine.includes(game.inspected) ? game.inspected : (mine[0] ?? 'household'));
+      game.plannerOpen = true;
+      game.menu = null;
+      game.socialMenu = null;
+    },
+    setRoutines(sim, routines) {
+      const anyone = playerSims()[0];
+      if (sim === null) {
+        if (anyone !== undefined) bridge.send({ type: 'setHouseholdRoutines', sim: anyone, routines });
+      } else bridge.send({ type: 'setRoutines', sim, routines });
+    },
+    skipHouseholdRoutine(sim, routine, skip) {
+      bridge.send({ type: 'skipHouseholdRoutine', sim, routine, skip });
+    },
+    addGoal(sim, goal) {
+      bridge.send({ type: 'addGoal', sim, goal });
+    },
+    removeGoal(sim, index) {
+      bridge.send({ type: 'removeGoal', sim, index });
+    },
+    acceptSuggestion(sim, index) {
+      bridge.send({ type: 'acceptSuggestion', sim, index });
+    },
+    dismissSuggestion(sim, index) {
+      bridge.send({ type: 'dismissSuggestion', sim, index });
+    },
+    openCatalog(filter) {
+      game.plannerOpen = false;
+      controls.setMode('buy');
+      game.buySelection = null;
+      game.placing = null;
+      game.buyFilter = filter;
     },
     showEvent(event) {
       if (game.mode !== 'live') return;
@@ -479,6 +516,7 @@ export async function startSession(
     game.bills = mine?.bills ?? null;
     game.householdStyle = mine?.style ?? 0;
     game.undoSteps = mine?.undo ?? 0;
+    if (mine?.routines && JSON.stringify(mine.routines) !== JSON.stringify(game.householdRoutines)) game.householdRoutines = mine.routines;
     game.relationships = ui.relationships;
     // The view stays home; it goes along to other lots only with a resident the player follows.
     const followed = game.follow === null ? null : ui.sims.find((s) => s.id === game.follow);
@@ -708,6 +746,13 @@ export async function startSession(
       case 'J':
         if (game.mode === 'live') controls.toggleJournal();
         return;
+      case 'p':
+      case 'P':
+        if (game.mode === 'live') {
+          if (game.plannerOpen) game.plannerOpen = false;
+          else controls.openPlanner();
+        }
+        return;
       case 'm':
       case 'M':
         if (game.mode === 'live') game.townOpen = !game.townOpen;
@@ -736,6 +781,7 @@ export async function startSession(
         return controls.setMode(game.mode === 'build' ? 'live' : 'build');
       case 'v':
       case 'V':
+        game.buyFilter = null;
         return controls.setMode(game.mode === 'buy' ? 'live' : 'buy');
       case 'l':
       case 'L':

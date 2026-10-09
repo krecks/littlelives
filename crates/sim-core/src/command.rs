@@ -11,6 +11,39 @@ pub enum Command {
     SetAutoFast {
         enabled: bool,
     },
+    /// Replaces a resident's own routine blocks (the whole list).
+    SetRoutines {
+        sim: u32,
+        routines: Vec<crate::planner::RoutineIn>,
+    },
+    /// Replaces the routine template of the resident's household.
+    SetHouseholdRoutines {
+        sim: u32,
+        routines: Vec<crate::planner::RoutineIn>,
+    },
+    /// A resident follows (or doesn't follow) a block of the household's template.
+    SkipHouseholdRoutine {
+        sim: u32,
+        routine: u16,
+        skip: bool,
+    },
+    AddGoal {
+        sim: u32,
+        goal: crate::planner::GoalIn,
+    },
+    RemoveGoal {
+        sim: u32,
+        index: usize,
+    },
+    /// Take on a goal the resident suggested.
+    AcceptSuggestion {
+        sim: u32,
+        index: usize,
+    },
+    DismissSuggestion {
+        sim: u32,
+        index: usize,
+    },
     /// Turn "free will" on or off for a household (default: the player's).
     SetAutonomy {
         enabled: bool,

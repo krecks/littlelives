@@ -1,6 +1,6 @@
 /** Reactive UI state. Written by the game layer at ~10 Hz, read by components. */
 
-import type { Catalog, HouseholdInfo, ObjectPlacement, PlotInfo, RelationshipView, SimInfo, SimView, SocialEvent, SocialOption } from '../core/protocol';
+import type { Catalog, HouseholdInfo, ObjectPlacement, PlotInfo, RelationshipView, Routine, SimInfo, SimView, SocialEvent, SocialOption } from '../core/protocol';
 import type { RenderStats, WallMode } from '../render/types';
 
 export interface MenuState {
@@ -42,6 +42,13 @@ export interface SocialMenuState {
   y: number;
   /** Null while loading. */
   options: SocialOption[] | null;
+}
+
+/** Catalog filter from the planner: items that offer an activity (training a skill), for someone. */
+export interface BuyFilter {
+  label: string;
+  activity: string;
+  skill?: string | null;
 }
 
 export interface FeedEntry {
@@ -125,6 +132,13 @@ class GameState {
   /** The mouse moved lately: a quiet interface shows itself again for a moment. */
   hudAwake = $state(false);
   journalOpen = $state(false);
+  /** The planner is open, on a resident (id) or the household's template. */
+  plannerOpen = $state(false);
+  plannerFor = $state<number | 'household'>('household');
+  /** The player household's routine template. */
+  householdRoutines = $state.raw<Routine[]>([]);
+  /** Buy mode shows only what this filter allows (a wish, a goal); null: everything. */
+  buyFilter = $state.raw<BuyFilter | null>(null);
   /** The story so far (the whole log, fetched when the journal opens, then kept up to date). */
   journal = $state.raw<SocialEvent[]>([]);
   wallMode = $state<WallMode>('cutaway');
@@ -157,6 +171,8 @@ class GameState {
     this.watching = false;
     this.journalOpen = false;
     this.journal = [];
+    this.plannerOpen = false;
+    this.buyFilter = null;
     this.day = 1;
     this.minute = 480;
     this.mode = 'live';

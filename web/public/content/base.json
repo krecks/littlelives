@@ -888,6 +888,28 @@
       "mood": -0.2,
       "hours": 36
     }
+,
+    {
+      "id": "keptPlan",
+      "label": "Stuck to the plan",
+      "emotion": "happy",
+      "mood": 0.06,
+      "hours": 4
+    },
+    {
+      "id": "nowhereToDoIt",
+      "label": "Nowhere to do it",
+      "emotion": "sad",
+      "mood": -0.06,
+      "hours": 6
+    },
+    {
+      "id": "goalReached",
+      "label": "Reached a goal",
+      "emotion": "happy",
+      "mood": 0.25,
+      "hours": 48
+    }
   ],
   "socials": [
     {
@@ -1698,8 +1720,247 @@
     "upgraded": "{a} upgraded something at home to quality {n}",
     "jobFound": "{a} got a job: {job}",
     "quitJob": "{a} quit their job as {job}",
-    "fired": "{a} was let go from their job as {job}"
+    "fired": "{a} was let go from their job as {job}",
+    "goalReached": "{a} reached a goal: {goal}",
+    "goalSuggested": "{a} has a new idea: {goal}"
   },
+  "activities": [
+    {
+      "id": "sleep",
+      "label": "Sleep",
+      "icon": "icon.need.energy",
+      "tags": [
+        "sleep"
+      ],
+      "sleep": true
+    },
+    {
+      "id": "eat",
+      "label": "Eat",
+      "icon": "icon.need.hunger",
+      "tags": [
+        "food"
+      ]
+    },
+    {
+      "id": "cook",
+      "label": "Cook",
+      "icon": "icon.skill.cooking",
+      "tags": [
+        "cooking"
+      ]
+    },
+    {
+      "id": "wash",
+      "label": "Wash up",
+      "icon": "icon.need.hygiene",
+      "tags": [
+        "hygiene",
+        "spa"
+      ]
+    },
+    {
+      "id": "train",
+      "label": "Train",
+      "icon": "icon.ui.skills",
+      "tags": [
+        "training",
+        "fitness"
+      ],
+      "skill": true
+    },
+    {
+      "id": "workout",
+      "label": "Work out",
+      "icon": "icon.skill.strength",
+      "tags": [
+        "fitness",
+        "sport"
+      ]
+    },
+    {
+      "id": "read",
+      "label": "Read & study",
+      "icon": "icon.skill.intelligence",
+      "tags": [
+        "reading",
+        "study"
+      ]
+    },
+    {
+      "id": "create",
+      "label": "Create",
+      "icon": "icon.skill.creativity",
+      "tags": [
+        "creative",
+        "music"
+      ]
+    },
+    {
+      "id": "fun",
+      "label": "Have fun",
+      "icon": "icon.need.fun",
+      "tags": [
+        "entertainment",
+        "gaming",
+        "screen",
+        "party"
+      ]
+    },
+    {
+      "id": "relax",
+      "label": "Relax",
+      "icon": "icon.need.comfort",
+      "tags": [
+        "lounge",
+        "rest",
+        "cozy"
+      ]
+    },
+    {
+      "id": "garden",
+      "label": "Garden",
+      "icon": "icon.skill.gardening",
+      "tags": [
+        "garden"
+      ]
+    },
+    {
+      "id": "chores",
+      "label": "Chores",
+      "icon": "icon.skill.handiness",
+      "tags": [
+        "chores",
+        "cleaning"
+      ]
+    },
+    {
+      "id": "social",
+      "label": "Socialise",
+      "icon": "icon.need.social",
+      "social": true
+    },
+    {
+      "id": "visit",
+      "label": "Visit friends",
+      "icon": "icon.ui.home",
+      "visit": true
+    }
+  ],
+  "planner": {
+    "boost": 6,
+    "offBlock": 0.35,
+    "urgentBelow": 0.15,
+    "floor": 0.15,
+    "skipChance": 0.1,
+    "keptShare": 0.75,
+    "maxMinutes": 240,
+    "maxSleepMinutes": 720,
+    "reviewHour": 7,
+    "maxGoals": 3,
+    "maxSuggestions": 2,
+    "discipline": {
+      "lazy": 0.6,
+      "slob": 0.75,
+      "couchPotato": 0.8,
+      "gloomy": 0.85,
+      "energetic": 1.3,
+      "neat": 1.3,
+      "bookworm": 1.1,
+      "cheerful": 1.1
+    },
+    "keptFeeling": "keptPlan",
+    "noPlaceFeeling": "nowhereToDoIt",
+    "goalFeeling": "goalReached"
+  },
+  "goals": [
+    {
+      "id": "getJob",
+      "label": "Get a job",
+      "icon": "icon.ui.career",
+      "kind": "hasJob",
+      "weight": 3
+    },
+    {
+      "id": "jobInField",
+      "label": "Get a job in {category}",
+      "icon": "icon.ui.career",
+      "kind": "hasJob",
+      "weight": 0
+    },
+    {
+      "id": "promotion",
+      "label": "Get promoted",
+      "icon": "icon.ui.career",
+      "kind": "promoted",
+      "weight": 1.5,
+      "traits": {
+        "energetic": 1,
+        "neat": 0.5,
+        "lazy": -1
+      }
+    },
+    {
+      "id": "jobLevel",
+      "label": "Reach job grade {n}",
+      "icon": "icon.ui.career",
+      "kind": "jobLevel",
+      "weight": 0.6,
+      "traits": {
+        "energetic": 0.6
+      }
+    },
+    {
+      "id": "skill",
+      "label": "Reach {skill} level {n}",
+      "icon": "icon.ui.skills",
+      "kind": "skill",
+      "weight": 1.5,
+      "traits": {
+        "bookworm": 1.5,
+        "energetic": 1,
+        "natureLover": 0.8,
+        "foodie": 0.8,
+        "lazy": -0.8
+      }
+    },
+    {
+      "id": "friends",
+      "label": "Have {n} good friends",
+      "icon": "icon.need.social",
+      "kind": "friends",
+      "weight": 1,
+      "traits": {
+        "outgoing": 2,
+        "kind": 1,
+        "cheerful": 0.8,
+        "loner": -1
+      }
+    },
+    {
+      "id": "love",
+      "label": "Find love",
+      "icon": "icon.bubble.love",
+      "kind": "partner",
+      "weight": 1,
+      "traits": {
+        "romantic": 2.5,
+        "outgoing": 0.5,
+        "loner": -0.5
+      }
+    },
+    {
+      "id": "savings",
+      "label": "Save ${n}",
+      "icon": "icon.ui.funds",
+      "kind": "funds",
+      "weight": 0.8,
+      "traits": {
+        "neat": 0.5,
+        "slob": -0.5
+      }
+    }
+  ],
   "tags": [
     "spa"
   ],
@@ -2736,6 +2997,10 @@
       "comfort": 0.3,
       "social": 0.2
     },
+    "wakeFor": [
+      "bladder",
+      "hunger"
+    ],
     "workDecay": {
       "hunger": 0.3,
       "energy": 0.35,

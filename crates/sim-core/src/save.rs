@@ -11,7 +11,9 @@
 //! door and window styles, by content id; absent: plain walls); 7 = floor coverings
 //! (`lot.floors`, by content id; absent: automatic floors); 8 = free will per household,
 //! the story log (`events`), job satisfaction and missed shifts, visits always end (absent:
-//! one town-wide free-will switch, no story, a fresh start in every job). Older files load. Saves written before feelings
+//! one town-wide free-will switch, no story, a fresh start in every job); 9 = planners
+//! (routines, goals, how blocks went, wishes) and household routine templates (absent: none).
+//! Older files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
 use std::collections::{BTreeMap, HashMap};
@@ -23,10 +25,11 @@ use crate::life::{Job, Visit};
 use crate::lot::{DiagDir, Diagonal, Edge, EdgeLook, EdgeRef, Lot, SimSpawn};
 use crate::rng::Rng;
 use crate::social::{self, Relationship};
+use crate::planner::{BlockResult, Goal, Outcome, Planner, Reason, Routine};
 use crate::world::{Household, Plot, Task, TaskKind, World};
 use crate::{Error, MINUTES_PER_TICK, clock::MAX_SPEED};
 
-pub const SAVE_VERSION: u32 = 8;
+pub const SAVE_VERSION: u32 = 9;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -162,6 +165,73 @@ pub struct SimSave {
     pub visiting: Option<(u32, Option<f32>)>,
     /// Current activity first, then the queue.
     pub tasks: Vec<TaskSave>,
+    /// Routines and goals (absent before v9). A block in progress starts over on load.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub planner: Option<PlannerSave>,
+}
+
+/// A resident's planner, by content id.
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct PlannerSave {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub routines: Vec<RoutineSave>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub skip_household: Vec<u16>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub goals: Vec<GoalSave>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub suggestions: Vec<GoalSave>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub history: Vec<BlockResultSave>,
+    /// `(activity, skill)` ids.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub wishes: Vec<(String, Option<String>)>,
+    pub reviewed: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RoutineSave {
+    pub id: u16,
+    pub activity: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skill: Option<String>,
+    pub days: u8,
+    pub start: u16,
+    pub minutes: u16,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GoalSave {
+    pub def: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skill: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category: Option<String>,
+    pub target: f32,
+    pub since_day: u32,
+    pub start: f32,
+    pub progress: f32,
+    pub history: [f32; 3],
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BlockResultSave {
+    pub routine: u16,
+    pub household: bool,
+    pub activity: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skill: Option<String>,
+    pub day: u32,
+    pub start: u16,
+    pub minutes: u16,
+    /// `kept`, `cut`, `skipped`, `noPlace`.
+    pub outcome: String,
+    /// `trait:<id>`, `need:<id>`, `mood`, `away`, `noPlace`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    pub done: f32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -234,6 +304,9 @@ pub struct HouseholdSave {
     /// Absent before v8, when free will was one switch for the whole town (`autonomy`).
     #[serde(default, rename = "freeWill", skip_serializing_if = "Option::is_none")]
     pub free_will: Option<bool>,
+    /// Routine template for every member (absent before v9).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub routines: Vec<RoutineSave>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -341,6 +414,7 @@ impl World {
                         .visiting
                         .map(|v| (v.plot, Some(minutes_left(v.until)))),
                     tasks,
+                    planner: planner_save(content, &s.planner),
                 }
             })
             .collect();
@@ -387,6 +461,7 @@ impl World {
                     funds: Some(h.funds),
                     style: h.style,
                     free_will: Some(h.free_will),
+                    routines: h.routines.iter().map(|r| routine_save(content, r)).collect(),
                 })
                 .collect(),
             plots: self
@@ -473,6 +548,7 @@ impl World {
                 funds: starting_funds,
                 style: 0,
                 free_will: save.autonomy,
+                routines: Vec::new(),
             }]
         } else {
             save.households
@@ -488,6 +564,11 @@ impl World {
                     free_will: h
                         .free_will
                         .unwrap_or(!h.player || save.autonomy || !legacy_free_will),
+                    routines: h
+                        .routines
+                        .iter()
+                        .filter_map(|r| routine_load(&world.content, r))
+                        .collect(),
                 })
                 .collect()
         };
@@ -568,6 +649,9 @@ impl World {
                 Some(job)
             });
             sim.job_search_from = s.job_search_from;
+            if let Some(p) = &s.planner {
+                sim.planner = planner_load(content, p);
+            }
             sim.away_until = s.away_minutes.filter(|_| sim.job.is_some()).map(after);
             sim.visiting = s.visiting.and_then(|(plot, left)| {
                 ((plot as usize) < plot_count).then(|| Visit {
@@ -893,6 +977,175 @@ fn decode(s: &str) -> Result<Vec<Edge>, Error> {
             _ => Err(Error::new("corrupt lot edges in save")),
         })
         .collect()
+}
+
+// ---- Planner ------------------------------------------------------------------------------
+
+fn skill_id(content: &Content, skill: Option<usize>) -> Option<String> {
+    skill.map(|s| content.skills[s].id.clone())
+}
+
+fn routine_save(content: &Content, r: &Routine) -> RoutineSave {
+    RoutineSave {
+        id: r.id,
+        activity: content.activities[r.activity].id.clone(),
+        skill: skill_id(content, r.skill),
+        days: r.days,
+        start: r.start,
+        minutes: r.minutes,
+    }
+}
+
+/// A saved routine, if its activity (and skill) still exist.
+fn routine_load(content: &Content, r: &RoutineSave) -> Option<Routine> {
+    let activity = content.activities.iter().position(|a| a.id == r.activity)?;
+    Some(Routine {
+        id: r.id,
+        activity,
+        skill: r.skill.as_deref().and_then(|s| content.skill_index(s)),
+        days: r.days & 0x7f,
+        start: r.start.min(1439),
+        minutes: r.minutes,
+    })
+}
+
+fn goal_save(content: &Content, g: &Goal) -> GoalSave {
+    GoalSave {
+        def: content.goals[g.def].id.clone(),
+        skill: skill_id(content, g.skill),
+        category: g.category.map(|c| content.career_categories[c].id.clone()),
+        target: g.target,
+        since_day: g.since_day,
+        start: g.start,
+        progress: g.progress,
+        history: g.history,
+    }
+}
+
+fn goal_load(content: &Content, g: &GoalSave) -> Option<Goal> {
+    Some(Goal {
+        def: content.goals.iter().position(|d| d.id == g.def)?,
+        skill: match &g.skill {
+            Some(s) => Some(content.skill_index(s)?),
+            None => None,
+        },
+        category: g
+            .category
+            .as_deref()
+            .and_then(|c| content.career_categories.iter().position(|d| d.id == c)),
+        target: g.target,
+        since_day: g.since_day,
+        start: g.start,
+        progress: g.progress,
+        history: g.history,
+    })
+}
+
+fn reason_save(content: &Content, r: Reason) -> String {
+    match r {
+        Reason::Trait(t) => format!("trait:{}", content.traits[t].id),
+        Reason::Need(n) => format!("need:{}", content.needs[n].id),
+        Reason::Mood => "mood".into(),
+        Reason::Away => "away".into(),
+        Reason::NoPlace => "noPlace".into(),
+    }
+}
+
+fn reason_load(content: &Content, r: &str) -> Option<Reason> {
+    Some(match r.split_once(':') {
+        Some(("trait", id)) => Reason::Trait(content.traits.iter().position(|t| t.id == id)?),
+        Some(("need", id)) => Reason::Need(content.needs.iter().position(|n| n.id == id)?),
+        _ => match r {
+            "away" => Reason::Away,
+            "noPlace" => Reason::NoPlace,
+            _ => Reason::Mood,
+        },
+    })
+}
+
+fn planner_save(content: &Content, p: &Planner) -> Option<PlannerSave> {
+    let save = PlannerSave {
+        routines: p.routines.iter().map(|r| routine_save(content, r)).collect(),
+        skip_household: p.skip_household.clone(),
+        goals: p.goals.iter().map(|g| goal_save(content, g)).collect(),
+        suggestions: p.suggestions.iter().map(|g| goal_save(content, g)).collect(),
+        history: p
+            .history
+            .iter()
+            .map(|b| BlockResultSave {
+                routine: b.routine,
+                household: b.household,
+                activity: content.activities[b.activity].id.clone(),
+                skill: skill_id(content, b.skill),
+                day: b.day,
+                start: b.start,
+                minutes: b.minutes,
+                outcome: match b.outcome {
+                    Outcome::Kept => "kept",
+                    Outcome::Cut => "cut",
+                    Outcome::Skipped => "skipped",
+                    Outcome::NoPlace => "noPlace",
+                }
+                .into(),
+                reason: b.reason.map(|r| reason_save(content, r)),
+                done: b.done,
+            })
+            .collect(),
+        wishes: p
+            .wishes
+            .iter()
+            .map(|&(a, s)| (content.activities[a].id.clone(), skill_id(content, s)))
+            .collect(),
+        reviewed: p.reviewed,
+    };
+    let empty = save.routines.is_empty()
+        && save.skip_household.is_empty()
+        && save.goals.is_empty()
+        && save.suggestions.is_empty()
+        && save.history.is_empty()
+        && save.wishes.is_empty();
+    (!empty || save.reviewed != 0).then_some(save)
+}
+
+fn planner_load(content: &Content, p: &PlannerSave) -> Planner {
+    let activity = |id: &str| content.activities.iter().position(|a| a.id == id);
+    Planner {
+        routines: p.routines.iter().filter_map(|r| routine_load(content, r)).collect(),
+        skip_household: p.skip_household.clone(),
+        goals: p.goals.iter().filter_map(|g| goal_load(content, g)).collect(),
+        suggestions: p.suggestions.iter().filter_map(|g| goal_load(content, g)).collect(),
+        run: None,
+        history: p
+            .history
+            .iter()
+            .filter_map(|b| {
+                Some(BlockResult {
+                    routine: b.routine,
+                    household: b.household,
+                    activity: activity(&b.activity)?,
+                    skill: b.skill.as_deref().and_then(|s| content.skill_index(s)),
+                    day: b.day,
+                    start: b.start,
+                    minutes: b.minutes,
+                    outcome: match b.outcome.as_str() {
+                        "kept" => Outcome::Kept,
+                        "cut" => Outcome::Cut,
+                        "noPlace" => Outcome::NoPlace,
+                        _ => Outcome::Skipped,
+                    },
+                    reason: b.reason.as_deref().and_then(|r| reason_load(content, r)),
+                    done: b.done,
+                })
+            })
+            .collect(),
+        wishes: p
+            .wishes
+            .iter()
+            .filter_map(|(a, s)| Some((activity(a)?, s.as_deref().and_then(|s| content.skill_index(s)))))
+            .collect(),
+        thought: None,
+        reviewed: p.reviewed,
+    }
 }
 
 #[cfg(test)]

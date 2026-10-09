@@ -1,8 +1,8 @@
 /** Non-reactive handles the UI needs. Set once by the game layer before the HUD mounts. */
 
 import type { AssetRegistry } from '../assets/registry';
-import type { EdgeEdit, FacePaint, SocialEvent } from '../core/protocol';
-import type { BuildTool, GameMode } from './state.svelte';
+import type { EdgeEdit, FacePaint, GoalIn, RoutineIn, SocialEvent } from '../core/protocol';
+import type { BuildTool, BuyFilter, GameMode } from './state.svelte';
 import type { Content } from '../content/content';
 import type { ItemPreviews, SimPreviews, WallMode } from '../render/types';
 
@@ -23,6 +23,17 @@ export interface GameControls {
   toggleJournal(): void;
   /** Shows the people of a story event, if they're at home. */
   showEvent(event: SocialEvent): void;
+  /** Opens the planner on a resident (default: the one looked at) or the household's template. */
+  openPlanner(who?: number | 'household'): void;
+  /** A resident's own routine (null: the household's template). */
+  setRoutines(sim: number | null, routines: RoutineIn[]): void;
+  skipHouseholdRoutine(sim: number, routine: number, skip: boolean): void;
+  addGoal(sim: number, goal: GoalIn): void;
+  removeGoal(sim: number, index: number): void;
+  acceptSuggestion(sim: number, index: number): void;
+  dismissSuggestion(sim: number, index: number): void;
+  /** Buy mode with only items that fit (a wish, a goal). */
+  openCatalog(filter: BuyFilter): void;
   /** Take level `level` (grade) of career `career` (catalog index). */
   joinCareer(career: number, level: number): void;
   quitCareer(): void;

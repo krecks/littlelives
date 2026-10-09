@@ -1,5 +1,6 @@
 /**
- * Speech bubbles above Sims in a conversation, as DOM elements over the canvas.
+ * Speech bubbles above Sims in a conversation, and thought bubbles (a planned block skipped or
+ * kept, wanting somewhere to do it, a goal reached), as DOM elements over the canvas.
  * Per frame only `transform` is written (compositor-only); icons change only when a
  * conversation starts or its outcome is revealed. No allocations per frame.
  */
@@ -10,6 +11,8 @@ import type { FrameState } from '../core/bridge';
 import type { Renderer } from '../render/types';
 
 const MAX_SIMS = 64;
+/** Thought kinds (snapshot `thought`) to bubble tones. */
+const THOUGHT_TONES = ['', 'bad', 'wish', 'good', 'love'];
 
 interface Bubble {
   /** Positioned element (transform written per frame). */
@@ -46,7 +49,13 @@ export class BubbleLayer {
     for (let i = 0; i < count; i++) {
       const o = layout.headerLen + i * layout.simStride;
       const social = curr[o + k.social];
-      const key = social > 0 ? this.iconFor(social - 1, curr[o + k.role], curr[o + k.outcome]) : '';
+      const thought = social > 0 || k.thought === undefined ? 0 : curr[o + k.thought];
+      const key =
+        social > 0
+          ? this.iconFor(social - 1, curr[o + k.role], curr[o + k.outcome])
+          : thought > 0
+            ? this.thoughtIcon(thought, curr[o + (k.thoughtSubject ?? 0)])
+            : '';
       const bubble = key ? this.bubble(i) : this.bubbles[i];
       if (!bubble) continue;
       if (!key || !this.renderer.simHead(i, this.head) || !this.renderer.project(this.head.x, this.head.y, this.head.z, this.screen)) {
@@ -56,7 +65,8 @@ export class BubbleLayer {
       if (bubble.key !== key) {
         bubble.key = key;
         bubble.icon.style.setProperty('--icon', `url('${this.assets.icon(key).url}')`);
-        bubble.body.dataset.tone = key.startsWith('icon.bubble.') ? key.slice(12) : 'topic';
+        bubble.body.dataset.tone = thought > 0 ? THOUGHT_TONES[thought] : key.startsWith('icon.bubble.') ? key.slice(12) : 'topic';
+        bubble.body.classList.toggle('thought', thought > 0);
         bubble.body.classList.remove('pop');
         void bubble.body.offsetWidth; // restart the pop animation
         bubble.body.classList.add('pop');
@@ -72,6 +82,12 @@ export class BubbleLayer {
 
   dispose(): void {
     this.root.remove();
+  }
+
+  /** A thought's icon: the activity (skipped, wanted, kept) or the goal reached. */
+  private thoughtIcon(kind: number, subject: number): string {
+    if (kind === 4) return this.content.goals[subject]?.icon || 'icon.bubble.good';
+    return this.content.activities[subject]?.icon ?? 'icon.bubble.good';
   }
 
   /** The initiator shows the topic; the other Sim shows their reaction once it's revealed. */

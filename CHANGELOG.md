@@ -2,6 +2,24 @@
 
 All notable changes to Littlelives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
+## Unreleased (0.8.0)
+
+The planner: steer your residents without giving orders.
+
+### New
+- **Planner (P, or the calendar button):** a week calendar for each resident. Pick an activity (sleep, eat, cook, wash up, train a skill, work out, read, create, have fun, relax, garden, chores, socialise, visit friends) and click or drag it onto the week; drag blocks to move them (also to other days), pull the bottom edge to make them longer, set the days in the block's panel. Presets: early bird, night owl, fitness, homebody.
+- **Plans are a strong nudge, not orders:** during a block its activity is what the resident wants most, but urgent needs still come first, and whether they stick to it depends on their traits and mood (lazy residents skip more, energetic and neat ones less; nobody likes what their personality dislikes). Residents in a planned block aren't drawn into small talk, and they don't leave for a visit right before one. Sleep blocks move their night: a night owl stays up and sleeps in.
+- **How it went:** every block ends as kept ✓, cut short ½, skipped ✕ or "nowhere to do it" ⌂, with a reason (a need came first, not their thing, not in the mood, they were out). The calendar marks this week's blocks, the planner sums up the last seven days, and a thin "today" bar on each household card and in the resident's panel shows the day ahead.
+- **Everyone's week:** household blocks every member follows (shown hatched in each resident's week); each resident can skip one, and their own blocks win.
+- **Life goals:** get a job (in a field), get promoted, reach a job grade, reach a skill level, have good friends, find love, save money. Goals steer what residents do (practice, job hunting, friendly or romantic chats, spending less), show progress and whether it's moving, and end with a story event and a good feeling. Residents suggest goals of their own from their personality; take them on or not. Neighbours pursue goals too.
+- **Wishes:** a planned activity with nowhere to do it at home becomes a wish ("somewhere to train strength"); *Find in catalog* opens Buy mode with just the things that offer it. The wish comes true once it's bought.
+- **Thought bubbles:** residents show when they skip a plan, wish for a place, keep a plan or reach a goal.
+
+### Changed
+- Residents sleep through the night unless they need the bathroom or are hungry (being lonely or bored no longer wakes them).
+- Content packs can add activities, goals, discipline per trait, and which needs wake sleepers (see `docs/content-packs.md`).
+- Saves are now version 9 (plans, goals and household blocks); older saves load as before.
+
 ## Unreleased (0.7.0)
 
 The game's new direction: build your home, then watch it live (see "Game direction" in PLAN.md). This release is about watching.

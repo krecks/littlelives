@@ -361,6 +361,8 @@ pub struct DayRhythm {
     /// Need decay multipliers while at work (there's lunch and a bathroom there; the job's
     /// `workEffects` come on top).
     pub work_decay: [f32; MAX_NEEDS],
+    /// Needs that wake a sleeper when they get urgent (bit per need; default: all).
+    pub wake_for: u32,
     /// Sims with an early shift get up this long before they leave.
     pub wake_before_work_minutes: f32,
 }
@@ -591,6 +593,10 @@ pub struct Content {
     pub talk_anim: Option<usize>,
     /// Whether any feeling has `effects` (Sims then fold them into their modifiers).
     pub buff_feelings: bool,
+    /// What routine blocks can be for, how plans steer residents, and life goals.
+    pub activities: Vec<crate::planner::ActivityDef>,
+    pub planner: crate::planner::PlannerRules,
+    pub goals: Vec<crate::planner::GoalDef>,
     object_index: HashMap<String, usize>,
 }
 
@@ -658,6 +664,12 @@ struct ContentFile {
     /// Animation tags interactions may use as `anim`.
     #[serde(default)]
     animations: Vec<String>,
+    #[serde(default)]
+    activities: Vec<crate::planner::ActivityRaw>,
+    #[serde(default)]
+    planner: crate::planner::PlannerRaw,
+    #[serde(default)]
+    goals: Vec<crate::planner::GoalRaw>,
 }
 
 #[derive(Deserialize)]
@@ -758,6 +770,7 @@ struct DayRhythmRaw {
     night_decay: HashMap<String, f32>,
     asleep_decay: HashMap<String, f32>,
     work_decay: HashMap<String, f32>,
+    wake_for: Option<Vec<String>>,
     wake_before_work_minutes: Option<f32>,
 }
 
@@ -1551,6 +1564,12 @@ impl Content {
             night_decay: multipliers(&dr.night_decay, "dayRhythm")?,
             asleep_decay: multipliers(&dr.asleep_decay, "dayRhythm")?,
             work_decay: multipliers(&dr.work_decay, "dayRhythm")?,
+            wake_for: match &dr.wake_for {
+                None => u32::MAX,
+                Some(list) => list.iter().try_fold(0u32, |m, id| {
+                    Ok::<_, Error>(m | 1 << lookup(&need_index, id, "dayRhythm.wakeFor", "need")?)
+                })?,
+            },
             wake_before_work_minutes: dr.wake_before_work_minutes.unwrap_or(75.0),
         };
         let rent = raw
@@ -1671,6 +1690,8 @@ impl Content {
 
         let buff_feelings = feelings.iter().any(|m| m.effects.is_some());
         let talk_anim = anim_index(TALK_ANIM);
+        let (activities, planner, goals) =
+            crate::planner::parse(&raw.activities, &raw.planner, &raw.goals, &tag_index, &feelings)?;
         Ok(Self {
             needs,
             objects,
@@ -1701,6 +1722,9 @@ impl Content {
             animations,
             talk_anim,
             buff_feelings,
+            activities,
+            planner,
+            goals,
             object_index,
         })
     }

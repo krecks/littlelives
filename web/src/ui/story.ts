@@ -27,13 +27,29 @@ const ICONS: Record<string, string> = {
   jobFound: 'icon.ui.career',
   quitJob: 'icon.ui.career',
   fired: 'icon.ui.career',
+  goalSuggested: 'icon.ui.calendar',
 };
 
 const LOVE = new Set(['crush', 'firstKiss', 'startedDating']);
 const BAD = new Set(['becameEnemies', 'brokeUp', 'fight', 'jealous', 'proposalRejected', 'missedWork', 'rentDebt', 'fired']);
 
 export function storyIcon(e: SocialEvent): string {
-  return e.kind === 'skillUp' ? (services.content.skills[e.skill ?? -1]?.icon ?? 'icon.ui.skills') : (ICONS[e.kind] ?? 'icon.need.social');
+  if (e.kind === 'skillUp') return services.content.skills[e.skill ?? -1]?.icon ?? 'icon.ui.skills';
+  if (e.kind === 'goalReached') return services.content.goals[e.goal ?? -1]?.icon || 'icon.ui.calendar';
+  return ICONS[e.kind] ?? 'icon.need.social';
+}
+
+/** A goal's text: its label with the skill, target and career category filled in. */
+export function goalText(def: number | undefined, target?: number, skill?: number | string | null, category?: number | string | null): string {
+  const content = services.content;
+  const goal = def === undefined ? undefined : content.goals[def];
+  if (!goal) return 'a goal';
+  const skillDef = typeof skill === 'number' ? content.skills[skill] : skill ? content.skill(skill) : undefined;
+  const cat = typeof category === 'number' ? content.careerCategories[category] : content.careerCategory(category ?? null);
+  return goal.label
+    .replace('{skill}', skillDef?.label ?? '')
+    .replace('{n}', target === undefined ? '' : Math.round(target).toLocaleString())
+    .replace('{category}', cat?.label ?? 'any field');
 }
 
 export function storyTone(e: SocialEvent): 'love' | 'bad' | 'good' {
@@ -56,6 +72,7 @@ export function storyText(e: SocialEvent): string {
     .replace('{b}', name(e.b))
     .replace('{c}', name(e.c))
     .replace('{job}', job(e))
+    .replace('{goal}', goalText(e.goal, e.n, e.skill, e.career))
     .replace('{n}', String(e.n ?? ''))
     .replace('{money}', money(e.n ?? 0))
     .replace('{skill}', services.content.skills[e.skill ?? -1]?.label ?? '');

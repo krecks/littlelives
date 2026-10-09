@@ -8,8 +8,8 @@ use crate::world::{Activity, MAX_SIMS, Phase, Sim, Task, TaskKind, World};
 use crate::{TICKS_PER_SECOND, clock};
 
 pub const HEADER_LEN: usize = 8;
-/// Floats per Sim (all 16 used).
-pub const SIM_STRIDE: usize = 16;
+/// Floats per Sim (all 18 used).
+pub const SIM_STRIDE: usize = 18;
 pub const CAPACITY: usize = HEADER_LEN + MAX_SIMS * SIM_STRIDE;
 
 pub mod header {
@@ -58,11 +58,15 @@ pub mod sim {
     pub const ACTION: usize = 14;
     /// Mood 0..1 (needs, traits and feelings), for the resting face.
     pub const MOOD: usize = 15;
+    /// What the Sim is thinking about (a thought bubble): 0 nothing, 1 skipping a planned
+    /// block, 2 wants somewhere to do one, 3 kept one, 4 reached a goal (`planner::ThoughtKind`).
+    pub const THOUGHT: usize = 16;
+    /// The thought's subject: activity index (1-3) or goal definition (4).
+    pub const THOUGHT_SUBJECT: usize = 17;
 }
 
 // Every field fits in a Sim's row.
-const _: () =
-    assert!(sim::ACTION < SIM_STRIDE && sim::OBJECT < SIM_STRIDE && sim::MOOD < SIM_STRIDE);
+const _: () = assert!(sim::THOUGHT_SUBJECT < SIM_STRIDE && sim::MOOD < SIM_STRIDE);
 
 /// `(object, action)` for the snapshot; see `sim::OBJECT` and `sim::ACTION`.
 fn object_action(world: &World, s: &Sim) -> (f32, f32) {
@@ -127,6 +131,9 @@ pub fn write(world: &World, out: &mut [f32]) {
         o[sim::AWAY] = s.away_until.is_some() as u8 as f32;
         (o[sim::OBJECT], o[sim::ACTION]) = object_action(world, s);
         o[sim::MOOD] = s.mood(&world.content);
+        let thought = s.planner.thought.filter(|_| s.away_until.is_none());
+        o[sim::THOUGHT] = thought.map_or(0.0, |t| t.kind as u8 as f32);
+        o[sim::THOUGHT_SUBJECT] = thought.map_or(0.0, |t| t.subject as f32);
     }
     // Conversations: write the shared state into both participants' rows.
     for (i, s) in world.sims.iter().enumerate() {
@@ -174,7 +181,7 @@ pub fn layout_json(content: &Content) -> String {
             "pose": sim::POSE, "moving": sim::MOVING, "social": sim::SOCIAL,
             "outcome": sim::OUTCOME, "partner": sim::PARTNER, "anim": sim::ANIM, "emotion": sim::EMOTION,
             "role": sim::ROLE, "away": sim::AWAY, "object": sim::OBJECT, "action": sim::ACTION,
-            "mood": sim::MOOD,
+            "mood": sim::MOOD, "thought": sim::THOUGHT, "thoughtSubject": sim::THOUGHT_SUBJECT,
         },
         "actions": content.animations,
     })

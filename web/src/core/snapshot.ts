@@ -42,6 +42,10 @@ export interface SnapshotLayout {
     action: number;
     /** Mood 0..1 (missing in older layouts). */
     mood?: number;
+    /** Thought bubble: 0 none, 1 skipping a planned block, 2 wants a place for one, 3 kept one, 4 reached a goal. */
+    thought?: number;
+    /** Activity index (1–3) or goal definition (4). */
+    thoughtSubject?: number;
   };
   /** Animation tags from content (`animations` in base.json), named by `sim.action`. */
   actions: string[];

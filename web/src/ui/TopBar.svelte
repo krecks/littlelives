@@ -82,6 +82,9 @@
       <button class="tool" title="Whole house (H)" aria-label="Show the whole house" onclick={() => services.controls.frameHouse()}>
         <Icon name="icon.ui.home" />
       </button>
+      <button class="tool" class:active={game.plannerOpen} title="Planner (P): routines and goals" aria-label="Planner" onclick={() => services.controls.openPlanner()}>
+        <Icon name="icon.ui.calendar" />
+      </button>
       <button class="tool" class:active={game.journalOpen} title="Journal (J)" aria-label="Journal" aria-pressed={game.journalOpen} onclick={() => services.controls.toggleJournal()}>
         <Icon name="icon.ui.journal" />
       </button>

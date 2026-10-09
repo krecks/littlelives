@@ -27,7 +27,93 @@ export type Command =
   | { type: 'build'; sim: number; edits: EdgeEdit[] }
   | { type: 'paint'; sim: number; faces: FacePaint[] }
   | { type: 'paintFloor'; sim: number; tiles: FloorPaint[] }
-  | { type: 'undo'; sim: number };
+  | { type: 'undo'; sim: number }
+  /** The resident's own routine blocks (the whole list). */
+  | { type: 'setRoutines'; sim: number; routines: RoutineIn[] }
+  /** The routine template of the resident's household. */
+  | { type: 'setHouseholdRoutines'; sim: number; routines: RoutineIn[] }
+  | { type: 'skipHouseholdRoutine'; sim: number; routine: number; skip: boolean }
+  | { type: 'addGoal'; sim: number; goal: GoalIn }
+  | { type: 'removeGoal'; sim: number; index: number }
+  | { type: 'acceptSuggestion'; sim: number; index: number }
+  | { type: 'dismissSuggestion'; sim: number; index: number };
+
+/** A routine block: an activity (content `activities` id) on weekdays (bit 0 = Monday) from `start` (minute of the day) for `minutes`. */
+export interface RoutineIn {
+  id?: number;
+  activity: string;
+  skill?: string;
+  days: number;
+  start: number;
+  minutes: number;
+}
+
+export interface Routine extends RoutineIn {
+  id: number;
+}
+
+export interface GoalIn {
+  def: string;
+  skill?: string;
+  category?: string;
+  target?: number;
+}
+
+/** Why a block wasn't kept. */
+export interface ReasonView {
+  code: 'trait' | 'need' | 'mood' | 'away' | 'noPlace';
+  trait?: string;
+  need?: string;
+}
+
+/** A running or past block. */
+export interface BlockView {
+  routine: number;
+  household: boolean;
+  activity: string;
+  skill: string | null;
+  /** Day it started (from 1). */
+  day: number;
+  start: number;
+  minutes: number;
+  status: 'active' | 'kept' | 'cut' | 'skipped' | 'noPlace';
+  reason: ReasonView | null;
+  /** Minutes spent on it. */
+  done: number;
+}
+
+export type GoalKind = 'hasJob' | 'jobLevel' | 'promoted' | 'skill' | 'friends' | 'partner' | 'funds';
+
+export interface GoalView {
+  def: string;
+  kind: GoalKind;
+  label: string;
+  icon: string;
+  /** 0..1 */
+  progress: number;
+  /** Change over the last days (positive: getting there). */
+  trend: number;
+  skill: string | null;
+  category: string | null;
+  target: number;
+  sinceDay: number;
+}
+
+/** A resident's planner (the player's household only). */
+export interface PlanView {
+  routines: Routine[];
+  /** Household template blocks this resident doesn't follow. */
+  skipHousehold: number[];
+  current: BlockView | null;
+  /** The last week's blocks, oldest first. */
+  history: BlockView[];
+  goals: GoalView[];
+  suggestions: GoalView[];
+  /** `[activity, skill]`: places they'd like (from blocks with nowhere to do them). */
+  wishes: [string, string | null][];
+  /** How well they stick to plans (1 = average). */
+  adherence: number;
+}
 
 /** A floor tile to cover: `covering` 0 for the automatic floor, else a floor covering + 1. */
 export interface FloorPaint {
@@ -212,6 +298,8 @@ export interface SimView {
   actions: ActionView[];
   /** Skill levels in content order (whole number = level). */
   skills: number[];
+  /** Routines, goals and wishes (the player's household only). */
+  plan?: PlanView;
 }
 
 export interface Requirement {
@@ -297,7 +385,7 @@ export interface UiSnapshot {
   autonomy: boolean;
   sims: SimView[];
   /** `undo`: build and buy edits the household can take back (absent from older workers). */
-  households: { id: number; funds: number; rent: number | null; bills: number | null; style: number; undo?: number }[];
+  households: { id: number; funds: number; rent: number | null; bills: number | null; style: number; undo?: number; routines?: Routine[] }[];
   relationships: RelationshipView[];
   /** Recent story events, oldest first; ids increase monotonically (the whole log: `events` request). */
   events: SocialEvent[];
@@ -324,8 +412,10 @@ export interface SocialEvent {
   n?: number;
   /** Skill index. */
   skill?: number;
-  /** Career index (catalog `careers`), for job events; `n` is then the level. */
+  /** Career index (catalog `careers`), for job events; `n` is then the level. Goal events: career category index. */
   career?: number;
+  /** Goal definition index (content `goals`), for goal events (`n` the target, `skill`). */
+  goal?: number;
   /** 0 everyday, 1 notable, 2 a milestone. */
   importance: number;
 }

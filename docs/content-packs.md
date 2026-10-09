@@ -285,6 +285,54 @@ Build mode's looks are top-level arrays, appended like objects, so a pack can ad
 Saves store looks by id; a look whose id no longer exists loads as the default (the house's own
 look for walls, the room's own floor, the first style for doors and windows). Ids must be unique within each list.
 
+## Planner: activities, goals, discipline
+
+The planner (each resident's weekly routines and life goals) is data too, so packs can add to it.
+
+**Activities** are what a routine block is for. A block never names an object, only an
+activity, so plans keep working when the house changes. Interactions with any of the
+activity's `tags` count; `skill: true` lets a block name a skill instead (interactions that
+train it count); `social` and `visit` count conversations and visiting friends; `sleep`
+blocks decide when the resident's night is.
+
+```json
+"activities": [{ "id": "mypack.yoga", "label": "Yoga", "icon": "icon.ui.skills", "tags": ["yoga", "fitness"] }]
+```
+
+While a block runs, choices that fit it are boosted and others damped (urgent needs are
+exempt); `planner` sets how strongly. If nothing at home or in a park offers the activity, the
+block counts as "nowhere to do it" and the resident wishes for a place (the player can open
+the catalog filtered to it).
+
+```json
+"planner": {
+  "boost": 6, "offBlock": 0.35, "urgentBelow": 0.15, "floor": 0.15, "skipChance": 0.1,
+  "keptShare": 0.75, "maxMinutes": 240, "maxSleepMinutes": 720, "reviewHour": 7,
+  "maxGoals": 3, "maxSuggestions": 2,
+  "discipline": { "lazy": 0.6, "energetic": 1.3 },
+  "keptFeeling": "keptPlan", "noPlaceFeeling": "nowhereToDoIt", "goalFeeling": "goalReached"
+}
+```
+
+`discipline` multiplies how well residents with a trait stick to plans (with their mood);
+traits whose `tagPreference` dislikes an activity's tags skip it more. A pack's own top-level
+`planner` object replaces keys of the base one (objects merge shallowly), so repeat the whole
+`discipline` map if you change it.
+
+**Goals** pick from a fixed set of kinds: `hasJob` (label may use `{category}`), `jobLevel`,
+`promoted`, `skill` (`{skill}`, `{n}`), `friends` (`{n}`), `partner`, `funds` (`{n}`).
+`weight` plus per-trait `traits` weights decide how often residents suggest them; `feeling`
+(optional) is granted on reaching it.
+
+```json
+"goals": [{ "id": "mypack.chef", "label": "Reach {skill} level {n}", "icon": "icon.skill.cooking", "kind": "skill", "weight": 0.5, "traits": { "foodie": 2 } }]
+```
+
+**Day rhythm:** `dayRhythm.wakeFor` lists the needs that wake a sleeper when they get urgent
+(default: all; the base game wakes for `bladder` and `hunger` only), and
+`dayRhythm.workDecay` multiplies need decay while at work. **Jobs:**
+`careerRules.market` turns on residents finding, quitting and losing jobs on their own.
+
 ## Ids you can refer to
 
 - **Needs:** `hunger`, `energy`, `bladder`, `hygiene`, `fun`, `comfort`, `social`.
@@ -300,6 +348,8 @@ look for walls, the room's own floor, the first style for doors and windows). Id
   `"buyCategories": [{ "id": "...", "label": "...", "icon": "icon.category.<id>" }]` only if
   none fits (`icon` is optional: the catalog tab's icon, an `icon` asset key; `groups`
   optional: `[{ "id": "...", "label": "..." }]`, chips that objects pick with `group`).
+- **Activities** (routine blocks): `sleep`, `eat`, `cook`, `wash`, `train` (names a skill),
+  `workout`, `read`, `create`, `fun`, `relax`, `garden`, `chores`, `social`, `visit`.
 - **Traits** (for `traitPatches`): `foodie`, `bookworm`, `couchPotato`, `neat`, `slob`,
   `energetic`, `lazy`, `cheerful`, `gloomy`, `natureLover`, `outgoing`, `loner`,
   `romantic`, `hotHeaded`, `kind`.

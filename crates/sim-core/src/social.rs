@@ -676,6 +676,10 @@ pub enum EventKind {
     QuitJob,
     /// `a` was let go from `career` (level `n`) after missing too many shifts.
     Fired,
+    /// `a` reached a goal (`goal`: definition; `n` target, `skill`, `career` category).
+    GoalReached,
+    /// `a` would like to take on a goal (the player can accept it).
+    GoalSuggested,
 }
 
 impl EventKind {
@@ -684,10 +688,10 @@ impl EventKind {
         use EventKind::*;
         match self {
             FirstKiss | StartedDating | BrokeUp | BecameBestFriends | Promoted | JobFound
-            | Fired => 2,
+            | Fired | GoalReached => 2,
             BecameFriends | BecameGoodFriends | BecameEnemies | Crush | ProposalRejected
             | Fight | Jealous | QuitJob | RentDebt => 1,
-            Met | MissedWork | SkillUp | PaidRent | Upgraded | Visited => 0,
+            Met | MissedWork | SkillUp | PaidRent | Upgraded | Visited | GoalSuggested => 0,
         }
     }
 }
@@ -708,9 +712,12 @@ pub struct SocialEvent {
     /// Skill index, for skill events.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub skill: Option<u32>,
-    /// Career index, for job events.
+    /// Career index, for job events (career category for goal events).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub career: Option<u32>,
+    /// Goal definition, for goal events.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub goal: Option<u32>,
 }
 
 #[derive(Debug, Default)]
@@ -734,6 +741,7 @@ impl EventLog {
             n: None,
             skill: None,
             career: None,
+            goal: None,
         });
     }
 
@@ -756,6 +764,23 @@ impl EventLog {
             n,
             skill: None,
             career: Some(career as u32),
+            goal: None,
+        });
+    }
+
+    /// A goal event about one Sim.
+    pub fn push_goal(&mut self, tick: u64, kind: EventKind, a: usize, goal: &crate::planner::Goal) {
+        self.add(SocialEvent {
+            id: 0,
+            tick,
+            kind,
+            a: a as u32,
+            b: a as u32,
+            c: None,
+            n: Some(goal.target.round() as i64),
+            skill: goal.skill.map(|s| s as u32),
+            career: goal.category.map(|c| c as u32),
+            goal: Some(goal.def as u32),
         });
     }
 
@@ -778,6 +803,7 @@ impl EventLog {
             n,
             skill: skill.map(|s| s as u32),
             career: None,
+            goal: None,
         });
     }
 

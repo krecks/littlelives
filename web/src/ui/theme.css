@@ -286,6 +286,23 @@ input[type='range'] {
   mask: var(--icon) center / contain no-repeat;
   -webkit-mask: var(--icon) center / contain no-repeat;
 }
+/* Thoughts: a cloud with two little puffs below instead of a tail. */
+.bubble-body.thought {
+  border-radius: 20px;
+  opacity: 0.95;
+}
+.bubble-body.thought::after {
+  left: 8px;
+  bottom: -9px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  transform: none;
+  box-shadow: -6px 7px 0 -2px rgba(255, 255, 255, 0.94);
+}
+.bubble-body[data-tone='wish'] {
+  --tone: var(--warn);
+}
 .bubble-body.pop {
   animation: bubble-pop 360ms var(--ease);
 }

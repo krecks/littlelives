@@ -8,7 +8,8 @@ use crate::content::Content;
 use crate::life;
 use crate::lot::Edge;
 use crate::social::SocialEvent;
-use crate::world::{Phase, Task, TaskKind, World};
+use crate::planner::{Goal, GoalKind, Outcome, Reason, Routine};
+use crate::world::{Phase, Sim, Task, TaskKind, World};
 use crate::{MINUTES_PER_TICK, conversation};
 
 #[derive(Serialize)]
@@ -21,7 +22,7 @@ struct UiState<'a> {
     speed: u8,
     autonomy: bool,
     sims: Vec<SimView<'a>>,
-    households: Vec<FundsView>,
+    households: Vec<FundsView<'a>>,
     relationships: Vec<RelView>,
     /// Most recent story events, oldest first.
     events: Vec<EventView<'a>>,
@@ -55,7 +56,7 @@ pub fn events_json(world: &World) -> String {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct FundsView {
+struct FundsView<'a> {
     id: u32,
     funds: i64,
     /// Weekly rent for this household's home, if rent is charged.
@@ -65,6 +66,9 @@ struct FundsView {
     style: u8,
     /// Build and buy edits that can be undone.
     undo: usize,
+    /// The household's routine template (the player's household only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    routines: Option<Vec<RoutineView<'a>>>,
 }
 
 #[derive(Serialize)]
@@ -88,6 +92,175 @@ struct SimView<'a> {
     job: Option<JobView<'a>>,
     /// Skill levels in content order.
     skills: &'a [f32],
+    /// Routines, goals and wishes (the player's household only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    plan: Option<PlanView<'a>>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RoutineView<'a> {
+    id: u16,
+    activity: &'a str,
+    skill: Option<&'a str>,
+    /// Weekdays, bit 0 = Monday.
+    days: u8,
+    start: u16,
+    minutes: u16,
+}
+
+fn routine_view<'a>(content: &'a Content, r: &Routine) -> RoutineView<'a> {
+    RoutineView {
+        id: r.id,
+        activity: &content.activities[r.activity].id,
+        skill: r.skill.map(|s| content.skills[s].id.as_str()),
+        days: r.days,
+        start: r.start,
+        minutes: r.minutes,
+    }
+}
+
+/// Why a block wasn't kept: `trait` (with the trait id), `need` (with the need id), `mood`,
+/// `away`, `noPlace`.
+#[derive(Serialize)]
+struct ReasonView<'a> {
+    code: &'static str,
+    #[serde(rename = "trait", skip_serializing_if = "Option::is_none")]
+    trait_id: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    need: Option<&'a str>,
+}
+
+fn reason_view(content: &Content, r: Reason) -> ReasonView<'_> {
+    let (code, trait_id, need) = match r {
+        Reason::Trait(t) => ("trait", Some(content.traits[t].id.as_str()), None),
+        Reason::Need(n) => ("need", None, Some(content.needs[n].id.as_str())),
+        Reason::Mood => ("mood", None, None),
+        Reason::Away => ("away", None, None),
+        Reason::NoPlace => ("noPlace", None, None),
+    };
+    ReasonView { code, trait_id, need }
+}
+
+/// A block that's running or over: `status` is `active`, `kept`, `cut`, `skipped` or `noPlace`.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BlockView<'a> {
+    routine: u16,
+    household: bool,
+    activity: &'a str,
+    skill: Option<&'a str>,
+    day: u32,
+    start: u16,
+    minutes: u16,
+    status: &'static str,
+    reason: Option<ReasonView<'a>>,
+    /// Minutes spent on it.
+    done: f32,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GoalView<'a> {
+    def: &'a str,
+    kind: GoalKind,
+    label: String,
+    icon: &'a str,
+    progress: f32,
+    /// Change over the last days (positive: getting there).
+    trend: f32,
+    skill: Option<&'a str>,
+    category: Option<&'a str>,
+    target: f32,
+    since_day: u32,
+}
+
+fn goal_view<'a>(content: &'a Content, g: &Goal) -> GoalView<'a> {
+    let def = &content.goals[g.def];
+    GoalView {
+        def: &def.id,
+        kind: def.kind,
+        label: crate::planner::goal_label(content, g),
+        icon: &def.icon,
+        progress: g.progress,
+        trend: g.progress - g.history[2],
+        skill: g.skill.map(|s| content.skills[s].id.as_str()),
+        category: g.category.map(|c| content.career_categories[c].id.as_str()),
+        target: g.target,
+        since_day: g.since_day,
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PlanView<'a> {
+    routines: Vec<RoutineView<'a>>,
+    /// Household template blocks this resident doesn't follow.
+    skip_household: &'a [u16],
+    current: Option<BlockView<'a>>,
+    /// Blocks of the last week, oldest first.
+    history: Vec<BlockView<'a>>,
+    goals: Vec<GoalView<'a>>,
+    suggestions: Vec<GoalView<'a>>,
+    /// Activities they'd like a place for (`skill` for training).
+    wishes: Vec<(&'a str, Option<&'a str>)>,
+    /// How well they stick to plans now (1 = average).
+    adherence: f32,
+}
+
+fn plan_view<'a>(world: &'a World, s: &'a Sim) -> PlanView<'a> {
+    let content = &world.content;
+    let p = &s.planner;
+    let today = clock::day(world.tick);
+    let block = |routine, household, activity: usize, skill: Option<usize>, day, start, minutes, status, reason: Option<Reason>, done| BlockView {
+        routine,
+        household,
+        activity: &content.activities[activity].id,
+        skill: skill.map(|k| content.skills[k].id.as_str()),
+        day,
+        start,
+        minutes,
+        status,
+        reason: reason.map(|r| reason_view(content, r)),
+        done,
+    };
+    PlanView {
+        routines: p.routines.iter().map(|r| routine_view(content, r)).collect(),
+        skip_household: &p.skip_household,
+        current: p.run.as_ref().map(|r| {
+            let status = if r.no_place {
+                "noPlace"
+            } else if r.skipped.is_some() {
+                "skipped"
+            } else {
+                "active"
+            };
+            let reason = if r.no_place { Some(Reason::NoPlace) } else { r.skipped };
+            block(r.routine, r.household, r.activity, r.skill, r.day, r.start, r.minutes, status, reason, r.done)
+        }),
+        history: p
+            .history
+            .iter()
+            .filter(|b| b.day + 7 >= today)
+            .map(|b| {
+                let status = match b.outcome {
+                    Outcome::Kept => "kept",
+                    Outcome::Cut => "cut",
+                    Outcome::Skipped => "skipped",
+                    Outcome::NoPlace => "noPlace",
+                };
+                block(b.routine, b.household, b.activity, b.skill, b.day, b.start, b.minutes, status, b.reason, b.done)
+            })
+            .collect(),
+        goals: p.goals.iter().map(|g| goal_view(content, g)).collect(),
+        suggestions: p.suggestions.iter().map(|g| goal_view(content, g)).collect(),
+        wishes: p
+            .wishes
+            .iter()
+            .map(|&(a, k)| (content.activities[a].id.as_str(), k.map(|k| content.skills[k].id.as_str())))
+            .collect(),
+        adherence: crate::planner::adherence(content, s),
+    }
 }
 
 #[derive(Serialize)]
@@ -347,6 +520,9 @@ pub fn ui_state_json(world: &World) -> String {
                 visiting: s.visiting.map(|v| v.plot),
                 job,
                 skills: &s.skills[..content.skills.len()],
+                plan: world.households[s.household as usize]
+                    .player
+                    .then(|| plan_view(world, s)),
             }
         })
         .collect();
@@ -393,6 +569,9 @@ pub fn ui_state_json(world: &World) -> String {
                     bills: costs.map(|c| c.1),
                     style: h.style,
                     undo: world.undo_steps(i),
+                    routines: h
+                        .player
+                        .then(|| h.routines.iter().map(|r| routine_view(content, r)).collect()),
                 }
             })
             .collect(),

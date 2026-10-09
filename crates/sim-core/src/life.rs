@@ -211,14 +211,15 @@ fn job_market(w: &mut World, day: u32) {
         if day < w.sims[i].job_search_from {
             continue;
         }
-        // Short on money: look harder.
+        // Short on money, or set on finding work (a goal): look harder.
         let funds = w.households[h].funds;
         let weekly = weekly_costs(w, h).map_or(0, |(rent, bills)| rent + bills);
-        let chance = market.daily_chance * if funds < weekly * 2 { 2.0 } else { 1.0 };
+        let (keen, category) = crate::planner::job_search(&w.content, &w.sims[i]);
+        let chance = market.daily_chance * keen * if funds < weekly * 2 { 2.0 } else { 1.0 };
         if w.rng.next_f32() >= chance {
             continue;
         }
-        let Some((career, level)) = find_job(w, i) else {
+        let Some((career, level)) = find_job(w, i, category).or_else(|| find_job(w, i, None)) else {
             continue;
         };
         let sim = &mut w.sims[i];
@@ -231,15 +232,18 @@ fn job_market(w: &mut World, day: u32) {
     }
 }
 
-/// A job Sim `i` could get: for each career the best level they're qualified for (the entry
-/// level on probation otherwise), weighed by pay with some chance.
-fn find_job(w: &mut World, i: usize) -> Option<(usize, usize)> {
+/// A job Sim `i` could get (in `category`, if set): for each career the best level they're
+/// qualified for (the entry level on probation otherwise), weighed by pay with some chance.
+fn find_job(w: &mut World, i: usize, category: Option<usize>) -> Option<(usize, usize)> {
     let World {
         content, sims, rng, ..
     } = w;
     let skills = &sims[i].skills;
     let mut candidates: Vec<(f32, (usize, usize))> = Vec::new();
     for (c, career) in content.careers.iter().enumerate() {
+        if category.is_some_and(|cat| career.category != Some(cat)) {
+            continue;
+        }
         let level = career
             .levels
             .iter()

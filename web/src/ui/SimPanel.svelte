@@ -6,6 +6,7 @@
   import SimPreview from './kit/SimPreview.svelte';
   import { chemistryLabel, friendLabel, romanceLabel } from './relationship';
   import { services } from './services';
+  import TodayTimeline from './planner/TodayTimeline.svelte';
   import { game } from './state.svelte';
 
   const allTabs = ['Now', 'People', 'Feelings', 'Career', 'Skills'] as const;
@@ -90,6 +91,19 @@
       </div>
 
       {#if tab === 'Now'}
+        {#if mine}
+          <div class="plan">
+            <TodayTimeline {sim} height={14} labels />
+            <button class="btn small" onclick={() => services.controls.openPlanner(sim.id)}><Icon name="icon.ui.calendar" size={13} />Plan</button>
+          </div>
+          {#if sim.plan?.goals.length}
+            <ul class="mini-goals">
+              {#each sim.plan.goals as g (`${g.def}:${g.skill}:${g.target}`)}
+                <li title="{Math.round(g.progress * 100)}%"><span>{g.label}</span><span class="bar"><span style="width:{g.progress * 100}%"></span></span></li>
+              {/each}
+            </ul>
+          {/if}
+        {/if}
         <ol class="queue">
           {#each sim.actions as action, i (i)}
             <li class:active={action.active} class:auto={!action.directed}>
@@ -160,7 +174,7 @@
     position: absolute;
     left: var(--edge);
     /* Above the household strip. */
-    bottom: calc(var(--edge) + 76px);
+    bottom: calc(var(--edge) + 88px);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -203,6 +217,38 @@
   .icon-btn.on {
     background: var(--accent-soft);
     color: var(--accent);
+  }
+  .plan {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px;
+  }
+  .mini-goals {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11.5px;
+  }
+  .mini-goals li {
+    display: grid;
+    grid-template-columns: 1fr 60px;
+    align-items: center;
+    gap: 8px;
+  }
+  .mini-goals .bar {
+    height: 4px;
+    border-radius: 99px;
+    background: var(--hairline);
+    overflow: hidden;
+  }
+  .mini-goals .bar span {
+    display: block;
+    height: 100%;
+    background: var(--good);
   }
   .hint {
     margin: 0;

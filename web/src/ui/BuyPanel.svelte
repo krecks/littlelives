@@ -78,11 +78,14 @@
   });
 
   const terms = $derived(query.trim().toLowerCase().split(/\s+/).filter(Boolean));
+  /** A wish or a goal from the planner narrows the catalog to what offers its activity. */
+  const wanted = $derived(game.buyFilter ? content.activity(game.buyFilter.activity) : undefined);
   /** Items passing the search, "Affordable" and "For us" filters, across all categories. */
   const matching = $derived(
     content.shop.filter((def) => {
       if (affordableOnly && (def.price ?? 0) > game.funds) return false;
       if (lovedOnly && !lovers.has(def.id)) return false;
+      if (wanted && !content.offers(def, wanted, game.buyFilter?.skill)) return false;
       if (!terms.length) return true;
       const text = summarize(content, def).haystack;
       return terms.every((t) => text.includes(t));
@@ -184,6 +187,11 @@
           <select class="sort" bind:value={sort} aria-label="Sort">
             {#each sorts as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
           </select>
+          {#if game.buyFilter}
+            <button class="chip active wish" title="Show everything" onclick={() => (game.buyFilter = null)}>
+              {game.buyFilter.label} <Icon name="icon.ui.close" size={10} />
+            </button>
+          {/if}
           <button class="chip" class:active={affordableOnly} aria-pressed={affordableOnly} onclick={() => (affordableOnly = !affordableOnly)}>Affordable</button>
           {#if lovers.size}
             <button
@@ -241,9 +249,9 @@
                 </li>
               {:else}
                 <li class="none muted">
-                  {#if terms.length || affordableOnly || lovedOnly}
+                  {#if terms.length || affordableOnly || lovedOnly || game.buyFilter}
                     <span class="big">🔍</span>Nothing matches.
-                    <button class="link" onclick={() => ((query = ''), (affordableOnly = false), (lovedOnly = false))}>Clear filters</button>
+                    <button class="link" onclick={() => ((query = ''), (affordableOnly = false), (lovedOnly = false), (game.buyFilter = null))}>Clear filters</button>
                   {:else}Nothing here yet.{/if}
                 </li>
               {/each}

@@ -2,6 +2,7 @@
   import Icon from './Icon.svelte';
   import { clock, needColor } from './format';
   import SimPreview from './kit/SimPreview.svelte';
+  import TodayTimeline from './planner/TodayTimeline.svelte';
   import { services } from './services';
   import { game } from './state.svelte';
   import { settings } from '../settings/settings.svelte';
@@ -60,6 +61,7 @@
           </span>
         {/if}
       </button>
+      <div class="today"><TodayTimeline sim={s} height={5} /></div>
       {#if action?.active}
         <span class="progress"><span style="width:{action.progress * 100}%"></span></span>
       {/if}
@@ -161,6 +163,9 @@
     background: rgba(236, 106, 92, 0.14);
     color: var(--bad);
     animation: pulse 1.6s ease-in-out infinite;
+  }
+  .today {
+    padding: 0 10px 7px;
   }
   .progress {
     position: absolute;

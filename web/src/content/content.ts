@@ -170,6 +170,33 @@ export interface SocialDef {
   icon: string;
 }
 
+/** What a routine block can be for (`activities`). */
+export interface ActivityDef {
+  id: string;
+  label: string;
+  icon: string;
+  tags?: string[];
+  /** Blocks name a skill to train. */
+  skill?: boolean;
+  social?: boolean;
+  visit?: boolean;
+  sleep?: boolean;
+}
+
+export interface GoalDef {
+  id: string;
+  /** With `{skill}`, `{n}` and `{category}`. */
+  label: string;
+  icon: string;
+  kind: 'hasJob' | 'jobLevel' | 'promoted' | 'skill' | 'friends' | 'partner' | 'funds';
+}
+
+export interface PlannerRules {
+  maxMinutes: number;
+  maxSleepMinutes: number;
+  maxGoals: number;
+}
+
 export interface Names {
   /** Every first name (used for genders without their own list). */
   first: string[];
@@ -210,6 +237,9 @@ interface ContentFile {
   economy?: Partial<Economy>;
   /** Animation tags interactions can use as `anim` (the snapshot layout's `actions`). */
   animations?: string[];
+  activities?: ActivityDef[];
+  goals?: GoalDef[];
+  planner?: Partial<PlannerRules>;
   /** Further content files (relative to this one), merged key by key. */
   include?: string[];
 }
@@ -241,6 +271,10 @@ export class Content {
   readonly bondPresets: readonly string[];
   /** Story-feed templates with `{a}`, `{b}`, `{c}` placeholders. */
   readonly eventTexts: Readonly<Record<string, string>>;
+  /** What routine blocks can be for; life goals; planner limits. */
+  readonly activities: readonly ActivityDef[];
+  readonly goals: readonly GoalDef[];
+  readonly planner: PlannerRules;
   private readonly objects: Map<string, ObjectDef>;
 
   private constructor(
@@ -269,6 +303,9 @@ export class Content {
     this.shop = file.objects.filter((o) => o.price !== undefined);
     this.bondPresets = Object.keys(file.bondPresets ?? {});
     this.eventTexts = file.events ?? {};
+    this.activities = file.activities ?? [];
+    this.goals = file.goals ?? [];
+    this.planner = { maxMinutes: 240, maxSleepMinutes: 720, maxGoals: 3, ...file.planner };
     this.objects = new Map(file.objects.map((o) => [o.id, o]));
   }
 
@@ -280,6 +317,17 @@ export class Content {
     const parts = await Promise.all(includes.map((name) => fetchText(new URL(name, base).href)));
     const name = base.pathname.split('/').pop() || url;
     return new Content(JSON.stringify(mergeContent([[name, baseText], ...includes.map((n, i): [string, string] => [n, parts[i]])])));
+  }
+
+  activity(id: string): ActivityDef | undefined {
+    return this.activities.find((a) => a.id === id);
+  }
+
+  /** Whether an object's interactions offer an activity (with a skill to train, if given). */
+  offers(def: ObjectDef, activity: ActivityDef, skill?: string | null): boolean {
+    return def.interactions.some((it) =>
+      activity.skill && skill ? (it.skills?.[skill] ?? 0) > 0 : (it.tags ?? []).some((t) => activity.tags?.includes(t)),
+    );
   }
 
   skill(id: string): SkillDef | undefined {

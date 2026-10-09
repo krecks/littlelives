@@ -275,6 +275,8 @@ pub struct Sim {
     pub(crate) practice_fatigue: f32,
     /// The first day this Sim looks for work again (after quitting or being let go).
     pub job_search_from: u32,
+    /// Routines, goals and how planned blocks went (see `planner`).
+    pub planner: crate::planner::Planner,
 }
 
 impl Sim {
@@ -358,6 +360,14 @@ impl Sim {
         if self.engaged_with.is_some() || self.pose == Pose::Lie || self.away_until.is_some() {
             return false;
         }
+        // Busy with a planned block (unless it's for socialising).
+        if let Some(run) = &self.planner.run
+            && run.skipped.is_none()
+            && !run.no_place
+            && !content.activities.get(run.activity).is_some_and(|a| a.social || a.visit)
+        {
+            return false;
+        }
         let Some(act) = &self.current else {
             return true;
         };
@@ -436,6 +446,8 @@ pub struct Household {
     pub style: u8,
     /// "Free will": whether this household's residents choose what to do on their own.
     pub free_will: bool,
+    /// Routine blocks every member follows (each may skip some; their own blocks win).
+    pub routines: Vec<crate::planner::Routine>,
 }
 
 /// Per-tick snapshot of other Sims, so each Sim can reason about the others
@@ -480,6 +492,10 @@ pub struct World {
     /// "Skip quiet hours": run at `AUTO_FAST_SPEED` while the player's household is asleep
     /// or out and nothing notable happened at home in the last hour (see `World::calm`).
     pub auto_fast: bool,
+    /// What each household's home (plus public places) offers, for planned activities;
+    /// recomputed when the structure changes.
+    pub(crate) offers: Vec<crate::planner::HouseOffer>,
+    pub(crate) offers_version: u32,
 }
 
 /// Read-only context for one Sim's update.
@@ -494,6 +510,8 @@ pub(crate) struct Ctx<'a> {
     pub exits: &'a [[f32; 2]],
     pub autonomy: bool,
     pub hour: f32,
+    pub day: u32,
+    pub minute: f32,
     pub tick: u64,
 }
 
@@ -540,6 +558,7 @@ impl World {
                 funds: starting_funds,
                 style: 0,
                 free_will: true,
+                routines: Vec::new(),
             }]
         } else {
             lot_file
@@ -554,6 +573,7 @@ impl World {
                     funds: h.funds.unwrap_or(starting_funds),
                     style: 0,
                     free_will: true,
+                    routines: Vec::new(),
                 })
                 .collect()
         };
@@ -603,6 +623,8 @@ impl World {
             meta: serde_json::Value::Null,
             undo: Vec::new(),
             auto_fast: false,
+            offers: Vec::new(),
+            offers_version: 0,
         }
     }
 
@@ -803,6 +825,7 @@ impl World {
             skill_ups: 0,
             practice_fatigue: 0.0,
             job_search_from: 0,
+            planner: Default::default(),
         });
         self.relationships.grow(self.sims.len());
         Ok(self.sims.len() as u32 - 1)
@@ -941,6 +964,8 @@ impl World {
                 exits,
                 autonomy: *autonomy,
                 hour,
+                day: crate::clock::day(tick),
+                minute: crate::clock::minute_of_day(tick),
                 tick,
             };
             for sim in sims.iter_mut() {
@@ -949,6 +974,7 @@ impl World {
         }
         conversation::update(self);
         crate::life::update(self);
+        crate::planner::update(self);
 
         for s in &mut self.sims {
             s.feelings.retain(|m| m.expires > tick);
@@ -970,7 +996,16 @@ impl World {
         let snapshot = cmd.home_edit().and_then(|sim| self.home_snapshot(sim));
         let keeps_history = matches!(
             cmd,
-            Command::SetSpeed { .. } | Command::SetAutonomy { .. } | Command::SetAutoFast { .. }
+            Command::SetSpeed { .. }
+                | Command::SetAutonomy { .. }
+                | Command::SetAutoFast { .. }
+                | Command::SetRoutines { .. }
+                | Command::SetHouseholdRoutines { .. }
+                | Command::SkipHouseholdRoutine { .. }
+                | Command::AddGoal { .. }
+                | Command::RemoveGoal { .. }
+                | Command::AcceptSuggestion { .. }
+                | Command::DismissSuggestion { .. }
         );
         self.apply_command(cmd)?;
         match snapshot {
@@ -990,6 +1025,63 @@ impl World {
                 self.speed = speed;
             }
             Command::SetAutoFast { enabled } => self.auto_fast = enabled,
+            Command::SetRoutines { sim, routines } => {
+                let routines = crate::planner::routines_from(&self.content, &routines)?;
+                let s = self.sim_mut(sim)?;
+                s.planner.routines = routines;
+                // A changed block starts over (with today's plan).
+                s.planner.run = None;
+            }
+            Command::SetHouseholdRoutines { sim, routines } => {
+                let routines = crate::planner::routines_from(&self.content, &routines)?;
+                let h = self.sim(sim)?.household as usize;
+                self.households[h].routines = routines;
+                for s in self.sims.iter_mut().filter(|s| s.household as usize == h) {
+                    s.planner.run = None;
+                }
+            }
+            Command::SkipHouseholdRoutine { sim, routine, skip } => {
+                let skips = &mut self.sim_mut(sim)?.planner.skip_household;
+                skips.retain(|&r| r != routine);
+                if skip {
+                    skips.push(routine);
+                }
+            }
+            Command::AddGoal { sim, goal } => {
+                let day = crate::clock::day(self.tick);
+                let goal = crate::planner::goal_from(&self.content, &goal, self.sim(sim)?, day)?;
+                let max = self.content.planner.max_goals;
+                let s = self.sim_mut(sim)?;
+                if s.planner.goals.len() >= max {
+                    return Err(Error::new(format!("{} has {max} goals already", s.name)));
+                }
+                s.planner.goals.push(goal);
+            }
+            Command::RemoveGoal { sim, index } => {
+                let goals = &mut self.sim_mut(sim)?.planner.goals;
+                if index < goals.len() {
+                    goals.remove(index);
+                }
+            }
+            Command::AcceptSuggestion { sim, index } => {
+                let max = self.content.planner.max_goals;
+                let day = crate::clock::day(self.tick);
+                let s = self.sim_mut(sim)?;
+                if index < s.planner.suggestions.len() {
+                    if s.planner.goals.len() >= max {
+                        return Err(Error::new(format!("{} has {max} goals already", s.name)));
+                    }
+                    let mut goal = s.planner.suggestions.remove(index);
+                    goal.since_day = day;
+                    s.planner.goals.push(goal);
+                }
+            }
+            Command::DismissSuggestion { sim, index } => {
+                let suggestions = &mut self.sim_mut(sim)?.planner.suggestions;
+                if index < suggestions.len() {
+                    suggestions.remove(index);
+                }
+            }
             Command::SetAutonomy { enabled, household } => {
                 if let Some(h) = household {
                     self.households
@@ -1155,6 +1247,12 @@ impl World {
             .ok_or_else(|| Error::new(format!("unknown resident {id}")))
     }
 
+    fn sim_mut(&mut self, id: u32) -> Result<&mut Sim, Error> {
+        self.sims
+            .get_mut(id as usize)
+            .ok_or_else(|| Error::new(format!("unknown resident {id}")))
+    }
+
     fn enqueue(&mut self, sim: u32, kind: TaskKind) -> Result<(), Error> {
         let s = self
             .sims
@@ -1191,8 +1289,13 @@ fn wake_hour(sim: &Sim, ctx: &Ctx) -> f32 {
     }
 }
 
-/// Whether it is night for this Sim (time to be in bed).
+/// Whether it is night for this Sim (time to be in bed): their planned sleep, else the usual
+/// day rhythm.
 fn is_night(sim: &Sim, ctx: &Ctx) -> bool {
+    let routines = &ctx.households[sim.household as usize].routines;
+    if let Some(night) = crate::planner::planned_night(ctx.content, sim, routines, ctx.day, ctx.minute) {
+        return night;
+    }
     let rhythm = &ctx.content.day_rhythm;
     if ctx.hour >= rhythm.bed_hour {
         return true;
@@ -1203,7 +1306,7 @@ fn is_night(sim: &Sim, ctx: &Ctx) -> bool {
     rhythm.is_night(ctx.hour, wake_hour(sim, ctx))
 }
 
-/// Target skill levels for the Sim's job: what probation and the next promotion need.
+/// Target skill levels: what probation and the next promotion need, and skill goals.
 fn job_goals(sim: &Sim, content: &Content) -> [f32; MAX_SKILLS] {
     let mut goals = [0.0f32; MAX_SKILLS];
     if let Some(job) = &sim.job {
@@ -1214,6 +1317,7 @@ fn job_goals(sim: &Sim, content: &Content) -> [f32; MAX_SKILLS] {
             }
         }
     }
+    crate::planner::skill_targets(content, sim, &mut goals);
     goals
 }
 
@@ -1374,6 +1478,8 @@ fn pick_autonomous(
     let me = sim.id as usize;
     let here = ctx.briefs[me].plot;
     let mut candidates: Vec<(f32, Choice)> = Vec::new();
+    let routines = &ctx.households[sim.household as usize].routines;
+    let night = crate::planner::planned_night(content, sim, routines, ctx.day, ctx.minute);
 
     let object_rules = &content.object_rules;
     let funds = ctx.households[sim.household as usize].funds - sim.pending_spend;
@@ -1401,7 +1507,9 @@ fn pick_autonomous(
             if inter.trains_skills() && allowed == Access::Full {
                 s += training_interest(sim, content, inter) * boost / (1.0 + distance * 0.08);
             }
-            let s = s * feel(inter.tags);
+            // The plan: a block's activity is the favourite (even with full needs); goals.
+            let (plan, floor) = crate::planner::object_factor(content, sim, inter, night);
+            let s = s.max(floor) * feel(inter.tags) * plan;
             if s > MIN_AUTONOMY_SCORE {
                 candidates.push((s, Choice::Object(obj.id, i)));
             }
@@ -1426,6 +1534,8 @@ fn pick_autonomous(
         let attracted = other
             .gender_ix
             .is_none_or(|g| sim.attraction & (1 << g) != 0);
+        // Partner lookups scan everyone: only when a goal asks for it.
+        let single = !sim.planner.goals.is_empty() && ctx.rels.partner_of(j).is_none();
         for (k, s) in content.socials.iter().enumerate() {
             if !s.autonomous || !s.requires.allows(rel) {
                 continue;
@@ -1433,10 +1543,13 @@ fn pick_autonomous(
             if s.tags & content.social_rules.romantic_tags != 0 && !attracted {
                 continue;
             }
+            let romantic = s.tags & content.social_rules.romantic_tags != 0;
+            let friendly = matches!(s.prefer, Prefer::Any | Prefer::Liked);
             let score = ai::score_gains(needs, &s.actor_gain, distance)
                 * s.autonomy_weight
                 * prefer_factor(s.prefer, rel, chemistry)
-                * feel(s.tags);
+                * feel(s.tags)
+                * crate::planner::social_factor(content, sim, romantic, friendly, rel.friendship, single);
             if score > MIN_AUTONOMY_SCORE {
                 candidates.push((score, Choice::Social(j as u32, k)));
             }
@@ -1446,11 +1559,15 @@ fn pick_autonomous(
     // Residents visit friends who are home.
     let household = &ctx.households[sim.household as usize];
     let visits = &content.visits;
+    let plans_soon = || {
+        crate::planner::plans_soon(content, sim, routines, ctx.day, ctx.minute, visits.hours * 60.0)
+    };
     if sim.visiting.is_none()
         && here.is_some()
         && here == household.plot
         && (visits.earliest_hour..visits.latest_hour).contains(&ctx.hour)
     {
+        let soon = plans_soon();
         for other in ctx.households.iter().filter(|h| h.id != household.id) {
             let Some(plot) = other.plot else { continue };
             let friendship = ctx
@@ -1468,7 +1585,8 @@ fn pick_autonomous(
             // Travel is less of a deterrent than for a chat in the same room.
             let score = ai::score_gains(needs, &visits.gains, distance * 0.25)
                 * (0.4 + friendship / 100.0)
-                * feel(visits.tags);
+                * feel(visits.tags)
+                * crate::planner::visit_factor(content, sim, soon);
             if score > MIN_AUTONOMY_SCORE {
                 candidates.push((score, Choice::Visit(plot)));
             }
@@ -1673,7 +1791,7 @@ fn use_object(
     // Quality and skill scale what the Sim gets out of it (not what it costs).
     let boost = content.object_rules.quality_factor(obj.quality)
         * inter.skill_factor(&content.skill_rules, &sim.skills);
-    let (mut any_gain, mut satisfied, mut urgent) = (false, true, false);
+    let (mut any_gain, mut satisfied, mut urgent, mut wakes) = (false, true, false, false);
     for n in 0..content.needs.len() {
         let g = inter.gain_per_minute[n];
         if g > 0.0 {
@@ -1687,6 +1805,7 @@ fn use_object(
                 sim.needs[n] = (sim.needs[n] + g * MINUTES_PER_TICK).max(0.0);
             }
             urgent |= sim.needs[n] < 0.08;
+            wakes |= sim.needs[n] < 0.08 && content.day_rhythm.wake_for & (1 << n) != 0;
         }
     }
     for s in 0..content.skills.len() {
@@ -1695,12 +1814,14 @@ fn use_object(
         }
     }
     let done = if inter.tags & content.day_rhythm.sleep_tags != 0 && is_night(sim, ctx) {
-        // A night's sleep lasts until morning unless another need gets urgent.
-        urgent
+        // A night's sleep lasts until morning unless a need that wakes people gets urgent.
+        wakes
     } else {
-        // Workouts and other draining activities stop before they empty a need.
-        let drained = urgent && inter.total_gain.iter().any(|&g| g < 0.0);
-        elapsed >= inter.minutes || (any_gain && satisfied) || drained
+        // Workouts and other draining activities stop before they empty a need. Planned
+        // activities go on for their time even once the needs they fill are full.
+        let planned = crate::planner::planned_now(content, sim, inter);
+        let drained = urgent && (inter.total_gain.iter().any(|&g| g < 0.0) || planned);
+        elapsed >= inter.minutes || (any_gain && satisfied && !planned) || drained
     };
     if done && let Some(m) = inter.earns_feeling(elapsed, &sim.skills) {
         social::add_feeling(&mut sim.feelings, m, &content.feelings, ctx.tick);
