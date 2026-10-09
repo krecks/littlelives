@@ -49,7 +49,7 @@
           <div class="name">{sim.name}{#if !mine && homeName}<span class="family"> · the {homeName}s</span>{/if}</div>
           {#if sim.age !== undefined && sim.stage}
             <div class="age">
-              {services.content.lifeStages.find((s) => s.id === sim.stage)?.label ?? ''} · {sim.age}{#if sim.grade !== undefined} · school: <b title="{Math.round(sim.grade)} of 100">{gradeLetter(sim.grade)}</b>{/if}
+              {services.content.lifeStages.find((s) => s.id === sim.stage)?.label ?? ''} · {sim.age}{#if sim.grade !== undefined}{' · school: '}<b title="{Math.round(sim.grade)} of 100">{gradeLetter(sim.grade)}</b>{/if}
             </div>
           {/if}
           <div class="mood">
