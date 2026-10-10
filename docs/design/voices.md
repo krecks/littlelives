@@ -567,8 +567,14 @@ file; the web side merges them over it key by key (sim-core ignores `voice`). Se
 - Each speaking resident gets a `PannerNode` at their head position (`renderer.simHead`),
   updated about 10 times a second, so voices come from where the resident stands.
 - The speech bubble appears straight away; the voice follows when its clip is ready.
-- Talking animations already exist; lip sync from phoneme durations (which the engine knows) is a
-  later improvement.
+- **Lip sync.** Every clip comes with a viseme track (`crates/voice/src/visemes.rs`), made in Rust
+  together with the audio. KittenTTS gives no durations, so the phonemes are mapped to the 15
+  Meta visemes and weighted by kind (vowels longer than plosives, diphthongs split in two). They
+  are spread over the clip's voiced span, and pauses are snapped to the gaps in its loudness.
+  Loudness, at 100 values a second, scales how far the mouth opens. The director passes the track
+  to the renderer when the clip starts (`setSpeech`). The face mixes the visemes into the
+  resident's face morphs a little ahead of the sound, blending each shape in over about 70 ms.
+  Talk without a voice line uses made-up syllables from the same mouth shapes.
 
 ## Modules
 

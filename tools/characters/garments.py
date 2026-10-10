@@ -17,6 +17,7 @@ poke through. Garment vertices carry (hem distance, part flag, category, 0) in `
 """
 
 import numpy as np
+from scipy.spatial import ConvexHull
 
 from meshops import adjacency, boundary_edges, clip_by_field, geodesic_from, laplacian_relax, smooth_normals, top4, weld_ids
 
@@ -96,7 +97,9 @@ def variants(lm, gender):
     }
     if gender == 'female':
         bottoms['capri'] = dict(waist=lm.waist, leg=lm.knee - 0.45 * shin)
-        bottoms['skirt'] = dict(waist=lm.waist, leg=lm.hip - 0.07, skirt=True)
+        # The thighs' skin is hidden down to near the hem (a skirt hangs clear of the legs, so they
+        # would otherwise show through it as they move).
+        bottoms['skirt'] = dict(waist=lm.waist, leg=lm.knee + 0.05, skirt=True)
     shoes = {
         'sneakers': dict(shoe=lm.ankle + 0.03),
         'boots': dict(shoe=lm.ankle + 0.13),
@@ -253,6 +256,69 @@ def shell(body, dense, f, kind, name, cut, lm):
     return dict(pos=pos, nor=nor, uv=uv, joints=j, weights=w, idx=idx, fields=fields)
 
 
+def subdivide(pos, attrs, idx):
+    """One midpoint subdivision (each triangle into four); `attrs` (n, k) are interpolated."""
+    tri = idx.reshape(-1, 3)
+    mid = {}
+    P, A = list(pos), list(attrs)
+
+    def m(a, b):
+        key = (min(a, b), max(a, b))
+        k = mid.get(key)
+        if k is None:
+            k = mid[key] = len(P)
+            P.append((pos[a] + pos[b]) / 2)
+            A.append((attrs[a] + attrs[b]) / 2)
+        return k
+
+    out = []
+    for a, b, c in tri:
+        ab, bc, ca = m(a, b), m(b, c), m(c, a)
+        out += [a, ab, ca, ab, b, bc, ca, bc, c, ab, bc, ca]
+    return np.array(P), np.array(A), np.array(out, np.int64)
+
+
+def shoe(body, dense, f, cut, offset=0.006):
+    """
+    Shoes as one smooth shape per foot (the convex hull of the covered foot, subdivided, rounded,
+    offset outward, soles flat on the floor) rather than a shell around each toe. Hull vertices are
+    body vertices, so they keep its skin weights; UVs are planar (only the weave uses them).
+    """
+    pos = body['pos']
+    covered = coverage(f, cut, 'shoes') > -0.004
+    verts, faces = [], []
+    for side in (1, -1):
+        sel = np.where(covered & (pos[:, 0] * side > 0))[0]
+        hull = ConvexHull(pos[sel])
+        tri = hull.simplices.copy()
+        # Counter-clockwise from outside (glTF front faces).
+        a, b, c = (pos[sel][tri[:, k]] for k in range(3))
+        flip = (np.cross(b - a, c - a) * hull.equations[:, :3]).sum(1) < 0
+        tri[flip] = tri[flip][:, ::-1]
+        used = np.unique(tri)
+        remap = np.full(len(sel), -1)
+        remap[used] = np.arange(len(used)) + sum(len(v) for v in verts)
+        verts.append(sel[used])
+        faces.append(remap[tri])
+    src = np.concatenate(verts)
+    idx = np.concatenate(faces).ravel()
+    p, d = pos[src], dense[src]
+    p, d, idx = subdivide(p, d, idx)
+    # Round the hull's flat facets a little (the soles stay flat below).
+    p, _ = laplacian_relax(p, idx, weld_ids(p), 6, 0.3)
+    nor = smooth_normals(p, idx)
+    p = p + nor * offset
+    p[:, 1] = np.maximum(p[:, 1], 0.0)
+    nor = smooth_normals(p, idx)
+    n = len(p)
+    hem = np.clip(cut['shoe'] - p[:, 1], 0, 0.08)
+    flag = (p[:, 1] < 0.024) * FLAG_SOLE
+    fields = np.stack([hem, flag, np.full(n, SHOES), np.zeros(n)], -1)
+    uv = np.stack([p[:, 2] + p[:, 0], p[:, 1]], -1) * 0.5
+    j, w = top4(d)
+    return dict(pos=p, nor=nor, uv=uv, joints=j, weights=w, idx=idx, fields=fields)
+
+
 def skirt(body, P, lm, B, nb):
     """A-line skirt lofted from the waist to just above the knee, enclosing both legs."""
     pos = body['pos']
@@ -276,7 +342,7 @@ def skirt(body, P, lm, B, nb):
     # Smooth around and enforce a widening A-line with ease.
     for _ in range(3):
         R = (np.roll(R, 1, 1) + 2 * R + np.roll(R, -1, 1)) / 4
-    ease = np.linspace(0.007, 0.02, nr)[:, None]
+    ease = np.linspace(0.01, 0.05, nr)[:, None]
     R = R + ease
     for k in range(1, nr):
         R[k] = np.maximum(R[k], R[k - 1] + 0.0025)
@@ -289,7 +355,7 @@ def skirt(body, P, lm, B, nb):
             verts.append([np.sin(a) * r, yy - 0.012 * t * t, cz + np.cos(a) * r])
             uvs.append([i / na, t])
             dw = np.zeros(nb)
-            tw = smoothstep(0.15, 1.0, t) * 0.8
+            tw = smoothstep(0.15, 1.0, t) * 0.9
             s = np.clip(0.5 + np.sin(a) * r / 0.16, 0, 1)
             dw[B['thigh_l']] = tw * s
             dw[B['thigh_r']] = tw * (1 - s)

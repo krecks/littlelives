@@ -11,8 +11,11 @@ export type FromVoiceWorker =
   /** Download progress (bytes). */
   | { type: 'progress'; loaded: number; total: number }
   | { type: 'ready'; ms: number }
-  /** 24 kHz mono; `ms`: how long the engine took, `resampleMs` of it for trimming and the voice's size. */
-  | { type: 'audio'; id: number; samples: Float32Array; ms: number; resampleMs: number }
+  /**
+   * 24 kHz mono and its mouth shapes (flat, `parseVisemes`); `ms`: how long the engine took,
+   * `resampleMs` of it for trimming, the voice's size and the mouth shapes.
+   */
+  | { type: 'audio'; id: number; samples: Float32Array; visemes: Float32Array; ms: number; resampleMs: number }
   /** A line that failed (`id`), or the engine couldn't load or the worker failed. */
   | { type: 'error'; id?: number; message: string };
 

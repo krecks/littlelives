@@ -4,8 +4,8 @@
 //! phonemizer Kokoro was trained with, without espeak-ng) and then through KittenTTS nano's
 //! tokenizer, [`KittenTokenizer`] (the phonemes turned into espeak-style IPA by
 //! [`misaki_to_espeak`]). The model runs in the browser with ONNX Runtime Web; its output is
-//! trimmed and resampled for the voice's size ([`resample`]). Nothing here touches the
-//! simulation.
+//! trimmed and resampled for the voice's size ([`resample`]), and given a track of mouth shapes
+//! ([`visemes`]). Nothing here touches the simulation.
 
 mod g2p;
 mod kitten;
@@ -13,11 +13,13 @@ mod lexicon;
 mod numbers;
 mod resample;
 mod rules;
+pub mod visemes;
 
 pub use g2p::G2p;
 pub use kitten::{KittenTokenizer, STYLE_ROWS, misaki_to_espeak, style_row};
 pub use lexicon::Lexicon;
 pub use resample::resample;
+pub use visemes::VisemeTrack;
 
 /// The model's output rate (Hz).
 pub const SAMPLE_RATE: u32 = 24_000;
@@ -60,13 +62,17 @@ pub struct ModelInputs {
     pub depth: f32,
     /// Which row of a voice's style table to use.
     pub row: usize,
+    /// The line's Misaki phonemes (for its mouth shapes).
+    pub phonemes: String,
 }
 
 impl ModelInputs {
     /// The model's output with its noisy tail and the silence around the speech dropped, turned
-    /// into the voice's size.
-    pub fn finish(&self, samples: &[f32]) -> Vec<f32> {
-        resample(kitten::trim(samples), self.depth)
+    /// into the voice's size; and its mouth shapes, flat ([`VisemeTrack::flat`]).
+    pub fn finish(&self, samples: &[f32]) -> (Vec<f32>, Vec<f32>) {
+        let samples = resample(kitten::trim(samples), self.depth);
+        let track = visemes::track(&self.phonemes, &samples, SAMPLE_RATE);
+        (samples, track.flat())
     }
 }
 
@@ -84,7 +90,8 @@ impl Engine {
     /// KittenTTS's inputs for a line: ids from the phonemes as espeak-style IPA, the style row
     /// from the text's length, and the voice (speed, pitch and depth clamped to what sounds right).
     pub fn inputs(&self, text: &str, voice: VoiceParams) -> ModelInputs {
-        let ipa = misaki_to_espeak(&self.g2p.phonemize(text));
+        let phonemes = self.g2p.phonemize(text);
+        let ipa = misaki_to_espeak(&phonemes);
         let v = voice.clamped();
         ModelInputs {
             ids: self.kitten.ids(&ipa),
@@ -92,6 +99,7 @@ impl Engine {
             pitch: (v.pitch / v.depth).clamp(0.4, 2.0),
             depth: v.depth,
             row: style_row(text),
+            phonemes,
         }
     }
 

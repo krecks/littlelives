@@ -11,6 +11,8 @@ export interface Playing {
   setPan(pan: number): void;
   stop(): void;
   readonly ended: Promise<void>;
+  /** When its first sample is heard: seconds on the `performance.now()` clock (output latency included). */
+  readonly startTime: number;
 }
 
 export function playClip(samples: Float32Array, pan = 0): Playing | null {
@@ -26,6 +28,7 @@ export function playClip(samples: Float32Array, pan = 0): Playing | null {
   src.connect(panner).connect(voices);
   const ended = new Promise<void>((resolve) => (src.onended = () => resolve()));
   src.start();
+  const startTime = performance.now() / 1000 + (ac.outputLatency || ac.baseLatency || 0);
   return {
     setPan(p) {
       panner.pan.setTargetAtTime(Math.max(-1, Math.min(1, p)), ac.currentTime, 0.05);
@@ -38,6 +41,7 @@ export function playClip(samples: Float32Array, pan = 0): Playing | null {
       }
     },
     ended,
+    startTime,
   };
 }
 

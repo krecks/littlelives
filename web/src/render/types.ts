@@ -8,6 +8,7 @@ import type { Content } from '../content/content';
 import type { FrameState } from '../core/bridge';
 import type { WorldStructure } from '../core/protocol';
 import type { Appearance } from '../game/household';
+import type { VisemeTrack } from '../voice/visemes';
 
 /**
  * `up`: full walls and roofs. `cutaway`: walls between the camera and the rooms behind them
@@ -249,6 +250,12 @@ export interface Renderer {
   setGameShot(shot: GameShot | null, cut?: boolean): void;
   /** Keeps resident `index` (snapshot index) in the middle while the player turns and zooms; null stops. */
   followSim(index: number | null): void;
+  /**
+   * Lip sync: resident `index` (snapshot index) is saying a line with these mouth shapes, its
+   * first sample heard at `startTime` (seconds on the `performance.now() / 1000` clock; the
+   * track's times count from it). Null: the line ended or was stopped (mouth at rest).
+   */
+  setSpeech(index: number, track: VisemeTrack | null, startTime: number): void;
   /** Removes the current world (end of a session); cached meshes and the landscape are kept. */
   clear(): void;
   /**
@@ -301,6 +308,8 @@ export interface SimStage {
   react(reaction: StageReaction): void;
   /** Framing: 0 = full body .. 1 = face (animated). */
   zoomTo(zoom: number): void;
+  /** Lip sync for the Sim on the stage, as `Renderer.setSpeech` (null: stops). */
+  speak(track: VisemeTrack | null, startTime: number): void;
   /** Called when the framing target changes (wheel, double-click, `zoomTo`). */
   onZoom: ((zoom: number) => void) | null;
   /** Removes the canvas; the preview engine is released when nothing else needs it. */

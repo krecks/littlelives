@@ -104,6 +104,9 @@ export default defineConfig({
   server: { headers: crossOriginIsolation },
   preview: { headers: crossOriginIsolation },
   worker: { format: 'es' },
+  // The voice worker's ONNX Runtime: Vite's start-up scan doesn't reach worker imports, so it would
+  // find it only when the first line is spoken, re-bundle and reload the page.
+  optimizeDeps: { include: ['onnxruntime-web/wasm'] },
   // The main chunk is about 1.7 MB (Babylon by module, see render/babylon/core.ts): warn if it grows.
   build: { target: 'es2022', chunkSizeWarningLimit: 2000 },
 });

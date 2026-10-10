@@ -1,6 +1,7 @@
 /**
  * Resident voices in a game (docs/design/voices.md). Watches the render snapshot and decides
- * who says what, then plays the line once the voice worker has made it.
+ * who says what, then plays the line once the voice worker has made it, and hands its mouth
+ * shapes to the renderer while it plays (`Renderer.setSpeech`).
  *
  * Only two kinds of resident speak:
  * - the one whose panel is open (`game.inspected`), and whoever they are talking to;
@@ -20,7 +21,8 @@ import { settings } from '../settings/settings.svelte';
 import { game, toast } from '../ui/state.svelte';
 import { fill, loadLines, Lines, type Line } from './lines';
 import { playClip, updateVoiceVolume, type Playing } from './player';
-import { cachedClip, ensureVoice, speak, unloadVoice, voiceReady, voiceStatus } from './service.svelte';
+import { cachedClip, ensureVoice, speak, unloadVoice, voiceReady, voiceStatus, type Clip } from './service.svelte';
+import type { VisemeTrack } from './visemes';
 import { voiceFor, withTone } from './voices';
 
 const TICK_MS = 100;
@@ -69,12 +71,17 @@ export interface VoiceDirectorStats {
 interface Speaking {
   id: number;
   playing: Playing;
+  /** The renderer row (snapshot index) its mouth shapes went to. */
+  row: number;
+  track: VisemeTrack;
 }
 
 export class VoiceDirector {
   private lines: Lines | null = null;
   private linesLanguage = '';
   private readonly sims = new Map<number, SimState>();
+  /** Each resident's snapshot index at the last tick. */
+  private readonly rows = new Map<number, number>();
   private readonly speaking: Speaking[] = [];
   private inFlight = 0;
   /** Lines played, and lines given up on (engine busy, too late, too many voices). */
@@ -151,6 +158,9 @@ export class VoiceDirector {
     const count = curr[layout.header.simCount];
     const row = (i: number) => layout.headerLen + i * layout.simStride;
     const idAt = (i: number) => curr[row(i) + k.id];
+
+    this.rows.clear();
+    for (let i = 0; i < count; i++) this.rows.set(idAt(i), i);
 
     // Who may speak this tick.
     const voiced = new Set<number>();
@@ -343,7 +353,7 @@ export class VoiceDirector {
     const state = this.sims.get(id);
     if (thought && state) state.quietUntil = now + THOUGHT_GAP_MS;
     const requested = performance.now();
-    let clip: Promise<Float32Array>;
+    let clip: Promise<Clip>;
     if (cached) {
       clip = Promise.resolve(cached);
     } else {
@@ -353,7 +363,7 @@ export class VoiceDirector {
       void clip.then(() => this.timed(performance.now() - requested)).catch(() => {});
     }
     void clip
-      .then(async (samples) => {
+      .then(async ({ samples, visemes }) => {
         // An answer waits for the other side to finish (within reason).
         const before = this.speaking.filter((s) => s.id !== id);
         if (before.length && !thought) await Promise.race([Promise.all(before.map((s) => s.playing.ended)), wait(3000)]);
@@ -362,14 +372,18 @@ export class VoiceDirector {
           this.dropped++;
           return;
         }
-        const playing = playClip(samples, this.panFor(index));
+        // Where the resident is now (rows move as residents come and go).
+        const row = this.rows.get(id) ?? index;
+        const playing = playClip(samples, this.panFor(row));
         if (!playing) return;
         this.spoken++;
-        const entry = { id, playing };
+        const entry: Speaking = { id, playing, row, track: visemes };
         this.speaking.push(entry);
+        this.renderer.setSpeech(row, visemes, playing.startTime);
         void playing.ended.then(() => {
           const at = this.speaking.indexOf(entry);
           if (at >= 0) this.speaking.splice(at, 1);
+          this.quiet(entry.row);
           if (thought && state) state.quietUntil = Math.max(state.quietUntil, performance.now() + THOUGHT_GAP_MS);
         });
       })
@@ -384,6 +398,11 @@ export class VoiceDirector {
 
   private firstName(id: number): string {
     return (game.roster.find((s) => s.id === id)?.name ?? '').split(' ')[0];
+  }
+
+  /** Stops the mouth shapes on `row` unless another line is playing there. */
+  private quiet(row: number): void {
+    if (!this.speaking.some((s) => s.row === row)) this.renderer.setSpeech(row, null, 0);
   }
 
   /** Stereo position from where the resident is on screen. */
@@ -401,6 +420,13 @@ export class VoiceDirector {
       for (let i = 0; i < count; i++) {
         if (curr[layout.headerLen + i * layout.simStride + layout.sim.id] === s.id) {
           s.playing.setPan(this.panFor(i));
+          // Their row moved: the mouth shapes go with them.
+          if (i !== s.row) {
+            const old = s.row;
+            s.row = i;
+            this.quiet(old);
+            this.renderer.setSpeech(i, s.track, s.playing.startTime);
+          }
           break;
         }
       }
@@ -408,8 +434,11 @@ export class VoiceDirector {
   }
 
   private stopAll(): void {
-    for (const s of this.speaking) s.playing.stop();
-    this.speaking.length = 0;
+    const playing = this.speaking.splice(0);
+    for (const s of playing) {
+      s.playing.stop();
+      this.renderer.setSpeech(s.row, null, 0);
+    }
   }
 }
 

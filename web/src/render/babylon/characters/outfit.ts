@@ -1,11 +1,12 @@
 /**
  * Turns a Sim's appearance (creator colours, hairstyle, gender) into its outfit: which garment
- * meshes it wears (`top.*`, `bottom.*`, `shoes.*` parts built by tools/characters/garments.py) and
- * the per-Sim shader parameters (skin tint, garment colours, the coverage cuts that hide skin under
- * the clothes, hair colour). The top follows the creator's outfit colour. Garments and colours
- * chosen in the household creator (`appearance.top`, `bottom`, `shoes`, `bottomColor`, `shoesColor`) are
- * worn as chosen; whatever is missing (Sims from older saves) is picked deterministically from
- * the Sim's id, so a Sim always wears the same clothes. Pyjamas recolour the same garments.
+ * meshes it wears (`top.*`, `bottom.*`, `shoes.*` parts: MakeHuman's clothes, see
+ * tools/characters/clothes.py) and the per-Sim shader parameters (skin tint, top and bottom colours,
+ * the coverage cuts that hide skin under the clothes, hair colour). The top follows the creator's
+ * outfit colour; shoes keep their own. Garments and colours chosen in the household creator
+ * (`appearance.top`, `bottom`, `shoes`, `bottomColor`) are worn as chosen; whatever is missing
+ * (Sims from older saves) is picked deterministically from the Sim's id, so a Sim always wears the
+ * same clothes. Pyjamas recolour the same garments.
  */
 
 import type { Appearance } from '../../../game/household';
@@ -13,34 +14,37 @@ import type { BodyData, GarmentCut } from './data';
 
 const TROUSERS = ['#33415C', '#2B2D33', '#4A5568', '#B9A27E', '#6B5A48', '#3E4A3A', '#E8E2D6', '#5C3B3B'];
 const SKIRTS = ['#2B2D33', '#5C3B3B', '#33415C', '#7A6A8E', '#B9A27E', '#3E4A3A'];
-const SHOES = ['#2A2420', '#F2F0EA', '#4A3426', '#1E1E22', '#8A6A4A', '#B03A3A', '#3D5A80'];
 const SLEEP_TOP = ['#9DB4D9', '#D9A5B4', '#B9D2B0', '#E6D2A6'];
 
 const TOPS: Record<string, readonly string[]> = {
-  female: ['top.tee', 'top.tee', 'top.tank', 'top.blouse', 'top.blouse', 'top.long'],
-  male: ['top.tee', 'top.tee', 'top.vneck', 'top.polo', 'top.long', 'top.long'],
+  female: ['top.tee', 'top.tee', 'top.tank', 'top.blouse', 'top.blouse', 'top.long', 'top.shirt', 'top.jacket'],
+  male: ['top.tee', 'top.tee', 'top.vneck', 'top.polo', 'top.long', 'top.long', 'top.shirt', 'top.jacket', 'top.suit'],
 };
 const BOTTOMS: Record<string, readonly string[]> = {
   female: ['bottom.trousers', 'bottom.trousers', 'bottom.capri', 'bottom.skirt', 'bottom.skirt', 'bottom.shorts'],
-  male: ['bottom.trousers', 'bottom.trousers', 'bottom.trousers', 'bottom.shorts'],
+  male: ['bottom.trousers', 'bottom.trousers', 'bottom.trousers', 'bottom.shorts', 'bottom.suit'],
 };
+const SHOE_PARTS = ['shoes.sneakers', 'shoes.sneakers', 'shoes.trainers', 'shoes.boots', 'shoes.dress'] as const;
+/** Shoes that go with formal clothes. */
+const FORMAL = new Set(['top.suit', 'bottom.suit', 'bottom.skirt']);
 
 /** Garment choices offered per gender, most common first (`pickOutfit` weights by repetition). */
-export const GARMENTS = { TOPS, BOTTOMS, SHOES: ['shoes.sneakers', 'shoes.boots'] as readonly string[] };
+export const GARMENTS = { TOPS, BOTTOMS, SHOES: SHOE_PARTS as readonly string[] };
 
 /** A random outfit for a new Sim (the creator colour stays the top's colour). */
-export function pickOutfit(gender: string, rand: () => number = Math.random): Pick<Appearance, 'top' | 'bottom' | 'shoes' | 'bottomColor' | 'shoesColor'> {
-  const female = gender === 'female';
+export function pickOutfit(gender: string, rand: () => number = Math.random): Pick<Appearance, 'top' | 'bottom' | 'shoes' | 'bottomColor'> {
   const bottom = pick(BOTTOMS[gender] ?? BOTTOMS.male, rand());
-  const skirt = bottom === 'bottom.skirt';
-  const boots = (bottom === 'bottom.trousers' || skirt) && rand() < (female ? 0.35 : 0.25);
+  const top = pick(TOPS[gender] ?? TOPS.male, rand());
   return {
-    top: pick(TOPS[gender] ?? TOPS.male, rand()),
+    top,
     bottom,
-    shoes: boots ? 'shoes.boots' : 'shoes.sneakers',
-    bottomColor: pick(skirt ? SKIRTS : TROUSERS, rand()),
-    shoesColor: boots ? pick(['#4A3426', '#2A2420', '#6B4A32', '#1E1E22'], rand()) : pick(SHOES, rand()),
+    shoes: pickShoes(top, bottom, rand()),
+    bottomColor: pick(bottom === 'bottom.skirt' ? SKIRTS : TROUSERS, rand()),
   };
+}
+
+function pickShoes(top: string, bottom: string, r: number): string {
+  return FORMAL.has(top) || FORMAL.has(bottom) ? (r < 0.6 ? 'shoes.dress' : 'shoes.boots') : pick(SHOE_PARTS, r);
 }
 
 export interface OutfitParams {
@@ -52,9 +56,11 @@ export interface OutfitParams {
   skinRef: [number, number, number];
   top: [number, number, number];
   bottom: [number, number, number];
-  shoes: [number, number, number];
-  trim: [number, number, number];
   hair: [number, number, number];
+  /** Iris colour (linear rgb). */
+  eyes: [number, number, number];
+  /** 1 if the Sim wears hair (its scalp takes the hair colour), else 0. */
+  scalp: number;
   /** Coverage cuts: top sleeve / hem / crew / scoop, bottom waist / leg, shoe height. */
   cuts: [number, number, number, number, number, number, number];
 }
@@ -79,15 +85,21 @@ function luminance(c: readonly number[]): number {
   return c[0] * 0.2126 + c[1] * 0.7152 + c[2] * 0.0722;
 }
 
+/** Eye colours for looks without one (older saves): the creator's `palette.eyes`, mostly brown. */
+export const EYE_COLOURS = ['#4A2E1B', '#6B4226', '#6B4226', '#8A6237', '#5F7A3E', '#4E7BA6', '#7C8A96'];
+
+/** Share of each (linear) swatch channel real skin reflects. */
+const SKIN_REFLECT = [0.68, 0.6, 0.56];
+
 const OFF = -10;
 
 /** Day outfit (or pyjamas when `sleep`: the same garments, recoloured). */
 export function outfitFor(id: number, gender: string, appearance: Appearance | null | undefined, body: BodyData, sleep = false): OutfitParams {
   const r = (k: number) => hash(id * 31 + k);
-  const female = gender === 'female';
   const has = (p: string) => p in body.garments;
-  // Creator swatches are bright UI colours; real skin reflects at most ~70% (keeps highlights).
-  const skin = hexToLinear(appearance?.skin, '#D9A882').map((v) => v * 0.72) as [number, number, number];
+  // Creator swatches are bright UI colours; real skin reflects less, and less blue and green than
+  // red (blood under the skin), so light swatches read as warm skin rather than chalk.
+  const skin = hexToLinear(appearance?.skin, '#D9A882').map((v, k) => v * SKIN_REFLECT[k]) as [number, number, number];
   const skinRef = [body.skinRef[0], body.skinRef[1], body.skinRef[2]] as [number, number, number];
   // Fabric: the creator colour, a little less saturated-bright than the UI swatch.
   let top = hexToLinear(appearance?.body, '#8FA89A').map((v) => v * 0.9) as [number, number, number];
@@ -109,13 +121,7 @@ export function outfitFor(id: number, gender: string, appearance: Appearance | n
     // Avoid a bottom that matches the top too closely.
     if (Math.abs(luminance(bottom) - luminance(top)) < 0.03) bottom = hexToLinear(pick(TROUSERS, r(3)), '#2B2D33');
   }
-  const shoeChoice = chosen(appearance?.shoes, 'shoes.');
-  const boots = shoeChoice ? shoeChoice === 'shoes.boots' : (bottomPart === 'bottom.trousers' || skirt) && r(8) < (female ? 0.35 : 0.25);
-  const shoePart = shoeChoice ?? (boots ? 'shoes.boots' : 'shoes.sneakers');
-  let shoes = hexToLinear(isHex(appearance?.shoesColor) ? appearance!.shoesColor : pick(SHOES, r(4)), '#2A2420');
-  // Soles: off-white on sneakers, a darker shade of the leather on boots.
-  const trim = boots ? (shoes.map((v) => v * 0.45) as [number, number, number]) : hexToLinear('#EDEAE2', '#EDEAE2');
-  if (boots && !isHex(appearance?.shoesColor)) shoes = hexToLinear(pick(['#4A3426', '#2A2420', '#6B4A32', '#1E1E22'], r(9)), '#4A3426');
+  const shoePart = chosen(appearance?.shoes, 'shoes.') ?? pickShoes(topPart, bottomPart, r(8));
   if (sleep) {
     top = hexToLinear(pick(SLEEP_TOP, r(5)), '#9DB4D9');
     bottom = top.map((v) => v * 0.8) as [number, number, number];
@@ -140,9 +146,9 @@ export function outfitFor(id: number, gender: string, appearance: Appearance | n
     skinRef,
     top,
     bottom,
-    shoes,
-    trim,
     hair: hairMult,
+    eyes: hexToLinear(appearance?.eyes ?? EYE_COLOURS[Math.floor(r(9) * EYE_COLOURS.length)], '#6B4226'),
+    scalp: appearance?.hairStyle === 'none' ? 0 : 1,
     cuts,
   };
 }
@@ -154,8 +160,8 @@ export function writeOutfit(o: OutfitParams, row: Float32Array, offset: number):
   row.set([o.top[0], o.top[1], o.top[2], c[1]], offset + 4);
   row.set([o.bottom[0], o.bottom[1], o.bottom[2], c[2]], offset + 8);
   row.set([o.hair[0], o.hair[1], o.hair[2], c[3]], offset + 12);
-  row.set([o.shoes[0], o.shoes[1], o.shoes[2], c[4]], offset + 16);
+  row.set([0, 0, 0, c[4]], offset + 16);
   row.set([o.skinRef[0], o.skinRef[1], o.skinRef[2], c[5]], offset + 20);
-  row.set([o.trim[0], o.trim[1], o.trim[2], c[6]], offset + 24);
-  row.set([0, 0, 0, 0], offset + 28);
+  row.set([0, 0, 0, c[6]], offset + 24);
+  row.set([o.eyes[0], o.eyes[1], o.eyes[2], o.scalp], offset + 28);
 }

@@ -53,6 +53,7 @@ import {
 import type { FrameState } from '../../core/bridge';
 import { groundDepth, type DiagonalWall, type MeshArrays, type ObjectPlacement, type Opening, type WallEdge, type WorldStructure } from '../../core/protocol';
 import type { QualitySettings } from '../quality';
+import type { VisemeTrack } from '../../voice/visemes';
 import { LOOK } from '../look';
 import type {
   BuildEffect,
@@ -641,6 +642,10 @@ export class BabylonRenderer implements Renderer {
   setSelectedSim(id: number | null): void {
     this.selectedSim = id;
     this.characters?.select(id);
+  }
+
+  setSpeech(index: number, track: VisemeTrack | null, startTime: number): void {
+    this.characters?.setSpeech(index, track, startTime);
   }
 
   setWallMode(mode: WallMode): void {
