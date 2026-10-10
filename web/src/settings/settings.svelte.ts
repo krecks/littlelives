@@ -47,7 +47,6 @@ export interface Settings {
   voices: boolean;
   /** Language residents speak (English only, for now). */
   voiceLanguage: 'en';
-  voiceModel: 'paradee-8m';
   /** 0..1. */
   voiceVolume: number;
   /** Birds, crickets, and things in use at home (audio/world.ts). */
@@ -84,7 +83,6 @@ export const DEFAULT_SETTINGS: Settings = {
   directControl: 'inspect',
   voices: false,
   voiceLanguage: 'en',
-  voiceModel: 'paradee-8m',
   voiceVolume: 0.8,
   worldSound: true,
   worldVolume: 0.6,

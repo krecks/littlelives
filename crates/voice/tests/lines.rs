@@ -1,7 +1,6 @@
 //! Every spoken line in the content (`web/public/content/voice/en.json` and the `voice.en` of
-//! every content file `base.json` includes) phonemizes from the dictionary into symbols both
-//! models know (Paradee's Misaki phonemes, KittenTTS's espeak-style IPA), and every key names
-//! something that exists. Needs `node tools/voice/fetch.mjs`
+//! every content file `base.json` includes) phonemizes from the dictionary into symbols
+//! KittenTTS knows (espeak-style IPA), and every key names something that exists. Needs `node tools/voice/fetch.mjs`
 //! first for the phonemizer part.
 
 use std::collections::{BTreeSet, HashMap};
@@ -83,17 +82,9 @@ fn g2p() -> Option<G2p> {
     Some(G2p::new(Lexicon::parse(&tsv)))
 }
 
-/// The symbols Paradee takes (`vocab` in its config), if it was fetched.
-fn vocab() -> Option<BTreeSet<char>> {
-    let path = content_dir().join("../voice/paradee-8m.json");
-    let config: Value = serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()?;
-    Some(config["vocab"].as_object()?.keys().filter_map(|k| k.chars().next()).collect())
-}
-
 #[test]
 fn every_line_phonemizes_from_the_dictionary() {
     let Some(g2p) = g2p() else { return };
-    let vocab = vocab();
     let mut all = Vec::new();
     for (name, file) in line_files() {
         lines(&file, &name, &mut all);
@@ -111,13 +102,6 @@ fn every_line_phonemizes_from_the_dictionary() {
         let ps = g2p.phonemize(&text);
         if !ps.chars().any(|c| "AIOWYaeiouæɑɐɒɔəɚɛɜɪʊʌ".contains(c)) {
             wrong.push(format!("{at}: {text}\n  no vowel: {ps:?}"));
-        } else if ps.chars().count() > 510 {
-            wrong.push(format!("{at}: {text}\n  too long for the model"));
-        } else if let Some(vocab) = &vocab {
-            let odd: String = ps.chars().filter(|c| !vocab.contains(c)).collect();
-            if !odd.is_empty() {
-                wrong.push(format!("{at}: {text}\n  unknown symbols {odd:?} in {ps}"));
-            }
         }
     }
     assert!(wrong.is_empty(), "{} of {} lines:\n{}", wrong.len(), all.len(), wrong.join("\n"));

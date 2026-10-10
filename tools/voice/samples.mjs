@@ -50,12 +50,8 @@ const LINES = [
 const SR = 24000;
 const e = await engine();
 
-/** Older versions of voices.ts (Paradee only) give no model: theirs was Paradee. */
-const say = (text, v) => sayLine(e, text, { model: 'paradee', mix: [0, 0, 1], depth: 1, ...v });
-const describe = (v) =>
-  v.model === 'kitten'
-    ? `KittenTTS ${voices.KITTEN_VOICES[v.mix[0]].name}${v.mix[2] < 1 ? ` ${Math.round(v.mix[2] * 100)} % + ${voices.KITTEN_VOICES[v.mix[1]].name}` : ''}`
-    : 'Paradee';
+const say = (text, v) => sayLine(e, text, v);
+const describe = (v) => `${voices.KITTEN_VOICES[v.mix[0]].name}${v.mix[2] < 1 ? ` ${Math.round(v.mix[2] * 100)} % + ${voices.KITTEN_VOICES[v.mix[1]].name}` : ''}`;
 
 function wav(samples) {
   const peak = samples.reduce((m, v) => Math.max(m, Math.abs(v)), 1e-6);

@@ -1,6 +1,5 @@
 /**
- * The edits Littlelives makes to the voice models' ONNX graphs, Paradee-8M and KittenTTS nano
- * (used by `fetch.mjs`, which pins the upstream file and the edited result by SHA-256, so every
+ * The edits Littlelives makes to the voice model's ONNX graph, KittenTTS nano (used by `fetch.mjs`, which pins the upstream file and the edited result by SHA-256, so every
  * build gets byte-identical files):
  *
  * - a `pitch` input (float, [1]) that multiplies the predicted pitch curve (`/F0_proj/Conv`),
@@ -154,14 +153,6 @@ function nodeInfo(data) {
   return info;
 }
 
-/** The node with every input named `from` renamed to `to`; all other fields kept as they are. */
-function renameInputs(data, from, to) {
-  return bytesField(
-    GRAPH.node,
-    concat(parse(data).map((f) => (f.no === NODE.input && text(f.data) === from ? stringField(NODE.input, to) : f.raw))),
-  );
-}
-
 /** The node with its output `from` renamed to `to`. */
 function renameOutput(data, from, to) {
   return bytesField(
@@ -254,12 +245,10 @@ function noiseNodes(kind, input, output) {
 /**
  * Applies the edits (pitch input, deterministic noise) to a model's bytes; returns the edited model.
  *
- * `splice`: how the pitch curve is scaled. `'inputs'` (Paradee) renames the inputs of the nodes
- * that read it; `'output'` (KittenTTS, whose decoder reads the curve inside an `If` subgraph)
- * renames the curve's producer and gives the scaled curve the old name, so every reader, nested
- * graphs included, gets it.
+ * The pitch curve's producer is renamed and the scaled curve gets the old name, so every reader
+ * gets it, nested graphs included (the decoder reads the curve inside an `If` subgraph).
  */
-export function editModel(bytes, { splice = 'inputs' } = {}) {
+export function editModel(bytes) {
   const model = parse(bytes);
   const graphField = model.find((f) => f.no === MODEL_GRAPH);
   if (!graphField) throw new Error('model: no graph');
@@ -268,7 +257,6 @@ export function editModel(bytes, { splice = 'inputs' } = {}) {
   const pitchNode = nodes.find((n) => n.info.name === PITCH_NODE);
   if (!pitchNode) throw new Error(`model: no ${PITCH_NODE}`);
   const f0 = pitchNode.info.outputs[0];
-  const scaled = `${f0}_pitch`;
   const raw = `${f0}_unscaled`;
   const random = nodes.filter((n) => n.info.opType.startsWith('Random'));
   if (random.length !== 2) throw new Error(`model: expected 2 random nodes, found ${random.length}`);
@@ -282,15 +270,11 @@ export function editModel(bytes, { splice = 'inputs' } = {}) {
     const info = nodeInfo(field.data);
     if (info.opType === 'RandomNormalLike' || info.opType === 'RandomUniformLike') {
       out.push(...noiseNodes(info.opType === 'RandomNormalLike' ? 'normal' : 'uniform', info.inputs[0], info.outputs[0]));
-    } else if (splice === 'output' && info.name === PITCH_NODE) {
+    } else if (info.name === PITCH_NODE) {
       out.push(renameOutput(field.data, f0, raw), node('Mul', [raw, 'pitch'], [f0], '/pitch_scale'));
-      continue;
-    } else if (splice === 'inputs' && info.inputs.includes(f0)) {
-      out.push(renameInputs(field.data, f0, scaled));
     } else {
       out.push(field.raw);
     }
-    if (splice === 'inputs' && info.name === PITCH_NODE) out.push(node('Mul', [f0, 'pitch'], [scaled], '/pitch_scale'));
   }
   out.push(...noiseConstants(), floatInput('pitch'));
   const newGraph = concat(out);

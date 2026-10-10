@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
  * Checks the voices as the browser makes them (`engine.mjs`: our phonemizer WASM, ONNX Runtime
- * Web's WASM build on one thread, the worker's own `synth.ts`), for both models:
+ * Web's WASM build on one thread, the worker's own `synth.ts`), with KittenTTS nano:
  *
  * - the same text and voice give bit-identical samples, in one session and in a fresh one (the
- *   clip cache in `web/src/voice/service.svelte.ts` relies on it), and KittenTTS's match golden
- *   hashes (a change to the model, its edit, the phonemizer or the mixing shows up here);
+ *   clip cache in `web/src/voice/service.svelte.ts` relies on it), and match golden hashes (a
+ *   change to the model, its edit, the phonemizer or the mixing shows up here);
  * - the voice controls work: pitch changes the sound but not the timing, speed the length,
- *   depth the brightness; KittenTTS's mixes differ from their voices; its silence is trimmed;
+ *   depth the brightness; mixes differ from their voices; silence is trimmed;
  * - and prints the time per line.
  *
  * Needs `pnpm voice` first. Usage (from web/): `pnpm check:voice`.
@@ -21,10 +21,9 @@ const LINES = [
   "I'm so hungry, I could eat a whole pizza by myself.",
   'What a lovely garden. I should water the roses before it gets dark.',
 ];
-const PARADEE = { model: 'paradee', mix: [0, 0, 1], speed: 1, pitch: 1, depth: 1 };
 /** Bruno (one of KittenTTS's men), and a mix of Luna and Rosie (two women). */
-const BRUNO = { model: 'kitten', mix: [5, 5, 1], speed: 1, pitch: 1, depth: 1 };
-const MIX = { model: 'kitten', mix: [1, 2, 0.6], speed: 1.05, pitch: 1.02, depth: 0.98 };
+const BRUNO = { mix: [5, 5, 1], speed: 1, pitch: 1, depth: 1 };
+const MIX = { mix: [1, 2, 0.6], speed: 1.05, pitch: 1.02, depth: 0.98 };
 /**
  * KittenTTS's output for `LINES` in `BRUNO`, then line 2 in `MIX` (SHA-256, first 12 hex digits).
  * WASM arithmetic is the same on every machine, so these hold everywhere; update them only on
@@ -113,32 +112,7 @@ async function steady(label, line, voice) {
   return a;
 }
 
-// ---- Paradee (children, and the fallback) ------------------------------------------------------
-
-for (const line of LINES) await steady('Paradee', line, PARADEE);
 const line = LINES[1];
-const base = await say(first, line, PARADEE);
-const low = await say(first, line, { ...PARADEE, pitch: 0.7 });
-const fast = await say(first, line, { ...PARADEE, speed: 1.25 });
-if (low.length !== base.length || same(low, base)) fail('Paradee: pitch should change the sound but not the timing');
-if (!(fast.length < base.length)) fail('Paradee: a faster voice should be shorter');
-if (first.phonemizer.inputs('', 1, 1, 1).ids.length !== 0) fail('empty text should give no ids (the worker then skips the model)');
-console.log('voice: Paradee: pitch and speed work');
-
-// Depth (the voice's size, by resampling): deterministic too, keeps the length, darker when larger.
-for (const depth of [0.85, 1.1]) {
-  const a = await say(first, line, { ...PARADEE, depth });
-  const b = await say(first, line, { ...PARADEE, depth });
-  const c = await say(second, line, { ...PARADEE, depth });
-  if (!same(a, b) || !same(a, c)) fail(`Paradee: depth ${depth} differs between runs or sessions`);
-  const ratio = a.length / base.length;
-  if (ratio < 0.94 || ratio > 1.06) fail(`Paradee: depth ${depth} changed the length by ${ratio.toFixed(3)}`);
-  console.log(`voice: Paradee: depth ${depth}: identical every time [${hash(a)}], length ×${ratio.toFixed(3)}, spectral centroid ${centroid(a).toFixed(0)} Hz (depth 1: ${centroid(base).toFixed(0)} Hz)`);
-}
-if (!(centroid(await say(first, line, { ...PARADEE, depth: 0.85 })) < centroid(base) * 0.95)) fail('Paradee: a larger voice should sound darker');
-
-// ---- KittenTTS (teens and grown-ups) -----------------------------------------------------------
-
 const got = [];
 for (const l of LINES) got.push(await steady('KittenTTS', l, BRUNO));
 got.push(await steady('KittenTTS mix', line, MIX));
@@ -155,6 +129,15 @@ if (Math.abs(kLow.length - kBase.length) > 0.05 * kBase.length) fail('KittenTTS:
 if (!(kFast.length < kBase.length * 0.9)) fail('KittenTTS: a faster voice should be shorter');
 const kLarge = await say(first, line, { ...BRUNO, depth: 0.88 });
 if (!(centroid(kLarge) < centroid(kBase) * 0.97)) fail('KittenTTS: a larger voice should sound darker');
+// Depth (the voice's size, by resampling): deterministic too, and keeps the length.
+for (const depth of [0.88, 1.1]) {
+  const a = await say(first, line, { ...BRUNO, depth });
+  const b = await say(second, line, { ...BRUNO, depth });
+  if (!same(a, b)) fail(`KittenTTS: depth ${depth} differs between sessions`);
+  const ratio = a.length / kBase.length;
+  if (ratio < 0.94 || ratio > 1.06) fail(`KittenTTS: depth ${depth} changed the length by ${ratio.toFixed(3)}`);
+}
+if (first.phonemizer.inputs('', 1, 1, 1).ids.length !== 0) fail('empty text should give no ids (the worker then skips the model)');
 const luna = await say(first, line, { ...MIX, mix: [1, 1, 1] });
 if (same(luna, got[3])) fail('KittenTTS: a mix should differ from its main voice');
 // Trimmed: speech starts within 0.1 s (the model's own clips start with up to 0.8 s of silence).

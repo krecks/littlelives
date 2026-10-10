@@ -16,27 +16,27 @@ export const { synthesizeLine } = await import(new URL('src/voice/synth.ts', web
 export const voices = await import(new URL('src/voice/voices.ts', web).href);
 
 /** The model files (as the worker names them). */
-export const FILES = { paradee: 'paradee-8m-edit1.onnx', kitten: 'kitten-nano-0.8-edit1.onnx', kittenVoices: 'kitten-nano-0.8-voices.f32' };
+export const FILES = { model: 'kitten-nano-0.8-edit1.onnx', voices: 'kitten-nano-0.8-voices.f32' };
 export const SAMPLE_RATE = 24000;
 
 const dir = new URL('public/voice/', web);
 initSync({ module: readFileSync(new URL('src/voice/wasm-pkg/voice_wasm_bg.wasm', web)) });
-export const phonemizer = new Voice(gunzipSync(readFileSync(new URL('en-us.lexz', dir))).toString(), readFileSync(new URL('paradee-8m.json', dir), 'utf8'));
+export const phonemizer = new Voice(gunzipSync(readFileSync(new URL('en-us.lexz', dir))).toString());
 ort.env.wasm.numThreads = 1;
 ort.env.logLevel = 'error';
 
-/** A new ONNX Runtime session for a model (`paradee` or `kitten`), as the worker makes it. */
-export function session(model) {
-  return ort.InferenceSession.create(readFileSync(new URL(FILES[model], dir)), { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
+/** A new ONNX Runtime session for the model, as the worker makes it. */
+export function session() {
+  return ort.InferenceSession.create(readFileSync(new URL(FILES.model, dir)), { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
 }
 
-/** An engine with both models loaded (fresh sessions). */
+/** An engine with the model loaded (a fresh session). */
 export async function engine() {
-  const buf = readFileSync(new URL(FILES.kittenVoices, dir));
+  const buf = readFileSync(new URL(FILES.voices, dir));
   return {
     ort,
     phonemizer,
-    sessions: { paradee: await session('paradee'), kitten: await session('kitten') },
+    session: await session(),
     kittenVoices: new Float32Array(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)),
   };
 }

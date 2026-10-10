@@ -1,10 +1,8 @@
 /**
  * Voice worker: turns lines of text into 24 kHz audio, one at a time, off the main thread.
- * Our Rust/WASM phonemizer (`crates/voice-wasm`) turns text into a model's input ids, and ONNX
- * Runtime Web runs the model (its WASM build with SIMD, on this one thread): Paradee-8M for
- * children (and as the small, fast fallback), KittenTTS nano for teens and grown-ups. Each model
- * is loaded the first time it is asked for; both share the runtime, the phonemizer and the
- * dictionary. `synth.ts` makes each line.
+ * Our Rust/WASM phonemizer (`crates/voice-wasm`) turns text into KittenTTS nano's input ids, and
+ * ONNX Runtime Web runs the model (its WASM build with SIMD, on this one thread). `synth.ts`
+ * makes each line.
  *
  * Everything is self-hosted, fetched once and kept in the Cache API, so the next session starts
  * without downloading.
@@ -16,7 +14,7 @@ import init, { Voice } from './wasm-pkg/voice_wasm.js';
 import wasmUrl from './wasm-pkg/voice_wasm_bg.wasm?url';
 import type { FromVoiceWorker, ToVoiceWorker } from './protocol';
 import { synthesizeLine, type Engine, type Session } from './synth';
-import type { VoiceModel, VoiceParams } from './voices';
+import type { VoiceParams } from './voices';
 
 interface WorkerScope {
   onmessage: ((e: MessageEvent<ToVoiceWorker>) => void) | null;
@@ -29,31 +27,27 @@ const CACHE = 'littlelives-voice-v2';
 
 /** Files under `voice/` (made by `tools/voice/fetch.mjs`), with sizes in bytes for the progress bar. */
 type File = [name: string, bytes: number];
-const SHARED: { lexicon: File; config: File } = { lexicon: ['en-us.lexz', 1_320_518], config: ['paradee-8m.json', 1_774] };
-const MODELS: Record<VoiceModel, { model: File; voices?: File }> = {
-  paradee: { model: ['paradee-8m-edit1.onnx', 9_044_733] },
-  kitten: { model: ['kitten-nano-0.8-edit1.onnx', 15_450_474], voices: ['kitten-nano-0.8-voices.f32', 1_048_576] },
-};
+const LEXICON: File = ['en-us.lexz', 1_320_518];
+const MODEL: File = ['kitten-nano-0.8-edit1.onnx', 15_450_474];
+const VOICES: File = ['kitten-nano-0.8-voices.f32', 1_048_576];
 const ORT_WASM_BYTES = 14_239_897;
-const VOICE_WASM_BYTES = 180_388;
+const VOICE_WASM_BYTES = 140_103;
 
-const engine: Engine = { ort: ort as unknown as Engine['ort'], phonemizer: null as unknown as Engine['phonemizer'], sessions: {}, kittenVoices: null };
-let shared: Promise<void> | null = null;
-const loads = new Map<VoiceModel, Promise<void>>();
+const engine: Engine = { ort: ort as unknown as Engine['ort'], phonemizer: null as unknown as Engine['phonemizer'], session: null, kittenVoices: null };
+let loading: Promise<void> | null = null;
 /** Lines are made one after another: a run must finish before the next starts. */
 let queue: Promise<void> = Promise.resolve();
 
 scope.onmessage = (e) => {
   const msg = e.data;
   if (msg.type === 'load') {
-    if (!loads.has(msg.model)) {
-      const loading = load(msg.base, msg.model).catch((err) => {
-        loads.delete(msg.model);
-        scope.postMessage({ type: 'error', model: msg.model, message: String(err) });
+    if (!loading) {
+      loading = load(msg.base).catch((err) => {
+        loading = null;
+        scope.postMessage({ type: 'error', message: String(err) });
         throw err;
       });
       loading.catch(() => {});
-      loads.set(msg.model, loading);
     }
   } else if (msg.type === 'speak') {
     queue = queue.then(() => speak(msg.id, msg.text, msg.voice));
@@ -62,8 +56,7 @@ scope.onmessage = (e) => {
 
 async function speak(id: number, text: string, voice: VoiceParams): Promise<void> {
   try {
-    const loading = loads.get(voice.model);
-    if (!loading) throw new Error(`voice model ${voice.model} not loaded`);
+    if (!loading) throw new Error('voice model not loaded');
     await loading;
     const start = performance.now();
     const { samples, resampleMs } = await synthesizeLine(engine, text, voice);
@@ -73,23 +66,19 @@ async function speak(id: number, text: string, voice: VoiceParams): Promise<void
   }
 }
 
-/** Downloads (or takes from the cache) what a model needs and starts its session. */
-async function load(base: string, model: VoiceModel): Promise<void> {
+/** Downloads (or takes from the cache) the runtime, phonemizer, dictionary and model, and starts its session. */
+async function load(base: string): Promise<void> {
   const start = performance.now();
-  const m = MODELS[model];
-  const own: File[] = [m.model, ...(m.voices ? [m.voices] : [])];
   // `built`: imported through Vite. In dev their URLs aren't hashed, so a rebuilt wasm would
   // otherwise come back stale from the cache; those are fetched fresh there.
   const files: { url: string; size: number; built?: boolean }[] = [
     { url: ortWasmUrl, size: ORT_WASM_BYTES, built: true },
     { url: wasmUrl, size: VOICE_WASM_BYTES, built: true },
-    { url: `${base}voice/${SHARED.lexicon[0]}`, size: SHARED.lexicon[1] },
-    { url: `${base}voice/${SHARED.config[0]}`, size: SHARED.config[1] },
-    ...own.map(([name, size]) => ({ url: `${base}voice/${name}`, size })),
+    ...[LEXICON, MODEL, VOICES].map(([name, size]) => ({ url: `${base}voice/${name}`, size })),
   ];
   const total = files.reduce((n, f) => n + f.size, 0);
   const done = files.map(() => 0);
-  const report = () => scope.postMessage({ type: 'progress', model, loaded: done.reduce((a, b) => a + b, 0), total });
+  const report = () => scope.postMessage({ type: 'progress', loaded: done.reduce((a, b) => a + b, 0), total });
   const cache = await openCache();
   const bytes = await Promise.all(
     files.map((f, i) =>
@@ -99,27 +88,22 @@ async function load(base: string, model: VoiceModel): Promise<void> {
       }),
     ),
   );
-  shared ??= startShared(bytes[0], bytes[1], bytes[2], bytes[3]);
-  await shared;
-  const session = (await ort.InferenceSession.create(new Uint8Array(bytes[4]), {
-    executionProviders: ['wasm'],
-    graphOptimizationLevel: 'all',
-  })) as unknown as Session;
-  if (m.voices) engine.kittenVoices = new Float32Array(bytes[5]);
-  engine.sessions[model] = session;
-  scope.postMessage({ type: 'ready', model, ms: performance.now() - start });
-}
-
-/** The phonemizer and the runtime, once for both models. */
-async function startShared(ortWasm: ArrayBuffer, wasm: ArrayBuffer, lexicon: ArrayBuffer, config: ArrayBuffer): Promise<void> {
+  void prune(cache, files.map((f) => f.url));
+  const [ortWasm, wasm, lexicon, model, voices] = bytes;
   await init({ module_or_path: wasm });
-  engine.phonemizer = new Voice(await gunzipText(lexicon), new TextDecoder().decode(config));
+  engine.phonemizer = new Voice(await gunzipText(lexicon));
   // One thread, no proxy worker (this is the worker); the runtime comes from our own download.
   ort.env.wasm.numThreads = 1;
   ort.env.wasm.proxy = false;
   ort.env.wasm.wasmPaths = { wasm: ortWasmUrl };
   ort.env.wasm.wasmBinary = ortWasm;
   ort.env.logLevel = 'error';
+  engine.session = (await ort.InferenceSession.create(new Uint8Array(model), {
+    executionProviders: ['wasm'],
+    graphOptimizationLevel: 'all',
+  })) as unknown as Session;
+  engine.kittenVoices = new Float32Array(voices);
+  scope.postMessage({ type: 'ready', ms: performance.now() - start });
 }
 
 /** This version's cache; caches of earlier versions are deleted. */
@@ -134,6 +118,17 @@ async function openCache(): Promise<Cache | null> {
   }
 }
 
+/** Drops cached files this version no longer uses (an older build's wasm, models no longer spoken with). */
+async function prune(cache: Cache | null, keep: string[]): Promise<void> {
+  if (!cache) return;
+  const wanted = new Set(keep.map((url) => new URL(url, location.href).href));
+  try {
+    for (const req of await cache.keys()) if (!wanted.has(req.url)) await cache.delete(req);
+  } catch {
+    // Only space: the files still load.
+  }
+}
+
 /** Unpacks a gzipped file, or reads it as text if a server already unpacked it. */
 async function gunzipText(bytes: ArrayBuffer): Promise<string> {
   const head = new Uint8Array(bytes, 0, 2);
@@ -141,7 +136,7 @@ async function gunzipText(bytes: ArrayBuffer): Promise<string> {
   return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
 }
 
-/** Each file once per worker, whichever model asked first (the other's progress counts it when it's in). */
+/** Each file once per worker (a load tried again after failing only fetches what it's missing). */
 const fetched = new Map<string, Promise<ArrayBuffer>>();
 function fetchOnce(cache: Cache | null, url: string, progress: (bytes: number) => void): Promise<ArrayBuffer> {
   let p = fetched.get(url);

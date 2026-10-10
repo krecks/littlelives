@@ -1,12 +1,12 @@
 /**
- * How each resident sounds (docs/design/voices.md, "Voices"). Two models:
+ * How each resident sounds (docs/design/voices.md, "Voices"), all with **KittenTTS nano**:
  *
- * - **KittenTTS nano** for teens and grown-ups: eight real voices, four women's and four men's.
- *   Each resident gets their own fixed mix of two of them (a style vector is a list of numbers,
- *   so a mix is a weighted sum): men from the men's voices, women from the women's, everyone
- *   else from all eight. Pitch, speed and size (depth) vary on top.
- * - **Paradee-8M** for children (higher and smaller by pitch and depth: KittenTTS has no child
- *   voice), and for anyone when KittenTTS can't keep up on this computer (`paradeeVoice`).
+ * - Teens and grown-ups: eight real voices, four women's and four men's. Each resident gets
+ *   their own fixed mix of two of them (a style vector is a list of numbers, so a mix is a
+ *   weighted sum): men from the men's voices, women from the women's, everyone else from all
+ *   eight. Pitch, speed and size (depth) vary on top.
+ * - Children, whatever their gender: a mix of the women's voices, made higher and smaller
+ *   (KittenTTS has no child's voice).
  * - Babies don't speak.
  *
  * Derived from the resident id, gender and life stage, so a resident always sounds the same; a
@@ -14,11 +14,8 @@
  * otherwise.
  */
 
-export type VoiceModel = 'paradee' | 'kitten';
-
 export interface VoiceParams {
-  model: VoiceModel;
-  /** KittenTTS: `w` of voice `a` and the rest of voice `b` (`KITTEN_VOICES` indices); ignored by Paradee. */
+  /** `w` of voice `a` and the rest of voice `b` (`KITTEN_VOICES` indices). */
   mix: readonly [a: number, b: number, w: number];
   speed: number;
   pitch: number;
@@ -30,7 +27,7 @@ export interface VoiceParams {
  * KittenTTS nano's voices, in the order of its voices file (`tools/voice/fetch.mjs`), with the
  * names its makers gave them. `pace`: the model speed that brings each to 4.5 syllables per
  * second (measured over 12 game lines at speed 1: Bella 2.95, Leo 3.43, Luna 4.04, Rosie 4.08,
- * Hugo 4.22, Jasper 4.45, Bruno 4.46, Kiki 4.82; Paradee 4.83). `pitch`: Jasper and Hugo are
+ * Hugo 4.22, Jasper 4.45, Bruno 4.46, Kiki 4.82). `pitch`: Jasper and Hugo are
  * light voices (about 170 Hz) and sound more like men a little lower; Bruno (108 Hz) and Leo lose
  * naturalness when lowered (UTMOS −0.3 at ×0.9), so they stay. `main`: whether the voice can
  * lead a resident's mix; Kiki, very high (about 290 Hz) and the least natural of the eight, only
@@ -96,28 +93,15 @@ interface Group {
 }
 type Sex = 'male' | 'female' | 'other';
 
-/**
- * Paradee (one woman's voice, about 210 Hz), grown-ups by gender, used when KittenTTS can't keep
- * up: men pitched down and made 12–18 % larger, women spread around the model's own size.
- */
-const PARADEE_ADULT: Record<Sex, Group> = {
-  male: { pitch: [0.52, 0.76], depth: [0.82, 0.88] },
-  female: { pitch: [0.84, 1.22], depth: [0.95, 1.06] },
-  other: { pitch: [0.66, 1.08], depth: [0.87, 1.0] },
-};
-/** Paradee teens in between: boys' voices dropping (lower, larger than girls'), girls near women. */
-const PARADEE_TEEN: Record<Sex, Group> = {
-  male: { pitch: [0.68, 0.9], depth: [0.88, 0.95] },
-  female: { pitch: [0.94, 1.22], depth: [1.0, 1.06] },
-  other: { pitch: [0.8, 1.12], depth: [0.94, 1.03] },
-};
-/** Children of any gender (Paradee): higher and smaller, not so small that they sound sped up. */
-const CHILD: Group = { pitch: [1.2, 1.45], depth: [1.06, 1.13] };
-
 /** KittenTTS's voices are real men's and women's: small spreads around them. */
-const KITTEN_ADULT: Group = { pitch: [0.94, 1.06], depth: [0.97, 1.03] };
+const ADULT: Group = { pitch: [0.94, 1.06], depth: [0.97, 1.03] };
 /** Teens: the same voices a little higher and smaller. */
-const KITTEN_TEEN: Group = { pitch: [1.04, 1.12], depth: [1.03, 1.07] };
+const TEEN: Group = { pitch: [1.04, 1.12], depth: [1.03, 1.07] };
+/**
+ * Children of any gender: the women's voices (about 200–230 Hz) raised to about 250–300 Hz and
+ * made smaller, not so small that they sound sped up.
+ */
+const CHILD: Group = { pitch: [1.12, 1.3], depth: [1.05, 1.12] };
 
 const clamp = (v: number, [lo, hi]: Range) => Math.min(hi, Math.max(lo, v));
 const lerp = ([lo, hi]: Range, t: number) => lo + (hi - lo) * t;
@@ -125,9 +109,9 @@ const lerp = ([lo, hi]: Range, t: number) => lo + (hi - lo) * t;
 const factor = (v: unknown, range: Range) => (typeof v === 'number' && Number.isFinite(v) ? clamp(v, range) : 1);
 const sexOf = (gender: string | undefined): Sex => (gender === 'male' || gender === 'female' ? gender : 'other');
 
-/** Which model a life stage speaks with (babies don't speak; they're voiced as the child they'll be). */
-export function modelFor(stage: string | undefined): VoiceModel {
-  return stage === 'child' || stage === 'baby' ? 'paradee' : 'kitten';
+/** Whether a life stage has a child's voice (babies don't speak; they're voiced as the child they'll be). */
+export function childVoice(stage: string | undefined): boolean {
+  return stage === 'child' || stage === 'baby';
 }
 
 /** A valid `KITTEN_VOICES` index from a stored choice, or null. */
@@ -136,16 +120,19 @@ export function baseVoice(choice: VoiceChoice | null | undefined): number | null
   return typeof b === 'number' && Number.isInteger(b) && b >= 0 && b < KITTEN_VOICES.length ? b : null;
 }
 
-/** The KittenTTS voices a resident's mix is made from. */
-function candidates(sex: Sex): number[] {
-  return KITTEN_VOICES.flatMap((v, i) => (sex === 'other' || v.sex === sex ? [i] : []));
+/** The KittenTTS voices a resident's mix is made from (children's from the women's). */
+function candidates(sex: Sex, child: boolean): number[] {
+  return KITTEN_VOICES.flatMap((v, i) => ((child ? v.sex === 'female' : sex === 'other' || v.sex === sex) ? [i] : []));
 }
 
-/** A resident's own mix of two voices: a main one (half to all of it) and another. */
-export function kittenMix(key: number, gender: string | undefined, choice?: VoiceChoice | null): [number, number, number] {
-  const base = baseVoice(choice);
+/**
+ * A resident's own mix of two voices: a main one (half to all of it) and another. A voice chosen
+ * in the creator is a teen's or grown-up's: children keep their own mix.
+ */
+export function kittenMix(key: number, gender: string | undefined, choice?: VoiceChoice | null, child = false): [number, number, number] {
+  const base = child ? null : baseVoice(choice);
   if (base !== null) return [base, base, 1];
-  const pool = candidates(sexOf(gender));
+  const pool = candidates(sexOf(gender), child);
   const mains = pool.filter((i) => KITTEN_VOICES[i].main);
   const a = mains[Math.floor(unit(key, 4) * mains.length)];
   const rest = pool.filter((i) => i !== a);
@@ -153,11 +140,8 @@ export function kittenMix(key: number, gender: string | undefined, choice?: Voic
   return [a, b, 0.5 + 0.5 * unit(key, 6)];
 }
 
-/**
- * The resident's voice at this life stage. `model` forces one (Paradee for everyone when
- * KittenTTS can't keep up on this computer).
- */
-export function voiceFor(id: number, gender: string | undefined, stage?: string, choice?: VoiceChoice | null, model?: VoiceModel): VoiceParams {
+/** The resident's voice at this life stage. */
+export function voiceFor(id: number, gender: string | undefined, stage?: string, choice?: VoiceChoice | null): VoiceParams {
   const seed = choice?.seed;
   const key = typeof seed === 'number' && Number.isInteger(seed) ? seed : id;
   const p = unit(key, 1);
@@ -165,23 +149,14 @@ export function voiceFor(id: number, gender: string | undefined, stage?: string,
   const d = 0.65 * unit(key, 3) + 0.35 * p;
   let speed = 0.88 + unit(key, 2) * 0.24;
   const sex = sexOf(gender);
-  // Children are always Paradee: KittenTTS has no child's voice.
-  const kitten = modelFor(stage) === 'kitten' && model !== 'paradee';
-  let mix: [number, number, number] = [0, 0, 1];
-  let group: Group;
-  /** KittenTTS: the mix's own pace and pitch corrections (applied after the limits, which are for the resident's own factors). */
-  let pace = 1;
-  let tilt = 1;
-  if (kitten) {
-    mix = kittenMix(key, gender, choice);
-    group = stage === 'teen' ? KITTEN_TEEN : KITTEN_ADULT;
-    const [a, b, w] = mix;
-    pace = w * KITTEN_VOICES[a].pace + (1 - w) * KITTEN_VOICES[b].pace;
-    tilt = w * KITTEN_VOICES[a].pitch + (1 - w) * KITTEN_VOICES[b].pitch;
-  } else {
-    // Babies don't speak (they're heard as the child they'll be); children sound alike whatever their gender; boys' voices drop in their teens.
-    group = modelFor(stage) === 'paradee' ? CHILD : stage === 'teen' ? PARADEE_TEEN[sex] : PARADEE_ADULT[sex];
-  }
+  // Babies don't speak (they're heard as the child they'll be); children sound alike whatever their gender.
+  const child = childVoice(stage);
+  const mix = kittenMix(key, gender, choice, child);
+  const group = child ? CHILD : stage === 'teen' ? TEEN : ADULT;
+  // The mix's own pace and pitch corrections (applied after the limits, which are for the resident's own factors).
+  const [a, b, w] = mix;
+  const pace = w * KITTEN_VOICES[a].pace + (1 - w) * KITTEN_VOICES[b].pace;
+  const tilt = w * KITTEN_VOICES[a].pitch + (1 - w) * KITTEN_VOICES[b].pitch;
   let pitch = lerp(group.pitch, p);
   let depth = lerp(group.depth, d);
   switch (stage) {
@@ -201,12 +176,7 @@ export function voiceFor(id: number, gender: string | undefined, stage?: string,
     speed = clamp(speed * factor(choice.speed, VOICE_RANGE.speed), SPEED_LIMITS);
     depth = clamp(depth * factor(choice.depth, VOICE_RANGE.depth), DEPTH_LIMITS);
   }
-  return { model: kitten ? 'kitten' : 'paradee', mix, pitch: pitch * tilt, speed: speed * pace, depth };
-}
-
-/** The same resident on Paradee (when KittenTTS is too slow or couldn't load). */
-export function paradeeVoice(id: number, gender: string | undefined, stage?: string, choice?: VoiceChoice | null): VoiceParams {
-  return voiceFor(id, gender, stage, choice, 'paradee');
+  return { mix, pitch: pitch * tilt, speed: speed * pace, depth };
 }
 
 /** Line tone on top of the resident's voice (the voice's size stays). */

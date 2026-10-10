@@ -29,7 +29,7 @@
   import { settings } from '../../settings/settings.svelte';
   import { playClip, type Playing } from '../../voice/player';
   import { DOWNLOAD_MB, speak, unloadVoice, voiceStatus } from '../../voice/service.svelte';
-  import { baseVoice, KITTEN_VOICES, modelFor, VOICE_RANGE, voiceFor } from '../../voice/voices';
+  import { baseVoice, childVoice, KITTEN_VOICES, VOICE_RANGE, voiceFor } from '../../voice/voices';
 
   const { content, assets } = services;
   const rules = content.rules;
@@ -147,9 +147,9 @@
     (voice?.pitch ?? 1) !== 1 || (voice?.speed ?? 1) !== 1 || (voice?.depth ?? 1) !== 1 || baseVoice(voice) !== null,
   );
   const isBaby = $derived(!!content.stageOf(sim.age)?.baby);
-  /** Teens and grown-ups speak with KittenTTS's voices; children with the small model, as a child. */
+  /** Teens and grown-ups speak with KittenTTS's voices as they are; children with a child's mix of them. */
   const voiceStage = $derived(isBaby ? content.lifeStages.find((s) => !s.baby)?.id : content.stageOf(sim.age)?.id);
-  const grownVoice = $derived(modelFor(voiceStage) === 'kitten');
+  const grownVoice = $derived(!childVoice(voiceStage));
   /** The voices offered: the four that fit the gender (all eight for others), besides their own mix. */
   const voiceOptions = $derived(
     KITTEN_VOICES.flatMap((v, i) => ((sim.gender !== 'male' && sim.gender !== 'female') || v.sex === sim.gender ? [{ index: i, name: v.name }] : [])),
@@ -170,11 +170,10 @@
       const p = voiceStatus.progress;
       return p > 0 && p < 1 ? `Downloading the voice… ${Math.floor(p * 100)} %` : 'Getting the voice ready…';
     }
-    const model = grownVoice ? 'kitten' : 'paradee';
     if (!settings.voices) {
-      return voiceStatus.models[model] === 'ready'
+      return voiceStatus.state === 'ready'
         ? 'Resident voices are off in Settings → Audio: turn them on to hear residents in the game.'
-        : `Resident voices are off in Settings → Audio. Hearing a sample downloads the voice once (about ${Math.round(DOWNLOAD_MB.shared + DOWNLOAD_MB[model])} MB).`;
+        : `Resident voices are off in Settings → Audio. Hearing a sample downloads the voice once (about ${Math.round(DOWNLOAD_MB)} MB).`;
     }
     if (!grownVoice) return 'Children have a child’s voice: the voice chosen above is theirs from their teens. Pitch, speed and depth apply now.';
     return 'Voices change as residents grow up; this choice goes along.';
@@ -484,7 +483,7 @@
             <div class="row">
               <button class="btn hear" disabled={hearing} onclick={hear}>
                 <Icon name="icon.ui.speed1" size={18} />
-                {hearing ? (voiceStatus.models[grownVoice ? 'kitten' : 'paradee'] === 'ready' ? 'One moment…' : 'Loading the voice…') : `Hear ${sim.name.trim() || 'it'}`}
+                {hearing ? (voiceStatus.state === 'ready' ? 'One moment…' : 'Loading the voice…') : `Hear ${sim.name.trim() || 'it'}`}
               </button>
               <button class="btn" aria-label="Random voice" title="Random voice" onclick={() => randomVoice(sim)}>
                 <Icon name="icon.ui.dice" size={18} />

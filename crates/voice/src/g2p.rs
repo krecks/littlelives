@@ -83,7 +83,7 @@ impl G2p {
             }
             out.push_str(ps);
         }
-        // Kokoro 1.0's alphabet (and Paradee's): flap T, glottal stop as t.
+        // Kokoro 1.0's alphabet: flap T, glottal stop as t.
         out.replace('ɾ', "T").replace('ʔ', "t")
     }
 

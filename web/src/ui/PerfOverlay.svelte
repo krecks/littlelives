@@ -55,15 +55,11 @@
       {@const v = t.voice}
       <h4>Voice thread</h4>
       <div><span>Language</span><b>{v.language}</b></div>
-      <div><span>Engine</span><b>{v.state}{v.loadMs ? ` · loaded in ${(v.loadMs / 1000).toFixed(1)} s` : ''}</b></div>
-      <div><span>Models</span><b>KittenTTS {v.models.kitten} · Paradee {v.models.paradee}</b></div>
-      {#if v.language !== 'off'}
-        <div><span>Grown-ups</span><b>{v.grownUps === 'kitten' ? 'KittenTTS' : 'Paradee (stepped down)'}{v.fallbacks ? ` · ${v.fallbacks} lines on Paradee` : ''}</b></div>
-      {/if}
+      <div><span>Engine</span><b>KittenTTS {v.state}{v.loadMs ? ` · loaded in ${(v.loadMs / 1000).toFixed(1)} s` : ''}</b></div>
       {#if v.state === 'ready'}
         <div><span>Lines made</span><b>{v.lines}{v.queued ? ` · ${v.queued} queued` : ''}</b></div>
         {#if v.lines}
-          <div><span>Line time</span><b>{v.lastMs.toFixed(0)} ms{v.lastModel ? ` (${v.lastModel === 'kitten' ? 'KittenTTS' : 'Paradee'})` : ''} · avg {v.avgMs.toFixed(0)}</b></div>
+          <div><span>Line time</span><b>{v.lastMs.toFixed(0)} ms · avg {v.avgMs.toFixed(0)}</b></div>
           <div><span>Speed</span><b>{(1 / v.rtf).toFixed(1)}× real time</b></div>
         {/if}
         <div><span>Busy (5 s)</span><b>{pct(v.busy)}</b></div>

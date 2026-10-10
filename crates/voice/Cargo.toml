@@ -1,15 +1,10 @@
 [package]
 name = "voice"
-description = "Resident voices: English text to Misaki phonemes and Paradee-8M's input ids."
+description = "Resident voices: English text to Misaki phonemes and KittenTTS nano's input ids."
 edition.workspace = true
 version.workspace = true
 license.workspace = true
 
-[dependencies]
-serde_json.workspace = true
-
 [dev-dependencies]
 flate2 = "1"
-# Native tests only: a second ONNX runtime checks the edited model (`tools/voice/model.mjs`)
-# runs, keeps its pitch input and is deterministic. Never part of the browser build.
-tract-onnx = { version = "=0.23.8", default-features = false }
+serde_json.workspace = true
