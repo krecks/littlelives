@@ -32,6 +32,7 @@ mirrored by `mergeContent` in `web/src/content/content.ts`):
 | anything else | replaced. |
 | `traitPatches` | merged *into* existing traits (below). Never copied into the result. |
 | `include`, `$comment` | dropped. Use `$comment` for notes. |
+| `voice` | spoken lines (see [Voice lines](#voice-lines)): merged at every depth by the web side, so a pack adds or replaces single groups of lines. The simulation drops it. |
 
 A key whose type differs from earlier files (array in base, object in your pack) is an error.
 Packs should normally only add `objects`, `feelings`, `tags`, `buyCategories` and
@@ -212,7 +213,9 @@ names an animation tag in `anim`. The tags are declared once, in the top-level
 sends as `layout.actions`, and each resident's `sim.action` float is an index into it (-1 =
 nothing). The snapshot also sends `sim.object`, the id of the object the resident is using or
 walking to (-1 = none); `sim.action` is set only once the resident is actually using it, and
-is `talk` during conversations.
+is `talk` during conversations. `sim.objectDef` and `sim.interaction` say what is being used, as
+indices into the content's `objects` and that object's `interactions` (-1 = none); resident
+voices pick their lines by them.
 
 | Tag | Use it for |
 |---|---|
@@ -268,6 +271,52 @@ seated, else `wash` (≤ 10 minutes) or `shower`; `screen` → `type` (seated tr
 `watch`; other `food` → `drink`; `creative` → `write` seated, `paint` standing;
 `rest`/`lounge` or lying → `relax`; seated → `sit`; else `idle`. A result missing from
 `animations` means no animation (-1).
+
+## Voice lines
+
+What residents say out loud lives in `web/public/content/voice/<lang>.json` (English:
+`en.json`; its `_comment` describes the layout). A pack adds lines for its own items, or
+replaces lines, under a top-level `voice` key with the same layout, per language:
+
+```json
+"voice": {
+  "en": {
+    "object": {
+      "chefStove": {
+        "lines": ["A proper chef's stove."],
+        "interactions": {
+          "cook": ["Six burners, all mine!", "Let it sizzle!", "Tonight, I cook like a pro."],
+          "practise": { "lines": ["Practice makes perfect.", "Let's try that recipe again."], "tone": "happy" }
+        }
+      }
+    },
+    "interaction": { "soak": ["A long soak, at last.", "Pure bliss."] },
+    "action": { "cook": ["Smells good already."] }
+  }
+}
+```
+
+| Section | Keyed by | Said when |
+|---|---|---|
+| `object` | object id: `lines` for any of its interactions, `interactions` per interaction id | a resident starts using it |
+| `interaction` | interaction id, on any object | the same, if the object has no lines of its own |
+| `action` | animation tag (see [Animations](#animations)) | the same, if neither has lines; also repairs, accidents, knocking, tidying |
+| `social` | social id: `start`, `good`, `bad` | starting a conversation; answering, by outcome |
+| `emotion` | emotion id | the resident's emotion changes |
+| `thought` | planner thought kind (`skipped`, `noPlace`, `kept`, `goal`, `roomLoved`, `roomDisliked`, `broken`, `accident`, `crying`) | a thought bubble appears |
+
+- For something being used, the most specific lines win: object + interaction, then the object's
+  `lines`, then the interaction id, then the animation tag.
+- A group is a list of lines or `{"lines": [...], "tone": "..."}`; tones are `happy`, `sad`,
+  `angry`, `flirty` and `question`. `{name}` is the other resident's first name, `{me}` the
+  speaker's. `[word](/phonemes/)` fixes a pronunciation in Misaki's alphabet.
+- Packs merge in `include` order, key by key: a later pack's list replaces an earlier one for the
+  same key, other keys stay. Prefer adding lines for your own objects to replacing the base game's.
+- Write 3–6 lines per key (a resident doesn't repeat their last few), short (most under 40
+  characters), and right for children, teens and grown-ups alike. Babies don't speak.
+- Check them with `cargo test -p voice --release --test lines` (after `pnpm voice` has fetched
+  the dictionary): every line must phonemize from the dictionary, and every key must name content
+  that exists.
 
 ## Wall and floor coverings, door and window styles
 

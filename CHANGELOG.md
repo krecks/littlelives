@@ -6,6 +6,8 @@ All notable changes to Littlelives. Versions follow [semantic versioning](https:
 
 ### New
 - **Choose a resident's voice:** the household creator's *Identity* tab has a *Voice* section with *Pitch* (lower to higher) and *Speed* (slower to faster), a dice for a random voice, a button back to the default, and *Hear* to listen to the resident say their name. Hearing a sample works with resident voices off, without turning them on. The choice is a step up or down from the voice the resident would have had, so children still sound younger and voices still change as they grow up. It is kept in the save; residents from older saves, neighbours, newcomers and babies sound exactly as before.
+- **Residents say what fits what they use:** lines per item and per interaction, so a gourmet meal, a microwave dinner and a wood-fired pizza sound different, and so do a bath and a cold plunge, the treadmill and the weights, the telescope, the piano and the crib. About 1,500 lines in all (there were about 200), at least five for every conversation part, action, mood and thought, and lines of their own for every object in the base game, the garden and the trait packs. A resident doesn't repeat their last few lines.
+- **Content packs can carry voice lines** for their own items (or replace lines) under a `voice` key; see `docs/content-packs.md`.
 
 ### Changed
 - **Lines said before play at once:** each clip a resident speaks is kept (up to 24 MB, about four minutes of speech), so when they say the same line again it plays straight away, even while the voice is unloaded. The performance overlay (F3) shows how many clips are kept and reused.
@@ -14,6 +16,9 @@ All notable changes to Littlelives. Versions follow [semantic versioning](https:
 - **Babble**, the made-up language, is gone: residents speak English or not at all. *Settings → Audio* no longer has a Language choice; a saved Babble setting becomes English.
 - While the English voice loads, residents stay quiet (they used to babble), and babies don't speak.
 - If speech keeps coming late or slows the game down, resident voices pause for the session, with a message saying why (they used to switch to Babble).
+
+### Fixed
+- Words with accents (*café*, names like *Zoë*) are read as without them instead of being skipped.
 
 ## 0.19.0 — 2026-10-10
 

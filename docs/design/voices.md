@@ -16,7 +16,7 @@ and research behind the choices are at the end.*
   runs the tests.
 - **Browser (`web/src/voice/`):** voice worker with a Cache API download (`tts.worker.ts`),
   app-wide service and speed test (`service.svelte.ts`), the director with the "who may speak"
-  rules (`index.ts`), lines per language (`content/voice/en.json`, keyed by ids), per-resident
+  rules (`index.ts`), lines per language (`content/voice/en.json`, keyed by content ids, per item and interaction; packs add theirs), per-resident
   pitch and speed (`voices.ts`), stereo playback (`player.ts`). Settings → Audio.
 - **Measured in Chrome (M-series Mac):** about 1 s per typical line, 3.8× faster than real
   time on one thread, no frame over 17 ms while speaking. Download: 18.3 MB engine WASM (3.9 MB
@@ -325,19 +325,47 @@ realistic) or in a game (speech pauses while it runs). Paradee alone takes a few
 
 ## What residents say
 
-Today's bubbles are icons only (`game/bubbles.ts`), so speech needs text. First version:
-**hand-written lines as content data**, so content packs can add and translate them.
+Today's bubbles are icons only (`game/bubbles.ts`), so speech needs text: **hand-written lines as
+content data** (`content/voice/<lang>.json`), so content packs can add and translate them. The
+English file has about 1,000 lines, and the trait packs about 500 more for their own items.
 
-- **Conversations:** for each social interaction (`base.json` `social` entries), lines for the
-  one who starts it and reaction lines by outcome (good, bad, angry, love). Read from the
-  snapshot fields `social`, `role`, `outcome` and `partner` that the bubbles already use.
-- **Thoughts of the selected resident:** a line when they start an action (`action`), when their
-  emotion changes (`emotion`), and when a need becomes urgent.
-- **Later sources plug into the same pipeline:** the thoughts and wishes of release 0.8 (Planner),
-  and the optional in-browser language model for thoughts (see `PLAN.md`, "Smarter thoughts").
+- **Conversations** (`social`, per social interaction id): `start` for the one who starts it,
+  `good` and `bad` for the answer once the outcome shows. Read from the snapshot fields `social`,
+  `role`, `outcome` and `partner` that the bubbles already use.
+- **Using something:** a line when the selected resident starts using an object. The snapshot
+  says which (`objectDef` and `interaction`, content indices, next to the animation tag in
+  `action`), so lines can be per item. The most specific lines win:
+  1. `object.<object id>.interactions.<interaction id>` (the gourmet meal at the fridge);
+  2. `object.<object id>.lines` (anything at the treadmill);
+  3. `interaction.<interaction id>` on any object (`water`, `smell`, `homework`);
+  4. `action.<animation tag>` (`cook`, `run`), which also covers repairs, accidents, knocking
+     and tidying up, where no object interaction is in use.
+- **Thoughts of the selected resident:** when their emotion changes (`emotion`, per emotion id)
+  and when the planner shows a thought (`thought`, per thought kind: `skipped`, `noPlace`,
+  `kept`, `goal`, `roomLoved`, `roomDisliked`, `broken`, `accident`, `crying`).
+- **Later sources plug into the same pipeline:** the optional in-browser language model for
+  thoughts (see `PLAN.md`, "Smarter thoughts").
 
-Each line has an optional tone (`happy`, `sad`, `angry`, `flirty`, `question`) that adjusts speed
-and pitch.
+A group of lines is a list, or `{"lines": [...], "tone": ...}`; an object's `tone` applies to its
+`lines`. Tones (`happy`, `sad`, `angry`, `flirty`, `question`) adjust speed and pitch. `{name}` is
+the other resident's first name, `{me}` the speaker's; `[word](/phonemes/)` fixes a
+pronunciation (`[read](/ɹˈɛd/)` in the past tense).
+
+**Variation:** the line is picked with a hash of the resident and a counter, never the sim's
+random numbers. A resident doesn't say any of their last three lines for the same key again
+while there are others (`voice/lines.ts`), so 4–6 lines per key go a long way.
+
+**Writing lines:** short (most under 40 characters; speech is made per line), and right for
+children, teens and grown-ups alike (babies don't speak). `cargo test -p voice --release --test
+lines` phonemizes every English line, in the language file and in the packs, and fails on a word
+missing from the dictionary (fix it with a pronunciation or another word), on symbols the model
+doesn't know, on unknown placeholders or tones, and on keys that name no social, object,
+interaction, animation tag, emotion or thought kind. Words with accents (`café`, `Zoë`) are read
+as without them.
+
+**Packs** carry lines under a top-level `"voice": {"en": {...}}`, laid out like the language
+file; the web side merges them over it key by key (sim-core ignores `voice`). See
+`docs/content-packs.md`.
 
 ## Playback
 
