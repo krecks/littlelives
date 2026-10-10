@@ -141,6 +141,8 @@ const EMOTION_MOOD: Record<string, number> = { happy: 0, flirty: 0, confident: 0
 const RADIUS_LIMITS = [6, 95] as const;
 /** Frames in which a game world built behind the overview is also drawn (hidden), so its shaders and pipelines are ready when it is shown. */
 const WARM_WORLD_FRAMES = 4;
+/** Longest wait for a hidden world's textures before it is warmed up anyway (ms). */
+const TEXTURE_WAIT_MS = 5000;
 
 /** A landscape, shared by the game world and the overview when they are the same town. */
 interface NatureSet {
@@ -416,8 +418,12 @@ export class BabylonRenderer implements Renderer {
       this.worldBuilding = false;
       this.endBuild();
     }
-    // Built behind the overview (prepared in a menu): draw it hidden a few times so it shows without a hitch.
-    if (this.townMode) this.warmFrames = WARM_WORLD_FRAMES;
+    // Built behind the overview (prepared in a menu): draw it hidden a few times so it shows without a hitch,
+    // once its textures are in (KTX2 ones transcode in the background; a shader waits for its textures).
+    if (this.townMode) {
+      await Promise.race([this.scene.whenReadyAsync(), new Promise((resolve) => setTimeout(resolve, TEXTURE_WAIT_MS))]);
+      this.warmFrames = WARM_WORLD_FRAMES;
+    }
   }
 
   /** The lot arrays the last key was made from, and that key (they arrive unchanged when only furniture moved). */
