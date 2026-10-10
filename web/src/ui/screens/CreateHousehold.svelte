@@ -143,7 +143,7 @@
 
   // Voice: a sample line in the resident's own voice at their age (a baby's as the child they'll be).
   const voice = $derived(sim.appearance.voice);
-  const voiceChanged = $derived((voice?.pitch ?? 1) !== 1 || (voice?.speed ?? 1) !== 1);
+  const voiceChanged = $derived((voice?.pitch ?? 1) !== 1 || (voice?.speed ?? 1) !== 1 || (voice?.depth ?? 1) !== 1);
   const isBaby = $derived(!!content.stageOf(sim.age)?.baby);
   let hearing = $state(false);
   let heard = false;
@@ -183,6 +183,7 @@
     if (!voice) return;
     voice.pitch = 1;
     voice.speed = 1;
+    voice.depth = 1;
   }
 
   // Hearing a sample doesn't turn voices on: with them off, the engine goes again on the way out.
@@ -434,6 +435,18 @@
                 bind:value={() => voice?.speed ?? 1, (v) => (draftVoice(sim).speed = v)}
               />
               <span class="scale"><span>Slower</span><b>Speed</b><span>Faster</span></span>
+            </label>
+            <label class="slider">
+              <!-- The stored factor is below 1 for a larger voice; the slider runs smaller to larger. -->
+              <input
+                type="range"
+                aria-label="Depth"
+                min={2 - VOICE_RANGE.depth[1]}
+                max={2 - VOICE_RANGE.depth[0]}
+                step="0.01"
+                bind:value={() => 2 - (voice?.depth ?? 1), (v) => (draftVoice(sim).depth = Math.round((2 - v) * 100) / 100)}
+              />
+              <span class="scale"><span>Smaller</span><b>Depth</b><span>Larger</span></span>
             </label>
             <div class="row">
               <button class="btn hear" disabled={hearing} onclick={hear}>

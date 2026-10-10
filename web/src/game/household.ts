@@ -172,7 +172,7 @@ export function ensureOutfit(sim: SimDraft): void {
  * residents keep the generated voice, like the neighbours).
  */
 export function draftVoice(sim: SimDraft): VoiceChoice {
-  sim.appearance.voice ??= { pitch: 1, speed: 1, seed: Math.floor(Math.random() * 2 ** 31) };
+  sim.appearance.voice ??= { pitch: 1, speed: 1, depth: 1, seed: Math.floor(Math.random() * 2 ** 31) };
   return sim.appearance.voice;
 }
 
@@ -182,6 +182,7 @@ export function randomVoice(sim: SimDraft): void {
   const roll = ([lo, hi]: readonly [number, number]) => Math.round((lo + Math.random() * (hi - lo)) * 100) / 100;
   voice.pitch = roll(VOICE_RANGE.pitch);
   voice.speed = roll(VOICE_RANGE.speed);
+  voice.depth = roll(VOICE_RANGE.depth);
 }
 
 export function randomSim(content: Content, assets: AssetRegistry, taken: readonly string[] = []): SimDraft {
