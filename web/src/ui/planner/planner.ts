@@ -119,7 +119,7 @@ export interface DayBlock {
   reason: ReasonView | null;
 }
 
-export function dayBlocks(sim: SimView, household: readonly Routine[], day: number): DayBlock[] {
+export function dayBlocks(sim: Pick<SimView, 'plan' | 'job'>, household: readonly Routine[], day: number): DayBlock[] {
   const plan = sim.plan;
   const wd = weekday(day);
   const out: DayBlock[] = [];

@@ -7,6 +7,8 @@ use wasm_bindgen::prelude::*;
 pub struct Game {
     world: World,
     snapshot: Box<[f32]>,
+    /// What the UI was last sent (it gets changes only).
+    ui: view::UiSync,
 }
 
 #[wasm_bindgen]
@@ -55,8 +57,20 @@ impl Game {
         Ok(())
     }
 
-    pub fn ui_state(&self) -> String {
-        view::ui_state_json(&self.world)
+    /// The next UI update (JSON): what changed since the last one, or everything after
+    /// `resync_ui` (see `view::UiSync`).
+    pub fn ui_update(&mut self) -> String {
+        self.ui.update_json(&self.world)
+    }
+
+    /// The next UI update sends everything.
+    pub fn resync_ui(&mut self) {
+        self.ui.resync();
+    }
+
+    /// The resident whose panel is open (their details and relationships are sent too).
+    pub fn inspect(&mut self, sim: Option<u32>) {
+        self.ui.inspect(sim);
     }
 
     /// Social interactions `actor` can start with `target`, with success chances (JSON).
@@ -122,6 +136,7 @@ impl Game {
         let mut game = Game {
             world,
             snapshot: vec![0.0; snapshot::CAPACITY].into_boxed_slice(),
+            ui: view::UiSync::new(),
         };
         snapshot::write(&game.world, &mut game.snapshot);
         game

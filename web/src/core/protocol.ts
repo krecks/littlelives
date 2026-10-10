@@ -96,7 +96,7 @@ export interface BlockView {
   minutes: number;
   status: 'active' | 'kept' | 'cut' | 'skipped' | 'noPlace';
   reason: ReasonView | null;
-  /** Minutes spent on it. */
+  /** Minutes spent on it, in steps of 10. */
   done: number;
 }
 
@@ -107,9 +107,9 @@ export interface GoalView {
   def: string;
   kind: GoalKind;
   icon: string;
-  /** 0..1 */
+  /** 0..1 in 1 % steps. */
   progress: number;
-  /** Change over the last days (positive: getting there). */
+  /** Change over the last days (positive: getting there), in 0.01 steps rounded away from zero. */
   trend: number;
   skill: string | null;
   category: string | null;
@@ -140,7 +140,7 @@ export interface PlanView {
    * nothing marks; `factor`: size, light, decor, clean, function), a fix (`fix`: object id) or
    * another room of a kind (`another`). */
   homeWishes: HomeWish[];
-  /** How well they stick to plans (1 = average). */
+  /** How well they stick to plans (1 = average), in 0.05 steps rounded down. */
   adherence: number;
 }
 
@@ -367,8 +367,15 @@ export interface ActionView {
 /** How fast residents age: off, or 1, 2 or 4 game days a year (short, normal, long). */
 export type Lifespan = 'off' | 'short' | 'normal' | 'long';
 
+/**
+ * A resident as the HUD sees them. Everyone gets the summary (who, where, which job); the
+ * details (from `grade` on: needs, feelings, actions, skills, plan) are kept up to date only
+ * while `detail` is set: for the player's household and the resident being inspected. Others
+ * have empty details.
+ */
 export interface SimView {
   id: number;
+  detail: boolean;
   name: string;
   household: number;
   traits: string[];
@@ -378,24 +385,34 @@ export interface SimView {
   stage?: string | null;
   /** Retired: the weekly pension. */
   pension?: number;
-  /** A pupil's school grade (0..100). */
-  grade?: number;
-  needs: number[];
-  mood: number;
-  emotion: string | null;
-  feelings: { id: string; label: string; mood: number; minutesLeft: number }[];
   /** Plot the Sim is on (null on the street or at work). */
   plot: number | null;
   /** Minute of day they come back from work, if away. */
   awayUntil: number | null;
   visiting: number | null;
   job: JobView | null;
+  /** A pupil's school grade (0..100, in tenths). */
+  grade?: number;
+  /** 0..1 in 1 % steps (the bars' resolution), as is `mood`. */
+  needs: number[];
+  mood: number;
+  emotion: string | null;
+  /** `minutesLeft` in whole minutes. */
+  feelings: { id: string; label: string; mood: number; minutesLeft: number }[];
+  /** `progress` in 1 % steps. */
   actions: ActionView[];
-  /** Skill levels in content order (whole number = level). */
+  /** Skill levels in content order (whole number = level; in 1 % steps, rounded down). */
   skills: number[];
   /** Routines, goals and wishes (the player's household only). */
   plan?: PlanView;
 }
+
+/**
+ * A resident's `id` and the fields that changed. New residents come with every field; optional
+ * fields that went away are `null`; `plan` carries only its parts that changed. `detail: false`
+ * drops the details.
+ */
+export type SimPatch = { id: number } & { [K in Exclude<keyof SimView, 'id' | 'plan'>]?: SimView[K] | null } & { plan?: Partial<PlanView> | null };
 
 export interface Requirement {
   skill: string;
@@ -486,43 +503,63 @@ export interface RoomView {
   windows: number;
   doors: number;
   lamps: number;
-  /** Mean dirt, 0..1. */
+  /** Mean dirt, 0..1 in 1 % steps (as are the scores). */
   dirt: number;
   centre: [number, number];
   /** Size, light, decor, cleanliness, function, overall (0..1). */
   scores: [number, number, number, number, number, number];
 }
 
-export interface UiSnapshot {
+/** A household's money and home. `undo`: build and buy edits the household can take back. */
+export interface FundsView {
+  id: number;
+  funds: number;
+  rent: number | null;
+  bills: number | null;
+  style: number;
+  undo?: number;
+  redo?: number;
+  /** The routine template (the player's household only). */
+  routines?: Routine[];
+  /** A baby on the way: the parents and the game day it's due. */
+  expecting?: { parents: [number, number]; due: number };
+}
+
+/**
+ * The HUD's view of the game, ~10 times a second, as changes (sim-core `view::UiSync`): each
+ * update carries only what changed since the one before. Residents, households, relationship
+ * pairs and rooms are keyed by id and come whole when changed (residents: their changed fields);
+ * story events by id. Values that drift every tick are rounded to what the HUD shows, so changed
+ * means visibly changed. A `full` update carries everything and replaces what the main thread
+ * had: the first one, and the next one after a `resync` request. Lists are absent when nothing
+ * in them changed.
+ */
+export interface UiUpdate {
+  full: boolean;
   day: number;
   /** 0 = Monday. */
   weekday: number;
   minute: number;
   speed: number;
   autonomy: boolean;
-  /** How fast residents age (absent from older workers). */
-  lifespan?: Lifespan;
+  /** How fast residents age. */
+  lifespan: Lifespan;
   /** Whether the player's residents move in with partners and out of home on their own. */
-  playerMoves?: boolean;
-  sims: SimView[];
-  /** `undo`: build and buy edits the household can take back (absent from older workers). */
-  households: {
-    id: number;
-    funds: number;
-    rent: number | null;
-    bills: number | null;
-    style: number;
-    undo?: number;
-    redo?: number;
-    routines?: Routine[];
-    /** A baby on the way: the parents and the game day it's due. */
-    expecting?: { parents: [number, number]; due: number };
-  }[];
-  relationships: RelationshipView[];
-  /** Recent story events, oldest first; ids increase monotonically (the whole log: `events` request). */
-  events: SocialEvent[];
-  /** The rooms and garden of the player's home (absent from older workers). */
+  playerMoves: boolean;
+  /** Every resident in town (summary), with details for some (see `SimView`). */
+  sims?: SimPatch[];
+  /** Residents no longer listed (died, moved away). */
+  simsGone?: number[];
+  households?: FundsView[];
+  /** Pairs with a resident whose details are sent (`SimView.detail`), both ways: nobody else's are shown. */
+  relationships?: RelationshipView[];
+  /** `[a, b]` pairs no longer sent (forgotten, or neither of them is followed in detail any more). */
+  relationshipsGone?: [number, number][];
+  /** New story events, oldest first (a full update: the recent ones). The whole log: `events` request. */
+  events?: SocialEvent[];
+  /** The rooms and garden of the player's home. */
   rooms?: RoomView[];
+  roomsGone?: number[];
 }
 
 /** Directional: how `a` feels about `b`. Only pairs that have met. */
@@ -579,6 +616,10 @@ export type ToWorker =
   | { type: 'events'; requestId: number }
   /** The household's home as a blueprint. */
   | { type: 'blueprint'; requestId: number; household: number }
+  /** The resident whose panel is open (their details and relationships are sent too); null: none. */
+  | { type: 'inspect'; sim: number | null }
+  /** The next UI update sends everything. */
+  | { type: 'resync' }
   /** Which part of the town to build geometry for (tile rectangle); null = everything. */
   | { type: 'view'; region: [number, number, number, number] | null };
 
@@ -600,7 +641,7 @@ export type FromWorker =
   | { type: 'ready'; layout: SnapshotLayout; shared: SharedArrayBuffer | null; catalog: Catalog }
   /** `full`: with the lot; otherwise a `LeanWorld` (the lot is as last sent). */
   | { type: 'world'; world: WorldStructure | LeanWorld; full: boolean }
-  | { type: 'ui'; ui: UiSnapshot }
+  | { type: 'ui'; ui: UiUpdate }
   | { type: 'saved'; requestId: number; data: string }
   | { type: 'socialOptions'; requestId: number; options: SocialOption[] }
   | { type: 'events'; requestId: number; events: SocialEvent[] }

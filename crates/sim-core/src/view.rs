@@ -1,6 +1,10 @@
 //! Low-frequency JSON views for the UI and for world structure.
 //! Never used in the per-frame render path.
 
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+use std::hash::{DefaultHasher, Hasher};
+
 use serde::Serialize;
 
 use crate::clock;
@@ -11,28 +15,6 @@ use crate::social::SocialEvent;
 use crate::planner::{Goal, GoalKind, Outcome, Reason, Routine};
 use crate::world::{Phase, Sim, Task, TaskKind, World};
 use crate::{MINUTES_PER_TICK, conversation};
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct UiState<'a> {
-    day: u32,
-    /// 0 = Monday.
-    weekday: u32,
-    minute: f32,
-    speed: u8,
-    autonomy: bool,
-    /// How fast residents age.
-    lifespan: crate::lifecycle::Lifespan,
-    /// Whether the player's residents move on their own.
-    player_moves: bool,
-    sims: Vec<SimView<'a>>,
-    households: Vec<FundsView<'a>>,
-    relationships: Vec<RelView>,
-    /// Most recent story events, oldest first.
-    events: Vec<EventView<'a>>,
-    /// The rooms and garden of the player's home, with their scores.
-    rooms: Vec<RoomView>,
-}
 
 /// A room of the player's home (see `rooms.rs`). `scores`: size, light, decor, cleanliness,
 /// function, overall (0..1).
@@ -103,41 +85,6 @@ struct FundsView<'a> {
     /// A baby on the way: the parents and the day it's due.
     #[serde(skip_serializing_if = "Option::is_none")]
     expecting: Option<crate::world::Expecting>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SimView<'a> {
-    id: u32,
-    name: &'a str,
-    household: u32,
-    traits: &'a [String],
-    perks: &'a [String],
-    /// Age in whole years, and the life stage (content `life.stages` id).
-    age: u32,
-    stage: Option<&'a str>,
-    /// Retired, with this weekly pension.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pension: Option<i64>,
-    /// A pupil's school grade (0..100).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    grade: Option<f32>,
-    needs: &'a [f32],
-    mood: f32,
-    emotion: Option<&'a str>,
-    feelings: Vec<FeelingView<'a>>,
-    actions: Vec<ActionView>,
-    /// Plot the Sim is on (None on the street or at work).
-    plot: Option<u32>,
-    /// Minute of day the Sim returns from work, if away.
-    away_until: Option<f32>,
-    visiting: Option<u32>,
-    job: Option<JobView<'a>>,
-    /// Skill levels in content order.
-    skills: &'a [f32],
-    /// Routines, goals and wishes (the player's household only).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    plan: Option<PlanView<'a>>,
 }
 
 #[derive(Serialize)]
@@ -223,8 +170,10 @@ fn goal_view<'a>(content: &'a Content, g: &Goal) -> GoalView<'a> {
         def: &def.id,
         kind: def.kind,
         icon: &def.icon,
-        progress: g.progress,
-        trend: g.progress - g.history[2],
+        progress: round_to(g.progress, PERCENT),
+        // Rounded away from zero: it passes ±0.01 (where the UI's arrow turns) just when the
+        // trend itself does.
+        trend: away_from_zero(g.progress - g.history[2], PERCENT),
         skill: g.skill.map(|s| content.skills[s].id.as_str()),
         category: g.category.map(|c| content.career_categories[c].id.as_str()),
         target: g.target,
@@ -265,7 +214,8 @@ fn plan_view<'a>(world: &'a World, s: &'a Sim) -> PlanView<'a> {
         minutes,
         status,
         reason: reason.map(|r| reason_view(content, r)),
-        done,
+        // Ten-minute steps: it grows every tick while the block runs, and nothing shows it.
+        done: round_to(done, 0.1),
     };
     PlanView {
         routines: p.routines.iter().map(|r| routine_view(content, r)).collect(),
@@ -303,7 +253,8 @@ fn plan_view<'a>(world: &'a World, s: &'a Sim) -> PlanView<'a> {
             .map(|&(a, k)| (content.activities[a].id.as_str(), k.map(|k| content.skills[k].id.as_str())))
             .collect(),
         home_wishes: p.home_wishes.iter().map(|w| crate::save::home_wish_save(content, w)).collect(),
-        adherence: crate::planner::adherence(content, s),
+        // It follows the mood; the UI words it at 0.65, 0.9 and 1.15 (rounding down keeps those).
+        adherence: floor_to(crate::planner::adherence(content, s), 20.0),
     }
 }
 
@@ -408,274 +359,654 @@ struct RelView {
     kin: crate::social::Kin,
 }
 
-pub fn ui_state_json(world: &World) -> String {
-    let content = &world.content;
-    let n = content.needs.len();
-    let host_name = |plot: u32| {
-        world
-            .households
-            .iter()
-            .find(|h| h.plot == Some(plot))
-            .map_or_else(
-                || world.plots[plot as usize].name.clone(),
-                |h| format!("the {}s", h.name),
-            )
-    };
-    let action = |task: &Task, phase: Option<&Phase>| {
-        let (label, object, target, minutes) = match task.kind {
-            TaskKind::Use {
-                object,
-                interaction,
-            } => {
-                let inter =
-                    &content.objects[world.objects[object as usize].def].interactions[interaction];
-                (inter.label.clone(), Some(object), None, inter.minutes)
-            }
-            TaskKind::MoveTo { .. } => ("Go here".to_owned(), None, None, 1.0),
-            TaskKind::Social { target, social } => {
-                let s = &content.socials[social];
-                let minutes = match phase {
-                    Some(Phase::Conversing { success, .. }) => conversation::duration(s, *success),
-                    _ => s.minutes,
-                };
-                (s.label.clone(), None, Some(target), minutes)
-            }
-            TaskKind::Work => ("Go to work".to_owned(), None, None, 1.0),
-            TaskKind::Visit { plot } => (format!("Visit {}", host_name(plot)), None, None, 1.0),
-            TaskKind::GoHome => ("Go home".to_owned(), None, None, 1.0),
-            TaskKind::Answer { guest } => ("Answer the door".to_owned(), None, Some(guest), 1.0),
-            TaskKind::Clean { .. } => {
-                let rules = &content.room_rules.clean;
-                (rules.label.clone(), None, None, rules.minutes)
-            }
-            TaskKind::Spot { accident } => {
-                let rest = content.accidents[accident].rest.as_ref();
-                (rest.map_or_else(String::new, |r| r.label.clone()), None, None, rest.map_or(1.0, |r| r.minutes))
-            }
-            TaskKind::Repair { object } => {
-                let rules = &content.object_rules.repair;
-                let name = &content.objects[world.objects[object as usize].def].name;
-                (format!("{} the {}", rules.label, name.to_lowercase()), Some(object), None, rules.minutes)
-            }
-        };
-        let progress = match phase {
-            Some(Phase::Using { elapsed }) | Some(Phase::Conversing { elapsed, .. }) => {
-                (elapsed / minutes).min(1.0)
-            }
-            _ => 0.0,
-        };
-        ActionView {
-            label,
-            object,
-            target,
-            progress,
-            directed: task.directed,
-            active: phase.is_some(),
+// ---- UI updates ------------------------------------------------------------------------------
+
+/// Needs, mood, progress and scores go in 1 % steps (a bar's resolution).
+const PERCENT: f64 = 100.0;
+
+/// `v` rounded to steps of `1 / per_unit`: values that drift every tick are rounded to what the
+/// UI shows, so they only count as changed (and are sent again) when the change is visible.
+fn round_to(v: f32, per_unit: f64) -> f32 {
+    ((f64::from(v) * per_unit).round() / per_unit) as f32
+}
+
+/// `round_to`, rounding down (skill levels: the whole number is the level).
+fn floor_to(v: f32, per_unit: f64) -> f32 {
+    ((f64::from(v) * per_unit).floor() / per_unit) as f32
+}
+
+/// `round_to`, rounding away from zero (a trend then passes a threshold just when it does).
+fn away_from_zero(v: f32, per_unit: f64) -> f32 {
+    let steps = (f64::from(v) * per_unit).abs().ceil();
+    (steps.copysign(f64::from(v)) / per_unit) as f32
+}
+
+/// A fingerprint of what was sent, never 0 (0: nothing sent yet).
+fn fingerprint(bytes: &[u8]) -> u64 {
+    let mut h = DefaultHasher::new();
+    h.write(bytes);
+    h.finish() | 1
+}
+
+/// A JSON object written field by field into a buffer.
+struct Obj<'a> {
+    out: &'a mut Vec<u8>,
+    fields: usize,
+}
+
+impl<'a> Obj<'a> {
+    fn open(out: &'a mut Vec<u8>) -> Self {
+        out.push(b'{');
+        Obj { out, fields: 0 }
+    }
+
+    fn key(&mut self, key: &str) {
+        if self.fields > 0 {
+            self.out.push(b',');
         }
-    };
+        self.fields += 1;
+        self.out.push(b'"');
+        self.out.extend_from_slice(key.as_bytes());
+        self.out.extend_from_slice(b"\":");
+    }
 
-    let sims = world
-        .sims
-        .iter()
-        .filter(|s| s.here())
-        .map(|s| {
-            let mut actions = Vec::new();
-            if let Some(until) = s.away_until {
-                let left = until.saturating_sub(world.tick) as f32 * MINUTES_PER_TICK;
-                let school = content.life.school.as_ref().filter(|_| s.job.is_none());
-                let total = s.job.as_ref().map_or(school.map_or(1.0, |sc| sc.hours * 60.0), |j| {
-                    content.careers[j.career].levels[j.level].hours * 60.0
-                });
-                actions.push(ActionView {
-                    label: if school.is_some() { "At school" } else { "At work" }.to_owned(),
-                    object: None,
-                    target: None,
-                    progress: (1.0 - left / total).clamp(0.0, 1.0),
-                    directed: true,
-                    active: true,
-                });
-            }
-            // Being talked to shows up as the current action.
-            if let Some(a) = s.engaged_with
-                && let Some((_, social, _, progress)) = world.sims[a as usize].conversation(content)
-            {
-                actions.push(ActionView {
-                    label: content.socials[social].label.clone(),
-                    object: None,
-                    target: Some(a),
-                    progress,
-                    directed: false,
-                    active: true,
-                });
-            }
-            actions.extend(s.current().map(|a| action(&a.task, Some(&a.phase))));
-            actions.extend(s.queue().map(|t| action(t, None)));
-            let feelings = s
-                .feelings
-                .iter()
-                .map(|m| {
-                    let def = &content.feelings[m.def];
-                    let left = m.expires.saturating_sub(world.tick) as f32 * MINUTES_PER_TICK;
-                    FeelingView {
-                        id: &def.id,
-                        label: &def.label,
-                        mood: def.mood,
-                        minutes_left: left.min(def.minutes),
-                    }
-                })
-                .collect();
-            let job = s.job.as_ref().map(|j| {
-                let career = &content.careers[j.career];
-                let level = &career.levels[j.level];
-                let grade = level.grade.map(|g| &content.grades[g]);
-                let fit = life::skill_fit(level, &s.skills);
-                let next = career.levels.get(j.level + 1);
-                JobView {
-                    index: j.career,
-                    career: &career.id,
-                    career_label: &career.label,
-                    category: career
-                        .category
-                        .map(|c| content.career_categories[c].id.as_str()),
-                    title: &level.title,
-                    level: j.level,
-                    levels: career.levels.len(),
-                    grade: grade.map(|g| g.id.as_str()),
-                    grade_label: grade.map(|g| g.label.as_str()),
-                    performance: j.performance,
-                    pay: life::shift_pay(content, j, &s.skills),
-                    pay_per_hour: level.pay as f32 / level.hours,
-                    weekly_pay: level.pay * level.days.count_ones() as i64,
-                    start_hour: level.start_hour,
-                    hours: level.hours,
-                    days: weekdays(life::work_days(content, j, &s.skills)),
-                    standard_days: weekdays(level.days),
-                    workweek: life::workweek_rule(content, fit).map(|r| r.label.as_str()),
-                    fit,
-                    requires: requirements(content, &level.requires, &s.skills),
-                    next: next.map(|n| NextLevel {
-                        title: &n.title,
-                        grade: n.grade.map(|g| content.grades[g].id.as_str()),
-                        pay_per_hour: n.pay as f32 / n.hours,
-                        requires: requirements(content, &n.requires, &s.skills),
-                    }),
-                    next_title: next.map(|l| l.title.as_str()),
-                }
-            });
-            let (x, z) = s.tile();
-            SimView {
-                id: s.id,
-                name: &s.name,
-                household: s.household,
-                traits: &s.traits,
-                perks: &s.perks,
-                age: s.age.floor() as u32,
-                stage: content.life.stages.get(content.life.stage(s.age)).map(|st| st.id.as_str()),
-                pension: s.retired.then_some(s.pension),
-                grade: content.life.stage_at(s.age).filter(|st| st.school && content.life.school.is_some()).map(|_| s.grade),
-                needs: &s.needs[..n],
-                mood: s.mood(content),
-                emotion: s.emotion(content).map(|e| content.emotions[e].id.as_str()),
-                feelings,
-                actions,
-                plot: if s.away_until.is_some() {
-                    None
-                } else {
-                    world.plot_at(x, z)
-                },
-                away_until: s.away_until.map(clock::minute_of_day),
-                visiting: s.visiting.map(|v| v.plot),
-                job,
-                skills: &s.skills[..content.skills.len()],
-                plan: world.households[s.household as usize]
-                    .player
-                    .then(|| plan_view(world, s)),
-            }
-        })
-        .collect();
+    fn field<T: Serialize + ?Sized>(&mut self, key: &str, value: &T) {
+        self.key(key);
+        serde_json::to_writer(&mut *self.out, value).expect("UI view serializes");
+    }
 
-    let rels = &world.relationships;
-    let mut relationships = Vec::new();
-    for a in 0..world.sims.len() {
-        for b in 0..world.sims.len() {
-            let r = rels.get(a, b);
-            if a != b && r.met {
-                relationships.push(RelView {
-                    a: a as u32,
-                    b: b as u32,
-                    friendship: r.friendship,
-                    romance: r.romance,
-                    partners: r.partners,
-                    chemistry: rels.chemistry(a, b),
-                    kin: r.kin,
-                });
-            }
+    /// Writes the field only if its JSON differs from what `sent` remembers (and remembers it).
+    fn changed<T: Serialize + ?Sized>(&mut self, key: &str, value: &T, sent: &mut u64) {
+        let (mark, fields) = (self.out.len(), self.fields);
+        self.key(key);
+        let start = self.out.len();
+        serde_json::to_writer(&mut *self.out, value).expect("UI view serializes");
+        let print = fingerprint(&self.out[start..]);
+        if print == *sent {
+            self.out.truncate(mark);
+            self.fields = fields;
+        } else {
+            *sent = print;
         }
     }
 
-    let skip = world.events.iter().count().saturating_sub(UI_EVENTS);
-    let events: Vec<EventView> = world.events.iter().skip(skip).map(EventView::from).collect();
-    let day = clock::day(world.tick);
+    /// `changed` for a field the UI leaves out when absent: becoming absent is sent as `null`.
+    fn changed_opt<T: Serialize>(&mut self, key: &str, value: Option<&T>, sent: &mut u64) {
+        match value {
+            Some(v) => self.changed(key, v, sent),
+            None if *sent != 0 => {
+                self.field(key, &());
+                *sent = 0;
+            }
+            None => {}
+        }
+    }
 
-    serde_json::to_string(&UiState {
-        day,
-        weekday: clock::weekday(day),
-        minute: clock::minute_of_day(world.tick),
-        speed: world.speed,
-        autonomy: world.autonomy,
-        lifespan: world.lifespan,
-        player_moves: world.player_moves,
-        sims,
-        households: world
-            .households
+    /// Writes `list` as an array (empty lists only when `always`).
+    fn list(&mut self, key: &str, list: &List, always: bool) {
+        if always || list.len > 0 {
+            self.key(key);
+            self.out.push(b'[');
+            self.out.extend_from_slice(&list.out);
+            self.out.push(b']');
+        }
+    }
+
+    /// Closes the object; returns how many fields it has.
+    fn close(self) -> usize {
+        self.out.push(b'}');
+        self.fields
+    }
+}
+
+/// The items of a JSON array, written one by one.
+#[derive(Default)]
+struct List {
+    out: Vec<u8>,
+    len: usize,
+}
+
+impl List {
+    fn next(&mut self) -> &mut Vec<u8> {
+        if self.len > 0 {
+            self.out.push(b',');
+        }
+        self.len += 1;
+        &mut self.out
+    }
+
+    fn push<T: Serialize + ?Sized>(&mut self, item: &T) {
+        let out = self.next();
+        serde_json::to_writer(out, item).expect("UI view serializes");
+    }
+
+    /// Adds the item only if its JSON differs from what `sent` remembers (and remembers it).
+    fn push_changed<T: Serialize>(&mut self, item: &T, sent: &mut u64) {
+        let (mark, len) = (self.out.len(), self.len);
+        let out = self.next();
+        let start = out.len();
+        serde_json::to_writer(&mut *out, item).expect("UI view serializes");
+        let print = fingerprint(&out[start..]);
+        if print == *sent {
+            self.out.truncate(mark);
+            self.len = len;
+        } else {
+            *sent = print;
+        }
+    }
+}
+
+/// What the UI was last sent, so that each UI update (~10 Hz) carries only what changed:
+/// residents, households, relationship pairs and rooms are keyed by id and sent again when
+/// their JSON changes, story events by id. Values that drift every tick are rounded to what the
+/// UI shows (`round_to`), so changed means visibly changed. The first update, and the next
+/// one after `resync`, sends everything.
+///
+/// Every resident is listed, but only the player's household and the resident being inspected
+/// come with their details (needs, feelings, actions, skills, plan) and relationships: nobody
+/// else's are shown, and these are what change all the time.
+pub struct UiSync {
+    /// The next update sends everything.
+    full: bool,
+    inspected: Option<u32>,
+    /// Per resident slot: what they were sent (None: not listed).
+    sims: Vec<Option<SimSent>>,
+    households: Vec<u64>,
+    /// Relationship pairs and rooms sent, with the update that last found them.
+    relationships: HashMap<(u32, u32), (u64, u32)>,
+    rooms: HashMap<u16, (u64, u32)>,
+    updates: u32,
+    /// The newest story event sent.
+    last_event: Option<u64>,
+}
+
+/// Fingerprints of a resident's fields as last sent (0: not sent; the UI has its default).
+#[derive(Default)]
+struct SimSent {
+    detailed: bool,
+    detail: u64,
+    name: u64,
+    household: u64,
+    traits: u64,
+    perks: u64,
+    age: u64,
+    stage: u64,
+    pension: u64,
+    plot: u64,
+    away_until: u64,
+    visiting: u64,
+    job: u64,
+    /// Reset when the details stop (the UI drops them).
+    details: DetailsSent,
+}
+
+#[derive(Default)]
+struct DetailsSent {
+    grade: u64,
+    needs: u64,
+    mood: u64,
+    emotion: u64,
+    feelings: u64,
+    actions: u64,
+    skills: u64,
+    plan: u64,
+    plan_parts: PlanSent,
+}
+
+/// The plan is sent part by part: the week's history is long, and the rest changes all day.
+#[derive(Default)]
+struct PlanSent {
+    routines: u64,
+    skip_household: u64,
+    current: u64,
+    history: u64,
+    goals: u64,
+    suggestions: u64,
+    wishes: u64,
+    home_wishes: u64,
+    adherence: u64,
+}
+
+impl Default for UiSync {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl UiSync {
+    pub fn new() -> Self {
+        Self {
+            full: true,
+            inspected: None,
+            sims: Vec::new(),
+            households: Vec::new(),
+            relationships: HashMap::new(),
+            rooms: HashMap::new(),
+            updates: 0,
+            last_event: None,
+        }
+    }
+
+    /// The next update sends everything (the UI starts over, or lost track).
+    pub fn resync(&mut self) {
+        self.full = true;
+    }
+
+    /// The resident whose panel is open: their details and relationships are sent too.
+    pub fn inspect(&mut self, sim: Option<u32>) {
+        self.inspected = sim;
+    }
+
+    /// The next UI update (JSON; `UiUpdate` in `protocol.ts`): what changed since the last one,
+    /// or everything.
+    pub fn update_json(&mut self, world: &World) -> String {
+        let full = std::mem::take(&mut self.full);
+        if full {
+            *self = Self {
+                full: false,
+                inspected: self.inspected,
+                updates: self.updates,
+                ..Self::new()
+            };
+        }
+        self.updates = self.updates.wrapping_add(1);
+        let content = &world.content;
+        let detailed: Vec<bool> = world
+            .sims
             .iter()
-            .enumerate()
-            .map(|(i, h)| {
-                let costs = life::weekly_costs(world, i);
-                FundsView {
-                    id: h.id,
-                    funds: h.funds,
-                    rent: costs.map(|c| c.0),
-                    bills: costs.map(|c| c.1),
-                    style: h.style,
-                    undo: world.undo_steps(i),
-                    redo: world.redo_steps(i),
-                    routines: h
-                        .player
-                        .then(|| h.routines.iter().map(|r| routine_view(content, r)).collect()),
-                    expecting: h.expecting,
+            .map(|s| s.here() && (world.households[s.household as usize].player || self.inspected == Some(s.id)))
+            .collect();
+
+        let (mut sims, mut gone) = (List::default(), List::default());
+        if self.sims.len() < world.sims.len() {
+            self.sims.resize_with(world.sims.len(), || None);
+        }
+        for (i, s) in world.sims.iter().enumerate() {
+            if !s.here() {
+                if self.sims[i].take().is_some() {
+                    gone.push(&s.id);
                 }
-            })
-            .collect(),
-        relationships,
-        events,
-        rooms: {
-            let home = world.households.iter().find(|h| h.player).and_then(|h| h.plot);
-            world
-                .rooms()
-                .iter()
-                .filter(|r| home.is_some() && r.plot == home)
-                .map(|r| {
-                    let s = r.scores;
-                    RoomView {
-                        id: r.id,
-                        garden: r.garden,
-                        kind: r.kind,
-                        mixed: r.mixed,
-                        missing: r.missing,
-                        tiles: r.tiles,
-                        windows: r.windows,
-                        doors: r.doors,
-                        lamps: r.lamps,
-                        dirt: r.dirt,
-                        centre: r.centre,
-                        scores: [s.size, s.light, s.decor, s.clean, s.function, s.overall],
+                continue;
+            }
+            let sent = self.sims[i].get_or_insert_with(SimSent::default);
+            let mark = (sims.out.len(), sims.len);
+            let mut o = Obj::open(sims.next());
+            o.field("id", &s.id);
+            sim_patch(world, s, detailed[i], sent, &mut o);
+            if o.close() == 1 {
+                sims.out.truncate(mark.0);
+                sims.len = mark.1;
+            }
+        }
+
+        let mut households = List::default();
+        self.households.resize(world.households.len(), 0);
+        for (i, h) in world.households.iter().enumerate() {
+            let costs = life::weekly_costs(world, i);
+            let view = FundsView {
+                id: h.id,
+                funds: h.funds,
+                rent: costs.map(|c| c.0),
+                bills: costs.map(|c| c.1),
+                style: h.style,
+                undo: world.undo_steps(i),
+                redo: world.redo_steps(i),
+                routines: h.player.then(|| h.routines.iter().map(|r| routine_view(content, r)).collect()),
+                expecting: h.expecting,
+            };
+            households.push_changed(&view, &mut self.households[i]);
+        }
+
+        // Pairs with a resident whose details are sent, both ways (nobody else's are shown).
+        let (mut relationships, mut rels_gone) = (List::default(), List::default());
+        let rels = &world.relationships;
+        let updates = self.updates;
+        let mut visit = |a: usize, b: usize| {
+            let r = rels.get(a, b);
+            if !r.met {
+                return;
+            }
+            let chemistry = rels.chemistry(a, b);
+            let mut h = DefaultHasher::new();
+            for bits in [r.friendship.to_bits(), r.romance.to_bits(), chemistry.to_bits(), u32::from(r.partners), r.kin as u32] {
+                h.write_u32(bits);
+            }
+            let print = h.finish() | 1;
+            match self.relationships.entry((a as u32, b as u32)) {
+                Entry::Occupied(mut e) => {
+                    let (sent, seen) = e.get_mut();
+                    *seen = updates;
+                    if *sent == print {
+                        return;
                     }
-                })
-                .collect()
-        },
+                    *sent = print;
+                }
+                Entry::Vacant(e) => {
+                    e.insert((print, updates));
+                }
+            }
+            relationships.push(&RelView {
+                a: a as u32,
+                b: b as u32,
+                friendship: r.friendship,
+                romance: r.romance,
+                partners: r.partners,
+                chemistry,
+                kin: r.kin,
+            });
+        };
+        for a in (0..world.sims.len()).filter(|&a| detailed[a]) {
+            for b in (0..world.sims.len()).filter(|&b| b != a) {
+                visit(a, b);
+                if !detailed[b] {
+                    visit(b, a);
+                }
+            }
+        }
+        self.relationships.retain(|&(a, b), &mut (_, seen)| {
+            let kept = seen == updates;
+            if !kept {
+                rels_gone.push(&[a, b]);
+            }
+            kept
+        });
+
+        let newest = self.last_event;
+        let mut events = List::default();
+        let fresh: Vec<&SocialEvent> = if full {
+            let skip = world.events.iter().count().saturating_sub(UI_EVENTS);
+            world.events.iter().skip(skip).collect()
+        } else {
+            let mut fresh: Vec<_> = world.events.iter().rev().take_while(|e| newest.is_none_or(|n| e.id > n)).collect();
+            fresh.reverse();
+            fresh
+        };
+        for e in fresh {
+            events.push(&EventView::from(e));
+        }
+        self.last_event = world.events.iter().next_back().map(|e| e.id).or(newest);
+
+        let (mut rooms, mut rooms_gone) = (List::default(), List::default());
+        let home = world.households.iter().find(|h| h.player).and_then(|h| h.plot);
+        for r in world.rooms().iter().filter(|r| home.is_some() && r.plot == home) {
+            let s = r.scores;
+            let view = RoomView {
+                id: r.id,
+                garden: r.garden,
+                kind: r.kind,
+                mixed: r.mixed,
+                missing: r.missing,
+                tiles: r.tiles,
+                windows: r.windows,
+                doors: r.doors,
+                lamps: r.lamps,
+                dirt: round_to(r.dirt, PERCENT),
+                centre: r.centre,
+                scores: [s.size, s.light, s.decor, s.clean, s.function, s.overall].map(|v| round_to(v, PERCENT)),
+            };
+            let (sent, seen) = self.rooms.entry(r.id).or_insert((0, updates));
+            *seen = updates;
+            rooms.push_changed(&view, sent);
+        }
+        self.rooms.retain(|&id, &mut (_, seen)| {
+            let kept = seen == updates;
+            if !kept {
+                rooms_gone.push(&id);
+            }
+            kept
+        });
+
+        let day = clock::day(world.tick);
+        let mut out = Vec::with_capacity(256 + sims.out.len() + relationships.out.len() + events.out.len());
+        let mut o = Obj::open(&mut out);
+        o.field("full", &full);
+        o.field("day", &day);
+        o.field("weekday", &clock::weekday(day));
+        o.field("minute", &clock::minute_of_day(world.tick));
+        o.field("speed", &world.speed);
+        o.field("autonomy", &world.autonomy);
+        o.field("lifespan", &world.lifespan);
+        o.field("playerMoves", &world.player_moves);
+        o.list("sims", &sims, full);
+        o.list("simsGone", &gone, false);
+        o.list("households", &households, full);
+        o.list("relationships", &relationships, full);
+        o.list("relationshipsGone", &rels_gone, false);
+        o.list("events", &events, full);
+        o.list("rooms", &rooms, full);
+        o.list("roomsGone", &rooms_gone, false);
+        o.close();
+        String::from_utf8(out).expect("JSON is UTF-8")
+    }
+}
+
+/// Everything the UI is sent at the start (a fresh `UiSync`'s first update).
+pub fn ui_state_json(world: &World) -> String {
+    UiSync::new().update_json(world)
+}
+
+/// Writes the fields of resident `s` that changed (`SimView` in `protocol.ts`); with `detail`
+/// false only the summary (who, where, which job), the details being the UI's defaults.
+fn sim_patch(world: &World, s: &Sim, detail: bool, sent: &mut SimSent, o: &mut Obj) {
+    let content = &world.content;
+    if sent.detailed && !detail {
+        sent.details = DetailsSent::default();
+    }
+    sent.detailed = detail;
+    o.changed("detail", &detail, &mut sent.detail);
+    o.changed("name", &s.name, &mut sent.name);
+    o.changed("household", &s.household, &mut sent.household);
+    o.changed("traits", &s.traits, &mut sent.traits);
+    o.changed("perks", &s.perks, &mut sent.perks);
+    // Age in whole years, and the life stage (content `life.stages` id).
+    o.changed("age", &(s.age.floor() as u32), &mut sent.age);
+    let stage = content.life.stages.get(content.life.stage(s.age)).map(|st| st.id.as_str());
+    o.changed("stage", &stage, &mut sent.stage);
+    // Retired, with this weekly pension.
+    o.changed_opt("pension", s.retired.then_some(&s.pension), &mut sent.pension);
+    // Plot the Sim is on (None on the street or at work); minute of day they're back from work.
+    let (x, z) = s.tile();
+    let plot = if s.away_until.is_some() { None } else { world.plot_at(x, z) };
+    o.changed("plot", &plot, &mut sent.plot);
+    o.changed("awayUntil", &s.away_until.map(clock::minute_of_day), &mut sent.away_until);
+    o.changed("visiting", &s.visiting.map(|v| v.plot), &mut sent.visiting);
+    o.changed("job", &job_view(content, s), &mut sent.job);
+    if !detail {
+        return;
+    }
+
+    let d = &mut sent.details;
+    // A pupil's school grade (0..100).
+    let grade = content
+        .life
+        .stage_at(s.age)
+        .filter(|st| st.school && content.life.school.is_some())
+        .map(|_| round_to(s.grade, 10.0));
+    o.changed_opt("grade", grade.as_ref(), &mut d.grade);
+    let needs: Vec<f32> = s.needs[..content.needs.len()].iter().map(|&v| round_to(v, PERCENT)).collect();
+    o.changed("needs", &needs, &mut d.needs);
+    o.changed("mood", &round_to(s.mood(content), PERCENT), &mut d.mood);
+    o.changed("emotion", &s.emotion(content).map(|e| content.emotions[e].id.as_str()), &mut d.emotion);
+    o.changed("feelings", &feelings(world, s), &mut d.feelings);
+    o.changed("actions", &actions(world, s), &mut d.actions);
+    // Skill levels in content order (rounded down: the whole number is the level).
+    let skills: Vec<f32> = s.skills[..content.skills.len()].iter().map(|&v| floor_to(v, PERCENT)).collect();
+    o.changed("skills", &skills, &mut d.skills);
+
+    // Routines, goals and wishes (the player's household only), part by part.
+    if !world.households[s.household as usize].player {
+        o.changed_opt::<()>("plan", None, &mut d.plan);
+        d.plan_parts = PlanSent::default();
+        return;
+    }
+    d.plan = 1;
+    let plan = plan_view(world, s);
+    let p = &mut d.plan_parts;
+    let (mark, fields) = (o.out.len(), o.fields);
+    o.key("plan");
+    let mut parts = Obj::open(&mut *o.out);
+    parts.changed("routines", &plan.routines, &mut p.routines);
+    parts.changed("skipHousehold", &plan.skip_household, &mut p.skip_household);
+    parts.changed("current", &plan.current, &mut p.current);
+    parts.changed("history", &plan.history, &mut p.history);
+    parts.changed("goals", &plan.goals, &mut p.goals);
+    parts.changed("suggestions", &plan.suggestions, &mut p.suggestions);
+    parts.changed("wishes", &plan.wishes, &mut p.wishes);
+    parts.changed("homeWishes", &plan.home_wishes, &mut p.home_wishes);
+    parts.changed("adherence", &plan.adherence, &mut p.adherence);
+    if parts.close() == 0 {
+        o.out.truncate(mark);
+        o.fields = fields;
+    }
+}
+
+/// "Visit the Smiths", or the plot's name when nobody lives there.
+fn host_name(world: &World, plot: u32) -> String {
+    world
+        .households
+        .iter()
+        .find(|h| h.plot == Some(plot))
+        .map_or_else(|| world.plots[plot as usize].name.clone(), |h| format!("the {}s", h.name))
+}
+
+fn task_view(world: &World, task: &Task, phase: Option<&Phase>) -> ActionView {
+    let content = &world.content;
+    let (label, object, target, minutes) = match task.kind {
+        TaskKind::Use { object, interaction } => {
+            let inter = &content.objects[world.objects[object as usize].def].interactions[interaction];
+            (inter.label.clone(), Some(object), None, inter.minutes)
+        }
+        TaskKind::MoveTo { .. } => ("Go here".to_owned(), None, None, 1.0),
+        TaskKind::Social { target, social } => {
+            let s = &content.socials[social];
+            let minutes = match phase {
+                Some(Phase::Conversing { success, .. }) => conversation::duration(s, *success),
+                _ => s.minutes,
+            };
+            (s.label.clone(), None, Some(target), minutes)
+        }
+        TaskKind::Work => ("Go to work".to_owned(), None, None, 1.0),
+        TaskKind::Visit { plot } => (format!("Visit {}", host_name(world, plot)), None, None, 1.0),
+        TaskKind::GoHome => ("Go home".to_owned(), None, None, 1.0),
+        TaskKind::Answer { guest } => ("Answer the door".to_owned(), None, Some(guest), 1.0),
+        TaskKind::Clean { .. } => {
+            let rules = &content.room_rules.clean;
+            (rules.label.clone(), None, None, rules.minutes)
+        }
+        TaskKind::Spot { accident } => {
+            let rest = content.accidents[accident].rest.as_ref();
+            (rest.map_or_else(String::new, |r| r.label.clone()), None, None, rest.map_or(1.0, |r| r.minutes))
+        }
+        TaskKind::Repair { object } => {
+            let rules = &content.object_rules.repair;
+            let name = &content.objects[world.objects[object as usize].def].name;
+            (format!("{} the {}", rules.label, name.to_lowercase()), Some(object), None, rules.minutes)
+        }
+    };
+    let progress = match phase {
+        Some(Phase::Using { elapsed }) | Some(Phase::Conversing { elapsed, .. }) => (elapsed / minutes).min(1.0),
+        _ => 0.0,
+    };
+    ActionView {
+        label,
+        object,
+        target,
+        progress: round_to(progress, PERCENT),
+        directed: task.directed,
+        active: phase.is_some(),
+    }
+}
+
+/// What a resident is doing and has queued; work or school, and being talked to, come first.
+fn actions(world: &World, s: &Sim) -> Vec<ActionView> {
+    let content = &world.content;
+    let mut actions = Vec::new();
+    if let Some(until) = s.away_until {
+        let left = until.saturating_sub(world.tick) as f32 * MINUTES_PER_TICK;
+        let school = content.life.school.as_ref().filter(|_| s.job.is_none());
+        let total = s.job.as_ref().map_or(school.map_or(1.0, |sc| sc.hours * 60.0), |j| {
+            content.careers[j.career].levels[j.level].hours * 60.0
+        });
+        actions.push(ActionView {
+            label: if school.is_some() { "At school" } else { "At work" }.to_owned(),
+            object: None,
+            target: None,
+            progress: round_to((1.0 - left / total).clamp(0.0, 1.0), PERCENT),
+            directed: true,
+            active: true,
+        });
+    }
+    // Being talked to shows up as the current action.
+    if let Some(a) = s.engaged_with
+        && let Some((_, social, _, progress)) = world.sims[a as usize].conversation(content)
+    {
+        actions.push(ActionView {
+            label: content.socials[social].label.clone(),
+            object: None,
+            target: Some(a),
+            progress: round_to(progress, PERCENT),
+            directed: false,
+            active: true,
+        });
+    }
+    actions.extend(s.current().map(|a| task_view(world, &a.task, Some(&a.phase))));
+    actions.extend(s.queue().map(|t| task_view(world, t, None)));
+    actions
+}
+
+fn feelings<'a>(world: &'a World, s: &Sim) -> Vec<FeelingView<'a>> {
+    s.feelings
+        .iter()
+        .map(|m| {
+            let def = &world.content.feelings[m.def];
+            let left = m.expires.saturating_sub(world.tick) as f32 * MINUTES_PER_TICK;
+            FeelingView {
+                id: &def.id,
+                label: &def.label,
+                mood: def.mood,
+                // Whole minutes: the panel shows minutes, or hours.
+                minutes_left: round_to(left.min(def.minutes), 1.0),
+            }
+        })
+        .collect()
+}
+
+fn job_view<'a>(content: &'a Content, s: &Sim) -> Option<JobView<'a>> {
+    let j = s.job.as_ref()?;
+    let career = &content.careers[j.career];
+    let level = &career.levels[j.level];
+    let grade = level.grade.map(|g| &content.grades[g]);
+    let fit = life::skill_fit(level, &s.skills);
+    let next = career.levels.get(j.level + 1);
+    Some(JobView {
+        index: j.career,
+        career: &career.id,
+        career_label: &career.label,
+        category: career.category.map(|c| content.career_categories[c].id.as_str()),
+        title: &level.title,
+        level: j.level,
+        levels: career.levels.len(),
+        grade: grade.map(|g| g.id.as_str()),
+        grade_label: grade.map(|g| g.label.as_str()),
+        performance: j.performance,
+        pay: life::shift_pay(content, j, &s.skills),
+        pay_per_hour: level.pay as f32 / level.hours,
+        weekly_pay: level.pay * level.days.count_ones() as i64,
+        start_hour: level.start_hour,
+        hours: level.hours,
+        days: weekdays(life::work_days(content, j, &s.skills)),
+        standard_days: weekdays(level.days),
+        workweek: life::workweek_rule(content, fit).map(|r| r.label.as_str()),
+        fit,
+        requires: requirements(content, &level.requires, &s.skills),
+        next: next.map(|n| NextLevel {
+            title: &n.title,
+            grade: n.grade.map(|g| content.grades[g].id.as_str()),
+            pay_per_hour: n.pay as f32 / n.hours,
+            requires: requirements(content, &n.requires, &s.skills),
+        }),
+        next_title: next.map(|l| l.title.as_str()),
     })
-    .expect("UI state serializes")
 }
 
 #[derive(Serialize)]

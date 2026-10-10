@@ -41,6 +41,13 @@ scope.onmessage = (e) => {
     } else if (msg.type === 'view') {
       region = msg.region;
       if (game) postWorld();
+    } else if (msg.type === 'inspect' && game) {
+      // Their details at once, so the panel opens with them.
+      game.inspect(msg.sim ?? undefined);
+      postUi();
+    } else if (msg.type === 'resync' && game) {
+      game.resync_ui();
+      postUi();
     } else if (msg.type === 'events' && game) {
       scope.postMessage({ type: 'events', requestId: msg.requestId, events: JSON.parse(game.events()) });
     } else if (msg.type === 'blueprint' && game) {
@@ -164,7 +171,7 @@ function mesh(g: Game, kind: number): MeshArrays {
 }
 
 function postUi(): void {
-  scope.postMessage({ type: 'ui', ui: JSON.parse(game!.ui_state()) });
+  scope.postMessage({ type: 'ui', ui: JSON.parse(game!.ui_update()) });
 }
 
 function fail(err: unknown, fatal: boolean): void {

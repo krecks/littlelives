@@ -24,10 +24,12 @@
   const tabs = $derived(mine && grownUp ? allTabs : allTabs.filter((t) => t !== 'Career'));
   const homeName = $derived(sim ? game.households[sim.household]?.name : undefined);
   const emotion = $derived(services.content.emotion(sim?.emotion ?? null));
+  // By id: the list is rebuilt when relationships change, not with every change to the resident.
+  const simId = $derived(sim?.id ?? null);
   const people = $derived(
-    sim
+    simId !== null
       ? game.relationships
-          .filter((r) => r.a === sim.id)
+          .filter((r) => r.a === simId)
           .map((r) => ({ rel: r, back: game.relationships.find((x) => x.a === r.b && x.b === r.a), who: info(r.b) }))
           .sort((x, y) => Math.abs(y.rel.friendship) + y.rel.romance - (Math.abs(x.rel.friendship) + x.rel.romance))
       : [],

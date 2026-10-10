@@ -3,7 +3,7 @@
  * into interpolatable frames for the renderer. Allocation-free per frame.
  */
 
-import type { Catalog, Command, FromWorker, GameSource, SimThreadStats, SocialEvent, SocialOption, ToWorker, UiSnapshot, WorldStructure } from './protocol';
+import type { Catalog, Command, FromWorker, GameSource, SimThreadStats, SocialEvent, SocialOption, ToWorker, UiUpdate, WorldStructure } from './protocol';
 import { SharedSnapshotReader, type SnapshotLayout } from './snapshot';
 
 /** What the renderer needs each frame. Reused; do not keep references across frames. */
@@ -48,11 +48,12 @@ export class SimBridge {
   private readonly frameState: FrameState;
 
   private world: WorldStructure | null = null;
-  private ui: UiSnapshot | null = null;
+  /** A UI update arrived (late subscribers then ask for everything again). */
+  private uiSeen = false;
   /** The worker's latest report on how it keeps up (null until the first, after a second). */
   threadStats: SimThreadStats | null = null;
   private worldListeners: Listener<WorldStructure>[] = [];
-  private uiListeners: Listener<UiSnapshot>[] = [];
+  private uiListeners: Listener<UiUpdate>[] = [];
   private errorListeners: Listener<string>[] = [];
   private nextRequest = 1;
   private readonly requests = new Map<number, (value: never) => void>();
@@ -143,9 +144,20 @@ export class SimBridge {
     if (this.world) fn(this.world);
   }
 
-  onUi(fn: Listener<UiSnapshot>): void {
+  /** UI updates carry changes only; a late subscriber gets a full one (`resyncUi`). */
+  onUi(fn: Listener<UiUpdate>): void {
     this.uiListeners.push(fn);
-    if (this.ui) fn(this.ui);
+    if (this.uiSeen) this.resyncUi();
+  }
+
+  /** The next UI update carries everything (the main thread lost track, or starts over). */
+  resyncUi(): void {
+    this.worker.postMessage({ type: 'resync' } satisfies ToWorker);
+  }
+
+  /** The resident whose panel is open: their details and relationships come with UI updates. */
+  inspect(sim: number | null): void {
+    this.worker.postMessage({ type: 'inspect', sim } satisfies ToWorker);
   }
 
   onError(fn: Listener<string>): void {
@@ -219,7 +231,7 @@ export class SimBridge {
         break;
       }
       case 'ui':
-        this.ui = msg.ui;
+        this.uiSeen = true;
         for (const fn of this.uiListeners) fn(msg.ui);
         break;
       case 'saved':

@@ -8,7 +8,10 @@
   /** One resident's day on a thin bar: planned blocks (and how they went), work, and now. */
   let { sim, height = 6, labels = false }: { sim: SimView; height?: number; labels?: boolean } = $props();
 
-  const blocks = $derived(dayBlocks(sim, game.householdRoutines, game.day));
+  // Only the plan and the job make the day: the bar isn't redrawn when their needs change.
+  const plan = $derived(sim.plan);
+  const job = $derived(sim.job);
+  const blocks = $derived(dayBlocks({ plan, job }, game.householdRoutines, game.day));
   const pct = (m: number) => `${(m / DAY) * 100}%`;
 </script>
 

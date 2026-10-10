@@ -88,9 +88,13 @@ class GameState {
   lifespan = $state<Lifespan>('normal');
   /** Whether the player's residents move on their own in this game. */
   playerMoves = $state(true);
-  /** Replaced wholesale on each update; raw avoids deep proxies. */
   /** A debug report is being saved. */
   debugSaving = $state(false);
+  /**
+   * Everyone in town. Replaced when a resident changes, but unchanged residents keep their
+   * objects (`game/uiUpdates.ts`), so keyed blocks skip them; raw avoids deep proxies. Details
+   * (needs, actions...) only for the player's household and the inspected (`SimView.detail`).
+   */
   sims = $state.raw<SimView[]>([]);
   /** Static per-Sim info (appearance, traits) from the world structure. */
   /** Residents in town (not those who died or moved away). */
@@ -100,6 +104,7 @@ class GameState {
   former = $state.raw<FormerResident[]>([]);
   households = $state.raw<HouseholdInfo[]>([]);
   plots = $state.raw<PlotInfo[]>([]);
+  /** Pairs with a resident in `sims` that has details, both ways (as `sims`, unchanged pairs keep their objects). */
   relationships = $state.raw<RelationshipView[]>([]);
   socialMenu = $state.raw<SocialMenuState | null>(null);
   feed = $state.raw<FeedEntry[]>([]);
@@ -215,7 +220,17 @@ class GameState {
   occupied = $derived(this.roster.some((s) => this.households[s.household]?.player));
 
   selectedSim = $derived(this.sims.find((s) => s.id === this.selected) ?? null);
-  inspectedSim = $derived(this.inspected === null ? null : (this.sims.find((s) => s.id === this.inspected) ?? null));
+  #shown: SimView | null = null;
+  /**
+   * A neighbour's details arrive a moment after they're inspected: until then the panel keeps
+   * showing whoever it showed (it isn't closed and opened again in between).
+   */
+  inspectedSim = $derived.by(() => {
+    const sim = this.inspected === null ? undefined : this.sims.find((s) => s.id === this.inspected);
+    if (!sim) return (this.#shown = null);
+    if (sim.detail) this.#shown = sim;
+    return this.#shown;
+  });
 
   /** Clears per-session state when leaving a game. */
   reset(): void {

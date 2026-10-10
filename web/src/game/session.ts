@@ -7,7 +7,7 @@
 import { AssetRegistry } from '../assets/registry';
 import { Content } from '../content/content';
 import { SimBridge } from '../core/bridge';
-import type { GameKind, GameSource, Lifespan, SocialEvent, WorldStructure } from '../core/protocol';
+import type { GameKind, GameSource, Lifespan, Routine, SocialEvent, WorldStructure } from '../core/protocol';
 import { AUTOSAVE_ID, readSave, writeSave, type SaveRecord } from '../persistence/saves';
 import { recentLog } from '../debug/log';
 import { deliverReport, gpuInfo, takePendingPose, type DebugReport } from '../debug/report';
@@ -34,6 +34,7 @@ import { play } from '../ui/sfx';
 import { greyed, householdBonds, householdSpawns, lookFromSeed, lookOfStage, palette, type HouseholdDraft } from './household';
 import { PointerInput } from './input';
 import { assembleTown, loadTemplates, useTownContent, type NeighbourhoodDraft } from './town';
+import { UiMirror } from './uiUpdates';
 
 /** Click radius (CSS px) around a Sim's projected centre. */
 const SIM_PICK_RADIUS = 32;
@@ -165,6 +166,10 @@ export async function startSession(
   let focused = false;
   let viewPlot: number | null = null;
   let lastEvent = -1;
+  /** The HUD view as the worker's updates built it up. */
+  const mirror = new UiMirror();
+  /** The household routines last compared (they come again with every change to the household). */
+  let routinesSeen: Routine[] | null = null;
   const bubbles = new BubbleLayer(overlay, renderer, content, assets);
   const roomOverlay = new RoomOverlay(overlay, renderer, content);
   /** Build mode's room scores, at home, when asked for. */
@@ -296,6 +301,8 @@ export async function startSession(
     inspect(id) {
       game.inspected = id;
       game.socialMenu = null;
+      // Their details and relationships come with UI updates while the panel is open.
+      bridge.inspect(id);
       if (id !== null && playerSims().includes(id)) game.selected = id;
       renderer.setSelectedSim(id);
       if (id === null && game.follow !== null) controls.follow(null);
@@ -669,17 +676,21 @@ export async function startSession(
   });
   bridge.onUi((ui) => {
     if (disposed) return;
-    // The first snapshot carries the speed the game was saved at.
+    // Updates carry changes only: lists are replaced when something in them changed, keeping
+    // the objects of everything that didn't.
+    const changed = mirror.apply(ui);
+    if (!changed) return;
+    // The first update carries the speed the game was saved at.
     resumeSpeed ??= ui.speed > 0 ? ui.speed : 1;
     game.day = ui.day;
     game.minute = ui.minute;
     game.speed = ui.speed;
-    game.lifespan = ui.lifespan ?? 'off';
-    game.playerMoves = ui.playerMoves ?? true;
-    game.sims = ui.sims;
+    game.lifespan = ui.lifespan;
+    game.playerMoves = ui.playerMoves;
+    if (changed.sims) game.sims = changed.sims;
     game.weekday = ui.weekday;
-    ideas.update(ui.sims);
-    const mine = ui.households.find((h) => game.households[h.id]?.player);
+    ideas.update(game.sims);
+    const mine = [...mirror.households.values()].find((h) => game.households[h.id]?.player);
     game.funds = mine?.funds ?? 0;
     game.rent = mine?.rent ?? null;
     game.bills = mine?.bills ?? null;
@@ -687,21 +698,30 @@ export async function startSession(
     game.expecting = mine?.expecting ?? null;
     game.undoSteps = mine?.undo ?? 0;
     game.redoSteps = mine?.redo ?? 0;
-    if (ui.rooms) {
-      game.rooms = ui.rooms;
+    if (changed.rooms) {
+      game.rooms = changed.rooms;
       refreshRoomOverlay();
     }
-    if (mine?.routines && JSON.stringify(mine.routines) !== JSON.stringify(game.householdRoutines)) game.householdRoutines = mine.routines;
-    game.relationships = ui.relationships;
+    if (mine?.routines && mine.routines !== routinesSeen) {
+      routinesSeen = mine.routines;
+      if (JSON.stringify(mine.routines) !== JSON.stringify(game.householdRoutines)) game.householdRoutines = mine.routines;
+    }
+    if (changed.relationships) game.relationships = changed.relationships;
     // The view stays home; it goes along to other lots only with a resident the player follows.
-    const followed = game.follow === null ? null : ui.sims.find((s) => s.id === game.follow);
+    const followed = game.follow === null ? null : game.sims.find((s) => s.id === game.follow);
     if (game.follow !== null && !followed) controls.follow(null);
     else if (followed?.plot != null && followed.plot !== viewPlot) showPlot(followed.plot);
     // New story events: the journal, the director, and the feed (only the first batch is history).
-    const fresh = ui.events.filter((e) => e.id > lastEvent);
+    const events = ui.events ?? [];
+    const fresh = events.filter((e) => e.id > lastEvent);
     if (lastEvent >= 0 && fresh.length) onStory(fresh);
-    if (ui.events.length) lastEvent = ui.events[ui.events.length - 1].id;
+    if (events.length) lastEvent = events[events.length - 1].id;
   });
+  // Back from a hidden tab (throttled, maybe suspended): start the HUD over from everything.
+  const onVisibility = () => {
+    if (!document.hidden) bridge.resyncUi();
+  };
+  document.addEventListener('visibilitychange', onVisibility);
   bridge.onWorld((w) => {
     if (disposed) return;
     // Newcomers and babies the simulation made up carry an appearance seed: give them their
@@ -1191,6 +1211,7 @@ export async function startSession(
       clearInterval(statsTimer);
       clearInterval(autosaveTimer);
       window.removeEventListener('keydown', onKey);
+      document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pointerdown', onInput, true);
       canvas.removeEventListener('wheel', onInput, true);
       window.removeEventListener('keydown', onInput, true);
