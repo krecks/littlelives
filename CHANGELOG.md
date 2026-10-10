@@ -2,7 +2,9 @@
 
 All notable changes to Littlelives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
-## Unreleased (0.19.0)
+## 0.19.0 — 2026-10-10
+
+**Play it in your browser:** https://krecks.github.io/littlelives/
 
 Performance and scale: a faster start, a lighter HUD and a much bigger town.
 
@@ -16,7 +18,7 @@ Performance and scale: a faster start, a lighter HUD and a much bigger town.
 - Continue could hang at *Warming up…* on WebGPU.
 - A short stall on WebGL2 when a saved game was revealed.
 
-## Unreleased (0.18.0)
+## 0.18.0 — 2026-10-10
 
 Generated houses: no two neighbours live in the same house.
 
@@ -25,7 +27,7 @@ Generated houses: no two neighbours live in the same house.
 - **One or two storeys:** two-storey houses have stairs in the living room and the bedrooms and a bathroom upstairs; from the street they stand taller.
 - **Make it your own:** `content/housegen.json` sets the house classes (bedrooms, sizes, how often there's a living room, a second bathroom or a second storey), which lot sizes get which, room sizes, the furniture each room gets, how often kitchens are open-plan, windows, garden things and house names.
 
-## Unreleased (0.17.0)
+## 0.17.0 — 2026-10-10
 
 Storeys: houses grow upwards.
 
@@ -38,7 +40,7 @@ Storeys: houses grow upwards.
 ### Changed
 - Saves are now version 17 (storeys); older saves load as before and get the storeys above.
 
-## Unreleased (0.16.0)
+## 0.16.0 — 2026-10-10
 
 Bigger homes I: lots of different sizes, blueprints, and rooms that move.
 
@@ -47,7 +49,7 @@ Bigger homes I: lots of different sizes, blueprints, and rooms that move.
 - **Blueprints:** *Build → Blueprints → Save this house* keeps your home (walls, doors, windows, fences, wall coverings, floors, the roof and the furniture) in this browser, with a picture, for any game. *Build here* builds a blueprint on your empty lot all at once, turned to face the street and centred on the lot, paid like building and buying it piece by piece (free in Creative). One undo takes it all back; without the money, nothing is built and you're told what it costs.
 - **Move a room:** *Build → Move*: drag a room and let go. Its walls, doors, windows, floor and everything in it come along; walls it shares with another room stay for that room. The preview turns red where it can't go (off the lot, onto another room); furniture that wouldn't fit, or anyone who'd be shut in, stops the move. Free, and undone like any edit.
 
-## Unreleased (0.15.0)
+## 0.15.0 — 2026-10-10
 
 Visitors and sound: neighbours knock, and the world can be heard.
 
@@ -59,7 +61,7 @@ Visitors and sound: neighbours knock, and the world can be heard.
 - Sound effects, voices and the sounds of the world share one audio output, each with its own volume.
 - Saves are now version 16 (the visitors' story); older saves load as before.
 
-## Unreleased (0.14.0)
+## 0.14.0 — 2026-10-10
 
 Voices II: Babble. Residents can speak a made-up language that needs no download.
 
@@ -73,7 +75,7 @@ Voices II: Babble. Residents can speak a made-up language that needs no download
 - If English speech keeps coming late, or making it slows the game down, residents switch to Babble for the rest of the session, with a message saying why.
 - The performance overlay (F3) shows the voice language and how many lines were Babble.
 
-## Unreleased (0.13.0)
+## 0.13.0 — 2026-10-10
 
 Life cycle II: families grow. Couples have babies or adopt, babies grow into children and teens who go to school, and teens grow up into the young adults of 0.12. A town can now run for generations.
 
@@ -95,7 +97,7 @@ Life cycle II: families grow. Couples have babies or adopt, babies grow into chi
 - Saves remember the story by content id (save version 15), so a change in content can't make old events name the wrong thing; saves from before the crib are corrected.
 - Saves are now version 15 (a baby on the way, school grades, the story by content id); older saves load as before.
 
-## Unreleased (0.12.0)
+## 0.12.0 — 2026-10-10
 
 Life cycle I: lives move on. Everyone is an adult here; babies, children and teens come in 0.13.
 
@@ -115,7 +117,7 @@ Life cycle I: lives move on. Everyone is an adult here; babies, children and tee
 - Oakridge House has a proper bathroom (its wall stopped halfway); a second-bathroom wish now forms only from waiting for the toilet, on two different days in a week.
 - Saves are now version 13 (ages, the lifespan, residents who are gone, former residents' names, family links, retirement, the Moving setting). Older saves load as before, with aging off.
 
-## Unreleased (0.11.0)
+## 0.11.0 — 2026-10-10
 
 The house matters: what you build changes how your residents live, and they tell you what they'd like next.
 
@@ -134,7 +136,7 @@ The house matters: what you build changes how your residents live, and they tell
 - **Oakridge House** has a proper bathroom: its wall stopped halfway, so the toilet and shower stood in the living room.
 - Content packs can add room kinds (`roomKinds`), tune how rooms are scored (`roomRules`), set wear and repairs (`objectRules.wear`, `objectRules.repair`), add accidents (`accidents`, with `anotherRoom`), and mark buy categories or groups as garden things (`outside`).
 
-## Unreleased (0.10.0)
+## 0.10.0 — 2026-10-10
 
 Build depth: more control while building.
 
@@ -151,7 +153,7 @@ Build depth: more control while building.
 - **Quicker building and buying:** placing, moving, selling and restyling furniture no longer rebuilds the house, its street and its fences, only the furniture (about 13 ms down to 2.5 ms per edit in a software-rendered test); lamps move their light without a rebuild either. Walls, floors, paint, fences, roofs and room furniture still rebuild the house. The simulation also sends the lot (walls, rooms, floors and their meshes) only when it changed, so a furniture edit's update is about a ninth of the size.
 - Saves are now version 11 (objects' angles, fences and gates, roofs); older saves load as before.
 
-## Unreleased (0.9.0)
+## 0.9.0 — 2026-10-10
 
 The builder's start: begin with a lot, not a family.
 
@@ -164,7 +166,7 @@ The builder's start: begin with a lot, not a family.
 - Build and buy now belong to the household rather than to whoever is selected, so they work while nobody lives at home.
 - Saves are now version 10 (the game mode; a household may have nobody living in it yet). Older saves load as Living games.
 
-## Unreleased (0.8.0)
+## 0.8.0 — 2026-10-10
 
 The planner: steer your residents without giving orders.
 
@@ -184,7 +186,7 @@ The planner: steer your residents without giving orders.
 - Content packs can add activities, goals, discipline per trait, and which needs wake sleepers (see `docs/content-packs.md`).
 - Saves are now version 9 (plans, goals and household blocks); older saves load as before.
 
-## Unreleased (0.7.0)
+## 0.7.0 — 2026-10-10
 
 The game's new direction: build your home, then watch it live (see "Game direction" in PLAN.md). This release is about watching.
 
