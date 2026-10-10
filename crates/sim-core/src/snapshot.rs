@@ -8,8 +8,8 @@ use crate::world::{Activity, MAX_SIMS, Phase, Sim, Task, TaskKind, World};
 use crate::{TICKS_PER_SECOND, clock};
 
 pub const HEADER_LEN: usize = 8;
-/// Floats per Sim (all 19 used).
-pub const SIM_STRIDE: usize = 19;
+/// Floats per Sim (all 21 used).
+pub const SIM_STRIDE: usize = 21;
 pub const CAPACITY: usize = HEADER_LEN + MAX_SIMS * SIM_STRIDE;
 
 pub mod header {
@@ -68,35 +68,55 @@ pub mod sim {
     /// How high the Sim stands, in storeys: 0 on the ground, fractions on the stairs (`Z` is on
     /// the lot's rows, which hold every storey; see `storeys.rs`).
     pub const HEIGHT: usize = 18;
+    /// Object definition (index into `Content::objects`) of the object in `OBJECT` while the
+    /// Sim is using it or walking to use it, else -1 (repairs too). Voices pick lines per item
+    /// from it; the instance id alone would need the world structure.
+    pub const OBJECT_DEF: usize = 19;
+    /// The interaction (index into that definition's `interactions`) with `OBJECT_DEF`, or -1.
+    pub const INTERACTION: usize = 20;
 }
 
 // Every field fits in a Sim's row.
-const _: () = assert!(sim::THOUGHT_SUBJECT < SIM_STRIDE && sim::MOOD < SIM_STRIDE && sim::HEIGHT < SIM_STRIDE);
+const _: () = assert!(sim::HEIGHT < SIM_STRIDE && sim::INTERACTION < SIM_STRIDE);
 
-/// `(object, action)` for the snapshot; see `sim::OBJECT` and `sim::ACTION`.
-fn object_action(world: &World, s: &Sim) -> (f32, f32) {
+/// What a Sim does for the snapshot; see `sim::OBJECT`, `sim::ACTION`, `sim::OBJECT_DEF` and
+/// `sim::INTERACTION`.
+struct Doing {
+    object: f32,
+    action: f32,
+    def: f32,
+    interaction: f32,
+}
+
+impl Doing {
+    const NOTHING: Doing = Doing { object: -1.0, action: -1.0, def: -1.0, interaction: -1.0 };
+
+    /// At an object or a spot without an interaction of its own.
+    fn plain(object: f32, anim: Option<usize>) -> Doing {
+        Doing { object, action: anim.map_or(-1.0, |a| a as f32), ..Doing::NOTHING }
+    }
+}
+
+fn doing(world: &World, s: &Sim) -> Doing {
     if s.away_until.is_some() {
-        return (-1.0, -1.0);
+        return Doing::NOTHING;
     }
     // Repairing: at the object, the tinker animation while at it.
     if let Some(Activity { task: Task { kind: TaskKind::Repair { object }, .. }, phase, .. }) = s.current() {
         let anim = world.content.object_rules.repair.anim.filter(|_| matches!(phase, Phase::Using { .. }));
-        return (*object as f32, anim.map_or(-1.0, |a| a as f32));
+        return Doing::plain(*object as f32, anim);
     }
     // An accident's while on the spot (asleep on the floor, takeout).
     if let Some(Activity { task: Task { kind: TaskKind::Spot { accident }, .. }, .. }) = s.current() {
-        let anim = world.content.accidents[*accident].rest.as_ref().and_then(|r| r.anim);
-        return (-1.0, anim.map_or(-1.0, |a| a as f32));
+        return Doing::plain(-1.0, world.content.accidents[*accident].rest.as_ref().and_then(|r| r.anim));
     }
     // A visitor knocking at the door.
     if let Some(Activity { phase: Phase::Knocking { .. }, .. }) = s.current() {
-        let anim = world.content.visits.door.as_ref().and_then(|d| d.knock_anim);
-        return (-1.0, anim.map_or(-1.0, |a| a as f32));
+        return Doing::plain(-1.0, world.content.visits.door.as_ref().and_then(|d| d.knock_anim));
     }
     // Tidying up: no object, the clean animation while at it.
     if let Some(Activity { task: Task { kind: TaskKind::Clean { .. }, .. }, phase, .. }) = s.current() {
-        let anim = world.content.room_rules.clean.anim.filter(|_| matches!(phase, Phase::Using { .. }));
-        return (-1.0, anim.map_or(-1.0, |a| a as f32));
+        return Doing::plain(-1.0, world.content.room_rules.clean.anim.filter(|_| matches!(phase, Phase::Using { .. })));
     }
     let Some(Activity {
         task:
@@ -112,16 +132,21 @@ fn object_action(world: &World, s: &Sim) -> (f32, f32) {
         ..
     }) = s.current()
     else {
-        return (-1.0, -1.0);
+        return Doing::NOTHING;
     };
     let Some(obj) = world.objects.get(*object as usize) else {
-        return (-1.0, -1.0);
+        return Doing::NOTHING;
     };
     let action = match phase {
         Phase::Using { .. } => world.content.objects[obj.def].interactions[*interaction].anim,
         _ => None,
     };
-    (*object as f32, action.map_or(-1.0, |a| a as f32))
+    Doing {
+        object: *object as f32,
+        action: action.map_or(-1.0, |a| a as f32),
+        def: obj.def as f32,
+        interaction: *interaction as f32,
+    }
 }
 
 /// Writes the snapshot into `out`, which must hold at least `CAPACITY` floats.
@@ -154,7 +179,11 @@ pub fn write(world: &World, out: &mut [f32]) {
         o[sim::EMOTION] = s.emotion(&world.content).map_or(0.0, |e| e as f32 + 1.0);
         o[sim::ROLE] = 0.0;
         o[sim::AWAY] = (s.away_until.is_some() || !s.here()) as u8 as f32;
-        (o[sim::OBJECT], o[sim::ACTION]) = object_action(world, s);
+        let doing = doing(world, s);
+        o[sim::OBJECT] = doing.object;
+        o[sim::ACTION] = doing.action;
+        o[sim::OBJECT_DEF] = doing.def;
+        o[sim::INTERACTION] = doing.interaction;
         o[sim::MOOD] = s.mood(&world.content);
         let thought = s.planner.thought.filter(|_| s.away_until.is_none());
         o[sim::THOUGHT] = thought.map_or(0.0, |t| t.kind as u8 as f32);
@@ -208,6 +237,7 @@ pub fn layout_json(content: &Content) -> String {
             "outcome": sim::OUTCOME, "partner": sim::PARTNER, "anim": sim::ANIM, "emotion": sim::EMOTION,
             "role": sim::ROLE, "away": sim::AWAY, "object": sim::OBJECT, "action": sim::ACTION,
             "mood": sim::MOOD, "thought": sim::THOUGHT, "thoughtSubject": sim::THOUGHT_SUBJECT, "height": sim::HEIGHT,
+            "objectDef": sim::OBJECT_DEF, "interaction": sim::INTERACTION,
         },
         "actions": content.animations,
     })

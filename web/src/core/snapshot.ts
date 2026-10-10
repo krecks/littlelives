@@ -48,6 +48,10 @@ export interface SnapshotLayout {
     thoughtSubject?: number;
     /** Height in storeys (0 the ground; fractions on the stairs); `z` is in lot rows (see `WorldStructure.storeys`). */
     height?: number;
+    /** Object definition (index into the content's objects) the Sim is using or walking to use, -1 = none (missing in older layouts). */
+    objectDef?: number;
+    /** Index into that definition's interactions, -1 = none (missing in older layouts). */
+    interaction?: number;
   };
   /** Animation tags from content (`animations` in base.json), named by `sim.action`. */
   actions: string[];

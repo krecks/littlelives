@@ -1,5 +1,5 @@
-//! What the renderer is told a Sim is doing: the `object` and `action` snapshot fields,
-//! interaction `anim` tags and their fallbacks.
+//! What the renderer is told a Sim is doing: the `object`, `action`, `objectDef` and
+//! `interaction` snapshot fields, interaction `anim` tags and their fallbacks.
 
 use sim_core::snapshot::{self, HEADER_LEN, SIM_STRIDE, sim};
 use sim_core::{Command, Content, World};
@@ -44,6 +44,14 @@ fn row(w: &World, i: usize) -> (f32, f32) {
     snapshot::write(w, &mut out);
     let o = HEADER_LEN + i * SIM_STRIDE;
     (out[o + sim::OBJECT], out[o + sim::ACTION])
+}
+
+/// `(objectDef, interaction)` from the snapshot row of Sim `i`.
+fn used(w: &World, i: usize) -> (f32, f32) {
+    let mut out = vec![0.0; snapshot::CAPACITY];
+    snapshot::write(w, &mut out);
+    let o = HEADER_LEN + i * SIM_STRIDE;
+    (out[o + sim::OBJECT_DEF], out[o + sim::INTERACTION])
 }
 
 fn action(w: &World, tag: &str) -> f32 {
@@ -93,6 +101,26 @@ fn snapshot_carries_object_and_action_while_using() {
     }
     assert!(w.sims[0].current().is_none(), "finished");
     assert_eq!(row(&w, 0), (-1.0, -1.0));
+}
+
+#[test]
+fn snapshot_carries_the_definition_and_interaction_in_use() {
+    let mut w = world();
+    assert_eq!(used(&w, 0), (-1.0, -1.0), "idle");
+
+    // The bed (definition 1), its only interaction: known while walking there already.
+    use_object(&mut w, 2, 0);
+    w.tick_once();
+    assert_eq!(used(&w, 0), (1.0, 0.0), "walking to the bed");
+    walk_up(&mut w);
+    assert_eq!(used(&w, 0), (1.0, 0.0), "in bed");
+    assert_eq!(used(&w, 1), (-1.0, -1.0), "the other Sim does nothing");
+
+    // The second fridge (definition 0), its third interaction.
+    let mut w = world();
+    use_object(&mut w, 1, 2);
+    walk_up(&mut w);
+    assert_eq!(used(&w, 0), (0.0, 2.0));
 }
 
 #[test]
@@ -176,4 +204,6 @@ fn layout_lists_the_content_animations() {
     );
     assert_eq!(layout["sim"]["object"], sim::OBJECT);
     assert_eq!(layout["sim"]["action"], sim::ACTION);
+    assert_eq!(layout["sim"]["objectDef"], sim::OBJECT_DEF);
+    assert_eq!(layout["sim"]["interaction"], sim::INTERACTION);
 }
