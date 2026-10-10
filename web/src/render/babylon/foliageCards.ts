@@ -10,7 +10,7 @@
  * A negative value -1 - packed turns the card about the vertical only (hanging strands).
  */
 
-import { Matrix, Vector3, VertexBuffer, type Mesh } from '@babylonjs/core';
+import { Matrix, Vector3, VertexBuffer, type Mesh } from './core';
 
 const STEPS = 4096;
 const PER_METRE = 512;

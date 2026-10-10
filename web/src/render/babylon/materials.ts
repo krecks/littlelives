@@ -28,14 +28,16 @@ import {
   Vector4,
   type AbstractEngine,
   type AbstractMesh,
+  type Light,
   type Material,
   type MaterialDefines,
+  type Mesh,
   type Nullable,
   type Scene,
   type SubMesh,
   type UniformBuffer,
-} from '@babylonjs/core';
-import type { AssetRegistry } from '../../assets/registry';
+} from './core';
+import { optimizedUrl, type AssetRegistry } from '../../assets/registry';
 import type { MaterialEntry } from '../../assets/types';
 
 /** Default finish for placeholder parts without a `material`. */
@@ -366,6 +368,20 @@ export class MaterialLibrary {
     this.refreezeFrames = 3;
   }
 
+  /**
+   * Leaves `meshes` out of `lights` (replacing earlier entries of the same meshes). A frozen
+   * material keeps the lights its shader was compiled with, and on WebGPU a mesh drawn with fewer
+   * lights than its shader expects fails to draw, so meshes left out now (perhaps already drawn
+   * while their models were still loading) get their materials thawed to recompile.
+   */
+  excludeFromLights(lights: readonly Light[], meshes: ReadonlySet<Mesh>): void {
+    for (const light of lights) {
+      const before = new Set(light.excludedMeshes);
+      light.excludedMeshes = [...light.excludedMeshes.filter((m) => !m.isDisposed() && !meshes.has(m as Mesh)), ...meshes];
+      for (const mesh of meshes) if (!before.has(mesh) && mesh.material) this.touch(mesh.material);
+    }
+  }
+
   /** Nearest-neighbour texture filtering for a low-res retro look (applies to all surfaces). */
   setNearest(on: boolean): void {
     if (on === this.nearest) return;
@@ -461,8 +477,7 @@ export class MaterialLibrary {
     const id = `${url}|${scale}`;
     let tex = this.textures.get(id);
     if (!tex) {
-      tex = new Texture(url, this.scene, { invertY: false, samplingMode: Texture.TRILINEAR_SAMPLINGMODE, gammaSpace: srgb });
-      tex.gammaSpace = srgb;
+      tex = textureWithFallback(url, this.scene, srgb);
       tex.uScale = tex.vScale = scale;
       this.applySampling(tex);
       this.textures.set(id, tex);
@@ -476,4 +491,25 @@ export class MaterialLibrary {
       if (!this.thawed.has(mat)) mat.freeze();
     });
   }
+}
+
+/**
+ * A texture from the build's compressed copy (KTX2, which carries its own colour space) when
+ * there is one, else from the file; a copy that fails to load falls back to the file.
+ */
+export function textureWithFallback(url: string, scene: Scene, srgb: boolean, anisotropy?: number): Texture {
+  const copy = optimizedUrl(url);
+  const tex: Texture = new Texture(copy, scene, {
+    invertY: false,
+    samplingMode: Texture.TRILINEAR_SAMPLINGMODE,
+    gammaSpace: srgb,
+    onError: () => {
+      if (tex.url === url) return;
+      console.warn(`[render] compressed ${copy} failed, loading ${url}`);
+      tex.updateURL(url);
+    },
+  });
+  tex.gammaSpace = srgb;
+  if (anisotropy !== undefined) tex.anisotropicFilteringLevel = anisotropy;
+  return tex;
 }

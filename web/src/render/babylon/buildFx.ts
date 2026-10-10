@@ -5,8 +5,13 @@
  * moment, see `PopTarget`). Everything is pooled and costs nothing when idle.
  */
 
-import { Color3, Color4, DynamicTexture, Matrix, MeshBuilder, ParticleSystem, StandardMaterial, Vector3, type Mesh, type Scene } from '@babylonjs/core';
+import { Color3, Color4, DynamicTexture, Matrix, MeshBuilder, StandardMaterial, Vector3, type Mesh, type ParticleSystem, type Scene } from './core';
 import type { BuildEffect } from '../types';
+
+/** Babylon's particles are only needed once something is built: loaded with the first effect. */
+type Particles = typeof import('@babylonjs/core/Particles/particleSystem');
+let particles: Promise<Particles> | null = null;
+const loadParticles = () => (particles ??= import('@babylonjs/core/Particles/particleSystem'));
 
 /** Seconds a ring takes to spread and fade. */
 const RING_TIME = 0.65;
@@ -62,6 +67,7 @@ export class BuildEffects {
   private readonly pops: Pop[] = [];
   private readonly mScale = new Matrix();
   private readonly mOut = new Matrix();
+  private disposed = false;
 
   constructor(private readonly scene: Scene) {
     this.ringTexture = ringTexture(scene);
@@ -75,17 +81,17 @@ export class BuildEffects {
       case 'place':
       case 'upgrade':
         this.ring(fx.kind, cx, cz, size, fx.y ?? 0);
-        this.burst((this.sparkles ??= this.system('sparkle')), fx, fx.kind === 'upgrade' ? 56 : 40, 0.15, fx.kind === 'upgrade' ? 1.2 : 0.7);
+        this.emit('sparkle', fx, fx.kind === 'upgrade' ? 56 : 40, 0.15, fx.kind === 'upgrade' ? 1.2 : 0.7);
         break;
       case 'sell':
         this.ring(fx.kind, cx, cz, size, fx.y ?? 0);
-        this.burst((this.dust ??= this.system('dust')), fx, 22, 0.05, 0.4);
+        this.emit('dust', fx, 22, 0.05, 0.4);
         // A little glitter: the money comes back.
-        this.burst((this.sparkles ??= this.system('sparkle')), fx, 12, 0.3, 0.8);
+        this.emit('sparkle', fx, 12, 0.3, 0.8);
         break;
       default:
         // Walls going up or coming down: dust all along their height.
-        this.burst((this.dust ??= this.system('dust')), fx, 7, 0.05, 2.2);
+        this.emit('dust', fx, 7, 0.05, 2.2);
     }
   }
 
@@ -130,6 +136,7 @@ export class BuildEffects {
   }
 
   dispose(): void {
+    this.disposed = true;
     for (const r of this.rings) r.mesh.dispose();
     this.sparkles?.dispose();
     this.dust?.dispose();
@@ -170,6 +177,17 @@ export class BuildEffects {
     return mat;
   }
 
+  /** A burst on the sparkle or dust system; the very first one waits for the particle module. */
+  private emit(kind: 'sparkle' | 'dust', fx: BuildEffect, count: number, y0: number, y1: number): void {
+    const ready = kind === 'sparkle' ? this.sparkles : this.dust;
+    if (ready) return this.burst(ready, fx, count, y0, y1);
+    void loadParticles().then(({ ParticleSystem }) => {
+      if (this.disposed) return;
+      const ps = kind === 'sparkle' ? (this.sparkles ??= this.system(ParticleSystem, kind)) : (this.dust ??= this.system(ParticleSystem, kind));
+      this.burst(ps, fx, count, y0, y1);
+    });
+  }
+
   /** Queues `count` particles inside the effect's footprint, between heights `y0` and `y1`. */
   private burst(ps: ParticleSystem, fx: BuildEffect, count: number, y0: number, y1: number): void {
     const queue = this.bursts.get(ps)!;
@@ -180,8 +198,8 @@ export class BuildEffects {
   }
 
   /** A particle system whose particles start in the queued bursts' boxes (in order). */
-  private system(kind: 'sparkle' | 'dust'): ParticleSystem {
-    const ps = kind === 'sparkle' ? sparkleSystem(this.scene) : dustSystem(this.scene);
+  private system(PS: Particles['ParticleSystem'], kind: 'sparkle' | 'dust'): ParticleSystem {
+    const ps = kind === 'sparkle' ? sparkleSystem(this.scene, PS) : dustSystem(this.scene, PS);
     const queue: Burst[] = [];
     this.bursts.set(ps, queue);
     ps.emitter = Vector3.Zero();
@@ -272,10 +290,10 @@ function puffTexture(scene: Scene): DynamicTexture {
   return tex;
 }
 
-function sparkleSystem(scene: Scene): ParticleSystem {
-  const ps = new ParticleSystem('buildSparkles', 256, scene);
+function sparkleSystem(scene: Scene, PS: Particles['ParticleSystem']): ParticleSystem {
+  const ps = new PS('buildSparkles', 256, scene);
   ps.particleTexture = sparkleTexture(scene);
-  ps.blendMode = ParticleSystem.BLENDMODE_ADD;
+  ps.blendMode = PS.BLENDMODE_ADD;
   ps.color1 = new Color4(1, 0.88, 0.45, 1);
   ps.color2 = new Color4(1, 0.98, 0.85, 1);
   ps.colorDead = new Color4(1, 1, 1, 0);
@@ -296,10 +314,10 @@ function sparkleSystem(scene: Scene): ParticleSystem {
   return ps;
 }
 
-function dustSystem(scene: Scene): ParticleSystem {
-  const ps = new ParticleSystem('buildDust', 256, scene);
+function dustSystem(scene: Scene, PS: Particles['ParticleSystem']): ParticleSystem {
+  const ps = new PS('buildDust', 256, scene);
   ps.particleTexture = puffTexture(scene);
-  ps.blendMode = ParticleSystem.BLENDMODE_STANDARD;
+  ps.blendMode = PS.BLENDMODE_STANDARD;
   ps.color1 = new Color4(0.88, 0.84, 0.76, 0.55);
   ps.color2 = new Color4(0.8, 0.8, 0.82, 0.45);
   ps.colorDead = new Color4(0.85, 0.85, 0.85, 0);

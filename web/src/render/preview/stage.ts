@@ -5,7 +5,7 @@
  * Reactions are short performances (`reactions.ts`) layered over the idle.
  */
 
-import { FreeCamera, Vector3 } from '@babylonjs/core';
+import { FreeCamera, Vector3 } from '../babylon/core';
 import type { StageDirection } from '../babylon/characters';
 import type { SimLook, SimStage, StageReaction } from '../types';
 import { reactionFor, slump, tilt, wave, WAVE_SECONDS, type Performance } from './reactions';

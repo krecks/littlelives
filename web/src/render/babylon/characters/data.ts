@@ -6,6 +6,8 @@
  * Quaternions are (x, y, z, w); matrices are column-major (Babylon's array layout).
  */
 
+import { optimizedUrl } from '../../../assets/registry';
+
 export interface MeshPart {
   positions: Float32Array;
   normals: Float32Array;
@@ -169,6 +171,26 @@ async function fetchOk(url: string): Promise<Response> {
   return res;
 }
 
+/**
+ * A binary of the set: the build's gzipped copy when there is one (hosts rarely compress .bin;
+ * the browser inflates it), else the file itself.
+ */
+async function fetchBinary(url: string): Promise<ArrayBuffer> {
+  const copy = optimizedUrl(url);
+  if (copy !== url) {
+    try {
+      const bytes = await (await fetchOk(copy)).arrayBuffer();
+      // A server may have unpacked it already (Content-Encoding): only inflate real gzip data.
+      const head = new Uint8Array(bytes, 0, 2);
+      if (head[0] !== 0x1f || head[1] !== 0x8b) return bytes;
+      return await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+    } catch (err) {
+      console.warn(`[render] compressed ${copy} failed, loading ${url}`, err);
+    }
+  }
+  return (await fetchOk(url)).arrayBuffer();
+}
+
 async function load(url: string): Promise<CharacterSet> {
   const base = new URL(url, location.href);
   const file = (name: string) => new URL(name, base).href;
@@ -176,10 +198,7 @@ async function load(url: string): Promise<CharacterSet> {
   const NB = rig.bones.length;
   const CB = rig.clipBones ?? NB;
   const fieldScale = 1 / (rig.fieldScale ?? 4000);
-  const [animBuf, ...meshBufs] = await Promise.all([
-    fetchOk(file(rig.anims)).then((r) => r.arrayBuffer()),
-    ...Object.values(rig.bodies).map((b) => fetchOk(file(b.mesh)).then((r) => r.arrayBuffer())),
-  ]);
+  const [animBuf, ...meshBufs] = await Promise.all([fetchBinary(file(rig.anims)), ...Object.values(rig.bodies).map((b) => fetchBinary(file(b.mesh)))]);
 
   const clips = new Map<string, Clip>();
   for (const [name, c] of Object.entries(rig.clips)) {

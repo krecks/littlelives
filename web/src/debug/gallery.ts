@@ -22,15 +22,16 @@ import {
   ShadowGenerator,
   Vector3,
   WebGPUEngine,
-} from '@babylonjs/core';
+} from '../render/babylon/core';
 import { AssetRegistry } from '../assets/registry';
 import { MaterialLibrary } from '../render/babylon/materials';
+import { compressedTextureFeatures } from '../render/babylon/loaders';
 import { buildModel } from '../render/babylon/models';
 import { installNature } from '../render/babylon/nature';
 
 const params = new URLSearchParams(location.search);
 const canvas = document.getElementById('c') as HTMLCanvasElement;
-const engine = new WebGPUEngine(canvas, { antialias: true });
+const engine = new WebGPUEngine(canvas, { antialias: true, ...compressedTextureFeatures() });
 await engine.initAsync();
 const scene = new Scene(engine);
 scene.clearColor = new Color4(0.62, 0.77, 0.9, 1);

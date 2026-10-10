@@ -13,7 +13,9 @@
     "lint": "eslint src",
     "test:sim": "cd .. && cargo test -p sim-core",
     "voice": "node ../tools/voice/fetch.mjs && cd .. && cargo build -p voice-wasm --target wasm32-unknown-unknown --release && wasm-bindgen target/wasm32-unknown-unknown/release/voice_wasm.wasm --target web --out-dir web/src/voice/wasm-pkg",
-    "test:voice": "cd .. && cargo test -p voice --release"
+    "test:voice": "cd .. && cargo test -p voice --release",
+    "assets": "node ../tools/assets/optimize.mjs",
+    "decoders": "node ../tools/assets/decoders.mjs"
   },
   "dependencies": {
     "@babylonjs/core": "9.29.0",
@@ -21,10 +23,16 @@
     "@fontsource-variable/inter": "^5.3.0"
   },
   "devDependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tsconfig/svelte": "^5.0.8",
     "eslint": "^10.12.0",
     "eslint-plugin-svelte": "^3.23.0",
+    "ktx2-encoder": "0.6.0",
+    "meshoptimizer": "1.3.0",
+    "sharp": "^0.35.5",
     "svelte": "^5.57.2",
     "svelte-check": "^4.7.6",
     "svelte-eslint-parser": "^1.8.1",

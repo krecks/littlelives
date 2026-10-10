@@ -27,7 +27,7 @@
  * material (about 15 draw calls for a whole house).
  */
 
-import { Color3, type Material, type Mesh, type PBRMaterial, type Scene } from '@babylonjs/core';
+import { Color3, type Material, type Mesh, type PBRMaterial, type Scene } from './core';
 import type { DoorStyleDef, FloorCoveringDef, RoofColorDef, RoofStyleDef, WallCoveringDef, WindowStyleDef } from '../../content/content';
 import type { DiagonalWall, Opening, WorldStructure } from '../../core/protocol';
 import type { ViewRect } from '../types';

@@ -8,7 +8,7 @@
  * cache outlives the engine, so the game asks for each look once per page.
  */
 
-import { Color4, FreeCamera, RenderTargetTexture, Vector3 } from '@babylonjs/core';
+import { Color4, FreeCamera, RenderTargetTexture, Vector3 } from '../babylon/core';
 import type { StageDirection } from '../babylon/characters';
 import type { SimLook } from '../types';
 import type { Studio } from './studio';

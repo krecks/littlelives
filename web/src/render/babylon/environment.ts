@@ -7,7 +7,7 @@
  * the faint moonlight with a higher exposure and a blue tint.
  */
 
-import { Color3, Vector3 } from '@babylonjs/core';
+import { Color3, Vector3 } from './core';
 import type { StylePreset } from '../styles';
 
 const SUNRISE = 6;

@@ -50,7 +50,7 @@ import {
   Viewport,
   WebGPUEngine,
   type AbstractEngine,
-} from '@babylonjs/core';
+} from './core';
 import type { FrameState } from '../../core/bridge';
 import { groundDepth, type MeshArrays, type ObjectPlacement, type WorldStructure } from '../../core/protocol';
 import type { QualitySettings } from '../quality';
@@ -79,7 +79,8 @@ import { applyShaderFixes } from './shaderFixes';
 import { HALF_WALL_HEIGHT, HouseBuilder, houseObjectKey, placeLights, WALL_HEIGHT, WALL_STUB, type HouseSurfaces, type RoomLight, type RoomTiles } from './house';
 import { Street } from './street';
 import { MaterialLibrary } from './materials';
-import { buildModel, placementVariation, type ModelTemplate } from './models';
+import { buildModel, placementVariation, prefetchModels, type ModelTemplate } from './models';
+import { compressedTextureFeatures } from './loaders';
 import { Characters, MAX_CHARACTERS } from './characters';
 import { installNature, Landscape, natureDecor, Sky } from './nature';
 import { LAYER_ALL, LAYER_TOWN, LAYER_WORLD } from './layers';
@@ -140,6 +141,8 @@ const EMOTION_MOOD: Record<string, number> = { happy: 0, flirty: 0, confident: 0
 const RADIUS_LIMITS = [6, 95] as const;
 /** Frames in which a game world built behind the overview is also drawn (hidden), so its shaders and pipelines are ready when it is shown. */
 const WARM_WORLD_FRAMES = 4;
+/** Longest wait for a hidden world's textures before it is warmed up anyway (ms). */
+const TEXTURE_WAIT_MS = 5000;
 
 /** A landscape, shared by the game world and the overview when they are the same town. */
 interface NatureSet {
@@ -354,7 +357,7 @@ export class BabylonRenderer implements Renderer {
     this.canvas = canvas;
     const forceWebGL = this.deps.backend === 'webgl' || new URLSearchParams(location.search).get('renderer') === 'webgl';
     if (!forceWebGL && (await WebGPUEngine.IsSupportedAsync)) {
-      const engine = new WebGPUEngine(canvas, { antialias: true, adaptToDeviceRatio: true, powerPreference: 'high-performance' });
+      const engine = new WebGPUEngine(canvas, { antialias: true, adaptToDeviceRatio: true, powerPreference: 'high-performance', ...compressedTextureFeatures() });
       await engine.initAsync();
       this.engine = this.webgpu = engine;
     } else {
@@ -397,8 +400,8 @@ export class BabylonRenderer implements Renderer {
     this.setupPostProcessing();
     this.setupHelpers();
     await this.setupMarker();
+    // (Their data loads with the first world that has residents, not with the menus.)
     this.characters = new Characters(scene, this.deps.assets, this.lib);
-    void this.characters.init();
     this.applyStyle();
     window.addEventListener('resize', this.onResize);
   }
@@ -415,8 +418,12 @@ export class BabylonRenderer implements Renderer {
       this.worldBuilding = false;
       this.endBuild();
     }
-    // Built behind the overview (prepared in a menu): draw it hidden a few times so it shows without a hitch.
-    if (this.townMode) this.warmFrames = WARM_WORLD_FRAMES;
+    // Built behind the overview (prepared in a menu): draw it hidden a few times so it shows without a hitch,
+    // once its textures are in (KTX2 ones transcode in the background; a shader waits for its textures).
+    if (this.townMode) {
+      await Promise.race([this.scene.whenReadyAsync(), new Promise((resolve) => setTimeout(resolve, TEXTURE_WAIT_MS))]);
+      this.warmFrames = WARM_WORLD_FRAMES;
+    }
   }
 
   /** The lot arrays the last key was made from, and that key (they arrive unchanged when only furniture moved). */
@@ -461,6 +468,8 @@ export class BabylonRenderer implements Renderer {
       this.cameraPlaced = true;
     }
 
+    // The residents' data downloads alongside the lot (it is first needed after it, in `buildSims`).
+    void this.characters.init();
     // The landscape depends only on the town, not on which lot is viewed (and may be the overview's).
     const nature = await this.useNature('world', world);
     // No grass through floors of rooms built (or furniture bought) since the lawn was scattered.
@@ -512,6 +521,9 @@ export class BabylonRenderer implements Renderer {
     this.applyWallMode();
     this.applyStoreys();
     this.lastLightMinute = -1;
+    // Then the other lots' furniture downloads in the background (the camera may follow someone there).
+    const elsewhere = world.objects.filter((o) => !this.inView(o.x + o.w / 2, o.z + o.d / 2, 0)).map((o) => this.objectModel(o));
+    prefetchModels(elsewhere.filter((key) => this.deps.assets.has(key, 'model')).map((key) => this.deps.assets.get(key, 'model')));
     if (this.debug) console.info(`[render] setWorld ${(performance.now() - started).toFixed(1)} ms${lotBuilt ? '' : ' (lot kept)'}`);
   }
 
@@ -1196,10 +1208,7 @@ export class BabylonRenderer implements Renderer {
         await overview.build(world);
         if (this.townHighlight) overview.setHighlight(this.townHighlight);
         // Interior lamps of the game's house never reach the overview.
-        const own = new Set<Mesh>(overview.meshes);
-        for (const light of [...this.roomLights, ...(this.lampCluster ? [this.lampCluster] : [])]) {
-          light.excludedMeshes = [...light.excludedMeshes.filter((m) => !m.isDisposed() && !own.has(m as Mesh)), ...own];
-        }
+        this.lib.excludeFromLights([...this.roomLights, ...(this.lampCluster ? [this.lampCluster] : [])], new Set<Mesh>(overview.meshes));
       } finally {
         this.endBuild();
       }
@@ -1421,9 +1430,7 @@ export class BabylonRenderer implements Renderer {
     const landscape = new Set([...all, this.skyDome.mesh]);
     if (landscape.size !== this.lightExcluded.size || [...landscape].some((m) => !this.lightExcluded.has(m))) {
       this.lightExcluded = landscape;
-      for (const light of [...this.roomLights, ...(this.lampCluster ? [this.lampCluster] : [])]) {
-        light.excludedMeshes = [...new Set([...light.excludedMeshes.filter((m) => !m.isDisposed()), ...landscape])];
-      }
+      this.lib.excludeFromLights([...this.roomLights, ...(this.lampCluster ? [this.lampCluster] : [])], landscape);
     }
     return set;
   }

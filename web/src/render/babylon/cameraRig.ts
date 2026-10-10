@@ -5,7 +5,7 @@
  * preallocated poses.
  */
 
-import type { ArcRotateCamera } from '@babylonjs/core';
+import type { ArcRotateCamera } from './core';
 import type { GameShot } from '../types';
 import { angleDelta, ease } from './overview';
 

@@ -5,7 +5,7 @@
  * so meshes work with back-face culling.
  */
 
-import { Mesh, VertexData, type Scene } from '@babylonjs/core';
+import { Mesh, VertexData, type Scene } from './core';
 
 export type V3 = readonly [number, number, number];
 

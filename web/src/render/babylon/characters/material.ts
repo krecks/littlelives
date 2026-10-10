@@ -34,7 +34,7 @@ import {
   type Scene,
   type SubMesh,
   type UniformBuffer,
-} from '@babylonjs/core';
+} from '../core';
 
 export const APPEARANCE_TEXELS = 8;
 

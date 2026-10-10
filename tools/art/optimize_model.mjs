@@ -1,8 +1,8 @@
 // Optimises a glTF/GLB model for the game and writes one self-contained .glb:
 // flatten the node tree, drop unused data, merge primitives that share a material (fewer draw
 // calls), weld, optionally simplify, resize textures and re-encode them (WebP by default),
-// then quantise the geometry (KHR_mesh_quantization, decoded natively by Babylon; no meshopt or
-// Draco decoder needed, which would have to come from a CDN that cross-origin isolation blocks).
+// then quantise the geometry (KHR_mesh_quantization, decoded natively by Babylon). This is the
+// source file; the production build adds meshopt and KTX2 on top (tools/assets/optimize.mjs).
 //
 // usage: GT_DIR=<dir with node_modules/@gltf-transform> node optimize_model.mjs <in> <out.glb>
 //          [--tex 512] [--format webp|jpeg|keep] [--quality 82] [--simplify 0.5] [--error 0.002]

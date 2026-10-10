@@ -41,7 +41,7 @@ import {
   Matrix,
   VertexData,
   type Scene,
-} from '@babylonjs/core';
+} from './core';
 import { BakedVertexAnimationManager } from '@babylonjs/core/BakedVertexAnimation/bakedVertexAnimationManager';
 import type { AssetRegistry } from '../../assets/registry';
 import type { FrameState } from '../../core/bridge';
@@ -52,7 +52,7 @@ import { APPEARANCE_TEXELS, CharacterPlugin, type CharacterSurface } from './cha
 import { outfitFor, writeOutfit, type OutfitParams } from './characters/outfit';
 import { BLANKET_WIDTH, blanketMaterial, buildBlanket, type BlanketShape } from './characters/blanket';
 import { addLocal, addRotation, blendInto, makeAdditive, PoseScratch, resetAdditive, sampleClip, skin, type Additive, type Placement } from './characters/pose';
-import type { MaterialLibrary } from './materials';
+import { textureWithFallback, type MaterialLibrary } from './materials';
 import { WALL_HEIGHT } from './house';
 
 /** Rows in the pose texture (= Sim capacity). */
@@ -2388,16 +2388,7 @@ export class Characters {
     const cached = this.materials.get(key);
     if (cached) return cached;
     const mat = new PBRMaterial(`sim:${key}`, this.scene);
-    const tex = (file: string, srgb: boolean) => {
-      const t = new Texture(set.file(file), this.scene, {
-        invertY: false,
-        samplingMode: Texture.TRILINEAR_SAMPLINGMODE,
-        gammaSpace: srgb,
-      });
-      t.gammaSpace = srgb;
-      t.anisotropicFilteringLevel = 4;
-      return t;
-    };
+    const tex = (file: string, srgb: boolean) => textureWithFallback(set.file(file), this.scene, srgb, 4);
     mat.metallic = 0;
     mat.maxSimultaneousLights = 6;
     let fabric: Texture | null = null;

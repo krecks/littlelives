@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, type Component } from 'svelte';
   import { host } from './game/host';
   import { menuScene } from './game/menuScene';
   import { loadDebugReport } from './debug/report';
@@ -14,7 +14,6 @@
   import CreateHousehold from './ui/screens/CreateHousehold.svelte';
   import CreateNeighbourhood from './ui/screens/CreateNeighbourhood.svelte';
   import Credits from './ui/screens/Credits.svelte';
-  import GameView from './ui/screens/GameView.svelte';
   import LoadGame from './ui/screens/LoadGame.svelte';
   import LoadingScreen from './ui/screens/LoadingScreen.svelte';
   import MainMenu from './ui/screens/MainMenu.svelte';
@@ -24,6 +23,11 @@
   import Toasts from './ui/Toasts.svelte';
 
   let gameLayer: HTMLDivElement;
+
+  /** The in-game interface is a script chunk of its own: fetched once the menu is up, or when a game starts. */
+  let GameView = $state.raw<Component | null>(null);
+  let gameViewLoad: Promise<unknown> | null = null;
+  const loadGameView = () => (gameViewLoad ??= import('./ui/screens/GameView.svelte').then((m) => (GameView = m.default)));
 
   onMount(() => {
     host.mount(gameLayer);
@@ -78,6 +82,7 @@
     }
     step('Ready', 1);
     app.booting = false;
+    void loadGameView();
     await openDebugReport();
   }
 
@@ -101,6 +106,10 @@
   }
 
   const titles = { settings: 'Settings', load: 'Load game', credits: 'Credits' } as const;
+
+  $effect(() => {
+    if (app.screen === 'game') void loadGameView();
+  });
 
   /**
    * The live 3D town behind the menus: a showcase neighbourhood on the main menu (and its
@@ -179,7 +188,11 @@
 {:else if app.booting}
   <LoadingScreen progress={app.boot} />
 {:else if app.screen === 'game'}
-  {#key app.sessionKey}<GameView />{/key}
+  {#if GameView}
+    {#key app.sessionKey}<GameView />{/key}
+  {:else}
+    <LoadingScreen progress={app.loading ?? { label: 'Moving in', value: 0 }} />
+  {/if}
 {:else}
   {#if !app.liveBackdrop}<MenuBackdrop />{/if}
   {#if app.screen === 'neighbourhood'}

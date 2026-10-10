@@ -33,7 +33,7 @@ import {
   type Scene,
   type SubMesh,
   type UniformBuffer,
-} from '@babylonjs/core';
+} from './core';
 import type { AssetRegistry } from '../../assets/registry';
 import { groundDepth, type WorldStructure } from '../../core/protocol';
 import type { Lighting } from './environment';

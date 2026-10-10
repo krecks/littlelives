@@ -5,7 +5,7 @@
  * corners join up; a gate is a framed leaf in the fence's style between two stout posts.
  */
 
-import type { Mesh, Scene } from '@babylonjs/core';
+import type { Mesh, Scene } from './core';
 import type { FenceStyleDef } from '../../content/content';
 import type { FenceEdge } from '../../core/protocol';
 import { Geo } from './geometry';
