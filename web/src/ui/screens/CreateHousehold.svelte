@@ -28,8 +28,8 @@
   import { services } from '../services';
   import { settings } from '../../settings/settings.svelte';
   import { playClip, type Playing } from '../../voice/player';
-  import { speak, unloadVoice, voiceStatus } from '../../voice/service.svelte';
-  import { VOICE_RANGE, voiceFor } from '../../voice/voices';
+  import { DOWNLOAD_MB, speak, unloadVoice, voiceStatus } from '../../voice/service.svelte';
+  import { baseVoice, KITTEN_VOICES, modelFor, VOICE_RANGE, voiceFor } from '../../voice/voices';
 
   const { content, assets } = services;
   const rules = content.rules;
@@ -143,8 +143,24 @@
 
   // Voice: a sample line in the resident's own voice at their age (a baby's as the child they'll be).
   const voice = $derived(sim.appearance.voice);
-  const voiceChanged = $derived((voice?.pitch ?? 1) !== 1 || (voice?.speed ?? 1) !== 1 || (voice?.depth ?? 1) !== 1);
+  const voiceChanged = $derived(
+    (voice?.pitch ?? 1) !== 1 || (voice?.speed ?? 1) !== 1 || (voice?.depth ?? 1) !== 1 || baseVoice(voice) !== null,
+  );
   const isBaby = $derived(!!content.stageOf(sim.age)?.baby);
+  /** Teens and grown-ups speak with KittenTTS's voices; children with the small model, as a child. */
+  const voiceStage = $derived(isBaby ? content.lifeStages.find((s) => !s.baby)?.id : content.stageOf(sim.age)?.id);
+  const grownVoice = $derived(modelFor(voiceStage) === 'kitten');
+  /** The voices offered: the four that fit the gender (all eight for others), besides their own mix. */
+  const voiceOptions = $derived(
+    KITTEN_VOICES.flatMap((v, i) => ((sim.gender !== 'male' && sim.gender !== 'female') || v.sex === sim.gender ? [{ index: i, name: v.name }] : [])),
+  );
+  function chooseVoice(index: number | null) {
+    const v = draftVoice(sim);
+    if (index === null) delete v.base;
+    else v.base = index;
+    // Heard at once (a child's choice is for later: they still sound like a child).
+    if (grownVoice) void hear();
+  }
   let hearing = $state(false);
   let heard = false;
   let playing: Playing | null = null;
@@ -154,17 +170,18 @@
       const p = voiceStatus.progress;
       return p > 0 && p < 1 ? `Downloading the voice… ${Math.floor(p * 100)} %` : 'Getting the voice ready…';
     }
+    const model = grownVoice ? 'kitten' : 'paradee';
     if (!settings.voices) {
-      return voiceStatus.state === 'ready'
+      return voiceStatus.models[model] === 'ready'
         ? 'Resident voices are off in Settings → Audio: turn them on to hear residents in the game.'
-        : 'Resident voices are off in Settings → Audio. Hearing a sample downloads the voice once (about 25 MB).';
+        : `Resident voices are off in Settings → Audio. Hearing a sample downloads the voice once (about ${Math.round(DOWNLOAD_MB.shared + DOWNLOAD_MB[model])} MB).`;
     }
-    return isBaby ? '' : 'Voices change as residents grow up; this choice goes along.';
+    if (!grownVoice) return 'Children have a child’s voice: the voice chosen above is theirs from their teens. Pitch, speed and depth apply now.';
+    return 'Voices change as residents grow up; this choice goes along.';
   });
 
   async function hear() {
-    const stageId = isBaby ? content.lifeStages.find((s) => !s.baby)?.id : content.stageOf(sim.age)?.id;
-    const params = voiceFor(0, sim.gender, stageId, $state.snapshot(draftVoice(sim)));
+    const params = voiceFor(0, sim.gender, voiceStage, $state.snapshot(draftVoice(sim)));
     const name = sim.name.trim();
     hearing = heard = true;
     try {
@@ -184,6 +201,7 @@
     voice.pitch = 1;
     voice.speed = 1;
     voice.depth = 1;
+    delete voice.base;
   }
 
   // Hearing a sample doesn't turn voices on: with them off, the engine goes again on the way out.
@@ -414,6 +432,21 @@
           {/if}
           <div class="field">
             <span class="eyebrow">Voice</span>
+            <div class="chips-row" role="radiogroup" aria-label="Voice">
+              <button
+                class="pill"
+                role="radio"
+                aria-checked={baseVoice(voice) === null}
+                class:on={baseVoice(voice) === null}
+                title="A mix of two voices that is {sim.name.trim() || 'theirs'} alone"
+                onclick={() => chooseVoice(null)}>Own mix</button
+              >
+              {#each voiceOptions as o (o.index)}
+                <button class="pill" role="radio" aria-checked={baseVoice(voice) === o.index} class:on={baseVoice(voice) === o.index} onclick={() => chooseVoice(o.index)}
+                  >{o.name}</button
+                >
+              {/each}
+            </div>
             <label class="slider">
               <input
                 type="range"
@@ -451,7 +484,7 @@
             <div class="row">
               <button class="btn hear" disabled={hearing} onclick={hear}>
                 <Icon name="icon.ui.speed1" size={18} />
-                {hearing ? (voiceStatus.state === 'ready' ? 'One moment…' : 'Loading the voice…') : `Hear ${sim.name.trim() || 'it'}`}
+                {hearing ? (voiceStatus.models[grownVoice ? 'kitten' : 'paradee'] === 'ready' ? 'One moment…' : 'Loading the voice…') : `Hear ${sim.name.trim() || 'it'}`}
               </button>
               <button class="btn" aria-label="Random voice" title="Random voice" onclick={() => randomVoice(sim)}>
                 <Icon name="icon.ui.dice" size={18} />

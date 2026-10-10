@@ -3,7 +3,7 @@
 import type { AssetRegistry } from '../assets/registry';
 import type { Content, LifeStageDef } from '../content/content';
 import { GARMENTS, pickOutfit } from '../render/babylon/characters/outfit';
-import { VOICE_RANGE, type VoiceChoice } from '../voice/voices';
+import { baseVoice, KITTEN_VOICES, VOICE_RANGE, type VoiceChoice } from '../voice/voices';
 
 export const HAIR_STYLES = ['short', 'long', 'bun', 'none'] as const;
 export type HairStyle = (typeof HAIR_STYLES)[number];
@@ -160,6 +160,9 @@ export function regender(content: Content, sim: SimDraft, from: string, taken: r
   if (look.top && !tops.includes(look.top)) look.top = tops.includes(similar[look.top]) ? similar[look.top] : tops[0];
   if (look.bottom && !bottoms.includes(look.bottom)) look.bottom = bottoms.includes(similar[look.bottom]) ? similar[look.bottom] : bottoms[0];
   if (look.beard && to !== 'male') look.beard = false;
+  // A chosen voice of the other sex goes back to the resident's own mix.
+  const base = baseVoice(look.voice);
+  if (look.voice && base !== null && (to === 'male' || to === 'female') && KITTEN_VOICES[base].sex !== to) delete look.voice.base;
 }
 
 /** Drafts made before garments could be chosen get a random outfit (kept from then on). */
@@ -176,10 +179,21 @@ export function draftVoice(sim: SimDraft): VoiceChoice {
   return sim.appearance.voice;
 }
 
-/** The creator's dice for the voice: anywhere in the range, the same seed. */
+/**
+ * The creator's dice for the voice: one of KittenTTS's voices that fits the gender (any for
+ * others) or a new mix of their own, and pitch, speed and depth anywhere in the range.
+ */
 export function randomVoice(sim: SimDraft): void {
   const voice = draftVoice(sim);
   const roll = ([lo, hi]: readonly [number, number]) => Math.round((lo + Math.random() * (hi - lo)) * 100) / 100;
+  const fits = KITTEN_VOICES.flatMap((v, i) => (sim.gender !== 'male' && sim.gender !== 'female') || v.sex === sim.gender ? [i] : []);
+  const pick = Math.floor(Math.random() * (fits.length + 1));
+  if (pick === fits.length) {
+    delete voice.base;
+    voice.seed = Math.floor(Math.random() * 2 ** 31);
+  } else {
+    voice.base = fits[pick];
+  }
   voice.pitch = roll(VOICE_RANGE.pitch);
   voice.speed = roll(VOICE_RANGE.speed);
   voice.depth = roll(VOICE_RANGE.depth);
