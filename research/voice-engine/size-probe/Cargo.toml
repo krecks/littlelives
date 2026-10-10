@@ -1,0 +1,24 @@
+[package]
+name = "size-probe"
+edition = "2024"
+version = "0.0.0"
+publish = false
+
+# Throwaway: how big is the voice WASM without tract? The phonemizer from crates/voice plus
+# wasm-bindgen glue, serde_json for the config, and the conv kernels as a stand-in for the
+# network code.
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "=0.2.129"
+serde_json = "1"
+voice-kernels = { path = "../kernels" }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
