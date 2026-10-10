@@ -78,9 +78,11 @@ async function load(base: string, model: VoiceModel): Promise<void> {
   const start = performance.now();
   const m = MODELS[model];
   const own: File[] = [m.model, ...(m.voices ? [m.voices] : [])];
-  const files: { url: string; size: number }[] = [
-    { url: ortWasmUrl, size: ORT_WASM_BYTES },
-    { url: wasmUrl, size: VOICE_WASM_BYTES },
+  // `built`: imported through Vite. In dev their URLs aren't hashed, so a rebuilt wasm would
+  // otherwise come back stale from the cache; those are fetched fresh there.
+  const files: { url: string; size: number; built?: boolean }[] = [
+    { url: ortWasmUrl, size: ORT_WASM_BYTES, built: true },
+    { url: wasmUrl, size: VOICE_WASM_BYTES, built: true },
     { url: `${base}voice/${SHARED.lexicon[0]}`, size: SHARED.lexicon[1] },
     { url: `${base}voice/${SHARED.config[0]}`, size: SHARED.config[1] },
     ...own.map(([name, size]) => ({ url: `${base}voice/${name}`, size })),
@@ -91,7 +93,7 @@ async function load(base: string, model: VoiceModel): Promise<void> {
   const cache = await openCache();
   const bytes = await Promise.all(
     files.map((f, i) =>
-      fetchOnce(cache, f.url, (n) => {
+      fetchOnce(f.built && import.meta.env.DEV ? null : cache, f.url, (n) => {
         done[i] = Math.min(n, f.size);
         report();
       }),
