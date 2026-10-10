@@ -52,17 +52,22 @@ replace it later. Measurements and research behind the choices are at the end.*
 
   ONNX Runtime Web's download: runtime 14.2 MB (3.7 MB gzipped), phonemizer 0.16 MB, worker
   0.08 MB, model 9.0 MB (7.4 MB), dictionary 1.3 MB; cached after the first time.
-- **Voices by life stage (`voices.ts`):** children higher, boys' voices drop as teens, elders
-  lower and slower. Babies don't speak.
-- **Voices chosen in the household creator:** pitch and speed per resident, kept in the save
-  (see "A resident's own voice").
+- **Voices by gender and life stage (`voices.ts`):** pitch, speed and **depth** (the size of
+  the voice) per resident, from their id: men larger and lower, women around the model's own
+  voice, teens in between (boys' voices drop), children smaller and higher, elders slower. Babies
+  don't speak. See "Voices from one model".
+- **Depth by resampling (0.20):** the voice worker runs the model at pitch P/α and speed s/α
+  and resamples its output by α (`crates/voice/src/resample.rs`, in the voice WASM), so the
+  formants scale by α while pitch and length stay. A few milliseconds per line (2–6 ms in Chrome
+  for 1.5–2 s lines, about 5 ms for a 3.7 s line in Node).
+- **Voices chosen in the household creator:** pitch, speed and depth per resident, kept in the
+  save (see "A resident's own voice").
 - **Guards (`voice/index.ts`):** nothing is said while the engine loads; it unloads after 5
   minutes without a line and reloads on the next (quiet meanwhile); a watchdog pauses voices for
   the session (with a toast) after three lines in a row later than 4 s, or when over 10 % of the
   frames drawn while speech is made exceed 50 ms and that is at least twice the share without.
   The F3 voice section shows whether voices are on, off or paused.
-- **Not yet:** formant shift for English (lower voices still sound like a pitched-down woman),
-  Kokoro-82M as a second model, Auto mode, our own engine.
+- **Not yet:** Kokoro-82M as a second model, Auto mode, our own engine, a distilled male voice.
 
 Residents speak with a text-to-speech model that runs **entirely in the browser**: no server, no
 API key, nothing leaves the player's computer. English uses **Paradee-8M** (9 MB), phonemized by
@@ -159,7 +164,7 @@ voice worker so the sim's WASM stays small):
 |---|---|
 | `g2p` | Text to Misaki phonemes (see "Phonemizer") |
 | `model` | Weights and the network |
-| `dsp` | Pitch, formant and noise controls; inverse STFT |
+| `dsp` | Pitch and noise controls; inverse STFT (the voice's size stays a resample of the output) |
 | `lib.rs` | `speak(text, voice) -> Vec<f32>` (24 kHz), exposed with `wasm-bindgen` |
 
 **Two stages:**
@@ -185,9 +190,10 @@ voice worker so the sim's WASM stays small):
   3-second line in under 0.4 s.
 - **Size:** the WASM should be well under 1.5 MB (estimate), against about 20 MB for the `tract`
   test build.
-- **Voice controls built in:** pitch (scale the pitch curve; tested), speed (scale durations),
-  and **formant shift** (warp the magnitude spectrum along the frequency axis before the inverse
-  STFT; untested). Together these turn one voice into many.
+- **Voice controls built in:** pitch (scale the pitch curve), speed (scale durations) and depth
+  (shipped in 0.20 as a resample of the output, see "Voices from one model"). The model's own
+  inverse STFT has only 11 bins, 1.2 kHz apart (n_fft 20), too coarse to move formants, so the
+  earlier plan to warp the spectrum before it was dropped.
 - **Deterministic audio:** the noise comes from the same position hash as in the edited model
   (done in 0.20 for ONNX Runtime Web), so the same line and voice always give the same clip.
   That makes clips cacheable and lets tests compare against golden output.
@@ -204,18 +210,45 @@ If the hand-written engine stalls, ONNX Runtime Web stays.
 ## Voices from one model
 
 Paradee speaks one female voice. Each resident gets a voice derived from their **stable resident
-id** (release 0.7), gender and life stage, computed on the main thread; a voice chosen in the
-creator is saved on top (see "A resident's own voice"):
+id** (release 0.7), gender and life stage, computed on the main thread (`voiceFor`); a voice
+chosen in the creator is saved on top (see "A resident's own voice"):
 
 ```ts
-interface VoiceSpec { pitch: number; formant: number; speed: number; seed: number }
+interface VoiceParams { pitch: number; speed: number; depth: number }
 ```
 
-- **Pitch:** female voices ×0.9–1.2, male voices ×0.55–0.7 (about 115–145 Hz), others across the
-  whole range; children higher, elders slightly lower (life-cycle releases).
-- **Formant:** shifts the vocal tract size, so male voices don't sound like a pitched-down woman
-  and children sound small. This is the biggest risk: it needs stage 2 and is untested.
-- **Speed:** 0.9–1.1, and per line by tone (excited faster, sad slower).
+**Depth (the voice's size).** Pitching a woman's voice down leaves her vocal tract the same size,
+so men used to sound like a pitched-down woman. Depth α scales the formants: the model runs at
+pitch P/α and speed s/α, and its output is read at a step of α (band-limited, a Kaiser-windowed
+sinc with 16 zero crossings; when α > 1 the cut-off moves below the new Nyquist frequency, so
+nothing folds back). Every frequency scales by α, so the pitch lands back on P and the formants
+move by α; every duration by 1/α, so the length lands back on the original (within a few per cent:
+the model rounds durations to 25 ms frames). Done in the voice worker by the Rust WASM, so the
+samples are the same in every browser and the clip cache keeps working; α < 1 makes the model's
+part shorter, so men cost a little less. Range 0.75–1.3.
+
+**Generated voices** (factors on the model's voice, about 210 Hz; each resident's place in a
+range comes from hashes of their id, size following pitch a little):
+
+| Group | Pitch | Depth | Notes |
+|---|---|---|---|
+| Men | 0.52–0.76 (about 110–160 Hz) | 0.82–0.88 | |
+| Women | 0.84–1.22 | 0.95–1.06 | |
+| Others | 0.66–1.08 | 0.87–1.00 | |
+| Teen boys | 0.68–0.90 | 0.88–0.95 | voices dropping |
+| Teen girls / others | 0.94–1.22 / 0.80–1.12 | 1.00–1.06 / 0.94–1.03 | |
+| Children (any gender) | 1.20–1.45 | 1.06–1.13 | speed ×1.04; not smaller, or they sound sped up |
+| Elders | women ×0.93, men ×1.04 | women ×0.98, men ×1.02 | speed ×0.92 |
+
+Speed 0.88–1.12 for everyone, and per line by tone (`withTone`: happy and angry faster and
+higher, sad slower and lower; the size stays).
+
+Measured on the samples (`tools/voice/samples.mjs`, three men and three women spanning their
+ranges, two lines each): the spectral centroid of voiced frames below 5 kHz, which follows the
+formants, is 16 % lower for men than for women (829 against 986 Hz; it was 3 % with pitch alone),
+and over the whole band men went from brighter than women (2164 against 2052 Hz) to clearly darker
+(1617 against 1922 Hz). Median pitch: men 133–151 Hz, women 185–246 Hz, the child 273 Hz.
+
 - **If male voices still sound wrong:** Paradee's training code is public and ran on one MacBook,
   so we can distil a second, male voice (e.g. Kokoro's `am_michael`) into another 9 MB model.
 - **Kokoro-82M** (optional model): two of its 28 English voices blended per resident (a voice is a
@@ -224,7 +257,7 @@ interface VoiceSpec { pitch: number; formant: number; speed: number; seed: numbe
 ### A resident's own voice
 
 The household creator's *Identity* tab has a *Voice* section: **Pitch** (lower to higher),
-**Speed** (slower to faster), a dice, a button back to the default, and **Hear** (the resident
+**Speed** (slower to faster), **Depth** (smaller to larger), a dice, a button back to the default, and **Hear** (the resident
 says "Hi, I'm Ada! This is how I sound." in that voice; a baby is heard as the child they will be).
 Hearing works with resident voices off in Settings and doesn't turn them on; the engine is
 unloaded again when the creator closes. The note under the button shows the engine loading or
@@ -234,20 +267,21 @@ The choice is stored in the resident's appearance, which the simulation keeps as
 the save format doesn't change:
 
 ```ts
-appearance.voice = { pitch: 1.08, speed: 0.95, seed: 1439030069 }
+appearance.voice = { pitch: 1.08, speed: 0.95, depth: 0.96, seed: 1439030069 }
 ```
 
-- **Factors on the generated voice** (`voiceFor`), 1 being as generated, each 0.88–1.12 (about
-  two semitones of pitch). The life stage still applies underneath, so a child made "a bit
+- **Factors on the generated voice** (`voiceFor`), 1 (or missing) being as generated: pitch and
+  speed 0.88–1.12 (about two semitones of pitch), depth 0.92–1.08 (the slider runs from smaller
+  to larger, so it shows 2 − depth). The life stage still applies underneath, so a child made "a bit
   higher" is a bit higher than their generated teen voice once grown. The result is kept within pitch
-  0.52–1.5 and speed 0.8–1.2 (the generated voices span 0.56–1.45 and 0.86–1.12), and line tones
-  (`withTone`) go on top.
+  0.5–1.5, speed 0.8–1.2 and depth 0.78–1.16, and line tones (`withTone`) go on top.
 - **`seed`** replaces the resident id in the generated voice: someone made in the creator has no
   id until they move in, and the voice heard there must be the one they keep. It is set the first
   time the Voice section is used.
 - **Without `voice`** (older saves, neighbours, newcomers, babies, random residents from the
-  creator's dice) a resident has the generated voice, exactly as before.
-- A later voice size (`depth`, with formant shift) becomes one more optional factor.
+  creator's dice) a resident has the generated voice. The generated voices changed in 0.20
+  (depth, wider ranges), so every resident sounds different from 0.19.
+- **Without `depth`** (choices made before it existed) the factor is 1.
 - Main-thread rewrites of the appearance keep `voice`: life-stage looks and grey hair copy it
   along; the look expanded from a newcomer's or baby's seed keeps a voice stored next to it.
   Portraits ignore it (their cache key leaves it out).
@@ -457,7 +491,7 @@ Web code lives in `web/src/voice/`, behind one small interface used by the game 
 | 2. Phonemizer (2–4 days) | `g2p` (or `misaki-rs` plus our fallback). | Every content line phonemizes from the dictionary; names get a plausible reading; no GPL code shipped. |
 | 3. Rules | Settings tab, `VoiceDirector` with the "who may speak" rules and guards, lines content, voice bus with panning. (Babble, a made-up language, was part of this phase from 0.14 to 0.19; removed in 0.20.) | Selecting a resident or starting a conversation makes them speak; nobody else does; no frame cost. |
 | 4. English | Download with progress, `VoiceSpec` (pitch, speed), clip cache, unloading, quiet while loading. | Selected residents speak English; residents sound different from each other. |
-| 5. Own engine (about 2.5 weeks) | Hand-written inference, golden tests against ONNX Runtime on the edited model, formant shift. (0.20 did the runtime swap to ONNX Runtime Web, the model edits in Node and deterministic noise.) | At least 8× real time in the browser on one thread; WASM under 1.5 MB; male voices that sound male (or decide to distil a male voice). |
+| 5. Own engine (about 2.5 weeks) | Hand-written inference, golden tests against ONNX Runtime on the edited model. (0.20 did the runtime swap to ONNX Runtime Web, the model edits in Node, deterministic noise and the voice's size by resampling.) | At least 8× real time in the browser on one thread; WASM under 1.5 MB; male voices that sound male (or decide to distil a male voice). |
 | 6. Benchmark | "Test this computer", Auto mode, re-run on change, live watchdog, F3 line; Kokoro-82M as the optional model (CPU and GPU). | Auto picks the right mode without frame drops; a slow machine steps down with a clear message. |
 | Later | Thoughts from the Planner (0.8) and from an in-browser language model; lip sync; persistent clip cache (IndexedDB, Opus via WebCodecs); a distilled male voice; more languages. | |
 
