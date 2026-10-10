@@ -116,7 +116,7 @@ add('stoveElectric', gltf(PH + 'electric_stove.glb', [0.62, 0.98, 0.62], offset=
 COUNTER = {'metal': mat('chrome', CHROME), 'wood': mat('satin', '#EDEBE6'), 'woodDark': mat('satin', '#E2DFD8')}
 COUNTER_STYLES = {
     '': ({'wood': mat('satin', '#EDEBE6'), 'woodDark': mat('satin', '#E2DFD8'), 'metal': mat('chrome', CHROME)}, '#E8E6E1', 'gloss'),
-    '@modern': ({'wood': mat('gloss', '#F4F4F2'), 'woodDark': mat('wood', OAK), 'metal': mat('metal', BLACKMETAL)}, '#3A3D41', 'satin'),
+    '@modern': ({'wood': mat('gloss', '#F4F4F2'), 'woodDark': mat('wood', OAK), 'metal': mat('metal', BLACKMETAL)}, '#C9CBCC', 'satin'),
     '@cozy': ({'wood': mat('satin', SAGE), 'woodDark': mat('wood', HONEY), 'metal': mat('metal', BRASS)}, HONEY, 'wood'),
     '@minimal': ({'wood': mat('wood', BIRCH), 'woodDark': mat('satin', '#F2F2F0'), 'metal': mat('satin', '#F2F2F0')}, '#F2F2F0', 'satin'),
 }
@@ -168,7 +168,7 @@ def dishwasher(body, panel, fin='satin', handle=CHROME, top=OAK, top_fin='wood')
 
 
 add('dishwasher', dishwasher('#EDEBE6', STEEL, 'satin', CHROME, '#E8E6E1', 'gloss'))
-add('dishwasher@modern', dishwasher('#F4F4F2', '#F4F4F2', 'gloss', BLACKMETAL, '#3A3D41', 'satin'))
+add('dishwasher@modern', dishwasher('#F4F4F2', '#F4F4F2', 'gloss', BLACKMETAL, '#C9CBCC', 'satin'))
 add('dishwasher@cozy', dishwasher(SAGE, SAGE, 'satin', BRASS, HONEY, 'wood'))
 add('dishwasher@minimal', dishwasher('#F2F2F0', BIRCH, 'satin', '#F2F2F0', '#F2F2F0', 'satin'))
 
@@ -193,7 +193,7 @@ def farmhouse_sink(cab, top=OAK, top_fin='wood', tap=CHROME):
 
 
 add('farmhouseSink', farmhouse_sink('#EDEBE6'))
-add('farmhouseSink@modern', farmhouse_sink('#F4F4F2', '#3A3D41', 'satin', BLACKMETAL))
+add('farmhouseSink@modern', farmhouse_sink('#F4F4F2', '#C9CBCC', 'satin', BLACKMETAL))
 add('farmhouseSink@cozy', farmhouse_sink(SAGE, HONEY, 'wood', BRASS))
 add('farmhouseSink@minimal', farmhouse_sink('#F2F2F0', '#F2F2F0', 'satin'))
 
@@ -222,7 +222,7 @@ def island(body, top, top_fin, stool, legs):
 
 
 add('kitchenIsland', placeholder(island('#EDEBE6', '#E8E6E1', 'gloss', SAGE, CHROME)), (2, 1))
-add('kitchenIsland@modern', placeholder(island('#F4F4F2', '#3A3D41', 'satin', '#9AA4AB', BLACKMETAL)), (2, 1))
+add('kitchenIsland@modern', placeholder(island('#F4F4F2', '#C9CBCC', 'satin', '#9AA4AB', BLACKMETAL)), (2, 1))
 add('kitchenIsland@cozy', placeholder(island(SAGE, HONEY, 'wood', RUST, BRASS)), (2, 1))
 add('kitchenIsland@minimal', placeholder(island('#F2F2F0', BIRCH, 'wood', LINEN, '#D9D9D6')), (2, 1))
 
@@ -476,7 +476,7 @@ def fireplace(stone, mantel, fin='satin', mantel_fin='wood'):
 
 
 add('fireplace', placeholder(fireplace('#E7E3DC', OAK)), (2, 1))
-add('fireplace@modern', placeholder(fireplace('#3A3D41', OAK, 'matte')), (2, 1))
+add('fireplace@modern', placeholder(fireplace('#B9BCBE', OAK, 'matte')), (2, 1))
 add('fireplace@cozy', placeholder(fireplace('#B9A48C', WALNUT, 'matte')), (2, 1))
 add('fireplace@minimal', placeholder(fireplace('#F4F3EF', BIRCH)), (2, 1))
 
