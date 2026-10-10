@@ -41,6 +41,8 @@ const LATE_RUN = 3;
  */
 const KITTEN_LATE_MS = 2500;
 const KITTEN_LATE_RUN = 3;
+/** So many grown-ups' lines in a row expected too late (on their own, nothing queued) also hand everything to Paradee. */
+const KITTEN_SKIP_RUN = 5;
 /** Frames this slow, in this share of the frames drawn while speech is being made, pause them too. */
 const SLOW_FRAME_MS = 50;
 const SLOW_SHARE = 0.1;
@@ -99,6 +101,8 @@ export class VoiceDirector {
   /** KittenTTS was too slow, slowed the frames or couldn't load: Paradee speaks for everyone this session. */
   private kittenOff = false;
   private kittenLateRun = 0;
+  /** Grown-ups' lines in a row sent to Paradee because KittenTTS would be too slow. */
+  private kittenSkipRun = 0;
   private fallbacks = 0;
   private lastFrame = 0;
   /** Frames drawn while speech was being made, and those over `SLOW_FRAME_MS`; the same while not. */
@@ -433,12 +437,17 @@ export class VoiceDirector {
     if (this.kittenOff) return false;
     if (!voiceReady('kitten')) return !voiceReady('paradee');
     const estimate = estimateLineMs('kitten', text);
-    return estimate === null || estimate * (1 + this.inFlight) <= KITTEN_LATE_MS;
+    if (estimate === null || estimate * (1 + this.inFlight) <= KITTEN_LATE_MS) return true;
+    // Too slow even with nothing queued, line after line: it isn't a busy moment, it's this computer.
+    this.kittenSkipRun = estimate > KITTEN_LATE_MS ? this.kittenSkipRun + 1 : 0;
+    if (this.kittenSkipRun >= KITTEN_SKIP_RUN) this.stepDown('late');
+    return false;
   }
 
   /** How long a line took to make (waiting included); too many late ones in a row step down or pause voices. */
   private timed(ms: number, model: VoiceModel): void {
     if (model === 'kitten') {
+      this.kittenSkipRun = 0;
       this.kittenLateRun = ms > KITTEN_LATE_MS ? this.kittenLateRun + 1 : 0;
       if (this.kittenLateRun >= KITTEN_LATE_RUN) this.stepDown('late');
     }

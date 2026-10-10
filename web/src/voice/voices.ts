@@ -169,19 +169,20 @@ export function voiceFor(id: number, gender: string | undefined, stage?: string,
   const kitten = modelFor(stage) === 'kitten' && model !== 'paradee';
   let mix: [number, number, number] = [0, 0, 1];
   let group: Group;
-  /** KittenTTS: the mix's own pitch correction. */
+  /** KittenTTS: the mix's own pace and pitch corrections (applied after the limits, which are for the resident's own factors). */
+  let pace = 1;
   let tilt = 1;
   if (kitten) {
     mix = kittenMix(key, gender, choice);
     group = stage === 'teen' ? KITTEN_TEEN : KITTEN_ADULT;
     const [a, b, w] = mix;
-    speed *= w * KITTEN_VOICES[a].pace + (1 - w) * KITTEN_VOICES[b].pace;
+    pace = w * KITTEN_VOICES[a].pace + (1 - w) * KITTEN_VOICES[b].pace;
     tilt = w * KITTEN_VOICES[a].pitch + (1 - w) * KITTEN_VOICES[b].pitch;
   } else {
     // Babies don't speak (they're heard as the child they'll be); children sound alike whatever their gender; boys' voices drop in their teens.
     group = modelFor(stage) === 'paradee' ? CHILD : stage === 'teen' ? PARADEE_TEEN[sex] : PARADEE_ADULT[sex];
   }
-  let pitch = lerp(group.pitch, p) * tilt;
+  let pitch = lerp(group.pitch, p);
   let depth = lerp(group.depth, d);
   switch (stage) {
     case 'child':
@@ -195,14 +196,12 @@ export function voiceFor(id: number, gender: string | undefined, stage?: string,
       speed *= 0.92;
       break;
   }
-  const out: VoiceParams = { model: kitten ? 'kitten' : 'paradee', mix, pitch, speed, depth };
-  if (!choice) return out;
-  return {
-    ...out,
-    pitch: clamp(pitch * factor(choice.pitch, VOICE_RANGE.pitch), PITCH_LIMITS),
-    speed: clamp(speed * factor(choice.speed, VOICE_RANGE.speed), SPEED_LIMITS),
-    depth: clamp(depth * factor(choice.depth, VOICE_RANGE.depth), DEPTH_LIMITS),
-  };
+  if (choice) {
+    pitch = clamp(pitch * factor(choice.pitch, VOICE_RANGE.pitch), PITCH_LIMITS);
+    speed = clamp(speed * factor(choice.speed, VOICE_RANGE.speed), SPEED_LIMITS);
+    depth = clamp(depth * factor(choice.depth, VOICE_RANGE.depth), DEPTH_LIMITS);
+  }
+  return { model: kitten ? 'kitten' : 'paradee', mix, pitch: pitch * tilt, speed: speed * pace, depth };
 }
 
 /** The same resident on Paradee (when KittenTTS is too slow or couldn't load). */

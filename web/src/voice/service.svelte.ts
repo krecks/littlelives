@@ -47,6 +47,14 @@ export interface VoiceThreadStats {
   cacheHits: number;
 }
 
+// Before `voiceStatus`, which reads stored results with them.
+const BENCH_KEY = 'littlelives.voiceBench';
+/** Each model, its edit and the runtime: a new id discards old speed-test results and cached clips. */
+export const MODEL_IDS: Record<VoiceModel, string> = {
+  paradee: 'paradee-8m@f662642+edit1/ort-web@1.30.0',
+  kitten: 'kitten-nano-0.8@7a1db64+int8+edit1/ort-web@1.30.0',
+};
+
 export const voiceStatus = $state({
   /** Summary: loading while any model loads, ready when one can speak. */
   state: 'off' as ModelState,
@@ -58,12 +66,6 @@ export const voiceStatus = $state({
   bench: readBench(),
 });
 
-const BENCH_KEY = 'littlelives.voiceBench';
-/** Each model, its edit and the runtime: a new id discards old speed-test results and cached clips. */
-export const MODEL_IDS: Record<VoiceModel, string> = {
-  paradee: 'paradee-8m@f662642+edit1/ort-web@1.30.0',
-  kitten: 'kitten-nano-0.8@7a1db64+int8+edit1/ort-web@1.30.0',
-};
 /** The download each model needs, MB (runtime, phonemizer and dictionary shared: about 15.8 MB). */
 export const DOWNLOAD_MB = { shared: 15.8, paradee: 9.0, kitten: 16.5 } as const;
 const BENCH_LINES = [
