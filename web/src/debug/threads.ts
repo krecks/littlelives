@@ -5,6 +5,7 @@
 
 import type { SimThreadStats } from '../core/protocol';
 import type { RenderStats } from '../render/types';
+import type { VoiceDirectorStats } from '../voice';
 import { voiceThreadStats, type VoiceThreadStats } from '../voice/service.svelte';
 
 export interface ThreadStats {
@@ -28,7 +29,7 @@ export interface ThreadStats {
   };
   /** Null until the worker's first report. */
   sim: SimThreadStats | null;
-  voice: VoiceThreadStats & { speaking: number; inFlight: number; spoken: number; dropped: number };
+  voice: VoiceThreadStats & VoiceDirectorStats;
 }
 
 const LONG_TASK_WINDOW_MS = 10_000;
@@ -43,7 +44,7 @@ if (longTasksSupported) {
 export function threadStats(
   render: RenderStats,
   sim: SimThreadStats | null,
-  director: { speaking: number; inFlight: number; spoken: number; dropped: number },
+  director: VoiceDirectorStats,
 ): ThreadStats {
   const now = performance.now();
   while (longTasks.length && longTasks[0].at < now - LONG_TASK_WINDOW_MS) longTasks.shift();

@@ -54,6 +54,7 @@
       {/if}
       {@const v = t.voice}
       <h4>Voice thread</h4>
+      <div><span>Language</span><b>{v.language}</b></div>
       <div><span>Engine</span><b>{v.state}{v.loadMs ? ` · loaded in ${(v.loadMs / 1000).toFixed(1)} s` : ''}</b></div>
       {#if v.state === 'ready'}
         <div><span>Lines made</span><b>{v.lines}{v.queued ? ` · ${v.queued} queued` : ''}</b></div>
@@ -62,7 +63,9 @@
           <div><span>Speed</span><b>{v.rtf.toFixed(2)}× real time</b></div>
         {/if}
         <div><span>Busy (5 s)</span><b>{pct(v.busy)}</b></div>
-        <div><span>Playing</span><b>{v.speaking} · {v.spoken} said · {v.dropped} dropped</b></div>
+      {/if}
+      {#if v.language !== 'off'}
+        <div><span>Playing</span><b>{v.speaking} · {v.spoken} said ({v.babbled} Babble) · {v.dropped} dropped</b></div>
       {/if}
     {/if}
     <form class="debug" onsubmit={(e) => (e.preventDefault(), void report())}>

@@ -110,7 +110,8 @@ export function ensureVoice(): Promise<void> {
     voiceStatus.state = 'loading';
     voiceStatus.progress = 0;
     voiceStatus.error = '';
-    post({ type: 'load', base: import.meta.env.BASE_URL, language: settings.voiceLanguage });
+    // Babble needs no engine; the engine always speaks a real language.
+    post({ type: 'load', base: import.meta.env.BASE_URL, language: settings.voiceLanguage === 'babble' ? 'en' : settings.voiceLanguage });
   }
   return new Promise((resolve, reject) => readyWaiters.push({ resolve, reject }));
 }
@@ -221,9 +222,9 @@ function readBench(): BenchResult | null {
   }
 }
 
-/** Unload when voices are switched off. */
+/** Unload when voices are switched off, or switched to Babble. */
 $effect.root(() => {
   $effect(() => {
-    if (!settings.voices && worker) unloadVoice();
+    if ((!settings.voices || settings.voiceLanguage === 'babble') && worker) unloadVoice();
   });
 });

@@ -1,8 +1,9 @@
 # Resident voices
 
-*Plan for residents speaking their thoughts and conversations out loud. Status (2026-10-09):
-phases 1 and parts of 2–4 are in (see "Built so far"); the hand-written engine (phase 5) and
-Babble are next. Measurements and research behind the choices are at the end.*
+*Plan for residents speaking their thoughts and conversations out loud. Status (2026-10-10):
+phases 1–4 are in, with Babble (0.14) and the guards of phase 6 that don't need Auto mode (see
+"Built so far"); the hand-written engine (phase 5), Auto mode and Kokoro are next. Measurements
+and research behind the choices are at the end.*
 
 ## Built so far
 
@@ -19,8 +20,19 @@ Babble are next. Measurements and research behind the choices are at the end.*
 - **Measured in Chrome (M-series Mac):** about 1 s per typical line, 3.8× faster than real
   time on one thread, no frame over 17 ms while speaking. Download: 18.3 MB engine WASM (3.9 MB
   gzipped), 9 MB model, 1.3 MB dictionary, cached after the first time.
-- **Not yet:** formant shift (lower voices still sound like a pitched-down woman), Babble,
-  Kokoro-82M as a second model, the live watchdog, the F3 line, idle unloading.
+- **Babble (0.14, `voice/babble.ts`):** a source-filter synthesiser rendered straight into a
+  24 kHz clip on the main thread (about 1 ms per second of speech, measured in Node on an
+  M-series Mac), so it shares the voice bus, panning and limits with English. Chosen in
+  Settings, said while English loads or after it fails, and always by babies (crying). Voices
+  by life stage (`voices.ts`): children higher and smaller, boys' voices drop as teens, elders
+  lower and slower; Babble also shifts formants per resident.
+- **Guards (0.14, `voice/index.ts`):** the engine unloads after 5 minutes without an English
+  line and reloads on the next (Babble meanwhile); a watchdog steps the session down to Babble
+  (with a toast) after three English lines in a row later than 4 s, or when over 10 % of the
+  frames drawn while English is made exceed 50 ms and that is at least twice the share
+  without. The F3 voice section shows the language and how many lines were Babble.
+- **Not yet:** formant shift for English (lower voices still sound like a pitched-down woman),
+  Kokoro-82M as a second model, Auto mode, the clip cache.
 
 Residents speak with a text-to-speech model that runs **entirely in the browser**: no server, no
 API key, nothing leaves the player's computer. English uses **Paradee-8M** (9 MB), run by **our
