@@ -723,6 +723,1182 @@
         }
       }
     },
+    "fridgeMini": {
+      "interactions": {
+        "snack": [
+          "Tiny fridge, tiny snack.",
+          "Just enough for a nibble.",
+          "What's in my little fridge?",
+          "Cold and crunchy."
+        ],
+        "meal": [
+          "Not much in here. I'll manage.",
+          "A simple meal it is.",
+          "Bread, cheese, done.",
+          "Small fridge, small dinner."
+        ]
+      }
+    },
+    "fridgeBuiltIn": {
+      "interactions": {
+        "snack": [
+          "Look at all this food!",
+          "So many choices.",
+          "Just a little bite.",
+          "This fridge has everything."
+        ],
+        "meal": [
+          "Plenty to cook with.",
+          "Let's make a proper meal.",
+          "Fresh food, good food.",
+          "Dinner from the big fridge."
+        ],
+        "gourmet": {
+          "lines": [
+            "Everything a chef could want.",
+            "Tonight, something special.",
+            "Fresh herbs, fine cheese. Perfect.",
+            "Let's cook like a pro."
+          ],
+          "tone": "happy"
+        },
+        "coldDrink": [
+          "Ice cold, please.",
+          "Ah, nice and chilled.",
+          "A cold drink on a warm day.",
+          "Clink, clink. Ice cubes."
+        ]
+      }
+    },
+    "stoveElectric": {
+      "interactions": {
+        "cook": [
+          "Let's get cooking.",
+          "Wait for it to heat up...",
+          "Dinner, coming right up.",
+          "Something simple tonight."
+        ],
+        "bake": {
+          "lines": [
+            "Cookies in the oven!",
+            "Smells so sweet already.",
+            "No peeking at the cake.",
+            "Bake, bake, bake!"
+          ],
+          "tone": "happy"
+        }
+      }
+    },
+    "stoveGas": {
+      "interactions": {
+        "cook": [
+          "Real flames. I love it.",
+          "Turn up the heat!",
+          "Let it sizzle.",
+          "Dinner is on the stove."
+        ],
+        "gourmet": {
+          "lines": [
+            "A gas range for a real chef.",
+            "High heat, quick hands.",
+            "Tonight, we eat in style.",
+            "Watch me flip this!"
+          ],
+          "tone": "happy"
+        },
+        "bake": [
+          "Into the oven you go.",
+          "Fresh bread, coming up.",
+          "The whole house smells of baking.",
+          "Is it done yet?"
+        ]
+      }
+    },
+    "microwave": {
+      "lines": [
+        "Ding! Leftovers are ready.",
+        "Two minutes. Perfect.",
+        "Is it hot in the middle?",
+        "Leftovers taste better the next day.",
+        "Beep, beep, beep."
+      ]
+    },
+    "coffeeMachine": {
+      "lines": [
+        "Coffee, the good stuff.",
+        "Grind, press, pour.",
+        "Ah, that smell!",
+        "One coffee, extra strong.",
+        "I can't start without this."
+      ]
+    },
+    "breakfastCounter": {
+      "interactions": {
+        "toast": [
+          "Toast with jam!",
+          "Golden brown, please.",
+          "Pop! Breakfast is up.",
+          "Butter on warm toast."
+        ],
+        "smoothie": [
+          "Bananas, berries, blend!",
+          "A smoothie to start the day.",
+          "[Whirr](/wˈɜɹ/)! Almost done.",
+          "Healthy and tasty."
+        ]
+      }
+    },
+    "dishwasher": {
+      "lines": [
+        "Plates on the bottom, cups on top.",
+        "Load it up.",
+        "Who left a fork in the sink?",
+        "Clean dishes, no scrubbing.",
+        "And... start!"
+      ]
+    },
+    "counter": {
+      "lines": [
+        "A sandwich, quick and easy.",
+        "Bread, cheese, done.",
+        "Extra pickles, please.",
+        "Cut it in triangles."
+      ]
+    },
+    "counterCorner": {
+      "lines": [
+        "A sandwich in the corner.",
+        "Peanut butter and jam!",
+        "Quick lunch, coming up.",
+        "Just the way I like it."
+      ]
+    },
+    "farmhouseSink": {
+      "interactions": {
+        "wash": [
+          "Scrub, scrub.",
+          "Big sink, clean hands.",
+          "Soap and warm water.",
+          "All clean."
+        ],
+        "washUp": [
+          "So many dishes!",
+          "Scrub, rinse, stack.",
+          "Who used every pot?",
+          "Bubbles up to my elbows."
+        ]
+      }
+    },
+    "pantry": {
+      "lines": [
+        "What's in the pantry?",
+        "Crackers! Perfect.",
+        "Just a little snack.",
+        "Ooh, I forgot we had these.",
+        "Cookies on the top shelf."
+      ]
+    },
+    "kitchenIsland": {
+      "interactions": {
+        "sandwich": [
+          "A sandwich at the island.",
+          "Plenty of room to work.",
+          "Bread, filling, bread.",
+          "Lunch in a minute."
+        ],
+        "breakfast": [
+          "Breakfast at the island.",
+          "Cereal and juice!",
+          "Best seat in the kitchen.",
+          "Good morning, kitchen."
+        ]
+      }
+    },
+    "barStool": {
+      "interactions": {
+        "sit": [
+          "Up on the stool.",
+          "Nice and tall.",
+          "Spin, spin. Ha!",
+          "A good spot to chat."
+        ],
+        "drink": [
+          "A drink at the bar.",
+          "Juice, please. With ice.",
+          "Cheers!",
+          "Ah, refreshing."
+        ]
+      }
+    },
+    "bistroSet": {
+      "interactions": {
+        "breakfast": [
+          "Breakfast, café style.",
+          "Croissant and juice. Fancy.",
+          "A little table, a big breakfast.",
+          "What a nice start to the day."
+        ],
+        "coffee": [
+          "Coffee at the little table.",
+          "Just like a café.",
+          "Sip, sip, ah.",
+          "A quiet cup."
+        ]
+      }
+    },
+    "diningGlass": {
+      "interactions": {
+        "breakfast": [
+          "Breakfast at the glass table.",
+          "Don't spill on the glass!",
+          "A bright breakfast.",
+          "Toast and eggs, yum."
+        ],
+        "coffee": [
+          "A cup at the glass table.",
+          "Mind the rings on the glass.",
+          "Ah, coffee time.",
+          "Just a quick cup."
+        ]
+      }
+    },
+    "diningOak": {
+      "interactions": {
+        "breakfast": [
+          "Breakfast at the big table.",
+          "Pass the jam, please.",
+          "Room for the whole family.",
+          "Good morning, everyone!"
+        ],
+        "coffee": [
+          "Coffee at the old oak table.",
+          "A warm cup, a solid table.",
+          "Time for a quiet cup.",
+          "Ah, that's nice."
+        ],
+        "dinner": {
+          "lines": [
+            "Dinner with everyone. Lovely.",
+            "One more helping, please.",
+            "Let's not rush this.",
+            "Best part of the day."
+          ],
+          "tone": "happy"
+        }
+      }
+    },
+    "diningChair": {
+      "lines": [
+        "Pull up a chair.",
+        "Let me sit for a bit.",
+        "Ah, that's better.",
+        "Is dinner ready yet?"
+      ]
+    },
+    "loveseat": {
+      "interactions": {
+        "relax": [
+          "A love seat for two. Or me.",
+          "Snug and comfy.",
+          "Room for one more?",
+          "Just right."
+        ],
+        "doze": [
+          "Cozy little love seat.",
+          "Just a short doze.",
+          "My legs don't fit. Oh well.",
+          "Mmm, sleepy."
+        ]
+      }
+    },
+    "sofaThree": {
+      "interactions": {
+        "relax": [
+          "Room for everyone!",
+          "So much space to stretch out.",
+          "The most comfy sofa ever.",
+          "Feet up, finally."
+        ],
+        "doze": [
+          "I'm taking the whole sofa.",
+          "Just resting my eyes.",
+          "Wake me for dinner.",
+          "So comfy. So sleepy."
+        ]
+      }
+    },
+    "sofaDesign": {
+      "interactions": {
+        "relax": [
+          "Stylish and comfy.",
+          "This sofa looks so fancy.",
+          "I feel like a designer.",
+          "Ah, lovely."
+        ],
+        "doze": [
+          "Napping in style.",
+          "Fancy sofa, fancy nap.",
+          "Just a little doze.",
+          "So soft."
+        ]
+      }
+    },
+    "armchairLounge": {
+      "lines": [
+        "A lazy lounge chair.",
+        "Lean back and relax.",
+        "So comfy.",
+        "I could stay here all day."
+      ]
+    },
+    "armchairLeather": {
+      "interactions": {
+        "sit": [
+          "Ah, good old leather.",
+          "My favorite chair.",
+          "It creaks just right.",
+          "Comfy as ever."
+        ],
+        "read": [
+          "A book in the leather chair.",
+          "Perfect reading spot.",
+          "Now, where was I?",
+          "Just one more chapter."
+        ]
+      }
+    },
+    "armchairDesign": {
+      "interactions": {
+        "relax": [
+          "I'm sinking in!",
+          "This chair hugs you back.",
+          "So soft and stylish.",
+          "Ah, pure comfort."
+        ],
+        "doze": [
+          "Too comfy to stay awake.",
+          "Just a little doze.",
+          "Mmm, five minutes.",
+          "Shush, I'm resting."
+        ]
+      }
+    },
+    "pouf": {
+      "lines": [
+        "A little pouf.",
+        "Comfy and squishy.",
+        "Just a quick sit.",
+        "Feet up? Feet up."
+      ]
+    },
+    "coffeeTable": {
+      "lines": [
+        "What's in the magazine?",
+        "Flip, flip, flip.",
+        "Ooh, a quiz!",
+        "Look at these pictures."
+      ]
+    },
+    "coffeeTableGlass": {
+      "lines": [
+        "A magazine at the glass table.",
+        "Ooh, gossip!",
+        "Flip, flip.",
+        "Who reads these? Me."
+      ]
+    },
+    "coffeeTableMarble": {
+      "lines": [
+        "A magazine and a marble table. Fancy.",
+        "Ooh, a new recipe.",
+        "Flip, flip, flip.",
+        "Just browsing."
+      ]
+    },
+    "tvWall": {
+      "lines": [
+        "Big screen, big fun.",
+        "What's on tonight?",
+        "So sharp!",
+        "Where's the remote?",
+        "Ooh, my show is on!"
+      ]
+    },
+    "tvRetro": {
+      "lines": [
+        "Old TV, good shows.",
+        "Let me fix the picture.",
+        "Small screen, big fun.",
+        "Wiggle the antenna."
+      ]
+    },
+    "homeCinema": {
+      "interactions": {
+        "watch": [
+          "The TV on the big screen!",
+          "Turn it up!",
+          "Ooh, my show!",
+          "It's like being there."
+        ],
+        "film": {
+          "lines": [
+            "Movie night!",
+            "Popcorn, anyone?",
+            "Lights down, please.",
+            "Hush, it's starting!"
+          ],
+          "tone": "happy"
+        }
+      }
+    },
+    "stereo": {
+      "interactions": {
+        "listen": [
+          "Let's put on some music.",
+          "Turn it up a little.",
+          "I love this album.",
+          "Ah, a classic."
+        ],
+        "dance": {
+          "lines": [
+            "Turn it up and dance!",
+            "I love this song!",
+            "Look at me go!",
+            "Dance with me!"
+          ],
+          "tone": "happy"
+        }
+      }
+    },
+    "boombox": {
+      "lines": [
+        "Boombox time!",
+        "Old school beats.",
+        "Turn it up!",
+        "This one's my jam."
+      ]
+    },
+    "bookcaseLow": {
+      "lines": [
+        "Which book today?",
+        "Ooh, I haven't [read](/ɹˈɛd/) this one.",
+        "A good book, a good day.",
+        "Let me find my place."
+      ]
+    },
+    "bookcaseWide": {
+      "interactions": {
+        "read": [
+          "So many books!",
+          "I could read here forever.",
+          "Which one, which one?",
+          "A whole library at home."
+        ],
+        "study": [
+          "Time to study.",
+          "Let me look this up.",
+          "Knowledge is power.",
+          "Notes, notes, notes."
+        ],
+        "homework": [
+          "Ugh, homework again.",
+          "Okay, let's get this done.",
+          "Why do we need to learn this?",
+          "Almost finished!"
+        ]
+      }
+    },
+    "bedSingle": {
+      "interactions": {
+        "sleep": [
+          "Good night, little bed.",
+          "Time to sleep.",
+          "Under the covers.",
+          "Lights out!"
+        ],
+        "nap": [
+          "A quick nap.",
+          "Just lying down for a bit.",
+          "Wake me in an hour.",
+          "So sleepy."
+        ]
+      }
+    },
+    "bedBunk": {
+      "interactions": {
+        "sleep": {
+          "lines": [
+            "I call the top bunk!",
+            "Good night, down there!",
+            "Climb up, climb up.",
+            "Who's snoring?"
+          ],
+          "tone": "happy"
+        },
+        "nap": [
+          "A nap in the bunk bed.",
+          "Top bunk nap!",
+          "Just a little rest.",
+          "Hush, napping."
+        ]
+      }
+    },
+    "bedFuton": {
+      "interactions": {
+        "sleep": [
+          "Good night, futon.",
+          "Low and cozy.",
+          "Time to sleep.",
+          "Lights out."
+        ],
+        "nap": [
+          "A quick nap on the futon.",
+          "Just resting.",
+          "So comfy down here.",
+          "Five more minutes."
+        ]
+      }
+    },
+    "bedKing": {
+      "interactions": {
+        "sleep": [
+          "So much room!",
+          "The biggest bed ever.",
+          "Good night, big bed.",
+          "Sweet dreams."
+        ],
+        "nap": [
+          "A nap in the king bed. Royal.",
+          "I could get lost in here.",
+          "Just a little rest.",
+          "So soft."
+        ]
+      }
+    },
+    "dresser": {
+      "lines": [
+        "What should I wear today?",
+        "Blue or green?",
+        "This one! No, that one.",
+        "Socks, socks, socks.",
+        "Perfect outfit."
+      ]
+    },
+    "wardrobe": {
+      "lines": [
+        "So many clothes, nothing to wear.",
+        "What should I wear?",
+        "This one looks great.",
+        "Hmm, maybe the red one.",
+        "Ready to go!"
+      ]
+    },
+    "dressingTable": {
+      "lines": [
+        "Let me get ready.",
+        "Hair, done.",
+        "Looking good!",
+        "Just a little more.",
+        "Ready in five minutes!"
+      ]
+    },
+    "mirrorWall": {
+      "lines": [
+        "Ahem. Thank you all for coming.",
+        "Smile, and speak clearly.",
+        "Okay, one more time.",
+        "Mirror, mirror, how do I sound?",
+        "You've got this."
+      ]
+    },
+    "toiletCompact": {
+      "lines": [
+        "Tiny toilet. Works fine.",
+        "Excuse me a moment.",
+        "Occupied!",
+        "Be right back."
+      ]
+    },
+    "toiletSmart": {
+      "lines": [
+        "So many buttons!",
+        "Ooh, a warm seat!",
+        "Which button is the flush?",
+        "This toilet is smarter than me."
+      ]
+    },
+    "bathtub": {
+      "lines": [
+        "A nice warm bath.",
+        "Bubbles!",
+        "Ah, just right.",
+        "I'm not getting out.",
+        "Rubber duck, come here."
+      ]
+    },
+    "bathtubClawfoot": {
+      "lines": [
+        "A bath in the claw foot tub. Fancy!",
+        "So deep and warm.",
+        "I feel like royalty.",
+        "Bubbles to the top!"
+      ],
+      "tone": "happy"
+    },
+    "showerStall": {
+      "lines": [
+        "A quick shower.",
+        "Ah, nice and warm.",
+        "In and out.",
+        "Shampoo, rinse, done."
+      ]
+    },
+    "showerWalkIn": {
+      "lines": [
+        "Like standing in warm rain.",
+        "So much room!",
+        "A rain shower. Lovely.",
+        "I could stay in here all day."
+      ]
+    },
+    "sinkPedestal": {
+      "lines": [
+        "Wash those hands!",
+        "Soap and water.",
+        "Scrub, scrub.",
+        "All clean."
+      ]
+    },
+    "vanityDouble": {
+      "lines": [
+        "Two sinks, no waiting.",
+        "Wash those hands!",
+        "Clean and shiny.",
+        "This side is mine."
+      ]
+    },
+    "laundryWasher": {
+      "lines": [
+        "In goes the laundry.",
+        "Whites and colors apart!",
+        "Spin, spin, spin.",
+        "Where's the other sock?"
+      ]
+    },
+    "laundryDryer": {
+      "lines": [
+        "Warm laundry, fresh from the dryer.",
+        "Fold, fold, stack.",
+        "Ooh, so warm.",
+        "Still missing one sock."
+      ]
+    },
+    "kidsBed": {
+      "interactions": {
+        "sleep": [
+          "Good night! Leave the light on?",
+          "Can I have a story?",
+          "Night, night!",
+          "I'm not even tired. Yawn."
+        ],
+        "nap": [
+          "A little nap.",
+          "Do I have to?",
+          "Just a short one.",
+          "Wake me for snacks."
+        ]
+      }
+    },
+    "toyBox": {
+      "lines": [
+        "What's in the toy box?",
+        "My favorite toy!",
+        "Let's play pretend!",
+        "Vroom, vroom!",
+        "Play with me, {name}!"
+      ],
+      "tone": "happy"
+    },
+    "playMat": {
+      "lines": [
+        "Look how tall my tower is!",
+        "One more block!",
+        "Uh-oh, it fell!",
+        "I'm building a castle.",
+        "Red block, blue block."
+      ],
+      "tone": "happy"
+    },
+    "kidsChalkboard": {
+      "lines": [
+        "Look, I drew a cat!",
+        "A sun and a house.",
+        "Chalk on my hands!",
+        "Guess what this is!",
+        "I'm an artist!"
+      ],
+      "tone": "happy"
+    },
+    "dollHouse": {
+      "lines": [
+        "Time for tea, dolly.",
+        "This is the kitchen.",
+        "The dolls are having a party!",
+        "Night, night, dolly.",
+        "Who lives here? They do!"
+      ]
+    },
+    "rockingHorse": {
+      "lines": [
+        "Giddy up, horsey!",
+        "Faster, faster!",
+        "[Yee-haw](/jˈihˈɔ/)!",
+        "Off to the hills!",
+        "Whoa, horsey!"
+      ],
+      "tone": "happy"
+    },
+    "kidsDesk": {
+      "interactions": {
+        "homework": [
+          "Do I have to?",
+          "Two plus two is four.",
+          "Homework is so boring.",
+          "Almost done!"
+        ],
+        "drawing": {
+          "lines": [
+            "I'm drawing a dragon!",
+            "Look at my picture!",
+            "This one's for you, {name}.",
+            "More colors!"
+          ],
+          "tone": "happy"
+        }
+      }
+    },
+    "teddyBear": {
+      "lines": [
+        "Big teddy hug!",
+        "I love you, teddy.",
+        "Teddy is so soft.",
+        "Teddy, you're my best friend.",
+        "Squeeze!"
+      ],
+      "tone": "happy"
+    },
+    "swingSet": {
+      "lines": [
+        "Push me higher!",
+        "Whee!",
+        "I'm flying!",
+        "Higher, higher!",
+        "Look, no hands! Just kidding."
+      ],
+      "tone": "happy"
+    },
+    "sandbox": {
+      "lines": [
+        "I'm building a sand castle!",
+        "Look at my tower!",
+        "Sand in my shoes.",
+        "Dig, dig, dig!",
+        "A moat for the castle!"
+      ],
+      "tone": "happy"
+    },
+    "deskWriting": {
+      "interactions": {
+        "write": [
+          "Let me write this down.",
+          "Dear diary.",
+          "The words are flowing.",
+          "How do I put this?"
+        ],
+        "homework": [
+          "Okay, homework time.",
+          "Neat handwriting, please.",
+          "Almost done.",
+          "Why is there so much?"
+        ]
+      }
+    },
+    "deskLaptop": {
+      "interactions": {
+        "browse": [
+          "Just checking one thing.",
+          "Ooh, funny video!",
+          "Where did the time go?",
+          "Let me look that up."
+        ],
+        "code": [
+          "Why won't this work?",
+          "One more bug to fix.",
+          "It works! Wait, no.",
+          "Coding is like magic."
+        ],
+        "write": [
+          "Let's write something great.",
+          "Type, type, type.",
+          "Delete, delete, delete.",
+          "Chapter one. Again."
+        ],
+        "homework": [
+          "Homework on the laptop.",
+          "Let me look this up.",
+          "Okay, focus.",
+          "I'll be done soon. Maybe."
+        ]
+      }
+    },
+    "computerGaming": {
+      "interactions": {
+        "game": {
+          "lines": [
+            "Game on!",
+            "Just one more level!",
+            "Boss fight!",
+            "New high score!"
+          ],
+          "tone": "happy"
+        },
+        "code": [
+          "Coding on the gaming computer.",
+          "So fast!",
+          "One more bug.",
+          "It works!"
+        ],
+        "browse": [
+          "Just browsing. On a gaming computer.",
+          "Ooh, a game sale!",
+          "Let me look that up.",
+          "Where did the time go?"
+        ]
+      }
+    },
+    "officeChair": {
+      "lines": [
+        "Spin, spin, spin!",
+        "Nice and comfy.",
+        "Back to work.",
+        "A good chair for thinking."
+      ]
+    },
+    "ukulele": {
+      "interactions": {
+        "strum": {
+          "lines": [
+            "Strum, strum, strum.",
+            "Such a happy little sound.",
+            "Sing along!",
+            "A sunny song."
+          ],
+          "tone": "happy"
+        },
+        "practise": [
+          "C, G, A minor, F.",
+          "My fingers hurt a bit.",
+          "Again, slower.",
+          "Almost got this chord."
+        ]
+      }
+    },
+    "guitarElectric": {
+      "interactions": {
+        "jam": {
+          "lines": [
+            "Let's rock!",
+            "Turn it up!",
+            "Feel that riff!",
+            "Guitar solo!"
+          ],
+          "tone": "happy"
+        },
+        "practise": [
+          "Practice that riff again.",
+          "Slower, then faster.",
+          "My fingers are on fire.",
+          "Almost got it."
+        ]
+      }
+    },
+    "keyboardDigital": {
+      "lines": [
+        "Let me play a tune.",
+        "Do, re, mi...",
+        "Ooh, a drum beat!",
+        "Oops, wrong key.",
+        "This sounds just like a piano."
+      ]
+    },
+    "poolTable": {
+      "interactions": {
+        "pool": [
+          "Eight ball, corner pocket.",
+          "Your shot, {name}.",
+          "Nice and easy.",
+          "Rack them up!"
+        ],
+        "trickShots": [
+          "Watch this!",
+          "Off two walls and in!",
+          "That was all skill.",
+          "Okay, one more try."
+        ]
+      }
+    },
+    "foosball": {
+      "lines": [
+        "Goal!",
+        "Spin, spin, spin!",
+        "You're going down, {name}!",
+        "Defense, defense!",
+        "Quick hands!"
+      ],
+      "tone": "happy"
+    },
+    "dartboard": {
+      "lines": [
+        "Bullseye!",
+        "Aim, and throw.",
+        "Close, so close.",
+        "Steady hand.",
+        "Did that count?"
+      ]
+    },
+    "sewingTable": {
+      "interactions": {
+        "sew": [
+          "Let's make something new.",
+          "Straight lines, slowly.",
+          "Snip, snip, stitch.",
+          "This will be lovely."
+        ],
+        "mend": [
+          "Just a little hole.",
+          "Good as new!",
+          "A patch here, a stitch there.",
+          "Why throw it away?"
+        ]
+      }
+    },
+    "chemistrySet": {
+      "lines": [
+        "Science time!",
+        "Careful, careful...",
+        "Ooh, it's bubbling!",
+        "It turned blue!",
+        "For science!"
+      ],
+      "tone": "happy"
+    },
+    "exerciseBike": {
+      "lines": [
+        "Pedal, pedal, pedal!",
+        "Up the hill!",
+        "Keep going!",
+        "Going nowhere, very fast.",
+        "Feel the burn!"
+      ]
+    },
+    "yogaMat": {
+      "lines": [
+        "Breathe in. Breathe out.",
+        "Downward dog.",
+        "Stretch and hold.",
+        "Find your balance.",
+        "So calm."
+      ]
+    },
+    "dumbbells": {
+      "lines": [
+        "Up, and down.",
+        "Just ten more.",
+        "Getting stronger!",
+        "Look at these arms!",
+        "Heavy, but I've got it."
+      ]
+    },
+    "paintingClassic": {
+      "lines": [
+        "What a painting.",
+        "Look at the light in it.",
+        "So old and beautiful.",
+        "Who painted this?"
+      ]
+    },
+    "canvasAbstract": {
+      "lines": [
+        "What is it?",
+        "I think it's a feeling.",
+        "So many colors.",
+        "I could paint that. Maybe."
+      ]
+    },
+    "grandfatherClock": {
+      "lines": [
+        "Tick, [tock](/tˈɑk/), tick, [tock](/tˈɑk/).",
+        "Time to [wind](/wˈInd/) the clock.",
+        "[Wind](/wˈInd/) it up, nice and slow.",
+        "There. It's on time."
+      ]
+    },
+    "bustMarble": {
+      "lines": [
+        "Who is this?",
+        "So serious.",
+        "What a nose!",
+        "Made of marble. Wow."
+      ]
+    },
+    "hangingPlant": {
+      "lines": [
+        "Up you go, a drink for you.",
+        "Hanging in there?",
+        "Drink up, little plant.",
+        "Careful, don't spill."
+      ]
+    },
+    "fireplace": {
+      "lines": [
+        "So warm and cozy.",
+        "Listen to it crackle.",
+        "Toasty toes.",
+        "Nothing beats a fire.",
+        "Ah, lovely."
+      ]
+    },
+    "grill": {
+      "lines": [
+        "Fire up the grill!",
+        "Something smells good!",
+        "Flip, sizzle, flip.",
+        "Burgers coming up!",
+        "Who wants seconds?"
+      ],
+      "tone": "happy"
+    },
+    "grillStation": {
+      "interactions": {
+        "cook": [
+          "Dinner on the grill.",
+          "Sizzle, sizzle.",
+          "Burgers or sausages?",
+          "Almost done!"
+        ],
+        "feast": {
+          "lines": [
+            "A barbecue feast!",
+            "Everybody, come and eat!",
+            "Grill master, at your service.",
+            "Get the plates ready!"
+          ],
+          "tone": "happy"
+        }
+      }
+    },
+    "firePit": {
+      "lines": [
+        "Gather round the fire.",
+        "So warm out here.",
+        "Look at the sparks.",
+        "Marshmallows, anyone?",
+        "Ah, cozy."
+      ]
+    },
+    "patioSet": {
+      "interactions": {
+        "coffee": [
+          "Coffee in the sun.",
+          "A cup on the patio.",
+          "Ah, fresh air and coffee.",
+          "Lovely morning."
+        ],
+        "sit": [
+          "Sitting in the sun.",
+          "What a nice day.",
+          "Let me soak up the sun.",
+          "Ah, warm."
+        ]
+      }
+    },
+    "picnicTable": {
+      "interactions": {
+        "picnic": {
+          "lines": [
+            "Picnic time!",
+            "Sandwiches in the sun.",
+            "Watch out for ants!",
+            "Pass the lemonade."
+          ],
+          "tone": "happy"
+        },
+        "coffee": [
+          "Coffee at the picnic table.",
+          "Fresh air and a warm cup.",
+          "Ah, lovely.",
+          "Birds singing, coffee in hand."
+        ]
+      }
+    },
+    "gardenChair": {
+      "lines": [
+        "A seat in the garden.",
+        "Listen to the birds.",
+        "Ah, fresh air.",
+        "What a lovely day."
+      ]
+    },
+    "sunLounger": {
+      "interactions": {
+        "sunbathe": [
+          "Sun on my face.",
+          "Don't forget the sunscreen.",
+          "Ah, warm and lazy.",
+          "Wake me if I turn red."
+        ],
+        "doze": [
+          "A doze in the sun.",
+          "So warm, so sleepy.",
+          "Just closing my eyes.",
+          "Mmm, summer."
+        ]
+      }
+    },
+    "hammock": {
+      "interactions": {
+        "swing": [
+          "Swing, swing.",
+          "Back and forth.",
+          "This is the life.",
+          "Rocking in the breeze."
+        ],
+        "doze": [
+          "A nap in the hammock.",
+          "So peaceful out here.",
+          "Just a little doze.",
+          "Sleepy in the shade."
+        ]
+      }
+    },
+    "hotTubCedar": {
+      "lines": [
+        "Hot tub time!",
+        "Ah, bubbles and steam.",
+        "Smells like cedar.",
+        "I'm never getting out.",
+        "So relaxing."
+      ]
+    },
+    "bikeRack": {
+      "lines": [
+        "Time to tune up the bike.",
+        "A little oil on the chain.",
+        "Pump up the tires.",
+        "There. Ready to ride.",
+        "Squeaky brakes. Not anymore."
+      ]
+    },
     "garden.maple": {
       "lines": [
         "Maple leaves. So pretty.",
@@ -1454,6 +2630,420 @@
       "Why do we need to learn this?",
       "Almost finished!",
       "I hope I get a good grade."
+    ],
+    "use": [
+      "Excuse me a moment.",
+      "Be right back!",
+      "Occupied!",
+      "Nature calls."
+    ],
+    "wash": [
+      "Wash those hands!",
+      "Soap and water.",
+      "Scrub, scrub.",
+      "All clean."
+    ],
+    "washUp": [
+      "So many dishes.",
+      "Scrub, rinse, stack.",
+      "Who used every pot?",
+      "Almost done."
+    ],
+    "dishes": [
+      "Load the dishwasher.",
+      "Plates on the bottom.",
+      "Cups on top.",
+      "And start!"
+    ],
+    "shower": [
+      "Time for a shower.",
+      "Ah, nice and warm.",
+      "Shampoo, rinse, repeat.",
+      "Fresh and clean."
+    ],
+    "bath": [
+      "A nice warm bath.",
+      "Bubbles!",
+      "Ah, just right.",
+      "Just a few more minutes."
+    ],
+    "laundry": [
+      "Laundry day.",
+      "Fold, fold, stack.",
+      "Where's the other sock?",
+      "Fresh and clean."
+    ],
+    "outfit": [
+      "What should I wear?",
+      "This one, I think.",
+      "Hmm, or that one?",
+      "Perfect outfit."
+    ],
+    "getReady": [
+      "Let me get ready.",
+      "Hair, done.",
+      "Looking good!",
+      "Almost ready!"
+    ],
+    "speech": [
+      "Ahem. Thank you all for coming.",
+      "Okay, one more time.",
+      "Speak clearly.",
+      "You've got this."
+    ],
+    "cook": [
+      "Time to cook.",
+      "Dinner is coming up.",
+      "Smells good already.",
+      "A pinch of salt..."
+    ],
+    "gourmet": {
+      "lines": [
+        "Something special tonight.",
+        "A real chef never rushes.",
+        "Fresh herbs, please.",
+        "Let it simmer."
+      ],
+      "tone": "happy"
+    },
+    "bake": {
+      "lines": [
+        "Something in the oven!",
+        "Smells so sweet.",
+        "No peeking!",
+        "Is it done yet?"
+      ],
+      "tone": "happy"
+    },
+    "reheat": [
+      "Leftovers, round two.",
+      "Heat it up.",
+      "Is it hot yet?",
+      "Better than new."
+    ],
+    "toast": [
+      "Toast, please.",
+      "Golden brown.",
+      "Butter and jam!",
+      "Pop!"
+    ],
+    "sandwich": [
+      "A quick sandwich.",
+      "Bread, filling, bread.",
+      "Lunch in a minute.",
+      "Extra cheese."
+    ],
+    "smoothie": [
+      "Smoothie time!",
+      "Fruit in, blend!",
+      "Healthy and tasty.",
+      "[Whirr](/wˈɜɹ/)!"
+    ],
+    "breakfast": [
+      "Breakfast time!",
+      "Good morning!",
+      "Cereal and juice.",
+      "Best meal of the day."
+    ],
+    "dinner": [
+      "Dinner time!",
+      "One more helping, please.",
+      "Let's not rush this.",
+      "Delicious."
+    ],
+    "feast": {
+      "lines": [
+        "A feast!",
+        "Everybody, come and eat!",
+        "So much food!",
+        "Grab a plate!"
+      ],
+      "tone": "happy"
+    },
+    "picnic": {
+      "lines": [
+        "Picnic time!",
+        "Food in the fresh air.",
+        "Watch out for ants!",
+        "Pass the sandwiches."
+      ],
+      "tone": "happy"
+    },
+    "espresso": [
+      "A coffee, quick.",
+      "Short and strong.",
+      "Ah, that smell.",
+      "Just what I needed."
+    ],
+    "coffee": [
+      "Coffee time!",
+      "Ah, the first sip.",
+      "A warm cup.",
+      "Just a quick cup."
+    ],
+    "coldDrink": [
+      "Something cold, please.",
+      "Ice cubes!",
+      "Ah, refreshing.",
+      "Nice and chilled."
+    ],
+    "drink": [
+      "A little drink.",
+      "Cheers!",
+      "Ah, refreshing.",
+      "Just what I needed."
+    ],
+    "relax": [
+      "Ah, this is the life.",
+      "Feet up.",
+      "Nothing to do. Perfect.",
+      "So comfy."
+    ],
+    "sunbathe": [
+      "Sun on my face.",
+      "Don't forget sunscreen.",
+      "Warm and lazy.",
+      "Ah, summer."
+    ],
+    "hug": {
+      "lines": [
+        "Big hug!",
+        "So soft.",
+        "Squeeze!",
+        "I love you, teddy."
+      ],
+      "tone": "happy"
+    },
+    "read": [
+      "Just one more page.",
+      "A good book.",
+      "Let me find my place.",
+      "This is getting good."
+    ],
+    "magazine": [
+      "What's in here?",
+      "Flip, flip, flip.",
+      "Ooh, a quiz!",
+      "Just browsing."
+    ],
+    "study": [
+      "Time to study.",
+      "Knowledge is power.",
+      "Let me take notes.",
+      "This is hard, but I've got it."
+    ],
+    "watch": [
+      "What's on?",
+      "Ooh, my show!",
+      "Where's the remote?",
+      "Just one more episode."
+    ],
+    "film": {
+      "lines": [
+        "Movie time!",
+        "Popcorn, anyone?",
+        "Hush, it's starting!",
+        "Lights down."
+      ],
+      "tone": "happy"
+    },
+    "dance": {
+      "lines": [
+        "Let's dance!",
+        "I love this song!",
+        "Look at me go!",
+        "Feel the beat!"
+      ],
+      "tone": "happy"
+    },
+    "write": [
+      "Let me write this down.",
+      "How do I put this?",
+      "Words, words, words.",
+      "There. That sounds right."
+    ],
+    "drawing": {
+      "lines": [
+        "Look at my picture!",
+        "More colors!",
+        "I'm drawing you!",
+        "Ta-da!"
+      ],
+      "tone": "happy"
+    },
+    "draw": {
+      "lines": [
+        "I'm drawing!",
+        "Guess what this is!",
+        "Look, a house!",
+        "Chalk on my hands!"
+      ],
+      "tone": "happy"
+    },
+    "browse": [
+      "Just checking one thing.",
+      "Let me look that up.",
+      "Ooh, funny video!",
+      "Where did the time go?"
+    ],
+    "code": [
+      "Why won't this work?",
+      "One more bug.",
+      "It works!",
+      "Coding is like magic."
+    ],
+    "game": {
+      "lines": [
+        "Game on!",
+        "One more level!",
+        "Boss fight!",
+        "New high score!"
+      ],
+      "tone": "happy"
+    },
+    "play": {
+      "lines": [
+        "Let's play!",
+        "This is so fun!",
+        "One more go!",
+        "Ready? Go!"
+      ],
+      "tone": "happy"
+    },
+    "blocks": {
+      "lines": [
+        "One more block!",
+        "Look how tall!",
+        "Uh-oh, it fell!",
+        "A tower!"
+      ],
+      "tone": "happy"
+    },
+    "dolls": [
+      "Time for tea, dolly.",
+      "This is the kitchen.",
+      "The dolls are having a party!",
+      "Night, night, dolly."
+    ],
+    "ride": {
+      "lines": [
+        "Giddy up!",
+        "Faster, faster!",
+        "[Yee-haw](/jˈihˈɔ/)!",
+        "Whoa, horsey!"
+      ],
+      "tone": "happy"
+    },
+    "sandcastle": {
+      "lines": [
+        "A sand castle!",
+        "Dig, dig, dig!",
+        "Look at my tower!",
+        "Sand everywhere!"
+      ],
+      "tone": "happy"
+    },
+    "strum": {
+      "lines": [
+        "Strum, strum.",
+        "A happy little tune.",
+        "Sing along!",
+        "What a sound."
+      ],
+      "tone": "happy"
+    },
+    "jam": {
+      "lines": [
+        "Let's rock!",
+        "Turn it up!",
+        "Guitar solo!",
+        "Feel that riff!"
+      ],
+      "tone": "happy"
+    },
+    "practise": [
+      "Practice makes perfect.",
+      "Again, slower.",
+      "From the top.",
+      "Almost got it."
+    ],
+    "pool": [
+      "Your shot.",
+      "Corner pocket.",
+      "Nice and easy.",
+      "Rack them up!"
+    ],
+    "trickShots": [
+      "Watch this!",
+      "That was all skill.",
+      "One more try.",
+      "Off the wall and in!"
+    ],
+    "foosball": {
+      "lines": [
+        "Goal!",
+        "Spin, spin!",
+        "Defense!",
+        "Quick hands!"
+      ],
+      "tone": "happy"
+    },
+    "darts": [
+      "Bullseye!",
+      "Aim, and throw.",
+      "So close.",
+      "Steady hand."
+    ],
+    "sew": [
+      "Stitch, stitch.",
+      "Straight lines, slowly.",
+      "Snip, snip.",
+      "This will be lovely."
+    ],
+    "mend": [
+      "Good as new!",
+      "Just a little hole.",
+      "A stitch here.",
+      "Why throw it away?"
+    ],
+    "experiment": {
+      "lines": [
+        "Science time!",
+        "Ooh, it's bubbling!",
+        "Careful, careful...",
+        "For science!"
+      ],
+      "tone": "happy"
+    },
+    "cycle": [
+      "Pedal, pedal!",
+      "Keep going!",
+      "Up the hill!",
+      "Feel the burn!"
+    ],
+    "yoga": [
+      "Breathe in. Breathe out.",
+      "Stretch and hold.",
+      "Find your balance.",
+      "So calm."
+    ],
+    "lift": [
+      "Up, and down.",
+      "Just ten more.",
+      "Getting stronger!",
+      "Heavy!"
+    ],
+    "wind": [
+      "Tick, [tock](/tˈɑk/).",
+      "[Wind](/wˈInd/) it slowly.",
+      "There. On time.",
+      "Good old clock."
+    ],
+    "tuneUp": [
+      "A little oil on the chain.",
+      "Pump up the tires.",
+      "Ready to ride!",
+      "No more squeaks."
     ]
   },
   "action": {
