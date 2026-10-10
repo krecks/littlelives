@@ -2,6 +2,20 @@
 
 All notable changes to Littlelives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
+## Unreleased (0.19.0)
+
+Performance and scale: a faster start, a lighter HUD and a much bigger town.
+
+### Changed
+- **Faster start:** the menu downloads about half as much (12.8 MB instead of 23.7 MB) and the game script is a quarter of the size (1.8 MB instead of 6.6 MB). Textures stay compressed on the graphics card (KTX2), using about a sixth of the memory. Residents' data loads right after the menu appears, and other houses' furniture streams in the background; an item not loaded yet loads as soon as you pick or place it.
+- **A lighter HUD:** about 10 times a second the interface now gets only what changed, instead of the whole game view: under 1 KB per update instead of 20–80 KB, and the cost no longer grows with every pair of residents. Neighbours' details (needs, feelings, plans) arrive while their panel is open.
+- **A bigger town runs faster:** residents only look at what they may use (their home, public places, the lot they're visiting), and lots nobody is looking at are simulated in less detail: their residents take a turn every game minute and catch up. A town of 34 houses with 64 residents simulates about 5× faster; what happens in it stays the same within noise. Saves are unchanged.
+- The performance overlay (F3) shows each thread (main, simulation, voice) and the total.
+
+### Fixed
+- Continue could hang at *Warming up…* on WebGPU.
+- A short stall on WebGL2 when a saved game was revealed.
+
 ## Unreleased (0.18.0)
 
 Generated houses: no two neighbours live in the same house.

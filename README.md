@@ -23,7 +23,10 @@ pnpm dev          # builds the WASM module, then starts Vite on http://localhost
 | `pnpm dev` | Rebuild WASM + dev server |
 | `pnpm build` / `pnpm preview` | Production build / serve it |
 | `pnpm check` | Type-check TypeScript and Svelte |
+| `pnpm lint` | Lint the web code |
 | `pnpm test:sim` | Run the Rust simulation tests |
+| `pnpm assets` | Build or update the compressed asset copies (the build does this too) |
+| `pnpm decoders` | Refresh `public/decoders` after a Babylon upgrade |
 
 **Hosting:** every push to `main` builds the game and publishes it on GitHub Pages (`.github/workflows/pages.yml`). For the fastest snapshot path a server can send `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. The dev and preview servers already do. Without these headers the game still runs, but snapshots are copied instead of shared.
 
@@ -93,7 +96,8 @@ Main thread                                   Sim worker
 - The CPU runs the game; the GPU draws it. The main thread uploads one snapshot per tick and replays recorded GPU commands (WebGPU snapshot rendering).
 - Every object type is one draw call (thin instances); residents are thin instances whose matrix buffer is updated once per frame.
 - No allocations in the frame loop or the sim tick. The snapshot layout is defined once, in Rust.
-- The UI updates at about 10 Hz, never per frame.
+- The UI gets changes only, at about 10 Hz, never the whole view and never per frame.
+- Import Babylon through `web/src/render/babylon/core.ts`, never from the `@babylonjs/core` root (that pulls in the whole engine).
 
 ## Replacing art
 
