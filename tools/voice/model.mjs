@@ -1,5 +1,5 @@
 /**
- * The edits Littlelives makes to the voice model's ONNX graph, KittenTTS nano (used by `fetch.mjs`, which pins the upstream file and the edited result by SHA-256, so every
+ * The edits Idyll Lives makes to the voice model's ONNX graph, KittenTTS nano (used by `fetch.mjs`, which pins the upstream file and the edited result by SHA-256, so every
  * build gets byte-identical files):
  *
  * - a `pitch` input (float, [1]) that multiplies the predicted pitch curve (`/F0_proj/Conv`),
@@ -175,6 +175,7 @@ function intAttr(data, name) {
 
 const PITCH_NODE = '/F0_proj/Conv';
 const P = 2147483647;
+// Names of the added nodes; part of the pinned model, so it keeps the game's old name.
 const K = '/littlelives/noise/';
 
 /** Constants shared by the noise subgraphs. */

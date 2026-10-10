@@ -29,21 +29,8 @@
 
   <section class="panel">
     <header class="brand">
-      <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
-        <defs>
-          <linearGradient id="logo-glow" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#ffe7a8" />
-            <stop offset="0.55" stop-color="#ffc23d" />
-            <stop offset="1" stop-color="#f29a12" />
-          </linearGradient>
-        </defs>
-        <path d="M22 4 C23.6 15 28 19.4 40 21 C28 22.6 23.6 27 22 38 C20.4 27 16 22.6 4 21 C16 19.4 20.4 15 22 4 Z" fill="url(#logo-glow)" />
-        <path d="M38 30 C38.6 34 40 35.4 44 36 C40 36.6 38.6 38 38 42 C37.4 38 36 36.6 32 36 C36 35.4 37.4 34 38 30 Z" fill="#ffd77a" />
-      </svg>
-      <div>
-        <h1>Littlelives</h1>
-        <p>A little life, simulated in your browser.</p>
-      </div>
+      <h1>Idyll Lives</h1>
+      <p>A little life, simulated in your browser.</p>
     </header>
 
     <nav>
@@ -130,17 +117,7 @@
     animation: enter 700ms var(--ease) both;
   }
   .brand {
-    display: flex;
-    align-items: center;
-    gap: 16px;
     padding: 0 6px;
-  }
-  .logo {
-    width: 44px;
-    height: 44px;
-    flex: none;
-    filter: drop-shadow(0 0 14px rgba(255, 190, 80, 0.5)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
-    animation: hover 4.5s ease-in-out infinite;
   }
   h1 {
     margin: 0;
@@ -358,15 +335,9 @@
       transform: translateY(14px);
     }
   }
-  @keyframes hover {
-    50% {
-      transform: translateY(-4px);
-    }
-  }
   @media (prefers-reduced-motion: reduce) {
     .panel,
-    .item,
-    .logo {
+    .item {
       animation: none;
     }
   }

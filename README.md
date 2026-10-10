@@ -1,8 +1,8 @@
-# Littlelives
+# Idyll Lives
 
 A home-building game with a living simulation that runs in the browser: you build and design your home, and its residents live in it on their own while you watch (see "Game direction" in [PLAN.md](PLAN.md)). The game logic is written in Rust and compiled to WebAssembly; rendering runs on the GPU through WebGPU, with a WebGL2 fallback. The interface is Svelte 5 with plain CSS. Desktop only.
 
-**▶ Play it in your browser: https://krecks.github.io/littlelives/** (desktop Chrome, Edge, Brave or Safari; other browsers use the WebGL2 fallback).
+**▶ Play it in your browser: https://krecks.github.io/idyll-lives/** (desktop Chrome, Edge, Brave or Safari; other browsers use the WebGL2 fallback).
 
 See [PLAN.md](PLAN.md) for the research, architecture, milestones and known issues.
 

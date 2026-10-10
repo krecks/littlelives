@@ -65,7 +65,7 @@ export async function deliverReport(payload: DebugPayload): Promise<string> {
     return path;
   }
   const stamp = payload.report.createdAt.replace(/[:.]/g, '-');
-  const name = `littlelives-debug-${stamp}.json`;
+  const name = `idyll-lives-debug-${stamp}.json`;
   const url = URL.createObjectURL(new Blob([JSON.stringify(payload)], { type: 'application/json' }));
   const a = document.createElement('a');
   a.href = url;

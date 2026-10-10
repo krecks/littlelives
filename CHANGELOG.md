@@ -1,10 +1,10 @@
 # Changelog
 
-All notable changes to Littlelives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
+All notable changes to Idyll Lives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
 ## 0.1.0 — 2026-10-10
 
-**Play it in your browser:** https://krecks.github.io/littlelives/
+**Play it in your browser:** https://krecks.github.io/idyll-lives/
 
 The first release: a home-building game with a living simulation, in the browser. You build and furnish a home; its residents live in it on their own while you watch. (Earlier development builds were numbered 0.3–0.20; their notes are in the git history.)
 

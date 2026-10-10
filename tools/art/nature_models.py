@@ -677,7 +677,7 @@ def write_glb(path, prims):
     while len(blob) % 4:
         blob.append(0)
     gltf = {
-        'asset': {'version': '2.0', 'generator': 'littlelives tools/art/nature_models.py'},
+        'asset': {'version': '2.0', 'generator': 'idyll-lives tools/art/nature_models.py'},
         'extensionsUsed': ['EXT_texture_webp'],
         'extensionsRequired': ['EXT_texture_webp'],
         'scene': 0,

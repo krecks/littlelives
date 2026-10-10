@@ -1,4 +1,4 @@
-# Littlelives: Technical Plan
+# Idyll Lives: Technical Plan
 
 *Status: **v0.1.0 (2026-10-10), the first release** (notes in [CHANGELOG.md](CHANGELOG.md)). Version numbers 0.2–0.20 in this plan are the development builds that led up to it; their tags and releases were retired when 0.1.0 shipped. Direction changed on 2026-10-09: see "Game direction" below.*
 
@@ -243,7 +243,7 @@ Performance budget: a sim tick under **1 ms for 8 residents** and under **3 ms f
 ## 7. Repository layout (as built)
 
 ```
-littlelives/
+idyll-lives/
 ├─ crates/
 │  ├─ sim-core/        # pure Rust simulation, no browser deps, native tests
 │  ├─ sim-wasm/        # thin wasm-bindgen layer
@@ -319,7 +319,7 @@ Every release ships with native sim tests (including the town soak), `pnpm check
 | Cross-origin isolation blocks third-party embeds | Self-host all assets; `postMessage` fallback path. |
 | Benchmark bias toward PlayCanvas | M0 bake-off on our own scene decides. |
 | Scope creep (life sims are huge) | Strict releases (section 8). Building and watching come first; direct control stays as it is. |
-| Trademark ✅ | Done: the project is called Littlelives (see "Naming" below). Use only original or licensed art. |
+| Trademark ✅ | Done: the project is called Idyll Lives (see "Naming" below). Use only original or licensed art. |
 
 ---
 
@@ -327,20 +327,25 @@ Every release ships with native sim tests (including the town soak), `pnpm check
 
 1. **Devices:** desktop only.
 2. **Art direction:** modern, minimalist and stylised; all art is replaceable through the manifest.
-3. **Name:** Littlelives (`littlelives` in slugs).
+3. **Name:** Idyll Lives (`idyll-lives` in slugs).
 4. **Licence:** MIT for the code; third-party art keeps its own licence (CC0, see `web/public/assets/CREDITS.md`).
 
 ### Naming
 
 The project was first called `open-sims-wasm`. Before going open source it was renamed to
-**Littlelives** to stay clear of Electronic Arts' trademarks:
+**Littlelives** to stay clear of Electronic Arts' trademarks, and for 0.1.0, the first release,
+to **Idyll Lives** ("idyll" sounds like "idle": lives you leave alone and watch):
 
-- Display text says *Littlelives*; slugs (package name, file names) use `littlelives`.
+- Display text says *Idyll Lives*; slugs (package name, repository, file names) use `idyll-lives`.
+  The game is at https://krecks.github.io/idyll-lives/ (the old `/littlelives/` address is gone).
 - Characters are called **residents** in everything a player or pack author reads.
 - The temporary mood modifiers are called **feelings**. Content packs and saves written with the
   old key names still load (serde aliases in sim-core, `LEGACY_KEYS` in both content mergers).
 - Kept on purpose: the repository folder, the crate names `sim-core` / `sim-wasm` ("sim" for
   simulation), code identifiers such as `sim` and `SimView`, and the browser storage keys
-  (`open-sims-wasm` IndexedDB database, `open-sims-wasm.settings`) so existing saves and
-  settings survive.
+  (`open-sims-wasm` IndexedDB database, `open-sims-wasm.settings`; from the Littlelives days
+  `littlelives.blueprints`, `littlelives.voiceBench`, and the `littlelives-voice-*` and
+  `littlelives-item-pictures-*` caches) so existing saves, settings, blueprints and downloads
+  survive. The voice model's added nodes are named `/littlelives/noise/…` (`tools/voice/model.mjs`):
+  renaming them would change the pinned model.
 - Credits and the README keep a short nominative disclaimer naming EA's trademark.

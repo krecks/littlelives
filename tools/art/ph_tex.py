@@ -1,6 +1,6 @@
 # Download Poly Haven texture maps. usage: python3 -I ph_tex.py <outdir> <res> <maps,comma> <id> [<id>...]
 import json, sys, urllib.request, os
-UA = {'User-Agent': 'littlelives-asset-fetch/1.0'}
+UA = {'User-Agent': 'idyll-lives-asset-fetch/1.0'}
 def get(u): return urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=60).read()
 out, res, maps, ids = sys.argv[1], sys.argv[2], sys.argv[3].split(','), sys.argv[4:]
 for i in ids:

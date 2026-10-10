@@ -34,7 +34,7 @@ def remap_textures(obj, toff):
 
 def main(out, parts):
     os.makedirs(out, exist_ok=True)
-    M = {'asset': {'version': '2.0', 'generator': 'littlelives gltf_compose.py'}, 'scene': 0,
+    M = {'asset': {'version': '2.0', 'generator': 'idyll-lives gltf_compose.py'}, 'scene': 0,
          'scenes': [{'name': 'Scene', 'nodes': []}]}
     keys = ['buffers', 'bufferViews', 'accessors', 'images', 'samplers', 'textures', 'materials', 'meshes', 'nodes']
     for k in keys: M[k] = []

@@ -1,6 +1,6 @@
 # Look
 
-*Design notes for how Littlelives looks. Inspired by classic life-simulation games, described
+*Design notes for how Idyll Lives looks. Inspired by classic life-simulation games, described
 here on our own terms.*
 
 The world has one look: warm, painterly realism with golden-hour light and blue moonlit nights.

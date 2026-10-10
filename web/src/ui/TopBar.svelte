@@ -31,7 +31,7 @@
 
 <header class="bar">
   <div class="glass group">
-    <span class="brand">{game.household || 'Littlelives'}</span>
+    <span class="brand">{game.household || 'Idyll Lives'}</span>
     <div class="segmented">
       <button
         class:active={watchActive}

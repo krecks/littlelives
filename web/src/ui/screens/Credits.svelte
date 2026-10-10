@@ -4,7 +4,7 @@
 </script>
 
 <div class="credits">
-  <p class="lead">Littlelives is a life simulation built for the browser, with performance first.</p>
+  <p class="lead">Idyll Lives is a life simulation built for the browser, with performance first.</p>
   <dl>
     <dt>Simulation</dt>
     <dd>Rust compiled to WebAssembly, running in a Web Worker</dd>
