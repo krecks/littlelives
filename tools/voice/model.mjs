@@ -1,6 +1,7 @@
 /**
- * The edits Littlelives makes to Paradee-8M's ONNX graph (used by `fetch.mjs`, which pins the
- * upstream file and the edited result by SHA-256, so every build gets byte-identical files):
+ * The edits Littlelives makes to the voice models' ONNX graphs, Paradee-8M and KittenTTS nano
+ * (used by `fetch.mjs`, which pins the upstream file and the edited result by SHA-256, so every
+ * build gets byte-identical files):
  *
  * - a `pitch` input (float, [1]) that multiplies the predicted pitch curve (`/F0_proj/Conv`),
  *   so one voice can be made higher or lower per resident;
@@ -15,6 +16,12 @@
  * (no overflow), u = (h + ½) / P. Normal noise uses Box–Muller on two such streams. Measured on
  * 1M values it is as white as a library generator (autocorrelation < 0.004, spectral flatness
  * 0.998). Only ops of the model's own opset (17) are used.
+ * - weight-only int8 (`quantizeWeights`, KittenTTS): the large float weights of convolutions,
+ *   matrix products and LSTMs are stored as int8 with one float scale per output channel and
+ *   turned back into floats by `DequantizeLinear` nodes, so the file is a quarter of the size
+ *   but the arithmetic stays float. (The upstream int8 builds use dynamic quantisation,
+ *   `ConvInteger`/`MatMulInteger`, which runs slower than float in ONNX Runtime Web's WASM build;
+ *   measured in docs/design/voices.md, "Research".)
  *
  * No dependencies: a minimal protobuf reader/writer splices nodes into the graph and copies
  * everything else byte for byte.
@@ -102,7 +109,10 @@ function floatField(no, f) {
 const MODEL_GRAPH = 7;
 const GRAPH = { node: 1, initializer: 5, input: 11 };
 const NODE = { input: 1, output: 2, name: 3, opType: 4, attribute: 5 };
+/** TensorProto fields. */
+const TENSOR = { dims: 1, dataType: 2, name: 8, raw: 9 };
 const FLOAT = 1;
+const INT8 = 3;
 const INT64 = 7;
 
 /** `attrs`: `{ name: { int } | { float } }`. */
@@ -150,6 +160,24 @@ function renameInputs(data, from, to) {
     GRAPH.node,
     concat(parse(data).map((f) => (f.no === NODE.input && text(f.data) === from ? stringField(NODE.input, to) : f.raw))),
   );
+}
+
+/** The node with its output `from` renamed to `to`. */
+function renameOutput(data, from, to) {
+  return bytesField(
+    GRAPH.node,
+    concat(parse(data).map((f) => (f.no === NODE.output && text(f.data) === from ? stringField(NODE.output, to) : f.raw))),
+  );
+}
+
+/** An int attribute of a node (AttributeProto: name 1, i 3), or undefined. */
+function intAttr(data, name) {
+  for (const f of parse(data)) {
+    if (f.no !== NODE.attribute) continue;
+    const a = parse(f.data);
+    if (a.some((x) => x.no === 1 && text(x.data) === name)) return Number(a.find((x) => x.no === 3)?.data ?? 0n);
+  }
+  return undefined;
 }
 
 // ---- the edits --------------------------------------------------------------------------------
@@ -223,8 +251,15 @@ function noiseNodes(kind, input, output) {
   return nodes;
 }
 
-/** Applies the edits to the upstream `paradee_int8.onnx` bytes; returns the edited model. */
-export function editModel(bytes) {
+/**
+ * Applies the edits (pitch input, deterministic noise) to a model's bytes; returns the edited model.
+ *
+ * `splice`: how the pitch curve is scaled. `'inputs'` (Paradee) renames the inputs of the nodes
+ * that read it; `'output'` (KittenTTS, whose decoder reads the curve inside an `If` subgraph)
+ * renames the curve's producer and gives the scaled curve the old name, so every reader, nested
+ * graphs included, gets it.
+ */
+export function editModel(bytes, { splice = 'inputs' } = {}) {
   const model = parse(bytes);
   const graphField = model.find((f) => f.no === MODEL_GRAPH);
   if (!graphField) throw new Error('model: no graph');
@@ -234,6 +269,7 @@ export function editModel(bytes) {
   if (!pitchNode) throw new Error(`model: no ${PITCH_NODE}`);
   const f0 = pitchNode.info.outputs[0];
   const scaled = `${f0}_pitch`;
+  const raw = `${f0}_unscaled`;
   const random = nodes.filter((n) => n.info.opType.startsWith('Random'));
   if (random.length !== 2) throw new Error(`model: expected 2 random nodes, found ${random.length}`);
 
@@ -246,14 +282,123 @@ export function editModel(bytes) {
     const info = nodeInfo(field.data);
     if (info.opType === 'RandomNormalLike' || info.opType === 'RandomUniformLike') {
       out.push(...noiseNodes(info.opType === 'RandomNormalLike' ? 'normal' : 'uniform', info.inputs[0], info.outputs[0]));
-    } else if (info.inputs.includes(f0)) {
+    } else if (splice === 'output' && info.name === PITCH_NODE) {
+      out.push(renameOutput(field.data, f0, raw), node('Mul', [raw, 'pitch'], [f0], '/pitch_scale'));
+      continue;
+    } else if (splice === 'inputs' && info.inputs.includes(f0)) {
       out.push(renameInputs(field.data, f0, scaled));
     } else {
       out.push(field.raw);
     }
-    if (info.name === PITCH_NODE) out.push(node('Mul', [f0, 'pitch'], [scaled], '/pitch_scale'));
+    if (splice === 'inputs' && info.name === PITCH_NODE) out.push(node('Mul', [f0, 'pitch'], [scaled], '/pitch_scale'));
   }
   out.push(...noiseConstants(), floatInput('pitch'));
+  const newGraph = concat(out);
+  return concat(model.map((f) => (f.no === MODEL_GRAPH ? bytesField(MODEL_GRAPH, newGraph) : f.raw)));
+}
+
+// ---- weight-only int8 -------------------------------------------------------------------------
+
+/** Weights smaller than this stay float (biases, norms, small tables): not worth a scale per channel. */
+const MIN_QUANTIZED = 4096;
+
+/** Rounds half to even, like NumPy, so ties don't all go one way. */
+function roundEven(x) {
+  const r = Math.round(x);
+  return Math.abs(x % 1) === 0.5 && r % 2 !== 0 ? r - 1 : r;
+}
+
+function tensorInfo(data) {
+  const t = { dims: [], dataType: 0, name: '', raw: null };
+  for (const f of parse(data)) {
+    if (f.no === TENSOR.dims) {
+      if (f.wire === 0) t.dims.push(Number(f.data));
+      else {
+        // packed
+        for (let pos = 0; pos < f.data.length; ) {
+          const [v, next] = readVarint(f.data, pos);
+          t.dims.push(Number(v));
+          pos = next;
+        }
+      }
+    } else if (f.no === TENSOR.dataType) t.dataType = Number(f.data);
+    else if (f.no === TENSOR.name) t.name = text(f.data);
+    else if (f.no === TENSOR.raw) t.raw = f.data;
+  }
+  return t;
+}
+
+function tensor(name, type, dims, raw) {
+  return bytesField(GRAPH.initializer, concat([...dims.map((d) => intField(TENSOR.dims, d)), intField(TENSOR.dataType, type), stringField(TENSOR.name, name), bytesField(TENSOR.raw, raw)]));
+}
+
+/**
+ * Stores the large float weights of `Conv`, `ConvTranspose`, `MatMul`, `Gemm` and `LSTM` nodes as
+ * int8 with a float scale per output channel (symmetric: scale = max |w| / 127), dequantised by
+ * `DequantizeLinear` nodes placed first in the graph under the weight's own name, so nothing
+ * else changes. Needs opset 13 or later (per-axis `DequantizeLinear`).
+ */
+export function quantizeWeights(bytes) {
+  const model = parse(bytes);
+  const graphField = model.find((f) => f.no === MODEL_GRAPH);
+  if (!graphField) throw new Error('model: no graph');
+  const graph = parse(graphField.data);
+  // Which initializer each node uses as a weight, and along which axis its output channels run.
+  const axes = new Map();
+  const other = new Set();
+  const inits = new Map(graph.filter((f) => f.no === GRAPH.initializer).map((f) => [tensorInfo(f.data).name, f]));
+  for (const f of graph) {
+    if (f.no !== GRAPH.node) continue;
+    const info = nodeInfo(f.data);
+    info.inputs.forEach((input, k) => {
+      if (!inits.has(input)) return;
+      let axis = null;
+      if ((info.opType === 'Conv' || info.opType === 'ConvTranspose') && k === 1) axis = 0;
+      else if (info.opType === 'MatMul' && k === 1) axis = 1;
+      else if (info.opType === 'Gemm' && k === 1) axis = intAttr(f.data, 'transB') ? 0 : 1;
+      else if (info.opType === 'LSTM' && (k === 1 || k === 2)) axis = 1;
+      if (axis === null || (axes.has(input) && axes.get(input) !== axis)) other.add(input);
+      else axes.set(input, axis);
+    });
+  }
+  const dq = [];
+  const replaced = new Map();
+  for (const [name, axis] of axes) {
+    if (other.has(name)) continue;
+    const t = tensorInfo(inits.get(name).data);
+    const count = t.dims.reduce((a, b) => a * b, 1);
+    if (t.dataType !== FLOAT || !t.raw || count < MIN_QUANTIZED || t.dims.length < 2) continue;
+    const w = new Float32Array(t.raw.buffer.slice(t.raw.byteOffset, t.raw.byteOffset + t.raw.byteLength));
+    const channels = t.dims[axis];
+    const inner = t.dims.slice(axis + 1).reduce((a, b) => a * b, 1);
+    const channelOf = (i) => Math.floor(i / inner) % channels;
+    const max = new Float64Array(channels);
+    for (let i = 0; i < count; i++) max[channelOf(i)] = Math.max(max[channelOf(i)], Math.abs(w[i]));
+    const scale = Float32Array.from(max, (m) => (m > 0 ? m / 127 : 1));
+    const q = new Int8Array(count);
+    for (let i = 0; i < count; i++) q[i] = Math.max(-127, Math.min(127, roundEven(w[i] / scale[channelOf(i)])));
+    replaced.set(name, [
+      tensor(`${name}_q8`, INT8, t.dims, new Uint8Array(q.buffer)),
+      tensor(`${name}_s8`, FLOAT, [channels], new Uint8Array(scale.buffer)),
+    ]);
+    dq.push(node('DequantizeLinear', [`${name}_q8`, `${name}_s8`], [name], `${name}_dq`, { axis: { int: axis } }));
+  }
+  const out = [];
+  let placed = false;
+  for (const f of graph) {
+    if (f.no === GRAPH.node && !placed) {
+      out.push(...dq);
+      placed = true;
+    }
+    if (f.no === GRAPH.initializer) {
+      const r = replaced.get(tensorInfo(f.data).name);
+      if (r) {
+        out.push(...r);
+        continue;
+      }
+    }
+    out.push(f.raw);
+  }
   const newGraph = concat(out);
   return concat(model.map((f) => (f.no === MODEL_GRAPH ? bytesField(MODEL_GRAPH, newGraph) : f.raw)));
 }

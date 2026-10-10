@@ -1,12 +1,15 @@
 //! Resident voices (see `docs/design/voices.md`).
 //!
 //! Text goes through [`G2p`] (English to Misaki phonemes, a port of the rules of Misaki, the
-//! phonemizer Kokoro and Paradee were trained with, without espeak-ng) and then through
-//! [`Tokenizer`] (phonemes to Paradee-8M's input ids). The model runs in the browser with ONNX
-//! Runtime Web; its output is resampled for the voice's size ([`resample`]). Nothing here
-//! touches the simulation.
+//! phonemizer Kokoro and Paradee were trained with, without espeak-ng) and then through a
+//! model's tokenizer: [`Tokenizer`] for Paradee-8M (Misaki phonemes as they are), or
+//! [`KittenTokenizer`] for KittenTTS nano (the phonemes turned into espeak-style IPA by
+//! [`misaki_to_espeak`]). The models run in the browser with ONNX Runtime Web; their output is
+//! trimmed (KittenTTS) and resampled for the voice's size ([`resample`]). Nothing here touches
+//! the simulation.
 
 mod g2p;
+mod kitten;
 mod lexicon;
 mod numbers;
 mod resample;
@@ -14,6 +17,7 @@ mod rules;
 mod tokens;
 
 pub use g2p::G2p;
+pub use kitten::{KittenTokenizer, STYLE_ROWS, misaki_to_espeak, style_row};
 pub use lexicon::Lexicon;
 pub use resample::resample;
 pub use tokens::{SAMPLE_RATE, Tokenizer};
@@ -44,39 +48,59 @@ impl VoiceParams {
 }
 
 /// What the model is run with for one line: `input_ids`, `speed` and `pitch` (already divided by
-/// the depth, see [`resample`]), and the depth to resample its output with.
+/// the depth, see [`resample`]), the style row (KittenTTS), and what to do with its output.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ModelInputs {
-    /// Phoneme ids with a pad at each end; empty when there is nothing to say.
+    /// Phoneme ids with the model's ends; empty when there is nothing to say.
     pub ids: Vec<i64>,
     /// The model's `speed` and `pitch` inputs.
     pub speed: f32,
     pub pitch: f32,
     /// Resample the model's output with this (1: leave it as it is).
     pub depth: f32,
+    /// KittenTTS: which row of a voice's style table to use (0 for Paradee).
+    pub row: usize,
+    /// KittenTTS: drop the output's noisy tail and the silence around the speech.
+    pub trim: bool,
 }
 
 impl ModelInputs {
     fn new(ids: Vec<i64>, voice: VoiceParams) -> Self {
         let v = voice.clamped();
-        ModelInputs { ids, speed: (v.speed / v.depth).clamp(0.5, 2.0), pitch: (v.pitch / v.depth).clamp(0.4, 2.0), depth: v.depth }
+        ModelInputs {
+            ids,
+            speed: (v.speed / v.depth).clamp(0.5, 2.0),
+            pitch: (v.pitch / v.depth).clamp(0.4, 2.0),
+            depth: v.depth,
+            row: 0,
+            trim: false,
+        }
     }
 
-    /// The model's output turned into the voice's size.
+    /// The model's output, trimmed if asked, turned into the voice's size.
     pub fn finish(&self, samples: &[f32]) -> Vec<f32> {
-        resample(samples, self.depth)
+        resample(if self.trim { kitten::trim(samples) } else { samples }, self.depth)
     }
 }
 
-/// Phonemizer and tokenizer together: `inputs` turns a line of English into the model's inputs.
+/// Phonemizer and tokenizers together: `inputs` turns a line of English into Paradee's inputs,
+/// `kitten_inputs` into KittenTTS's.
 pub struct Engine {
     g2p: G2p,
     tokenizer: Tokenizer,
+    kitten: KittenTokenizer,
 }
 
 impl Engine {
     pub fn new(g2p: G2p, tokenizer: Tokenizer) -> Self {
-        Engine { g2p, tokenizer }
+        Engine { g2p, tokenizer, kitten: KittenTokenizer::new() }
+    }
+
+    /// KittenTTS's inputs for a line: ids from the phonemes as espeak-style IPA, the style row
+    /// from the text's length, and its output trimmed.
+    pub fn kitten_inputs(&self, text: &str, voice: VoiceParams) -> ModelInputs {
+        let ipa = misaki_to_espeak(&self.g2p.phonemize(text));
+        ModelInputs { row: style_row(text), trim: true, ..ModelInputs::new(self.kitten.ids(&ipa), voice) }
     }
 
     pub fn phonemize(&self, text: &str) -> String {
