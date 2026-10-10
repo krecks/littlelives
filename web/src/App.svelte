@@ -196,7 +196,7 @@
 {/if}
 
 {#if app.overlay}
-  <Modal title={titles[app.overlay]} width={app.overlay === 'credits' ? 520 : 680} onclose={() => (app.overlay = null)}>
+  <Modal title={titles[app.overlay]} width={app.overlay === 'credits' ? 520 : app.overlay === 'settings' ? 880 : 680} onclose={() => (app.overlay = null)}>
     {#if app.overlay === 'settings'}<SettingsPanel />{:else if app.overlay === 'load'}<LoadGame />{:else}<Credits />{/if}
   </Modal>
 {/if}

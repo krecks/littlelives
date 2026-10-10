@@ -20,21 +20,26 @@ import { settings as liveSettings, type Settings } from '../settings/settings.sv
 import { services, type GameControls } from '../ui/services';
 import { game, nextWallMode, toast } from '../ui/state.svelte';
 import { saveDebugReport } from '../ui/debugReport';
+import { ideaToasts } from '../ui/planner/ideaToasts';
 import { aboutUs } from '../ui/story';
 import { BubbleLayer } from './bubbles';
 import { RoomOverlay } from './roomOverlay';
 import { VoiceDirector } from '../voice';
+import { WorldSound } from '../audio/world';
+import { addBlueprint, blueprints } from '../persistence/blueprints.svelte';
 import { Director } from './director';
 import { BuildBuyInput, editFeedback, type Picked } from './buildmode';
 import { styledModel } from '../ui/buy/catalog';
 import { play } from '../ui/sfx';
 import { greyed, householdBonds, householdSpawns, lookFromSeed, lookOfStage, palette, type HouseholdDraft } from './household';
 import { PointerInput } from './input';
-import { assembleTown, loadTemplates, type NeighbourhoodDraft } from './town';
+import { assembleTown, loadTemplates, useTownContent, type NeighbourhoodDraft } from './town';
 
 /** Click radius (CSS px) around a Sim's projected centre. */
 const SIM_PICK_RADIUS = 32;
 const STATS_INTERVAL_MS = 500;
+/** After the player picks a storey, the view stays on it this long before following residents again. */
+const STOREY_STAY_MS = 8000;
 const THUMBNAIL = { width: 320, height: 200 };
 
 export type StartRequest =
@@ -101,6 +106,7 @@ export function loadGameData(): Promise<{ content: Content; assets: AssetRegistr
   ]).then(([content, assets]) => {
     services.content = content;
     services.assets = assets;
+    useTownContent(content);
     services.previews = createSimPreviews({ assets, emotions: content.emotions.map((e) => e.id), backend: () => liveSettings.renderer });
     services.items = createItemPreviews(assets);
     return { content, assets };
@@ -163,8 +169,34 @@ export async function startSession(
   const roomOverlay = new RoomOverlay(overlay, renderer, content);
   /** Build mode's room scores, at home, when asked for. */
   const roomOverlayOn = () => game.mode === 'build' && game.roomScores && world !== null && worldView === homePlot();
-  const refreshRoomOverlay = () => roomOverlay.set(roomOverlayOn() ? world : null, game.rooms);
+  const refreshRoomOverlay = () => roomOverlay.set(roomOverlayOn() ? world : null, game.rooms, game.storey);
+  /** When the player last chose a storey (the view then stays there a while rather than following residents). */
+  let storeyChosenAt = -Infinity;
+  let storeyCheckAt = 0;
+  /** The storey in view follows the resident looked at as they go up or down the stairs. */
+  const followStorey = (now: number) => {
+    if (now < storeyCheckAt || game.storeys < 2 || game.mode !== 'live' || now - storeyChosenAt < STOREY_STAY_MS) return;
+    storeyCheckAt = now + 250;
+    const id = game.inspected ?? game.selected;
+    const snap = bridge.latest();
+    const { layout } = bridge;
+    if (id === null || layout.sim.height === undefined || id >= snap[layout.header.simCount]) return;
+    const o = layout.headerLen + id * layout.simStride;
+    if (snap[o + layout.sim.away] > 0 || game.sims.find((s) => s.id === id)?.plot !== viewPlot) return;
+    const storey = Math.floor(snap[o + layout.sim.height] + 0.01);
+    if (storey !== game.storey) setStorey(storey);
+  };
+  function setStorey(storey: number): void {
+    const k = Math.max(0, Math.min(game.storeys - 1, storey));
+    if (k === game.storey) return;
+    game.storey = k;
+    renderer.setStorey(k);
+    // The grid and previews move to the storey's rows.
+    buildBuy.modeChanged();
+    refreshRoomOverlay();
+  }
   const voices = new VoiceDirector(content, renderer);
+  const worldSound = new WorldSound(renderer);
   const buildBuy = new BuildBuyInput(renderer, content, assets, (command) => bridge.send(command));
   game.catalog = bridge.catalog;
   /** Sims the player controls. */
@@ -347,6 +379,9 @@ export async function startSession(
     },
     removeGoal(sim, index) {
       bridge.send({ type: 'removeGoal', sim, index });
+    },
+    moveGoal(sim, index, to) {
+      bridge.send({ type: 'moveGoal', sim, index, to });
     },
     acceptSuggestion(sim, index) {
       bridge.send({ type: 'acceptSuggestion', sim, index });
@@ -536,6 +571,23 @@ export async function startSession(
     setRoof(style, color) {
       bridge.send({ type: 'setRoof', household: game.home, style, color });
     },
+    setStorey(storey) {
+      storeyChosenAt = performance.now();
+      setStorey(storey);
+    },
+    async saveBlueprint(name) {
+      try {
+        const [data, thumbnail] = await Promise.all([bridge.requestBlueprint(game.home), renderer.captureThumbnail(THUMBNAIL.width, THUMBNAIL.height)]);
+        if (addBlueprint(name, data, thumbnail)) toast(`Saved “${name}” as a blueprint`);
+        else toast('There is no room left in this browser for another blueprint');
+      } catch (err) {
+        toast(err instanceof Error ? err.message : String(err));
+      }
+    },
+    buildBlueprint(id) {
+      const saved = blueprints.list.find((b) => b.id === id);
+      if (saved) bridge.send({ type: 'buildBlueprint', household: game.home, blueprint: JSON.parse(saved.data) as unknown });
+    },
     setBuildTool(tool) {
       controls.setMode('build');
       game.buildTool = tool;
@@ -608,6 +660,8 @@ export async function startSession(
   game.sharedMemory = bridge.sharedMemory;
   game.household = household;
 
+  // Goal ideas and wishes as they come up, to accept or decline.
+  const ideas = ideaToasts();
   bridge.onError((message) => {
     if (disposed) return;
     toast(message);
@@ -624,6 +678,7 @@ export async function startSession(
     game.playerMoves = ui.playerMoves ?? true;
     game.sims = ui.sims;
     game.weekday = ui.weekday;
+    ideas.update(ui.sims);
     const mine = ui.households.find((h) => game.households[h.id]?.player);
     game.funds = mine?.funds ?? 0;
     game.rent = mine?.rent ?? null;
@@ -682,6 +737,8 @@ export async function startSession(
     }
     world = w;
     worldView = viewPlot;
+    game.storeys = w.storeys ?? 1;
+    if (game.storey >= game.storeys) setStorey(game.storeys - 1);
     buildBuy.setStructure(w);
     refreshRoomOverlay();
     const mine = w.households.find((h) => h.player);
@@ -775,6 +832,7 @@ export async function startSession(
   const inLot = (x: number, z: number) => !!world && x >= 0 && z >= 0 && x < world.width && z < world.depth;
 
   const screen = { x: 0, y: 0 };
+  const head = { x: 0, y: 0, z: 0 };
   /** Nearest Sim whose projected body centre is within the pick radius. */
   const simAt = (px: number, py: number): number | null => {
     const snap = bridge.latest();
@@ -783,7 +841,8 @@ export async function startSession(
     let bestDist = SIM_PICK_RADIUS;
     for (let i = 0; i < snap[layout.header.simCount]; i++) {
       const o = layout.headerLen + i * layout.simStride;
-      const dist = renderer.project(snap[o + layout.sim.x], 0.9, snap[o + layout.sim.z], screen)
+      // Where the body is drawn (on its storey; residents not drawn can't be clicked).
+      const dist = renderer.simHead(i, head) && renderer.project(head.x, head.y - 0.8, head.z, screen)
         ? Math.hypot(screen.x - px, screen.y - py)
         : Infinity;
       if (dist < bestDist) {
@@ -831,9 +890,15 @@ export async function startSession(
       const sim = simAt(x, y);
       if (sim !== null && actor !== null && sim !== actor) {
         game.socialMenu = { target: sim, x, y, options: null };
-        bridge.requestSocialOptions(actor, sim).then((options) => {
-          if (game.socialMenu?.target === sim) game.socialMenu = { ...game.socialMenu, options };
-        });
+        bridge.requestSocialOptions(actor, sim).then(
+          (options) => {
+            if (game.socialMenu?.target === sim) game.socialMenu = { ...game.socialMenu, options };
+          },
+          (err) => {
+            console.warn('[social] options failed', err);
+            if (game.socialMenu?.target === sim) game.socialMenu = null;
+          },
+        );
         return;
       }
       if (sim !== null) {
@@ -926,6 +991,10 @@ export async function startSession(
       case '4':
       case '5':
         return controls.setSpeed(Number(e.key));
+      case 'PageUp':
+      case 'PageDown':
+        e.preventDefault();
+        return controls.setStorey(game.storey + (e.key === 'PageUp' ? 1 : -1));
       case 'f':
       case 'F':
         if (game.mode !== 'live') return;
@@ -1016,6 +1085,8 @@ export async function startSession(
     if (!revealed) return;
     bubbles.update(frame);
     voices.update(frame);
+    worldSound.update(frame);
+    followStorey(now);
     if (roomOverlayOn()) roomOverlay.update();
     if (game.watching) {
       // Menus and other modes end watching (opening them is input, but not all of it is ours).
@@ -1086,8 +1157,6 @@ export async function startSession(
     },
     applySettings(s) {
       renderer.configure({
-        bloom: s.bloom,
-        tiltShift: s.tiltShift,
         resolutionScale: s.resolutionScale,
         cameraSensitivity: s.cameraSensitivity,
         visualStyle: s.visualStyle,
@@ -1118,6 +1187,7 @@ export async function startSession(
     },
     async dispose() {
       disposed = true;
+      ideas.clear();
       clearInterval(statsTimer);
       clearInterval(autosaveTimer);
       window.removeEventListener('keydown', onKey);
@@ -1133,6 +1203,7 @@ export async function startSession(
       bubbles.dispose();
       roomOverlay.dispose();
       voices.dispose();
+      worldSound.dispose();
       buildBuy.dispose();
       await building;
       renderer.clear();

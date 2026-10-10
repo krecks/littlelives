@@ -13,6 +13,7 @@
    * `id` is the Sim's id in a running game (older saves derive clothes from it).
    * `animate` is accepted for compatibility and ignored.
    */
+  // eslint-disable-next-line svelte/no-unused-props -- `animate` is kept for compatibility
   let {
     appearance,
     gender,

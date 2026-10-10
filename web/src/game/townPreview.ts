@@ -21,7 +21,9 @@ export function previewWorld(content: Content, t: Templates, town: Neighbourhood
   // Wall edges, as sim-core stores them: `h` (x, z) runs to (x + 1, z), `v` (x, z) to (x, z + 1).
   const h = new Uint8Array(W * (D + 1)); // 0 open, 1 wall, 2 door, 3 window
   const v = new Uint8Array((W + 1) * D);
+  // The town from the street: ground storeys only (houses that are taller say so in `plots`).
   for (const [x0, z0, x1, z1] of layout.walls) {
+    if (Math.max(z0, z1) > D) continue;
     if (z0 === z1) for (let x = Math.min(x0, x1); x < Math.max(x0, x1); x++) h[z0 * W + x] = 1;
     else for (let z = Math.min(z0, z1); z < Math.max(z0, z1); z++) v[z * (W + 1) + x0] = 1;
   }
@@ -30,6 +32,7 @@ export function previewWorld(content: Content, t: Templates, town: Neighbourhood
     [layout.windows, 3],
   ] as const) {
     for (const d of list) {
+      if (d.z >= D) continue;
       if (d.axis === 'x' && h[d.z * W + d.x]) h[d.z * W + d.x] = kind;
       if (d.axis === 'z' && v[d.z * (W + 1) + d.x]) v[d.z * (W + 1) + d.x] = kind;
     }
@@ -81,10 +84,10 @@ export function previewWorld(content: Content, t: Templates, town: Neighbourhood
     };
     for (let z = p.z; z <= Math.min(p.z + p.d, D); z++) for (let x = p.x; x < Math.min(p.x + p.w, W); x++) if (h[z * W + x]) grow(x, z, x + 1, z);
     for (let z = p.z; z < Math.min(p.z + p.d, D); z++) for (let x = p.x; x <= Math.min(p.x + p.w, W); x++) if (v[z * (W + 1) + x]) grow(x, z, x, z + 1);
-    return { id, name: p.name, x: p.x, z: p.z, w: p.w, d: p.d, public: p.public, entry: p.entry, house: box };
+    return { id, name: p.name, x: p.x, z: p.z, w: p.w, d: p.d, public: p.public, entry: p.entry, house: box, storeys: p.storeys };
   });
 
-  const objects: ObjectPlacement[] = layout.objects.map((o, id) => {
+  const objects: ObjectPlacement[] = layout.objects.filter((o) => o.z < D).map((o, id) => {
     const [fw, fd] = content.object(o.def)?.footprint ?? [1, 1];
     const [w, d] = o.rot % 2 === 0 ? [fw, fd] : [fd, fw];
     return { id, def: o.def, x: o.x, z: o.z, rot: o.rot, w, d, quality: 0, style: 0, sellValue: null };

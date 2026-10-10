@@ -21,7 +21,7 @@
 import { Color3, Constants, DynamicTexture, Matrix, Quaternion, StandardMaterial, Vector3, type Material, type Mesh, type Scene } from '@babylonjs/core';
 import type { AssetRegistry } from '../../assets/registry';
 import type { ModelEntry } from '../../assets/types';
-import type { PlotInfo, WorldStructure } from '../../core/protocol';
+import { groundDepth, type PlotInfo, type WorldStructure } from '../../core/protocol';
 import type { ViewRect } from '../types';
 import { Geo, type V3 } from './geometry';
 import type { HouseBuilder, SilhouetteSpec } from './house';
@@ -482,9 +482,9 @@ export class Street {
     const specs: SilhouetteSpec[] = [];
     for (const L of plots) {
       if (L.kind !== 'house' || !L.house) continue;
-      specs.push({ ...L.house, front: L.front, door: L.door, garage: this.garage(L, blocked), roof: L.plot.roof });
+      specs.push({ ...L.house, front: L.front, door: L.door, garage: this.garage(L, blocked), roof: L.plot.roof, storeys: L.plot.storeys });
     }
-    const sil = this.house.silhouettes(specs, world.openings ?? []);
+    const sil = this.house.silhouettes(specs, world.openings ?? [], (world.storeys ?? 1) > 1 ? groundDepth(world) : 0);
     if (this.layerMask !== undefined) for (const mesh of sil.meshes) mesh.layerMask = this.layerMask;
     this.meshes.push(...sil.meshes);
     this.casters.push(...sil.casters);
@@ -723,7 +723,7 @@ export class Street {
     if (Math.abs(lamps - this.lamps) < 1e-3) return;
     this.lamps = lamps;
     const g = Math.min(1, Math.max(0, (lamps - 0.3) / 0.45));
-    // Pale glass by day, a warm glow strong enough to bloom at night.
+    // Pale glass by day, a warm glow at night.
     this.glowMat.emissiveColor.set(0.62 + g * 1.7, 0.62 + g * 0.95, 0.58 + g * 0.2);
     this.poolMat.emissiveColor.set(0.62 * g, 0.46 * g, 0.26 * g);
   }

@@ -6,6 +6,8 @@
 
 import type { Content } from '../../content/content';
 import type { HomeWish } from '../../core/protocol';
+import { services } from '../services';
+import { game } from '../state.svelte';
 
 export type WishAction =
   | { kind: 'catalog'; label: string; defs: ReadonlySet<string> }
@@ -51,5 +53,29 @@ export function describeHomeWish(content: Content, w: HomeWish): WishInfo {
       if (!tags.length) return { key, text: `A ${room} that's for something`, icon, action: { kind: 'build' } };
       return { key, text: `Everything a ${room} needs`, icon, action: { kind: 'catalog', label: `For the ${room}`, defs: shop((d) => content.offersTags(d, tags)) } };
     }
+  }
+}
+
+/** The broken thing a fix wish is about, at home. */
+export function brokenAtHome(def: string) {
+  const plot = game.households[game.home]?.plot;
+  const home = plot == null ? null : game.plots[plot];
+  if (!home) return undefined;
+  return game.objects.find(
+    (o) => o.def === def && (o.wear ?? 0) >= 1 && o.x >= home.x && o.z >= home.z && o.x < home.x + home.w && o.z < home.z + home.d,
+  );
+}
+
+/** Does what a home wish asks for (`name`: whose wish, for the catalog's title). */
+export function actOnWish(w: WishInfo, name: string): void {
+  const a = w.action;
+  if (!a) return;
+  if (a.kind === 'catalog') services.controls.openCatalog({ label: `For ${name}: ${a.label}`, defs: a.defs });
+  else if (a.kind === 'build') {
+    game.plannerOpen = false;
+    services.controls.setMode('build');
+  } else {
+    const o = brokenAtHome(a.def);
+    if (o) services.controls.repair(o.id);
   }
 }

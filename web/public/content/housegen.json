@@ -1,0 +1,122 @@
+{
+  "$comment": "Generated houses (web/src/game/housegen.ts). Every neighbour's home is laid out from this file: a house class is picked by lot size, then its rooms are arranged, connected by doors, given windows and furnished. Every home gets at least one bedroom, a kitchen and a bathroom. Change the numbers to change the town; object ids are content object ids (base.json and packs). Sizes are in tiles (1 m).",
+
+  "classes": {
+    "cottage": {
+      "label": "cottage",
+      "bedrooms": [1, 1],
+      "living": 0.35,
+      "extraBathroom": 0,
+      "storeys": { "one": 1, "two": 0 },
+      "width": [8, 11],
+      "depth": [7, 9]
+    },
+    "bungalow": {
+      "label": "bungalow",
+      "bedrooms": [1, 2],
+      "living": 0.85,
+      "extraBathroom": 0,
+      "storeys": { "one": 1, "two": 0 },
+      "width": [11, 15],
+      "depth": [8, 11]
+    },
+    "townhouse": {
+      "label": "town house",
+      "bedrooms": [2, 3],
+      "living": 1,
+      "extraBathroom": 0.3,
+      "storeys": { "one": 0, "two": 1 },
+      "width": [9, 12],
+      "depth": [10, 13]
+    },
+    "family": {
+      "label": "family house",
+      "bedrooms": [2, 3],
+      "living": 1,
+      "extraBathroom": 0.4,
+      "storeys": { "one": 0.5, "two": 0.5 },
+      "width": [13, 17],
+      "depth": [10, 13]
+    },
+    "villa": {
+      "label": "villa",
+      "bedrooms": [3, 4],
+      "living": 1,
+      "extraBathroom": 0.7,
+      "storeys": { "one": 0.25, "two": 0.75 },
+      "width": [16, 22],
+      "depth": [11, 14]
+    }
+  },
+
+  "$lots": "Which classes a lot of each size gets, with weights.",
+  "lots": {
+    "small": { "cottage": 3, "bungalow": 2, "townhouse": 2 },
+    "medium": { "cottage": 1, "bungalow": 3, "townhouse": 2, "family": 3 },
+    "large": { "bungalow": 1, "family": 3, "villa": 3 }
+  },
+
+  "$margins": "Garden around the house: in front (towards the street, a range), at the back and at the sides (at least).",
+  "margins": { "front": [3, 5], "back": 2, "side": 1 },
+
+  "$rooms": "weight: share of the floor a room wants; minSide: its narrowest width. Furniture is placed against the walls in this order: `one` picks one of the ids, `chance` (default 1) whether it comes at all, `count` how many, `opposite` puts it across the room from another (a TV facing the sofa).",
+  "rooms": {
+    "bedroom": {
+      "weight": 3,
+      "minSide": 3,
+      "furniture": [
+        { "one": ["bed"] },
+        { "one": ["mirror", "lamp", "plant"], "chance": 0.7 },
+        { "one": ["bookshelf", "armchair", "lamp"], "chance": 0.4 }
+      ]
+    },
+    "kitchen": {
+      "weight": 3,
+      "minSide": 3,
+      "furniture": [
+        { "one": ["fridge"] },
+        { "one": ["sink"] },
+        { "one": ["diningTable"], "chance": 0.85 },
+        { "one": ["plant", "lamp"], "chance": 0.4 }
+      ]
+    },
+    "bathroom": {
+      "weight": 1.6,
+      "minSide": 2,
+      "furniture": [
+        { "one": ["toilet"] },
+        { "one": ["shower"] },
+        { "one": ["sink"] },
+        { "one": ["plant", "mirror"], "chance": 0.3 }
+      ]
+    },
+    "living": {
+      "weight": 4.5,
+      "minSide": 3,
+      "furniture": [
+        { "one": ["sofa"] },
+        { "one": ["tv"], "opposite": "sofa" },
+        { "one": ["armchair"], "chance": 0.7 },
+        { "one": ["bookshelf", "chessTable", "piano", "computerDesk"], "chance": 0.6 },
+        { "one": ["plant", "lamp"], "count": [1, 2] }
+      ]
+    }
+  },
+
+  "$openPlan": "Chance that the kitchen and living room share one open space (no wall between them).",
+  "openPlan": 0.25,
+
+  "$windows": "One window every so many tiles of outside wall (a range); bathrooms get one.",
+  "windows": { "spacing": [2, 3] },
+
+  "stairs": "stairs",
+
+  "$garden": "A few things outside the house.",
+  "garden": { "objects": ["plant", "flowerbed", "bush", "tree", "pine", "bench"], "count": [0, 3] },
+
+  "$names": "House names: one word from each list.",
+  "names": {
+    "first": ["Birch", "Linden", "Rowan", "Hazel", "Juniper", "Alder", "Clover", "Meadow", "Brook", "Ivy", "Heather", "Holly", "Elder", "Laurel", "Briar", "Fern", "Sorrel", "Thistle"],
+    "second": { "cottage": ["Cottage", "Nook", "Lodge"], "bungalow": ["Bungalow", "Cottage", "House"], "town house": ["House", "Terrace", "Place"], "family house": ["House", "Farmhouse", "Manor"], "villa": ["Villa", "Hall", "Manor"] }
+  }
+}

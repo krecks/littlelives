@@ -2,6 +2,63 @@
 
 All notable changes to Littlelives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
+## Unreleased (0.18.0)
+
+Generated houses: no two neighbours live in the same house.
+
+### New
+- **Every neighbour's house is generated:** cottages, bungalows, town houses, family houses and villas, picked by lot size. Every home has at least a bedroom, a kitchen and a bathroom; bigger ones a living room (sometimes open to the kitchen), more bedrooms and a second bathroom. Rooms, doors, windows and furniture are arranged differently each time, and each house gets a name and a description (*Alder Place: a two-storey town house with two bedrooms, a living room and two bathrooms*).
+- **One or two storeys:** two-storey houses have stairs in the living room and the bedrooms and a bathroom upstairs; from the street they stand taller.
+- **Make it your own:** `content/housegen.json` sets the house classes (bedrooms, sizes, how often there's a living room, a second bathroom or a second storey), which lot sizes get which, room sizes, the furniture each room gets, how often kitchens are open-plan, windows, garden things and house names.
+
+## Unreleased (0.17.0)
+
+Storeys: houses grow upwards.
+
+### New
+- **Upstairs:** build walls, doors, windows and floors on the storey above (up to three storeys); a room upstairs needs a room under it. *Page Up / Page Down*, or the arrows in the top bar, switch the storey in view; the ones above it are hidden, and Build and Buy work on it.
+- **Stairs:** *Buy → Living → Staircase* (1 × 4 m). Residents climb it step by step to use what's upstairs; the view follows the resident you're looking at up and down.
+- Roofs cover the top of each part of the house (no roof under a room upstairs); the stairwell is open to the floor below.
+- Blueprints keep every storey, and moving a room keeps it on its own storey.
+
+### Changed
+- Saves are now version 17 (storeys); older saves load as before and get the storeys above.
+
+## Unreleased (0.16.0)
+
+Bigger homes I: lots of different sizes, blueprints, and rooms that move.
+
+### New
+- **Lot sizes:** towns mix small (20 × 18 m), medium (26 × 22 m) and large (34 × 26 m) lots. Choosing a home, *Lot size* makes the lot you picked smaller or bigger (the street makes room); the card shows its size and weekly rent, which grows with the lot. A small lot only takes a house that fits on it.
+- **Blueprints:** *Build → Blueprints → Save this house* keeps your home (walls, doors, windows, fences, wall coverings, floors, the roof and the furniture) in this browser, with a picture, for any game. *Build here* builds a blueprint on your empty lot all at once, turned to face the street and centred on the lot, paid like building and buying it piece by piece (free in Creative). One undo takes it all back; without the money, nothing is built and you're told what it costs.
+- **Move a room:** *Build → Move*: drag a room and let go. Its walls, doors, windows, floor and everything in it come along; walls it shares with another room stay for that room. The preview turns red where it can't go (off the lot, onto another room); furniture that wouldn't fit, or anyone who'd be shut in, stops the move. Free, and undone like any edit.
+
+## Unreleased (0.15.0)
+
+Visitors and sound: neighbours knock, and the world can be heard.
+
+### New
+- **Visitors knock:** a visitor walks up to the front door and knocks. The grown-up at home nearest the door stops what they're doing and answers: friends and acquaintances are let in and greeted with a chat; someone the host can't stand, or anyone at an unreasonable hour, is turned away (and feels it for a while). With nobody to answer (everyone out or asleep), the visitor waits a little and goes home. Both land in the journal.
+- **Sounds of the world:** a soft outdoor hum, birds by day (a dawn chorus in the early morning) and crickets at night, following the game clock; on the lot you're looking at, a pan sizzles, water runs, the TV murmurs and music plays where residents are doing those things, from where they are on screen; and a knock at the door. *Settings → Audio → Sounds of the world*, with its own volume.
+
+### Changed
+- Sound effects, voices and the sounds of the world share one audio output, each with its own volume.
+- Saves are now version 16 (the visitors' story); older saves load as before.
+
+## Unreleased (0.14.0)
+
+Voices II: Babble. Residents can speak a made-up language that needs no download.
+
+### New
+- **Babble:** *Settings → Audio → Language → Babble*. Residents say their lines in made-up syllables, about as long as the line, each with their own voice; the same word always sounds the same. Nothing to download, and it works on any computer.
+- With English chosen, residents babble while the voice is still loading, and babies always do (they cry).
+- **Voices by age:** children speak higher, boys' voices drop in their teens, elders speak a little lower and slower.
+
+### Changed
+- The English voice is unloaded after five quiet minutes and comes back from the browser's cache on the next line.
+- If English speech keeps coming late, or making it slows the game down, residents switch to Babble for the rest of the session, with a message saying why.
+- The performance overlay (F3) shows the voice language and how many lines were Babble.
+
 ## Unreleased (0.13.0)
 
 Life cycle II: families grow. Couples have babies or adopt, babies grow into children and teens who go to school, and teens grow up into the young adults of 0.12. A town can now run for generations.

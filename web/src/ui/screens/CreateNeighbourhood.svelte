@@ -241,7 +241,6 @@
         </header>
         <div class="list" bind:this={list}>
           {#each town.households as h, i (h.household.name + i)}
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
             <article
               class="household"
               class:hover={hover === h.slot}

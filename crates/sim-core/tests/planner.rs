@@ -254,3 +254,50 @@ fn plans_survive_saving() {
     assert_eq!(a.history, b.history);
     assert_eq!(a.wishes, b.wishes);
 }
+
+fn add_goal(w: &mut World, goal: serde_json::Value) -> Result<(), sim_core::Error> {
+    let cmd = json!({"type": "addGoal", "sim": 0, "goal": goal}).to_string();
+    w.apply(Command::from_json(&cmd).unwrap())
+}
+
+#[test]
+fn goals_can_be_reordered_and_are_not_doubled() {
+    let mut w = town(3);
+    add_goal(&mut w, json!({"def": "friends", "target": 3})).unwrap();
+    add_goal(&mut w, json!({"def": "skill", "skill": "cooking", "target": 4})).unwrap();
+    add_goal(&mut w, json!({"def": "friends", "target": 5})).unwrap();
+    assert!(add_goal(&mut w, json!({"def": "friends", "target": 3})).is_err(), "the same goal twice");
+    let order = |w: &World| w.sims[0].planner.goals.iter().map(|g| g.target).collect::<Vec<_>>();
+    let cmd = json!({"type": "moveGoal", "sim": 0, "index": 2, "to": 0}).to_string();
+    w.apply(Command::from_json(&cmd).unwrap()).unwrap();
+    assert_eq!(order(&w), [5.0, 3.0, 4.0]);
+    let cmd = json!({"type": "moveGoal", "sim": 0, "index": 0, "to": 9}).to_string();
+    w.apply(Command::from_json(&cmd).unwrap()).unwrap();
+    assert_eq!(order(&w), [5.0, 3.0, 4.0], "out of range: nothing moves");
+}
+
+#[test]
+fn up_to_ten_goals_and_lower_ones_steer_less() {
+    let mut w = town(3);
+    for n in 1..=10 {
+        add_goal(&mut w, json!({"def": "friends", "target": n})).unwrap();
+    }
+    assert!(add_goal(&mut w, json!({"def": "friends", "target": 11})).is_err());
+    let rules = &w.content.planner;
+    assert_eq!(planner::goal_strength(rules, 0), 1.0);
+    let strengths: Vec<f32> = (0..10).map(|r| planner::goal_strength(rules, r)).collect();
+    assert!(strengths.windows(2).all(|p| p[1] < p[0]));
+    assert!(strengths[9] > 0.3, "the last goal still counts");
+}
+
+#[test]
+fn a_save_with_the_same_goal_twice_loads_it_once() {
+    let mut w = town(3);
+    add_goal(&mut w, json!({"def": "friends", "target": 3})).unwrap();
+    add_goal(&mut w, json!({"def": "skill", "skill": "cooking", "target": 4})).unwrap();
+    let twice = w.sims[0].planner.goals[0];
+    w.sims[0].planner.goals.push(twice);
+    let loaded = World::from_save_json(&common::content(), &w.save_json()).unwrap();
+    let targets: Vec<f32> = loaded.sims[0].planner.goals.iter().map(|g| g.target).collect();
+    assert_eq!(targets, [3.0, 4.0]);
+}

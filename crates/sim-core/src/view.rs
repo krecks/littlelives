@@ -443,6 +443,7 @@ pub fn ui_state_json(world: &World) -> String {
             TaskKind::Work => ("Go to work".to_owned(), None, None, 1.0),
             TaskKind::Visit { plot } => (format!("Visit {}", host_name(plot)), None, None, 1.0),
             TaskKind::GoHome => ("Go home".to_owned(), None, None, 1.0),
+            TaskKind::Answer { guest } => ("Answer the door".to_owned(), None, Some(guest), 1.0),
             TaskKind::Clean { .. } => {
                 let rules = &content.room_rules.clean;
                 (rules.label.clone(), None, None, rules.minutes)
@@ -687,6 +688,10 @@ struct StructureView<'a> {
     mode: crate::world::GameMode,
     width: usize,
     depth: usize,
+    /// Storeys the lot holds, and rows per storey: storey `k` is rows `k * storeyDepth ..` of
+    /// `depth` (see `storeys.rs`).
+    storeys: u8,
+    storey_depth: i32,
     objects: Vec<ObjectView<'a>>,
     sims: Vec<SimInfo<'a>>,
     /// Names of former residents (story events name them with `social::FORMER`).
@@ -945,6 +950,8 @@ struct PlotView<'a> {
     /// The roof the player chose: `[style, colour]` (indices into `roofStyles`, `roofColors`).
     #[serde(skip_serializing_if = "Option::is_none")]
     roof: Option<[u8; 2]>,
+    /// Storeys with walls on this plot (for silhouettes).
+    storeys: u8,
 }
 
 /// Bounding box of all wall/door edges (and diagonal walls) inside a plot.
@@ -1051,6 +1058,12 @@ pub fn structure_json_with(world: &World, lot: bool) -> String {
             entry: p.entry,
             house: house_bounds(world, p.x, p.z, p.x + p.w, p.z + p.d),
             roof: p.roof.map(|r| [r.style, r.color]),
+            storeys: 1 + (1..world.storeys as i32)
+                .filter(|k| {
+                    let up = k * world.storey_depth();
+                    house_bounds(world, p.x, p.z + up, p.x + p.w, p.z + p.d + up).is_some()
+                })
+                .count() as u8,
         })
         .collect();
     let (walls, openings, fences) = if lot {
@@ -1066,6 +1079,8 @@ pub fn structure_json_with(world: &World, lot: bool) -> String {
         mode: world.mode,
         width: world.lot.width,
         depth: world.lot.depth,
+        storeys: world.storeys,
+        storey_depth: world.storey_depth(),
         objects,
         sims,
         former: &world.former,

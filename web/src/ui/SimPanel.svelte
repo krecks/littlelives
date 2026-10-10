@@ -108,7 +108,7 @@
           </div>
           {#if sim.plan?.goals.length}
             <ul class="mini-goals">
-              {#each sim.plan.goals as g (`${g.def}:${g.skill}:${g.target}`)}
+              {#each sim.plan.goals as g, i (i)}
                 <li title="{Math.round(g.progress * 100)}%"><span>{goalText(g.def, g.target, g.skill, g.category)}</span><span class="bar"><span style="width:{g.progress * 100}%"></span></span></li>
               {/each}
             </ul>

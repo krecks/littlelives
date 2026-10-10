@@ -13,7 +13,8 @@
 //!
 //! **Goals** (get a job, reach a skill level, find love, make friends, save money...) bias
 //! what residents choose and how hard they look for work, report their progress, and end with
-//! a story event and a feeling. Residents suggest goals of their own from their traits.
+//! a story event and a feeling. Goals higher on the list steer more, and goals of one kind count
+//! once. Residents suggest goals of their own from their traits.
 //!
 //! Households have routine templates every member follows (each member may skip one); a
 //! resident's own block wins where the two overlap.
@@ -87,6 +88,8 @@ pub struct PlannerRules {
     /// Most goals and suggestions a resident has at once.
     pub max_goals: usize,
     pub max_suggestions: usize,
+    /// How much weaker each goal steers than the one above it on the list (see `goal_strength`).
+    pub goal_falloff: f32,
     /// Days before an idea nobody answered is taken on anyway (residents with free will).
     pub suggestion_days: u32,
 }
@@ -107,8 +110,9 @@ impl Default for PlannerRules {
             no_place_feeling: None,
             goal_feeling: None,
             review_hour: 7.0,
-            max_goals: 3,
+            max_goals: 10,
             max_suggestions: 2,
+            goal_falloff: 0.15,
             suggestion_days: 2,
         }
     }
@@ -183,6 +187,7 @@ pub(crate) struct PlannerRaw {
     review_hour: Option<f32>,
     max_goals: Option<usize>,
     max_suggestions: Option<usize>,
+    goal_falloff: Option<f32>,
     suggestion_days: Option<u32>,
 }
 
@@ -265,6 +270,7 @@ pub(crate) fn parse(
         review_hour: planner.review_hour.unwrap_or(d.review_hour),
         max_goals: planner.max_goals.unwrap_or(d.max_goals),
         max_suggestions: planner.max_suggestions.unwrap_or(d.max_suggestions),
+        goal_falloff: planner.goal_falloff.unwrap_or(d.goal_falloff).max(0.0),
         suggestion_days: planner.suggestion_days.unwrap_or(d.suggestion_days),
     };
     let mut defs = Vec::with_capacity(goals.len());
@@ -418,6 +424,13 @@ pub struct Goal {
     /// Progress 0..1, and its value at the last few daily reviews (newest first).
     pub progress: f32,
     pub history: [f32; 3],
+}
+
+impl Goal {
+    /// The same goal (what, which skill or field, how far), whenever it was taken on.
+    pub fn same(&self, other: &Goal) -> bool {
+        (self.def, self.skill, self.category, self.target) == (other.def, other.skill, other.category, other.target)
+    }
 }
 
 /// What a resident is thinking about (shown as a thought bubble).
@@ -953,7 +966,9 @@ fn review_goals(w: &mut World, i: usize, day: u32) {
         {
             let mut goal = p.suggestions.remove(k);
             goal.since_day = day;
-            p.goals.push(goal);
+            if !p.goals.iter().any(|g| g.same(&goal)) {
+                p.goals.push(goal);
+            }
         }
     }
     let rules = &w.content.planner;
@@ -1061,6 +1076,27 @@ fn suggest(w: &mut World, i: usize, day: u32) -> Option<Goal> {
 
 // ---- How plans and goals steer choices (used by `World::pick_autonomous`) ----------------
 
+/// How strongly a goal steers by its place on the list (0 = the top): the top one fully, each
+/// one below a little less.
+pub fn goal_strength(rules: &PlannerRules, rank: usize) -> f32 {
+    1.0 / (1.0 + rules.goal_falloff * rank as f32)
+}
+
+/// Strength of the highest goal of one of these kinds (0: none). A kind counts once, however
+/// many goals of it there are.
+fn kind_strength(content: &Content, sim: &Sim, kinds: &[GoalKind]) -> f32 {
+    sim.planner
+        .goals
+        .iter()
+        .position(|g| kinds.contains(&content.goals[g.def].kind))
+        .map_or(0.0, |rank| goal_strength(&content.planner, rank))
+}
+
+/// A goal's multiplier `full` at `strength` (1 at none, `full` at the top of the list).
+fn scaled(full: f32, strength: f32) -> f32 {
+    1.0 + (full - 1.0) * strength
+}
+
 /// Multiplier for an object interaction while planning: (factor, floor score). `night` is
 /// `planned_night` (residents who plan their sleep don't go to bed outside it unless exhausted).
 pub(crate) fn object_factor(content: &Content, sim: &Sim, inter: &Interaction, night: Option<bool>) -> (f32, f32) {
@@ -1072,10 +1108,8 @@ pub(crate) fn object_factor(content: &Content, sim: &Sim, inter: &Interaction, n
             return (0.0, 0.0);
         }
     }
-    for g in &sim.planner.goals {
-        if content.goals[g.def].kind == GoalKind::Funds && inter.cost > 0 {
-            factor *= 0.3;
-        }
+    if inter.cost > 0 {
+        factor *= scaled(0.3, kind_strength(content, sim, &[GoalKind::Funds]));
     }
     let Some(run) = active(sim) else {
         return (factor, 0.0);
@@ -1106,12 +1140,11 @@ pub(crate) fn tags_factor(content: &Content, sim: &Sim, tags: TagMask) -> (f32, 
 /// builds friendship; `friendship` toward them; `single`: they're free to date).
 pub(crate) fn social_factor(content: &Content, sim: &Sim, romantic: bool, friendly: bool, friendship: f32, single: bool) -> f32 {
     let mut factor = 1.0;
-    for g in &sim.planner.goals {
-        match content.goals[g.def].kind {
-            GoalKind::Friends if friendly && friendship < 50.0 => factor *= 1.5,
-            GoalKind::Partner if romantic && single => factor *= 2.0,
-            _ => {}
-        }
+    if friendly && friendship < 50.0 {
+        factor *= scaled(1.5, kind_strength(content, sim, &[GoalKind::Friends]));
+    }
+    if romantic && single {
+        factor *= scaled(2.0, kind_strength(content, sim, &[GoalKind::Partner]));
     }
     match active(sim) {
         Some(run) if content.activities[run.activity].social => factor * run.boost,
@@ -1143,12 +1176,7 @@ pub(crate) fn visit_factor(content: &Content, sim: &Sim, soon: bool) -> f32 {
     if soon && active(sim).is_none() {
         return content.planner.off_block;
     }
-    let friends = sim
-        .planner
-        .goals
-        .iter()
-        .any(|g| matches!(content.goals[g.def].kind, GoalKind::Friends | GoalKind::Partner));
-    let factor = if friends { 1.5 } else { 1.0 };
+    let factor = scaled(1.5, kind_strength(content, sim, &[GoalKind::Friends, GoalKind::Partner]));
     match active(sim) {
         Some(run) if content.activities[run.activity].visit => factor * run.boost,
         Some(_) => factor * content.planner.off_block,
@@ -1172,13 +1200,15 @@ fn active(sim: &Sim) -> Option<&BlockRun> {
         .filter(|r| r.skipped.is_none() && !r.no_place)
 }
 
-/// Skill targets from goals (folded into practice interest with the job's).
-pub(crate) fn skill_targets(content: &Content, sim: &Sim, targets: &mut [f32]) {
-    for g in &sim.planner.goals {
+/// Skill targets from goals, and how keen they are on each (folded into practice interest
+/// with the job's).
+pub(crate) fn skill_targets(content: &Content, sim: &Sim, targets: &mut [f32], keen: &mut [f32]) {
+    for (rank, g) in sim.planner.goals.iter().enumerate() {
         if content.goals[g.def].kind == GoalKind::Skill
             && let Some(s) = g.skill
         {
             targets[s] = targets[s].max(g.target);
+            keen[s] = keen[s].max(goal_strength(&content.planner, rank));
         }
     }
 }
@@ -1188,8 +1218,11 @@ pub(crate) fn job_search(content: &Content, sim: &Sim) -> (f32, Option<usize>) {
     sim.planner
         .goals
         .iter()
-        .find(|g| content.goals[g.def].kind == GoalKind::HasJob)
-        .map_or((1.0, None), |g| (3.0, g.category))
+        .position(|g| content.goals[g.def].kind == GoalKind::HasJob)
+        .map_or((1.0, None), |rank| {
+            let g = &sim.planner.goals[rank];
+            (scaled(3.0, goal_strength(&content.planner, rank)), g.category)
+        })
 }
 
 // ---- Commands -----------------------------------------------------------------------------

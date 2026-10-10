@@ -1,10 +1,26 @@
 <script lang="ts">
-  import { game } from './state.svelte';
+  import Icon from './Icon.svelte';
+  import { dropToast, game, type Toast, type ToastAction } from './state.svelte';
+
+  function answer(t: Toast, a: ToastAction) {
+    dropToast(t.id);
+    a.run();
+  }
 </script>
 
 <div class="toasts" aria-live="polite">
   {#each game.toasts as t (t.id)}
-    <div class="toast">{t.text}</div>
+    {#if t.actions}
+      <div class="toast ask" role="group" aria-label={t.text}>
+        {#if t.icon}<span class="icon"><Icon name={t.icon} size={15} /></span>{/if}
+        <span class="text">{t.text}</span>
+        {#each t.actions as a (a.label)}
+          <button class="btn small" class:primary={a.primary} title={a.title} onclick={() => answer(t, a)}>{a.label}</button>
+        {/each}
+      </div>
+    {:else}
+      <div class="toast">{t.text}</div>
+    {/if}
   {/each}
 </div>
 
@@ -28,6 +44,25 @@
     font-weight: 550;
     box-shadow: var(--shadow-md);
     animation: rise var(--slow) var(--ease);
+  }
+  .ask {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 6px 6px 8px;
+    pointer-events: auto;
+  }
+  .ask .text {
+    padding-right: 4px;
+  }
+  .icon {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    flex: none;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.14);
   }
   @keyframes rise {
     from {

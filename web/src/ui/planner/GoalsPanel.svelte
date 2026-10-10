@@ -5,7 +5,7 @@
   import { services } from '../services';
   import { game } from '../state.svelte';
   import { goalText } from '../story';
-  import { describeHomeWish, type WishInfo } from './homeWishes';
+  import { actOnWish, brokenAtHome, describeHomeWish, type WishInfo } from './homeWishes';
   import { activityLabel, reasonText } from './planner';
 
   /** A resident's life goals, the ones they'd like to take on, and what they wish for (places, the home). */
@@ -45,27 +45,6 @@
   const homeWishes = $derived(
     (plan?.homeWishes ?? []).filter((w) => !w.fix || brokenAtHome(w.fix)).map((w) => describeHomeWish(content, w)),
   );
-  /** The broken thing a fix wish is about, at home. */
-  function brokenAtHome(def: string) {
-    const plot = game.households[game.home]?.plot;
-    const home = plot == null ? null : game.plots[plot];
-    if (!home) return undefined;
-    return game.objects.find(
-      (o) => o.def === def && (o.wear ?? 0) >= 1 && o.x >= home.x && o.z >= home.z && o.x < home.x + home.w && o.z < home.z + home.d,
-    );
-  }
-  function act(w: WishInfo) {
-    const a = w.action;
-    if (!a) return;
-    if (a.kind === 'catalog') services.controls.openCatalog({ label: `For ${sim.name}: ${a.label}`, defs: a.defs });
-    else if (a.kind === 'build') {
-      game.plannerOpen = false;
-      services.controls.setMode('build');
-    } else {
-      const o = brokenAtHome(a.def);
-      if (o) services.controls.repair(o.id);
-    }
-  }
   function actLabel(w: WishInfo): string {
     const a = w.action;
     if (!a) return '';
@@ -74,6 +53,10 @@
     const cost = brokenAtHome(a.def)?.repairCost;
     return game.creative || cost === undefined ? 'Repair' : `Repair · ${money(cost)}`;
   }
+
+  // Reordering goals by dragging: where the drag started, and the goal it's over.
+  let dragFrom = $state<number | null>(null);
+  let dragOver = $state<number | null>(null);
 
   const label = (g: GoalView) => goalText(g.def, g.target, g.skill, g.category);
   const trend = (g: GoalView) => (g.progress >= 1 ? '' : g.trend > 0.01 ? '▲' : g.trend < -0.01 ? '▼' : '–');
@@ -105,8 +88,30 @@
 
     <h3>Goals</h3>
     <ul>
-      {#each plan.goals as g, i (`${g.def}:${g.skill}:${g.target}`)}
-        <li class="goal">
+      {#each plan.goals as g, i (i)}
+        <li
+          class="goal"
+          class:dragging={dragFrom === i}
+          class:over={dragOver === i && dragFrom !== i}
+          draggable={plan.goals.length > 1}
+          ondragstart={(e) => {
+            dragFrom = i;
+            e.dataTransfer?.setData('text/plain', String(i));
+            if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+          }}
+          ondragover={(e) => {
+            if (dragFrom === null) return;
+            e.preventDefault();
+            dragOver = i;
+          }}
+          ondrop={(e) => {
+            e.preventDefault();
+            if (dragFrom !== null && dragFrom !== i) services.controls.moveGoal(sim.id, dragFrom, i);
+            dragFrom = dragOver = null;
+          }}
+          ondragend={() => (dragFrom = dragOver = null)}
+        >
+          <span class="rank">{i + 1}</span>
           <span class="icon"><Icon name={g.icon || 'icon.ui.calendar'} size={15} /></span>
           <div class="body">
             <span class="label">{label(g)}</span>
@@ -119,15 +124,18 @@
         <li class="muted empty">No goals yet. Pick one below, or wait for {sim.name}'s own ideas.</li>
       {/each}
     </ul>
+    {#if plan.goals.length > 1}
+      <p class="muted hint">Drag to reorder: higher on the list steers {sim.name} more.</p>
+    {/if}
 
     {#if plan.suggestions.length}
       <h3>Ideas from {sim.name}</h3>
       <ul>
-        {#each plan.suggestions as g, i (`${g.def}:${g.skill}:${g.target}`)}
+        {#each plan.suggestions as g, i (i)}
           <li class="goal idea">
             <span class="icon"><Icon name={g.icon || 'icon.ui.calendar'} size={15} /></span>
             <span class="label">{label(g)}</span>
-            <button class="btn small" disabled={full} title={full ? 'Three goals at a time' : 'Take it on'} onclick={() => services.controls.acceptSuggestion(sim.id, i)}>Yes</button>
+            <button class="btn small" disabled={full} title={full ? `${content.planner.maxGoals} goals at a time` : 'Take it on'} onclick={() => services.controls.acceptSuggestion(sim.id, i)}>Yes</button>
             <button class="x" aria-label="Not now" onclick={() => services.controls.dismissSuggestion(sim.id, i)}><Icon name="icon.ui.close" size={11} /></button>
           </li>
         {/each}
@@ -165,7 +173,7 @@
             <span class="icon"><Icon name={w.icon} size={15} /></span>
             <span class="label">{w.text}</span>
             {#if w.action}
-              <button class="btn small" onclick={() => act(w)}>{actLabel(w)}</button>
+              <button class="btn small" onclick={() => actOnWish(w, sim.name)}>{actLabel(w)}</button>
             {:else}
               <span class="muted hint">Someone should tidy up</span>
             {/if}
@@ -276,6 +284,23 @@
     background: var(--hairline);
     color: var(--text);
   }
+  .goal[draggable='true'] {
+    cursor: grab;
+  }
+  .goal.dragging {
+    opacity: 0.4;
+  }
+  .goal.over {
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  .rank {
+    width: 12px;
+    flex: none;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 650;
+    color: var(--text-muted);
+  }
   .add,
   .params {
     display: flex;
@@ -328,5 +353,8 @@
   }
   .hint {
     font-size: 11.5px;
+  }
+  p.hint {
+    margin: 0;
   }
 </style>
