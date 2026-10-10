@@ -349,6 +349,11 @@ pub struct Sim {
     /// Retired from work: doesn't look for a job; the household gets `pension` a week.
     pub retired: bool,
     pub pension: i64,
+    /// Ticks they catch up on this tick: 1 at full detail; in a lot nobody watches, 0 between
+    /// turns and every tick since the last one on their turn (see `lod.rs`).
+    pub(crate) steps: u32,
+    /// Ticks since their last turn.
+    pub(crate) owed: u32,
 }
 
 impl Sim {
@@ -400,6 +405,11 @@ impl Sim {
 
     pub fn queue(&self) -> impl Iterator<Item = &Task> {
         self.queue.iter()
+    }
+
+    /// Game minutes their update covers this tick (see `steps`).
+    pub(crate) fn minutes(&self) -> f32 {
+        MINUTES_PER_TICK * self.steps as f32
     }
 
     /// Needs average plus trait and feeling effects, 0..1.
@@ -688,6 +698,13 @@ pub struct World {
     pub storeys: u8,
     /// Rows per storey and the stairs between them, for walking.
     pub(crate) stairs: crate::path::StairMap,
+    /// Lower detail for lots nobody watches (see `lod.rs`); on unless turned off for tests and
+    /// comparisons. It only applies once there's a view.
+    pub lod: bool,
+    /// The part of the town being looked at (`set_view`); None: all of it.
+    pub(crate) view: Option<[i32; 4]>,
+    /// Per plot: watched this tick (see `lod::plan`).
+    pub(crate) watched: Vec<bool>,
 }
 
 /// Read-only context for one Sim's update.
@@ -870,6 +887,9 @@ impl World {
             room_tiles: Default::default(),
             storeys: 1,
             stairs: crate::path::StairMap::default(),
+            lod: true,
+            view: None,
+            watched: Vec::new(),
         }
     }
 
@@ -1136,6 +1156,8 @@ impl World {
             pension: 0,
             school_day: 0,
             grade: content.life.school.as_ref().map_or(0.0, |s| s.start_grade),
+            steps: 1,
+            owed: 0,
         };
         if let Some(slot) = slot {
             self.retire_slot(slot);
@@ -1548,6 +1570,7 @@ impl World {
             });
         }
         self.briefs = briefs;
+        crate::lod::plan(self);
         let hour = crate::clock::hour(tick);
         {
             let World {
@@ -1588,7 +1611,8 @@ impl World {
                 minute: crate::clock::minute_of_day(tick),
                 tick,
             };
-            for sim in sims.iter_mut().filter(|s| s.here()) {
+            // (In lots nobody watches, only those whose turn it is; see `lod.rs`.)
+            for sim in sims.iter_mut().filter(|s| s.here() && s.steps > 0) {
                 step_sim(sim, &ctx, objects, rng);
             }
         }
@@ -1601,7 +1625,7 @@ impl World {
             crate::rooms::opinions(self);
         }
 
-        for s in &mut self.sims {
+        for s in self.sims.iter_mut().filter(|s| s.steps > 0) {
             s.feelings.retain(|m| m.expires > tick);
             if self.content.buff_feelings {
                 s.refresh_buffs(&self.content);
@@ -2047,13 +2071,14 @@ fn training_interest(sim: &Sim, content: &Content, inter: &crate::content::Inter
     best * lowest / (1.0 + sim.practice_fatigue)
 }
 
-/// Adds practice to a skill and notes a new level.
-pub(crate) fn practise(sim: &mut Sim, content: &Content, skill: usize, per_hour: f32) {
+/// Adds `minutes` of practice to a skill (a tick's, or more when catching up on a turn, see
+/// `lod.rs`) and notes a new level.
+pub(crate) fn practise(sim: &mut Sim, content: &Content, skill: usize, per_hour: f32, minutes: f32) {
     let rules = &content.skill_rules;
     let before = sim.skills[skill];
     let gain = rules.gain(
         per_hour * sim.mods.skill_gain[skill],
-        MINUTES_PER_TICK / 60.0,
+        minutes / 60.0,
         before,
     );
     let after = (before + gain).min(rules.max_level);
@@ -2065,6 +2090,7 @@ pub(crate) fn practise(sim: &mut Sim, content: &Content, skill: usize, per_hour:
 
 fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut Rng) {
     let content = ctx.content;
+    let minutes = sim.minutes();
     let rhythm = &content.day_rhythm;
     let asleep = sim.asleep(content);
     let night = !asleep && rhythm.sleep_tags != 0 && is_night(sim, ctx);
@@ -2075,9 +2101,9 @@ fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
     });
     let skill_rules = &content.skill_rules;
     sim.practice_fatigue = if practising {
-        sim.practice_fatigue + skill_rules.fatigue_per_hour * MINUTES_PER_TICK / 60.0
+        sim.practice_fatigue + skill_rules.fatigue_per_hour * minutes / 60.0
     } else {
-        (sim.practice_fatigue - skill_rules.fatigue_recovery_per_hour * MINUTES_PER_TICK / 60.0)
+        (sim.practice_fatigue - skill_rules.fatigue_recovery_per_hour * minutes / 60.0)
             .max(0.0)
     };
     for (n, def) in content.needs.iter().enumerate() {
@@ -2094,12 +2120,12 @@ fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
             // Surroundings: towards how good the room is (a neutral value away from home).
             let rules = &content.room_rules;
             let target = if sim.away_until.is_some() { rules.away } else { ctx.room_at(sim.pos) };
-            let k = (rules.drift * MINUTES_PER_TICK / 60.0).min(1.0);
+            let k = (rules.drift * minutes / 60.0).min(1.0);
             sim.needs[n] = (sim.needs[n] + (target - sim.needs[n]) * k).clamp(0.0, 1.0);
             continue;
         }
         let decay =
-            def.decay_per_minute * sim.mods.need_decay[n] * rhythm_factor * MINUTES_PER_TICK;
+            def.decay_per_minute * sim.mods.need_decay[n] * rhythm_factor * minutes;
         sim.needs[n] = (sim.needs[n] - decay).max(0.0);
     }
 
@@ -2159,11 +2185,13 @@ fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
         end_activity(sim, content, objects);
     }
 
+    // Ticks what they're doing moves on by (fewer than `steps` if it starts partway through).
+    let mut ticks = sim.steps;
     if sim.current.is_none() {
         if let Some(task) = sim.queue.pop_front() {
             start_task(sim, task, ctx, objects);
         } else {
-            sim.idle_ticks += 1;
+            sim.idle_ticks += sim.steps;
             // Babies don't choose anything: they lie in a crib and are cared for.
             if content.life.baby(sim.age) {
                 if let Some(task) = crib_for(sim, ctx, objects) {
@@ -2173,15 +2201,19 @@ fn step_sim(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
             }
             let free_will = ctx.autonomy && ctx.households[sim.household as usize].free_will;
             if free_will && sim.idle_ticks >= AUTONOMY_DELAY_TICKS {
+                let since = sim.idle_ticks - AUTONOMY_DELAY_TICKS;
                 sim.idle_ticks = 0;
                 if let Some(task) = pick_autonomous(sim, ctx, objects, rng) {
                     start_task(sim, task, ctx, objects);
+                    // Catching up on a turn (`lod.rs`): they were idle until it was time to
+                    // choose, so what they chose has only had the ticks since.
+                    ticks = ticks.min(since + 1);
                 }
             }
         }
     }
 
-    progress(sim, ctx, objects, rng);
+    progress(sim, ctx, objects, rng, ticks);
 }
 
 /// What a Sim may use on a plot: everything at home or in public places; as a guest,
@@ -2610,19 +2642,21 @@ pub(crate) fn route(
     Some(waypoints)
 }
 
-fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut Rng) {
+fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut Rng, ticks: u32) {
     let content = ctx.content;
+    let minutes = MINUTES_PER_TICK * ticks as f32;
     let Some(act) = sim.current.as_mut() else {
         return;
     };
     let finished = match &mut act.phase {
         // Waiting at the door; `life::doors` lets them in or sends them home.
-        Phase::Knocking { ticks, .. } => {
-            *ticks += 1;
+        Phase::Knocking { ticks: waited, .. } => {
+            *waited += ticks;
             false
         }
         Phase::Routing { waypoints, next } => {
-            let mut budget = WALK_SPEED * sim.mods.walk_speed;
+            let per_tick = WALK_SPEED * sim.mods.walk_speed;
+            let mut budget = per_tick * ticks as f32;
             while budget > 0.0 && *next < waypoints.len() {
                 let wp = waypoints[*next];
                 // Off the top step onto the landing (or back): a storey's rows are far apart.
@@ -2650,18 +2684,25 @@ fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
             }
             if *next >= waypoints.len() {
                 arrive(sim, ctx, objects);
+                // Catching up on a turn (`lod.rs`): they got there partway through it, and
+                // what they came for gets the rest.
+                let rest = ((budget / per_tick) as u32).min(ticks - 1);
+                let using = sim.current.as_ref().is_some_and(|a| matches!(a.phase, Phase::Using { .. }));
+                if rest > 0 && using {
+                    progress(sim, ctx, objects, rng, rest);
+                }
             }
             false
         }
         Phase::Using { elapsed } => {
-            *elapsed += MINUTES_PER_TICK;
+            *elapsed += minutes;
             let elapsed = *elapsed;
             match act.task.kind {
                 TaskKind::Use {
                     object,
                     interaction,
                 } => {
-                    let done = use_object(sim, ctx, &objects[object as usize], interaction, elapsed);
+                    let done = use_object(sim, ctx, &objects[object as usize], interaction, elapsed, minutes);
                     // Every finished use wears it a little, by how much of a full use it was (a
                     // nap cut short when they're rested is a fraction); better quality wears slower.
                     if done {
@@ -2682,7 +2723,7 @@ fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
                     let rules = &content.object_rules.repair;
                     if let Some(s) = rules.skill {
                         let max = content.skill_rules.max_level;
-                        sim.skills[s] = (sim.skills[s] + rules.skill_gain * MINUTES_PER_TICK / 60.0).min(max);
+                        sim.skills[s] = (sim.skills[s] + rules.skill_gain * minutes / 60.0).min(max);
                     }
                     let done = elapsed >= rules.minutes || !objects[object as usize].broken();
                     if done && objects[object as usize].broken() {
@@ -2699,7 +2740,7 @@ fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
                         return end_activity(sim, content, objects);
                     };
                     for (n, g) in rest.gain_per_minute.iter().enumerate().take(content.needs.len()) {
-                        sim.needs[n] = (sim.needs[n] + g * MINUTES_PER_TICK).clamp(0.0, 1.0);
+                        sim.needs[n] = (sim.needs[n] + g * minutes).clamp(0.0, 1.0);
                     }
                     elapsed >= rest.minutes
                 }
@@ -2719,16 +2760,20 @@ fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
     };
     if finished {
         end_activity(sim, content, objects);
+        // Catching up on a turn: it ended partway through, on average half a turn ago.
+        sim.idle_ticks = (ticks - 1) / 2;
     }
 }
 
-/// One tick of using an object. Returns whether the Sim is done.
+/// One tick of using an object (`minutes` long: more when catching up on a turn, see
+/// `lod.rs`). Returns whether the Sim is done.
 fn use_object(
     sim: &mut Sim,
     ctx: &Ctx,
     obj: &ObjectInstance,
     interaction: usize,
     elapsed: f32,
+    minutes: f32,
 ) -> bool {
     let content = ctx.content;
     let inter = &content.objects[obj.def].interactions[interaction];
@@ -2738,7 +2783,7 @@ fn use_object(
     if inter.cares()
         && let Some(baby) = obj.users().find(|&u| u != sim.id)
     {
-        let per_tick = inter.care.map(|g| g / inter.minutes * MINUTES_PER_TICK);
+        let per_tick = inter.care.map(|g| g / inter.minutes * minutes);
         sim.care_out = Some((baby, per_tick));
     }
     let (mut any_gain, mut satisfied, mut urgent, mut wakes) = (false, true, false, false);
@@ -2747,12 +2792,12 @@ fn use_object(
         if g > 0.0 {
             any_gain = true;
             let g = g * sim.mods.need_gain[n] * boost;
-            sim.needs[n] = (sim.needs[n] + g * MINUTES_PER_TICK).min(1.0);
+            sim.needs[n] = (sim.needs[n] + g * minutes).min(1.0);
             satisfied &= sim.needs[n] >= 0.999;
         } else {
             if g < 0.0 {
                 // Costs (a workout makes you hungry and sweaty).
-                sim.needs[n] = (sim.needs[n] + g * MINUTES_PER_TICK).max(0.0);
+                sim.needs[n] = (sim.needs[n] + g * minutes).max(0.0);
             }
             // (Surroundings are never urgent: they follow the room, nothing fills them.)
             urgent |= sim.needs[n] < 0.08 && !content.needs[n].room;
@@ -2761,7 +2806,7 @@ fn use_object(
     }
     for s in 0..content.skills.len() {
         if inter.skill_gain[s] > 0.0 {
-            practise(sim, content, s, inter.skill_gain[s] * boost);
+            practise(sim, content, s, inter.skill_gain[s] * boost, minutes);
         }
     }
     let done = if inter.tags & content.day_rhythm.sleep_tags != 0 && is_night(sim, ctx) {

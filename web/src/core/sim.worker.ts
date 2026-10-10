@@ -40,7 +40,10 @@ scope.onmessage = (e) => {
       scope.postMessage({ type: 'saved', requestId: msg.requestId, data: game.save() });
     } else if (msg.type === 'view') {
       region = msg.region;
-      if (game) postWorld();
+      if (game) {
+        watch(game);
+        postWorld();
+      }
     } else if (msg.type === 'inspect' && game) {
       // Their details at once, so the panel opens with them.
       game.inspect(msg.sim ?? undefined);
@@ -72,6 +75,7 @@ scope.onmessage = (e) => {
 async function start(content: string, source: GameSource): Promise<void> {
   memory = (await init()).memory;
   game = 'save' in source ? Game.fromSave(content, source.save) : new Game(content, source.lot, source.seed);
+  watch(game);
   const layout: SnapshotLayout = JSON.parse(game.snapshot_layout());
 
   const shared = typeof SharedArrayBuffer !== 'undefined' && self.crossOriginIsolated ? createSharedSnapshot(layout) : null;
@@ -160,6 +164,12 @@ function postWorld(): void {
   const world: WorldStructure = { ...JSON.parse(g.structure(true)), meshes };
   const transfer = Object.values(meshes).flatMap((m) => [m.positions.buffer, m.normals.buffer, m.uvs.buffer, m.indices.buffer]);
   scope.postMessage({ type: 'world', world, full: true }, transfer);
+}
+
+/** The viewed lot is simulated in full detail; lots nobody watches in less (`sim_core::lod`). */
+function watch(g: Game): void {
+  if (region) g.set_view(region[0], region[1], region[2], region[3]);
+  else g.clear_view();
 }
 
 function mesh(g: Game, kind: number): MeshArrays {

@@ -161,7 +161,8 @@ pub(crate) fn update(w: &mut World) {
     let day = clock::day(tick);
     let hour = clock::hour(tick);
     for i in 0..w.sims.len() {
-        if !w.sims[i].here() {
+        // (In lots nobody watches, on their turn; see `lod.rs`.)
+        if !w.sims[i].here() || w.sims[i].steps == 0 {
             continue;
         }
         // Interactions started this tick are paid from the Sim's own household (guests too).
@@ -556,11 +557,12 @@ fn at_work(w: &mut World, i: usize) {
         ..
     } = w;
     let sim = &mut sims[i];
+    let minutes = sim.minutes();
     let Some(job) = sim.job.clone() else {
         // At school: a little of the school's skills, then home.
         if let Some(school) = &content.life.school {
             for &(skill, weight) in &school.skills {
-                practise(sim, content, skill, content.skill_rules.work_gain_per_hour * weight);
+                practise(sim, content, skill, content.skill_rules.work_gain_per_hour * weight, minutes);
             }
         }
         if sim.away_until.is_some_and(|until| tick < until) {
@@ -577,7 +579,7 @@ fn at_work(w: &mut World, i: usize) {
     };
     let career = &content.careers[job.career];
     let level = &career.levels[job.level];
-    let per_tick = MINUTES_PER_TICK / (level.hours * 60.0);
+    let per_tick = minutes / (level.hours * 60.0);
     for n in 0..MAX_NEEDS.min(content.needs.len()) {
         sim.needs[n] = (sim.needs[n] + career.work_effects[n] * per_tick).clamp(0.0, 1.0);
     }
@@ -587,6 +589,7 @@ fn at_work(w: &mut World, i: usize) {
             content,
             skill,
             content.skill_rules.work_gain_per_hour * weight,
+            minutes,
         );
     }
     if sim.away_until.is_some_and(|until| tick < until) {

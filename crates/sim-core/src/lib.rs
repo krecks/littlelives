@@ -17,6 +17,7 @@ pub mod home;
 mod index;
 pub mod life;
 pub mod lifecycle;
+pub mod lod;
 pub mod lot;
 pub mod mesh;
 pub mod pack;

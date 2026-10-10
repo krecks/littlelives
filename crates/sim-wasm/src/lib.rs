@@ -98,6 +98,17 @@ impl Game {
         view::structure_json_with(&self.world, lot)
     }
 
+    /// The part of the town being looked at, a tile rectangle: lots it touches are simulated
+    /// in full detail, lots nobody watches in less (see `sim_core::lod`).
+    pub fn set_view(&mut self, x0: i32, z0: i32, x1: i32, z1: i32) {
+        self.world.set_view(Some([x0, z0, x1, z1]));
+    }
+
+    /// The whole town is looked at: everything in full detail.
+    pub fn clear_view(&mut self) {
+        self.world.set_view(None);
+    }
+
     /// Changes whenever the lot (walls, floors, fences...) does; see `World::lot_version`.
     pub fn lot_version(&self) -> u32 {
         self.world.lot_version()

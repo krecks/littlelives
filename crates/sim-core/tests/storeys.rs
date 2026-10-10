@@ -166,3 +166,46 @@ fn a_town_file_can_bring_two_storey_houses() {
     assert_eq!(w.stair_map().stairs.len(), 1);
     assert_eq!(w.storey_of(w.objects[1].z), 1, "the chair is upstairs");
 }
+
+#[test]
+fn a_neighbour_climbs_the_stairs_at_lower_detail() {
+    // The player looks at their own lot; next door, Ben goes upstairs to sit.
+    let two_lots = r#"{"width":40,"depth":16,
+        "plots":[{"name":"Home","x":2,"z":1,"w":16,"d":12,"entry":[9.5,12.5]},{"name":"Next door","x":22,"z":1,"w":16,"d":12,"entry":[29.5,12.5]}],
+        "households":[{"name":"Player","plot":0,"player":true},{"name":"Other","plot":1}],
+        "sims":[{"name":"Ada","household":0,"x":9.5,"z":11.5},{"name":"Ben","household":1,"x":29.5,"z":11.5}]}"#;
+    let mut w = World::from_json(&content(2), two_lots, 1).unwrap();
+    w.autonomy = false;
+    for edits in [room(24, 2, 6, 6, true), room(24, 2 + UP, 6, 6, false)] {
+        w.apply(Command::Build { household: 1, edits }).unwrap();
+    }
+    let buy = |w: &mut World, def: &str, x: i32, z: i32| {
+        w.apply(Command::Buy { household: 1, object: def.into(), at: Some([x, z, 0]), style: None, turn: None }).unwrap();
+        w.objects.len() as u32 - 1
+    };
+    buy(&mut w, "stairs", 29, 3);
+    let chair = buy(&mut w, "chair", 25, 3 + UP);
+    w.set_view(Some([2, 1, 18, 13]));
+    w.apply(Command::Use { sim: 1, object: chair, interaction: 0 }).unwrap();
+    let free = |w: &World, (x, z): (i32, i32)| {
+        sim_core::path::NavGrid { lot: &w.lot, blocked: w.blocked(), stairs: w.stair_map() }.tile_free(x, z)
+    };
+    let sitting = |w: &World| w.sims[1].pose == sim_core::content::Pose::Sit;
+    let mut lower = 0;
+    for t in 0..20 * 60 * 5 {
+        w.tick_once();
+        lower += usize::from(!w.full_detail(1));
+        if sitting(&w) {
+            break;
+        }
+        assert!(free(&w, w.sims[1].tile()), "Ben at {:?} on tick {t}", w.sims[1].tile());
+    }
+    assert!(lower > 100, "next door was at lower detail");
+    assert!(sitting(&w), "sat down upstairs");
+    assert_eq!(w.storey_of(w.sims[1].tile().1), 1);
+    // Looking next door: he's at full detail at once, upstairs where he was.
+    w.set_view(Some([22, 1, 38, 13]));
+    w.tick_once();
+    assert!(w.full_detail(1) && sitting(&w));
+    assert_eq!(w.storey_of(w.sims[1].tile().1), 1);
+}

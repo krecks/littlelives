@@ -5,7 +5,8 @@
 //! The targets are the constants below; the shipped content meets them (pay grades in
 //! `careers.json`, promotion speed in `careerRules`, rent and living costs in `economy.rent`).
 //! It runs 180 game days, so it's opt-in like the long soak:
-//! `cargo test --release --test balance -- --ignored --nocapture` (prints the numbers).
+//! `cargo test --release --test balance -- --ignored --nocapture` (prints the numbers; with
+//! `LOD=1`, the rest of the town besides the player's home runs at lower detail).
 
 mod common;
 
@@ -41,6 +42,7 @@ fn run(seed: u64) -> Run {
     let content = common::content();
     let town = common::town(&content, seed, 2);
     let mut w = World::from_json(&content, &town, seed as u32).unwrap();
+    common::lod_from_env(&mut w);
     let households = w.households.len();
     let mut weekly_funds = vec![Vec::new(); households];
     let mut working = vec![Vec::new(); households];

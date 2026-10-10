@@ -28,7 +28,7 @@ use crate::content::{Content, Interaction, TagMask};
 use crate::social::FeelingDef;
 use crate::social::{self, EventKind};
 use crate::world::{Phase, Sim, TaskKind, World};
-use crate::{Error, MINUTES_PER_TICK};
+use crate::Error;
 
 // ---- Content ------------------------------------------------------------------------------
 
@@ -594,21 +594,24 @@ pub(crate) fn update(w: &mut World) {
         if !w.sims[i].here() {
             continue;
         }
-        let h = w.sims[i].household as usize;
-        let now = running(&w.sims[i], &w.households[h].routines, day, minute);
-        let current = w.sims[i].planner.run;
-        let same = |r: &BlockRun| now.is_some_and(|(n, household, d)| n.id == r.routine && household == r.household && d == r.day);
-        if let Some(run) = current
-            && !same(&run)
-        {
-            finish(w, i, run);
+        // Planned blocks: in lots nobody watches, on their turn (see `lod.rs`).
+        if w.sims[i].steps > 0 {
+            let h = w.sims[i].household as usize;
+            let now = running(&w.sims[i], &w.households[h].routines, day, minute);
+            let current = w.sims[i].planner.run;
+            let same = |r: &BlockRun| now.is_some_and(|(n, household, d)| n.id == r.routine && household == r.household && d == r.day);
+            if let Some(run) = current
+                && !same(&run)
+            {
+                finish(w, i, run);
+            }
+            if let Some((routine, household, block_day)) = now
+                && !current.as_ref().is_some_and(same)
+            {
+                begin(w, i, routine, household, block_day);
+            }
+            follow(w, i);
         }
-        if let Some((routine, household, block_day)) = now
-            && !current.as_ref().is_some_and(same)
-        {
-            begin(w, i, routine, household, block_day);
-        }
-        follow(w, i);
         if w.sims[i].planner.thought.is_some_and(|t| t.until <= tick) {
             w.sims[i].planner.thought = None;
         }
@@ -779,6 +782,7 @@ fn follow(w: &mut World, i: usize) {
     let content = &w.content;
     let sim = &w.sims[i];
     let Some(run) = sim.planner.run else { return };
+    let minutes = sim.minutes();
     if run.skipped == Some(Reason::Away) && sim.away_until.is_none() && sim.visiting.is_none() {
         let run = w.sims[i].planner.run.as_mut().expect("checked above");
         run.skipped = None;
@@ -799,7 +803,7 @@ fn follow(w: &mut World, i: usize) {
     }
     let run = w.sims[i].planner.run.as_mut().expect("checked above");
     if on_it {
-        run.done += MINUTES_PER_TICK;
+        run.done += minutes;
     }
     run.pulled = pulled;
 }

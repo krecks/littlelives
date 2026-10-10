@@ -29,6 +29,22 @@ pub fn content() -> String {
     sim_core::merge_content(&base, &parts).unwrap_or_else(|e| panic!("{e}"))
 }
 
+/// Looks at a lot like the game does: it and the player's home are simulated in full detail,
+/// the rest of the town in less (`sim_core::lod`).
+pub fn look_at(w: &mut World, plot: u32) {
+    let p = &w.plots[plot as usize];
+    w.set_view(Some([p.x, p.z, p.x + p.w, p.z + p.d]));
+}
+
+/// With `LOD=1` in the environment, looks at the player's home (to compare runs with lower
+/// detail for the rest of the town against full detail).
+pub fn lod_from_env(w: &mut World) {
+    let home = w.households.iter().find(|h| h.player).and_then(|h| h.plot);
+    if let Some(home) = home.filter(|_| std::env::var("LOD").is_ok_and(|v| v == "1")) {
+        look_at(w, home);
+    }
+}
+
 /// Everything that must hold at any moment.
 pub fn check(w: &World) {
     let n = w.sims.len();

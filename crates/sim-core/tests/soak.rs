@@ -2,7 +2,8 @@
 //! world must stay consistent hour after hour, residents must keep themselves going, and the
 //! story must keep moving.
 //!
-//! `cargo test --release --test soak -- --ignored` runs the long version.
+//! `cargo test --release --test soak -- --ignored` runs the long version; with `LOD=1` the
+//! player's home is looked at and the rest of the town runs at lower detail (`lod.rs`).
 
 mod common;
 
@@ -27,6 +28,7 @@ fn run(days: u32, seed: u64, player_size: usize) -> (World, Vec<Stats>) {
     let content = common::content();
     let town = common::town(&content, seed, player_size);
     let mut w = World::from_json(&content, &town, seed as u32).expect("town loads");
+    common::lod_from_env(&mut w);
     let mut stats = vec![
         Stats {
             lowest: 1.0,
