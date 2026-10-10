@@ -89,6 +89,8 @@ fields) load unchanged: both mergers rename the keys first (`LEGACY_KEYS` in `pa
 | `category` | Buy-mode category id (see [Buy categories](#buy-categories)). |
 | `group` | Optional group within the category, for categories that have `groups` (the garden: `trees`, `shrubs`, `flowers`, `edibles`, `houseplants`). The catalog shows the groups as chips. |
 | `outdoors` | `true` for things that can only stand outdoors (trees, flower beds, ponds). Buying or moving one indoors is refused ("Goes outdoors"). Default `false`. |
+| `layer` | Where it goes: `floor` (default: furniture, which takes its tiles), `wall` (hangs with its back on a wall or window: pictures, curtains, shelves, wall lamps), `ceiling` (hangs in a room: pendant lamps, fans) or `rug` (lies on the floor). Off the floor layer it takes no floor space: residents walk under and over it, furniture stands in front of, under or on it, and only things on the same layer can't overlap. A wall with something on it can't be removed or get a door. Model things on a wall with their back on the wall face (`z = -0.43` in a 1-deep footprint) at their real height, ceiling things hanging from 2.8 m. Things nobody uses (no interactions) needn't be reachable. |
+| `bunk` | Bunk beds (2 `slots`): both sleepers lie in the middle of the bed's width, the second on the upper bunk (heights per object in `render/babylon/characters.ts`, `BUNKS`). |
 | `slots` | How many residents use it at once, 1 or 2 (double bed, sofa, hot tub). Default 1. |
 | `light` | Lamps: `{"range": 4.5, "intensity": 1, "height": 1.55}` makes it a light at night (reach in metres, relative brightness, bulb height). |
 | `freeRotation` | `true` lets the player turn it to any angle in 15° steps (only for looks). Default: 1×1 objects whose category is listed in `objectRules.freeRotation` (base game: `decor`, `garden`, `outdoor`). |
@@ -187,7 +189,8 @@ Tags in use (64 maximum for the whole game, base plus all packs):
 | `sleep` | bed sleep (counts as a night's sleep: `dayRhythm.sleepTags`) |
 | `nap` | bed nap |
 | `lounge` | sofa, armchair, bench, coffee |
-| `spa` | whirlpool tub (example pack); declared in base.json `tags` |
+| `spa` | whirlpool tub (example pack), baths and hot tubs; declared in base.json `tags` |
+| `toys` | kids' things (toy box, play mat, doll house…); grown-up life stages like them far less (`tagPreference` 0.15, teens 0.4); declared in furniture.json `tags` |
 | `hygiene` | sink, shower |
 | `bathroom` | toilet |
 | `chores` | water plant, tend flowers |
@@ -446,9 +449,14 @@ id) and `last` (household names).
 - **Emotions:** `happy`, `flirty`, `angry`, `sad`, `embarrassed`, `focused` (likes
   `training`), `inspired` (likes `creative`), `energized` (likes `fitness`), `relaxed`
   (likes `rest`, `lounge`, `spa`). Icons are `icon.emotion.<id>`.
-- **Buy categories:** `kitchen`, `bathroom`, `bedroom`, `living`, `office`, `fitness`,
-  `hobbies`, `decor`, `outdoor`, `garden` (groups `trees`, `shrubs`, `flowers`, `edibles`,
-  `houseplants`), `wellness` (example pack). Add a category with
+- **Buy categories** (groups in brackets): `kitchen` (`appliances`, `counters`, `dining`),
+  `bathroom` (`toilets`, `bathing`, `sinks`, `laundry`), `bedroom` (`beds`, `storage`,
+  `dressing`), `kids`, `living` (`seating`, `tables`, `media`, `shelves`, `stairs`), `office`,
+  `fitness`, `hobbies` (`music`, `games`, `crafts`), `decor` (`wall`, `ornaments`, `textiles`),
+  `lighting` (`ceiling`, `wall`, `floor`, `table`), `outdoor` (`seating`, `cooking`, `play`,
+  `lights`, `decor`), `garden` (groups `trees`, `shrubs`, `flowers`, `edibles`,
+  `houseplants`), `wellness` (example pack). An object without a `group` shows under its
+  category's *All*. Add a category with
   `"buyCategories": [{ "id": "...", "label": "...", "icon": "icon.category.<id>" }]` only if
   none fits (`icon` is optional: the catalog tab's icon, an `icon` asset key; `groups`
   optional: `[{ "id": "...", "label": "..." }]`, chips that objects pick with `group`;

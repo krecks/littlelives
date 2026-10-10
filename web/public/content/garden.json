@@ -2078,6 +2078,7 @@
       "model": "model.garden.birdbath",
       "price": 140,
       "category": "outdoor",
+      "group": "decor",
       "outdoors": true,
       "description": "A stone bird bath. Visitors guaranteed.",
       "interactions": [
@@ -2106,6 +2107,7 @@
       "model": "model.garden.fountain",
       "price": 900,
       "category": "outdoor",
+      "group": "decor",
       "outdoors": true,
       "description": "A two-tier stone fountain. Toss a coin and make a wish, or just listen to the water.",
       "interactions": [
@@ -2146,6 +2148,7 @@
       "model": "model.garden.gnome",
       "price": 30,
       "category": "outdoor",
+      "group": "decor",
       "outdoors": true,
       "description": "He guards the flower beds. Pat his hat for luck.",
       "interactions": [
@@ -2170,6 +2173,7 @@
       "model": "model.garden.pond",
       "price": 650,
       "category": "outdoor",
+      "group": "decor",
       "outdoors": true,
       "footprint": [
         2,
@@ -2215,6 +2219,7 @@
       "light": {"range": 3.5, "intensity": 0.6, "height": 0.6},
       "price": 180,
       "category": "outdoor",
+      "group": "lights",
       "outdoors": true,
       "description": "A Japanese-style stone lantern.",
       "interactions": []
@@ -2225,6 +2230,7 @@
       "model": "model.garden.wheelbarrow",
       "price": 95,
       "category": "outdoor",
+      "group": "decor",
       "outdoors": true,
       "description": "An old wheelbarrow, retired and full of flowers.",
       "interactions": [
@@ -2269,6 +2275,7 @@
       "model": "model.garden.boulder",
       "price": 60,
       "category": "outdoor",
+      "group": "decor",
       "outdoors": true,
       "description": "Three weathered stones in the grass.",
       "interactions": []

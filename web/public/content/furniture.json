@@ -1,0 +1,4417 @@
+{
+  "$comment": "The 0.20 catalogue: furniture, lighting, decor, kids' and garden things for every room, from cheap to premium. Models are in assets/catalog/manifest.json (tools/art/catalog.py). `layer` puts things on a wall, the ceiling or the floor's surface (rugs), where they take no floor space; `bunk` makes a bed's second slot the upper bunk. Feelings are prefixed `home.`.",
+  "tags": [
+    "toys"
+  ],
+  "feelings": [
+    {
+      "id": "home.homeCooked",
+      "label": "Home-cooked meal",
+      "emotion": "happy",
+      "mood": 0.08,
+      "hours": 5,
+      "effects": {
+        "needDecay": {
+          "hunger": 0.85
+        }
+      }
+    },
+    {
+      "id": "home.perkedUp",
+      "label": "Perked up",
+      "emotion": "energized",
+      "mood": 0.05,
+      "hours": 3,
+      "effects": {
+        "needDecay": {
+          "energy": 0.85
+        }
+      }
+    },
+    {
+      "id": "home.wellRested",
+      "label": "Well rested",
+      "emotion": "relaxed",
+      "mood": 0.08,
+      "hours": 8,
+      "effects": {
+        "needGain": {
+          "energy": 1.15,
+          "comfort": 1.1
+        }
+      }
+    },
+    {
+      "id": "home.pampered",
+      "label": "Pampered",
+      "emotion": "relaxed",
+      "mood": 0.08,
+      "hours": 6,
+      "effects": {
+        "needDecay": {
+          "hygiene": 0.85,
+          "comfort": 0.9
+        }
+      }
+    },
+    {
+      "id": "home.refreshed",
+      "label": "Refreshed",
+      "emotion": "energized",
+      "mood": 0.05,
+      "hours": 3,
+      "effects": {
+        "needDecay": {
+          "hygiene": 0.85
+        }
+      }
+    },
+    {
+      "id": "home.dressedUp",
+      "label": "Looking good",
+      "emotion": "happy",
+      "mood": 0.05,
+      "hours": 3,
+      "effects": {
+        "tagSuccess": {
+          "friendly": 0.05
+        }
+      }
+    },
+    {
+      "id": "home.atHome",
+      "label": "Feeling at home",
+      "emotion": "relaxed",
+      "mood": 0.06,
+      "hours": 4,
+      "effects": {
+        "needDecay": {
+          "comfort": 0.85
+        }
+      }
+    },
+    {
+      "id": "home.cosyFire",
+      "label": "Cosy by the fire",
+      "emotion": "relaxed",
+      "mood": 0.08,
+      "hours": 6,
+      "effects": {
+        "needGain": {
+          "comfort": 1.15,
+          "energy": 1.1
+        }
+      }
+    },
+    {
+      "id": "home.filmNight",
+      "label": "Film night",
+      "emotion": "happy",
+      "mood": 0.08,
+      "hours": 6,
+      "effects": {
+        "needDecay": {
+          "fun": 0.85
+        }
+      }
+    },
+    {
+      "id": "home.inTune",
+      "label": "In tune",
+      "emotion": "inspired",
+      "mood": 0.07,
+      "hours": 4,
+      "effects": {
+        "skillGain": {
+          "creativity": 1.2,
+          "dexterity": 1.1
+        }
+      }
+    },
+    {
+      "id": "home.onAWin",
+      "label": "On a win",
+      "emotion": "focused",
+      "mood": 0.06,
+      "hours": 4,
+      "effects": {
+        "skillGain": {
+          "dexterity": 1.2,
+          "technology": 1.1
+        }
+      }
+    }
+  ],
+  "objects": [
+    {
+      "id": "fridgeMini",
+      "name": "Mini fridge",
+      "model": "model.fridgeMini",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 280,
+      "category": "kitchen",
+      "group": "appliances",
+      "description": "A small fridge for a small kitchen (or a bedroom corner): snacks and simple meals, but no room for a gourmet spread.",
+      "interactions": [
+        {
+          "id": "snack",
+          "label": "Grab a snack",
+          "anim": "eat",
+          "minutes": 10,
+          "effects": {
+            "hunger": 0.3
+          },
+          "tags": [
+            "food"
+          ]
+        },
+        {
+          "id": "meal",
+          "label": "Make a simple meal",
+          "anim": "cook",
+          "minutes": 40,
+          "effects": {
+            "hunger": 0.75,
+            "fun": 0.05
+          },
+          "tags": [
+            "food",
+            "cooking"
+          ],
+          "skills": {
+            "cooking": 0.1
+          }
+        }
+      ]
+    },
+    {
+      "id": "fridgeBuiltIn",
+      "name": "Built-in fridge",
+      "model": "model.fridgeBuiltIn",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 1200,
+      "category": "kitchen",
+      "group": "appliances",
+      "description": "A tall fridge-freezer behind cabinet doors that match the kitchen. Plenty of fresh food: bigger snacks, fuller meals and a cold drink.",
+      "interactions": [
+        {
+          "id": "snack",
+          "label": "Grab a snack",
+          "anim": "eat",
+          "minutes": 10,
+          "effects": {
+            "hunger": 0.35
+          },
+          "tags": [
+            "food"
+          ]
+        },
+        {
+          "id": "meal",
+          "label": "Make a meal",
+          "anim": "cook",
+          "minutes": 40,
+          "effects": {
+            "hunger": 0.9,
+            "fun": 0.05
+          },
+          "tags": [
+            "food",
+            "cooking"
+          ],
+          "skills": {
+            "cooking": 0.12
+          }
+        },
+        {
+          "id": "gourmet",
+          "label": "Cook a gourmet meal",
+          "anim": "cook",
+          "minutes": 75,
+          "effects": {
+            "hunger": 0.95,
+            "fun": 0.15
+          },
+          "tags": [
+            "food",
+            "cooking",
+            "training"
+          ],
+          "skills": {
+            "cooking": 0.25,
+            "creativity": 0.04
+          },
+          "skill": "cooking"
+        },
+        {
+          "id": "coldDrink",
+          "label": "Pour a cold drink",
+          "anim": "drink",
+          "minutes": 5,
+          "effects": {
+            "comfort": 0.05,
+            "fun": 0.04
+          },
+          "tags": [
+            "food"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stoveElectric",
+      "name": "Electric cooker",
+      "model": "model.stoveElectric",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 450,
+      "category": "kitchen",
+      "group": "appliances",
+      "description": "A freestanding cooker with four rings and an oven. Cooking here trains Cooking; good cooks get more out of every meal.",
+      "interactions": [
+        {
+          "id": "cook",
+          "label": "Cook dinner",
+          "anim": "cook",
+          "minutes": 45,
+          "effects": {
+            "hunger": 0.9,
+            "fun": 0.05
+          },
+          "tags": [
+            "food",
+            "cooking"
+          ],
+          "skills": {
+            "cooking": 0.15
+          },
+          "skill": "cooking"
+        },
+        {
+          "id": "bake",
+          "label": "Bake treats",
+          "anim": "cook",
+          "minutes": 60,
+          "effects": {
+            "hunger": 0.5,
+            "fun": 0.25
+          },
+          "tags": [
+            "food",
+            "cooking",
+            "creative"
+          ],
+          "skills": {
+            "cooking": 0.15,
+            "creativity": 0.05
+          },
+          "skill": "cooking"
+        }
+      ]
+    },
+    {
+      "id": "stoveGas",
+      "name": "Gas range",
+      "model": "model.stoveGas",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 850,
+      "category": "kitchen",
+      "group": "appliances",
+      "description": "Six flames and a big oven for serious cooks. From Cooking 3 a gourmet dinner leaves residents with that home-cooked glow.",
+      "interactions": [
+        {
+          "id": "cook",
+          "label": "Cook dinner",
+          "anim": "cook",
+          "minutes": 45,
+          "effects": {
+            "hunger": 0.95,
+            "fun": 0.05
+          },
+          "tags": [
+            "food",
+            "cooking"
+          ],
+          "skills": {
+            "cooking": 0.15
+          },
+          "skill": "cooking"
+        },
+        {
+          "id": "gourmet",
+          "label": "Cook a gourmet meal",
+          "anim": "cook",
+          "minutes": 75,
+          "effects": {
+            "hunger": 1.0,
+            "fun": 0.15
+          },
+          "tags": [
+            "food",
+            "cooking",
+            "training"
+          ],
+          "skills": {
+            "cooking": 0.25,
+            "creativity": 0.04
+          },
+          "skill": "cooking",
+          "feeling": "home.homeCooked",
+          "feelingMinSkill": 3
+        },
+        {
+          "id": "bake",
+          "label": "Bake treats",
+          "anim": "cook",
+          "minutes": 60,
+          "effects": {
+            "hunger": 0.5,
+            "fun": 0.25
+          },
+          "tags": [
+            "food",
+            "cooking",
+            "creative"
+          ],
+          "skills": {
+            "cooking": 0.15,
+            "creativity": 0.05
+          },
+          "skill": "cooking"
+        }
+      ]
+    },
+    {
+      "id": "microwave",
+      "name": "Microwave counter",
+      "model": "model.microwave",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 180,
+      "category": "kitchen",
+      "group": "appliances",
+      "description": "A counter with a microwave on top: hot leftovers in a few minutes, no skill needed.",
+      "interactions": [
+        {
+          "id": "reheat",
+          "label": "Heat up leftovers",
+          "anim": "cook",
+          "minutes": 15,
+          "effects": {
+            "hunger": 0.45
+          },
+          "tags": [
+            "food"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coffeeMachine",
+      "name": "Coffee machine",
+      "model": "model.coffeeMachine",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 260,
+      "category": "kitchen",
+      "group": "appliances",
+      "description": "A counter with a bean-to-cup machine. A fresh coffee perks residents up and slows their tiredness for a few hours.",
+      "interactions": [
+        {
+          "id": "espresso",
+          "label": "Make a coffee",
+          "anim": "drink",
+          "minutes": 10,
+          "effects": {
+            "energy": 0.1,
+            "comfort": 0.1
+          },
+          "tags": [
+            "food",
+            "lounge"
+          ],
+          "feeling": "home.perkedUp"
+        }
+      ]
+    },
+    {
+      "id": "breakfastCounter",
+      "name": "Breakfast counter",
+      "model": "model.breakfastCounter",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 240,
+      "category": "kitchen",
+      "group": "appliances",
+      "description": "A counter with a toaster and a blender: toast for a quick bite, a smoothie for a little energy.",
+      "interactions": [
+        {
+          "id": "toast",
+          "label": "Make toast",
+          "anim": "cook",
+          "minutes": 10,
+          "effects": {
+            "hunger": 0.3
+          },
+          "tags": [
+            "food"
+          ]
+        },
+        {
+          "id": "smoothie",
+          "label": "Blend a smoothie",
+          "anim": "drink",
+          "minutes": 10,
+          "effects": {
+            "hunger": 0.2,
+            "energy": 0.06
+          },
+          "tags": [
+            "food"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dishwasher",
+      "name": "Dishwasher",
+      "model": "model.dishwasher",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 480,
+      "category": "kitchen",
+      "group": "appliances",
+      "description": "Built in under the worktop. Loading it is a quick, satisfying chore (the tidy love it).",
+      "interactions": [
+        {
+          "id": "dishes",
+          "label": "Load the dishwasher",
+          "anim": "clean",
+          "minutes": 10,
+          "effects": {
+            "comfort": 0.08,
+            "fun": 0.02
+          },
+          "tags": [
+            "chores",
+            "cleaning"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "counter",
+      "name": "Kitchen counter",
+      "model": "model.counter",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 110,
+      "category": "kitchen",
+      "group": "counters",
+      "description": "A base cabinet with a worktop. Line them up for a proper kitchen; there's always room to make a sandwich.",
+      "interactions": [
+        {
+          "id": "sandwich",
+          "label": "Make a sandwich",
+          "anim": "cook",
+          "minutes": 15,
+          "effects": {
+            "hunger": 0.4
+          },
+          "tags": [
+            "food"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "counterCorner",
+      "name": "Corner counter",
+      "model": "model.counterCorner",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 130,
+      "category": "kitchen",
+      "group": "counters",
+      "description": "A deep corner unit that joins two runs of counters into an L.",
+      "interactions": [
+        {
+          "id": "sandwich",
+          "label": "Make a sandwich",
+          "anim": "cook",
+          "minutes": 15,
+          "effects": {
+            "hunger": 0.4
+          },
+          "tags": [
+            "food"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "farmhouseSink",
+      "name": "Farmhouse sink",
+      "model": "model.farmhouseSink",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 320,
+      "category": "kitchen",
+      "group": "counters",
+      "description": "A deep apron-front sink with a gooseneck tap: wash up after cooking, or just your hands.",
+      "interactions": [
+        {
+          "id": "wash",
+          "label": "Wash hands",
+          "anim": "wash",
+          "minutes": 4,
+          "effects": {
+            "hygiene": 0.15
+          },
+          "tags": [
+            "hygiene"
+          ]
+        },
+        {
+          "id": "washUp",
+          "label": "Wash the dishes",
+          "anim": "wash",
+          "minutes": 15,
+          "effects": {
+            "comfort": 0.06
+          },
+          "tags": [
+            "chores",
+            "cleaning"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pantry",
+      "name": "Pantry cupboard",
+      "model": "model.pantry",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 340,
+      "category": "kitchen",
+      "group": "counters",
+      "description": "A tall cupboard stocked with crackers, fruit and jars: a snack without opening the fridge.",
+      "interactions": [
+        {
+          "id": "snack",
+          "label": "Grab a snack",
+          "anim": "eat",
+          "minutes": 10,
+          "effects": {
+            "hunger": 0.3
+          },
+          "tags": [
+            "food"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wallCabinet",
+      "name": "Wall cabinets",
+      "model": "model.wallCabinet",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 90,
+      "category": "kitchen",
+      "group": "counters",
+      "layer": "wall",
+      "decor": 0.25,
+      "description": "Two-door cabinets that hang on the wall above the worktop. They make a kitchen look finished.",
+      "interactions": []
+    },
+    {
+      "id": "rangeHood",
+      "name": "Cooker hood",
+      "model": "model.rangeHood",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 160,
+      "category": "kitchen",
+      "group": "counters",
+      "layer": "wall",
+      "decor": 0.15,
+      "description": "A chimney hood for the wall above the stove.",
+      "interactions": []
+    },
+    {
+      "id": "kitchenIsland",
+      "name": "Kitchen island",
+      "model": "model.kitchenIsland",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 950,
+      "category": "kitchen",
+      "group": "counters",
+      "slots": 2,
+      "description": "A freestanding island with two stools at its front: two residents can make a snack or have breakfast here at once.",
+      "interactions": [
+        {
+          "id": "sandwich",
+          "label": "Make a sandwich",
+          "anim": "cook",
+          "minutes": 15,
+          "effects": {
+            "hunger": 0.4
+          },
+          "tags": [
+            "food"
+          ]
+        },
+        {
+          "id": "breakfast",
+          "label": "Have breakfast at the island",
+          "anim": "eat",
+          "minutes": 20,
+          "effects": {
+            "hunger": 0.3,
+            "comfort": 0.1
+          },
+          "tags": [
+            "food",
+            "lounge"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "barStool",
+      "name": "Bar stool",
+      "model": "model.barStool",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 80,
+      "category": "kitchen",
+      "group": "dining",
+      "description": "A tall stool for the counter or the island.",
+      "interactions": [
+        {
+          "id": "sit",
+          "label": "Sit at the bar",
+          "anim": "sit",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.3
+          },
+          "tags": [
+            "lounge"
+          ]
+        },
+        {
+          "id": "drink",
+          "label": "Have a drink",
+          "anim": "drink",
+          "minutes": 15,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.15,
+            "energy": 0.05
+          },
+          "tags": [
+            "food",
+            "lounge"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bistroSet",
+      "name": "Bistro table",
+      "model": "model.bistroSet",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 160,
+      "category": "kitchen",
+      "group": "dining",
+      "description": "A little round table with one chair: the cheapest place to sit down for breakfast or a coffee.",
+      "interactions": [
+        {
+          "id": "breakfast",
+          "label": "Have breakfast",
+          "anim": "eat",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "hunger": 0.3,
+            "comfort": 0.1
+          },
+          "tags": [
+            "food",
+            "lounge"
+          ]
+        },
+        {
+          "id": "coffee",
+          "label": "Have a coffee",
+          "anim": "drink",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.25,
+            "energy": 0.08
+          },
+          "tags": [
+            "food",
+            "lounge"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "diningGlass",
+      "name": "Glass dining table",
+      "model": "model.diningGlass",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 700,
+      "category": "kitchen",
+      "group": "dining",
+      "slots": 2,
+      "decor": 0.3,
+      "description": "A glass-topped table for two with chairs: breakfast and coffee in style.",
+      "interactions": [
+        {
+          "id": "breakfast",
+          "label": "Have breakfast",
+          "anim": "eat",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "hunger": 0.3,
+            "comfort": 0.1
+          },
+          "tags": [
+            "food",
+            "lounge"
+          ]
+        },
+        {
+          "id": "coffee",
+          "label": "Have a coffee",
+          "anim": "drink",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.25,
+            "energy": 0.08
+          },
+          "tags": [
+            "food",
+            "lounge"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "diningOak",
+      "name": "Farmhouse dining table",
+      "model": "model.diningOak",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 1100,
+      "category": "kitchen",
+      "group": "dining",
+      "slots": 2,
+      "decor": 0.5,
+      "description": "A solid oak table set for four. Lingering over a long meal here is the best part of the day.",
+      "interactions": [
+        {
+          "id": "breakfast",
+          "label": "Have breakfast",
+          "anim": "eat",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "hunger": 0.3,
+            "comfort": 0.1
+          },
+          "tags": [
+            "food",
+            "lounge"
+          ]
+        },
+        {
+          "id": "coffee",
+          "label": "Have a coffee",
+          "anim": "drink",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.25,
+            "energy": 0.08
+          },
+          "tags": [
+            "food",
+            "lounge"
+          ]
+        },
+        {
+          "id": "dinner",
+          "label": "Linger over dinner",
+          "anim": "eat",
+          "minutes": 40,
+          "pose": "sit",
+          "effects": {
+            "hunger": 0.45,
+            "fun": 0.15,
+            "comfort": 0.15
+          },
+          "tags": [
+            "food",
+            "lounge"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "diningChair",
+      "name": "Dining chair",
+      "model": "model.diningChair",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 60,
+      "category": "kitchen",
+      "group": "dining",
+      "description": "A simple chair: extra seating anywhere.",
+      "interactions": [
+        {
+          "id": "sit",
+          "label": "Sit down",
+          "anim": "sit",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.3
+          },
+          "tags": [
+            "lounge"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "loveseat",
+      "name": "Loveseat",
+      "model": "model.loveseat",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 350,
+      "category": "living",
+      "group": "seating",
+      "slots": 2,
+      "description": "A compact two-seater sofa.",
+      "interactions": [
+        {
+          "id": "relax",
+          "label": "Relax",
+          "anim": "relax",
+          "minutes": 30,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.5
+          },
+          "tags": [
+            "rest",
+            "lounge"
+          ]
+        },
+        {
+          "id": "doze",
+          "label": "Doze off",
+          "anim": "nap",
+          "minutes": 45,
+          "pose": "sit",
+          "effects": {
+            "energy": 0.15,
+            "comfort": 0.15
+          },
+          "tags": [
+            "rest",
+            "nap"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sofaThree",
+      "name": "Three-seat sofa",
+      "model": "model.sofaThree",
+      "footprint": [
+        3,
+        1
+      ],
+      "price": 900,
+      "category": "living",
+      "group": "seating",
+      "slots": 2,
+      "description": "A long, deep sofa with soft cushions: very comfortable, and good for a doze.",
+      "interactions": [
+        {
+          "id": "relax",
+          "label": "Relax",
+          "anim": "relax",
+          "minutes": 30,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.65
+          },
+          "tags": [
+            "rest",
+            "lounge"
+          ]
+        },
+        {
+          "id": "doze",
+          "label": "Doze off",
+          "anim": "nap",
+          "minutes": 45,
+          "pose": "sit",
+          "effects": {
+            "energy": 0.15,
+            "comfort": 0.15
+          },
+          "tags": [
+            "rest",
+            "nap"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sofaDesign",
+      "name": "Designer sofa",
+      "model": "model.sofaDesign",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 1500,
+      "category": "living",
+      "group": "seating",
+      "slots": 2,
+      "decor": 0.6,
+      "description": "A low, sculpted sofa that makes a room. The most comfortable seat in the house, and a pleasure to look at.",
+      "interactions": [
+        {
+          "id": "relax",
+          "label": "Relax",
+          "anim": "relax",
+          "minutes": 30,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.75
+          },
+          "tags": [
+            "rest",
+            "lounge"
+          ],
+          "feeling": "home.atHome"
+        },
+        {
+          "id": "doze",
+          "label": "Doze off",
+          "anim": "nap",
+          "minutes": 45,
+          "pose": "sit",
+          "effects": {
+            "energy": 0.15,
+            "comfort": 0.15
+          },
+          "tags": [
+            "rest",
+            "nap"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "armchairLounge",
+      "name": "Lounge chair",
+      "model": "model.armchairLounge",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 180,
+      "category": "living",
+      "group": "seating",
+      "description": "A simple upholstered armchair.",
+      "interactions": [
+        {
+          "id": "sit",
+          "label": "Sit down",
+          "anim": "sit",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.45
+          },
+          "tags": [
+            "lounge"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "armchairLeather",
+      "name": "Leather armchair",
+      "model": "model.armchairLeather",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 520,
+      "category": "living",
+      "group": "seating",
+      "decor": 0.3,
+      "description": "Leather cushions on a solid wooden frame.",
+      "interactions": [
+        {
+          "id": "sit",
+          "label": "Sit down",
+          "anim": "sit",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.55
+          },
+          "tags": [
+            "lounge"
+          ]
+        },
+        {
+          "id": "read",
+          "label": "Read a book",
+          "anim": "read",
+          "minutes": 45,
+          "effects": {
+            "fun": 0.35
+          },
+          "tags": [
+            "entertainment",
+            "reading"
+          ],
+          "skills": {
+            "intelligence": 0.08,
+            "writing": 0.04
+          }
+        }
+      ]
+    },
+    {
+      "id": "armchairDesign",
+      "name": "Designer lounge chair",
+      "model": "model.armchairDesign",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 1200,
+      "category": "living",
+      "group": "seating",
+      "decor": 0.8,
+      "description": "A mid-century swivel chair in leather and bent wood. Sinking into it leaves residents feeling at home.",
+      "interactions": [
+        {
+          "id": "relax",
+          "label": "Sink into the chair",
+          "anim": "relax",
+          "minutes": 30,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.7
+          },
+          "tags": [
+            "rest",
+            "lounge",
+            "cozy"
+          ],
+          "feeling": "home.atHome"
+        },
+        {
+          "id": "doze",
+          "label": "Doze off",
+          "anim": "nap",
+          "minutes": 45,
+          "pose": "sit",
+          "effects": {
+            "energy": 0.15,
+            "comfort": 0.15
+          },
+          "tags": [
+            "rest",
+            "nap"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pouf",
+      "name": "Leather pouf",
+      "model": "model.pouf",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 90,
+      "category": "living",
+      "group": "seating",
+      "description": "A footstool that doubles as a seat.",
+      "interactions": [
+        {
+          "id": "sit",
+          "label": "Sit down",
+          "anim": "sit",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.3
+          },
+          "tags": [
+            "lounge"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coffeeTable",
+      "name": "Coffee table",
+      "model": "model.coffeeTable",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 120,
+      "category": "living",
+      "group": "tables",
+      "description": "A low table with a few magazines on it.",
+      "interactions": [
+        {
+          "id": "magazine",
+          "label": "Flip through a magazine",
+          "anim": "read",
+          "minutes": 15,
+          "effects": {
+            "fun": 0.15
+          },
+          "tags": [
+            "entertainment",
+            "reading"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coffeeTableGlass",
+      "name": "Glass coffee table",
+      "model": "model.coffeeTableGlass",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 280,
+      "category": "living",
+      "group": "tables",
+      "decor": 0.3,
+      "description": "A glass-topped coffee table.",
+      "interactions": [
+        {
+          "id": "magazine",
+          "label": "Flip through a magazine",
+          "anim": "read",
+          "minutes": 15,
+          "effects": {
+            "fun": 0.15
+          },
+          "tags": [
+            "entertainment",
+            "reading"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coffeeTableMarble",
+      "name": "Marble side table",
+      "model": "model.coffeeTableMarble",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 420,
+      "category": "living",
+      "group": "tables",
+      "decor": 0.5,
+      "description": "A round marble top on bent steel legs.",
+      "interactions": [
+        {
+          "id": "magazine",
+          "label": "Flip through a magazine",
+          "anim": "read",
+          "minutes": 15,
+          "effects": {
+            "fun": 0.15
+          },
+          "tags": [
+            "entertainment",
+            "reading"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sideTable",
+      "name": "Side table",
+      "model": "model.sideTable",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 70,
+      "category": "living",
+      "group": "tables",
+      "decor": 0.2,
+      "description": "A small table for beside the sofa.",
+      "interactions": []
+    },
+    {
+      "id": "tvWall",
+      "name": "Flat-screen TV",
+      "model": "model.tvWall",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 700,
+      "category": "living",
+      "group": "media",
+      "layer": "wall",
+      "description": "A big, thin screen that hangs on the wall, with a soundbar: better TV than the old set, and it takes no floor space.",
+      "interactions": [
+        {
+          "id": "watch",
+          "label": "Watch TV",
+          "anim": "watch",
+          "minutes": 60,
+          "effects": {
+            "fun": 0.8
+          },
+          "tags": [
+            "entertainment",
+            "screen"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tvRetro",
+      "name": "Portable TV",
+      "model": "model.tvRetro",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 150,
+      "category": "living",
+      "group": "media",
+      "description": "A little old TV on a low cabinet. It still works (mostly).",
+      "interactions": [
+        {
+          "id": "watch",
+          "label": "Watch TV",
+          "anim": "watch",
+          "minutes": 60,
+          "effects": {
+            "fun": 0.6
+          },
+          "tags": [
+            "entertainment",
+            "screen"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "homeCinema",
+      "name": "Home cinema",
+      "model": "model.homeCinema",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 1900,
+      "category": "living",
+      "group": "media",
+      "slots": 2,
+      "description": "A huge screen, tower speakers and a media unit. Watching a whole film here leaves residents with a movie-night glow.",
+      "interactions": [
+        {
+          "id": "watch",
+          "label": "Watch TV",
+          "anim": "watch",
+          "minutes": 60,
+          "effects": {
+            "fun": 0.9
+          },
+          "tags": [
+            "entertainment",
+            "screen"
+          ]
+        },
+        {
+          "id": "film",
+          "label": "Watch a film",
+          "anim": "watch",
+          "minutes": 120,
+          "effects": {
+            "fun": 1.0,
+            "comfort": 0.1
+          },
+          "tags": [
+            "entertainment",
+            "screen"
+          ],
+          "feeling": "home.filmNight"
+        }
+      ]
+    },
+    {
+      "id": "stereo",
+      "name": "Stereo system",
+      "model": "model.stereo",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 380,
+      "category": "living",
+      "group": "media",
+      "description": "A radio and two speakers on a low cabinet: put a record on, or dance.",
+      "interactions": [
+        {
+          "id": "listen",
+          "label": "Listen to music",
+          "anim": "listen",
+          "minutes": 30,
+          "effects": {
+            "fun": 0.35,
+            "comfort": 0.05
+          },
+          "tags": [
+            "entertainment",
+            "music"
+          ]
+        },
+        {
+          "id": "dance",
+          "label": "Dance",
+          "anim": "dance",
+          "minutes": 20,
+          "effects": {
+            "fun": 0.4,
+            "energy": -0.05
+          },
+          "tags": [
+            "entertainment",
+            "party"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "boombox",
+      "name": "Boombox",
+      "model": "model.boombox",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 90,
+      "category": "living",
+      "group": "media",
+      "description": "A cassette boombox on a crate.",
+      "interactions": [
+        {
+          "id": "listen",
+          "label": "Listen to music",
+          "anim": "listen",
+          "minutes": 30,
+          "effects": {
+            "fun": 0.3,
+            "comfort": 0.05
+          },
+          "tags": [
+            "entertainment",
+            "music"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bookcaseLow",
+      "name": "Low bookcase",
+      "model": "model.bookcaseLow",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 140,
+      "category": "living",
+      "group": "shelves",
+      "decor": 0.2,
+      "description": "Two shelves of paperbacks: a good read, but not for serious study.",
+      "interactions": [
+        {
+          "id": "read",
+          "label": "Read a book",
+          "anim": "read",
+          "minutes": 45,
+          "effects": {
+            "fun": 0.4
+          },
+          "tags": [
+            "entertainment",
+            "reading"
+          ],
+          "skills": {
+            "intelligence": 0.1,
+            "writing": 0.04
+          }
+        }
+      ]
+    },
+    {
+      "id": "bookcaseWide",
+      "name": "Library bookcase",
+      "model": "model.bookcaseWide",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 650,
+      "category": "living",
+      "group": "shelves",
+      "decor": 0.5,
+      "description": "A wall of books. Studying from it trains Intelligence faster, and the house finally looks well read.",
+      "interactions": [
+        {
+          "id": "read",
+          "label": "Read a book",
+          "anim": "read",
+          "minutes": 45,
+          "effects": {
+            "fun": 0.5
+          },
+          "tags": [
+            "entertainment",
+            "reading"
+          ],
+          "skills": {
+            "intelligence": 0.12,
+            "writing": 0.04
+          }
+        },
+        {
+          "id": "study",
+          "label": "Study",
+          "anim": "read",
+          "minutes": 60,
+          "effects": {
+            "fun": 0.1
+          },
+          "tags": [
+            "reading",
+            "training",
+            "study"
+          ],
+          "skills": {
+            "intelligence": 0.25,
+            "writing": 0.06
+          }
+        },
+        {
+          "id": "homework",
+          "label": "Do homework",
+          "anim": "read",
+          "minutes": 45,
+          "homework": 6,
+          "effects": {
+            "fun": -0.05
+          },
+          "tags": [
+            "reading"
+          ],
+          "skills": {
+            "intelligence": 0.1
+          }
+        }
+      ]
+    },
+    {
+      "id": "shelvingIndustrial",
+      "name": "Industrial shelving",
+      "model": "model.shelvingIndustrial",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 260,
+      "category": "living",
+      "group": "shelves",
+      "decor": 0.6,
+      "description": "Steel and wood shelves with books, plants and drawers.",
+      "interactions": []
+    },
+    {
+      "id": "bedSingle",
+      "name": "Single bed",
+      "model": "model.bedSingle",
+      "footprint": [
+        1,
+        2
+      ],
+      "price": 320,
+      "category": "bedroom",
+      "group": "beds",
+      "description": "A bed for one.",
+      "interactions": [
+        {
+          "id": "sleep",
+          "label": "Sleep",
+          "anim": "sleep",
+          "minutes": 480,
+          "pose": "lie",
+          "effects": {
+            "energy": 1.0,
+            "comfort": 0.35
+          },
+          "tags": [
+            "rest",
+            "sleep"
+          ]
+        },
+        {
+          "id": "nap",
+          "label": "Take a nap",
+          "anim": "nap",
+          "minutes": 60,
+          "pose": "lie",
+          "effects": {
+            "energy": 0.25,
+            "comfort": 0.2
+          },
+          "tags": [
+            "rest",
+            "nap"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bedBunk",
+      "name": "Bunk bed",
+      "model": "model.bedBunk",
+      "footprint": [
+        1,
+        2
+      ],
+      "price": 650,
+      "category": "bedroom",
+      "group": "beds",
+      "slots": 2,
+      "bunk": true,
+      "description": "Two beds, one above the other, in the floor space of one: two residents sleep in it.",
+      "interactions": [
+        {
+          "id": "sleep",
+          "label": "Sleep",
+          "anim": "sleep",
+          "minutes": 480,
+          "pose": "lie",
+          "effects": {
+            "energy": 1.0,
+            "comfort": 0.3
+          },
+          "tags": [
+            "rest",
+            "sleep"
+          ]
+        },
+        {
+          "id": "nap",
+          "label": "Take a nap",
+          "anim": "nap",
+          "minutes": 60,
+          "pose": "lie",
+          "effects": {
+            "energy": 0.25,
+            "comfort": 0.2
+          },
+          "tags": [
+            "rest",
+            "nap"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bedFuton",
+      "name": "Futon bed",
+      "model": "model.bedFuton",
+      "footprint": [
+        2,
+        2
+      ],
+      "price": 420,
+      "category": "bedroom",
+      "group": "beds",
+      "slots": 2,
+      "description": "A low platform with a firm futon: the cheapest double, if not the comfiest.",
+      "interactions": [
+        {
+          "id": "sleep",
+          "label": "Sleep",
+          "anim": "sleep",
+          "minutes": 480,
+          "pose": "lie",
+          "effects": {
+            "energy": 0.9,
+            "comfort": 0.3
+          },
+          "tags": [
+            "rest",
+            "sleep"
+          ]
+        },
+        {
+          "id": "nap",
+          "label": "Take a nap",
+          "anim": "nap",
+          "minutes": 60,
+          "pose": "lie",
+          "effects": {
+            "energy": 0.22,
+            "comfort": 0.15
+          },
+          "tags": [
+            "rest",
+            "nap"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bedKing",
+      "name": "Upholstered king bed",
+      "model": "model.bedKing",
+      "footprint": [
+        2,
+        2
+      ],
+      "price": 1800,
+      "category": "bedroom",
+      "group": "beds",
+      "slots": 2,
+      "decor": 0.5,
+      "description": "A tall padded headboard and layers of bedding. A full night here leaves residents well rested: more energy and comfort from everything for hours.",
+      "interactions": [
+        {
+          "id": "sleep",
+          "label": "Sleep",
+          "anim": "sleep",
+          "minutes": 480,
+          "pose": "lie",
+          "effects": {
+            "energy": 1.0,
+            "comfort": 0.5
+          },
+          "tags": [
+            "rest",
+            "sleep"
+          ],
+          "feeling": "home.wellRested"
+        },
+        {
+          "id": "nap",
+          "label": "Take a nap",
+          "anim": "nap",
+          "minutes": 60,
+          "pose": "lie",
+          "effects": {
+            "energy": 0.28,
+            "comfort": 0.25
+          },
+          "tags": [
+            "rest",
+            "nap"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nightstand",
+      "name": "Nightstand",
+      "model": "model.nightstand",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 75,
+      "category": "bedroom",
+      "group": "storage",
+      "decor": 0.15,
+      "description": "A bedside table with a drawer.",
+      "interactions": []
+    },
+    {
+      "id": "nightstandLamp",
+      "name": "Nightstand with lamp",
+      "model": "model.nightstandLamp",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 140,
+      "category": "bedroom",
+      "group": "storage",
+      "decor": 0.3,
+      "light": {
+        "range": 3.2,
+        "intensity": 0.7,
+        "height": 0.95
+      },
+      "description": "A bedside table with a reading lamp: light for the bedroom at night.",
+      "interactions": []
+    },
+    {
+      "id": "dresser",
+      "name": "Chest of drawers",
+      "model": "model.dresser",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 300,
+      "category": "bedroom",
+      "group": "storage",
+      "decor": 0.2,
+      "description": "Six drawers of clothes. Picking a good outfit makes residents more charming for a few hours.",
+      "interactions": [
+        {
+          "id": "outfit",
+          "label": "Pick an outfit",
+          "anim": "clean",
+          "minutes": 10,
+          "effects": {
+            "comfort": 0.05
+          },
+          "tags": [
+            "lounge"
+          ],
+          "feeling": "home.dressedUp"
+        }
+      ]
+    },
+    {
+      "id": "wardrobe",
+      "name": "Wardrobe",
+      "model": "model.wardrobe",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 420,
+      "category": "bedroom",
+      "group": "storage",
+      "description": "A double wardrobe. Picking a good outfit makes residents more charming for a few hours.",
+      "interactions": [
+        {
+          "id": "outfit",
+          "label": "Pick an outfit",
+          "anim": "clean",
+          "minutes": 10,
+          "effects": {
+            "comfort": 0.05
+          },
+          "tags": [
+            "lounge"
+          ],
+          "feeling": "home.dressedUp"
+        }
+      ]
+    },
+    {
+      "id": "dressingTable",
+      "name": "Dressing table",
+      "model": "model.dressingTable",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 340,
+      "category": "bedroom",
+      "group": "dressing",
+      "description": "A table with a mirror and a pouf: freshen up, practise a smile, look your best.",
+      "interactions": [
+        {
+          "id": "getReady",
+          "label": "Get ready",
+          "anim": "wash",
+          "minutes": 15,
+          "pose": "sit",
+          "effects": {
+            "hygiene": 0.15,
+            "comfort": 0.05
+          },
+          "tags": [
+            "hygiene"
+          ],
+          "skills": {
+            "charisma": 0.06
+          },
+          "feeling": "home.dressedUp"
+        }
+      ]
+    },
+    {
+      "id": "mirrorWall",
+      "name": "Wall mirror",
+      "model": "model.mirrorWall",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 110,
+      "category": "bedroom",
+      "group": "dressing",
+      "layer": "wall",
+      "decor": 0.3,
+      "description": "A mirror for the wall: check your look, or practise a speech.",
+      "interactions": [
+        {
+          "id": "speech",
+          "label": "Practise a speech",
+          "anim": "talk",
+          "minutes": 30,
+          "effects": {
+            "social": 0.05
+          },
+          "tags": [
+            "training"
+          ],
+          "skills": {
+            "charisma": 0.18
+          }
+        }
+      ]
+    },
+    {
+      "id": "toiletCompact",
+      "name": "Compact toilet",
+      "model": "model.toiletCompact",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 150,
+      "category": "bathroom",
+      "group": "toilets",
+      "wearPerUse": 0.01,
+      "description": "A basic toilet. Cheap, but it wears out faster.",
+      "interactions": [
+        {
+          "id": "use",
+          "label": "Use toilet",
+          "anim": "toilet",
+          "minutes": 8,
+          "pose": "sit",
+          "effects": {
+            "bladder": 1.0
+          },
+          "tags": [
+            "bathroom"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "toiletSmart",
+      "name": "Smart toilet",
+      "model": "model.toiletSmart",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 1100,
+      "category": "bathroom",
+      "group": "toilets",
+      "decor": 0.2,
+      "description": "A wall-hung toilet with a warm seat and a bidet: a little fresher and comfier every time.",
+      "interactions": [
+        {
+          "id": "use",
+          "label": "Use toilet",
+          "anim": "toilet",
+          "minutes": 8,
+          "pose": "sit",
+          "effects": {
+            "bladder": 1.0,
+            "hygiene": 0.1,
+            "comfort": 0.1
+          },
+          "tags": [
+            "bathroom"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bathtub",
+      "name": "Bathtub",
+      "model": "model.bathtub",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 750,
+      "category": "bathroom",
+      "group": "bathing",
+      "description": "A long soak gets residents clean and comfortable.",
+      "interactions": [
+        {
+          "id": "bath",
+          "label": "Take a bath",
+          "anim": "bath",
+          "minutes": 45,
+          "pose": "sit",
+          "effects": {
+            "hygiene": 0.9,
+            "comfort": 0.3,
+            "fun": 0.1
+          },
+          "tags": [
+            "hygiene",
+            "spa"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bathtubClawfoot",
+      "name": "Clawfoot tub",
+      "model": "model.bathtubClawfoot",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 1800,
+      "category": "bathroom",
+      "group": "bathing",
+      "decor": 0.6,
+      "description": "A deep freestanding tub on brass feet. A soak leaves residents pampered: they stay fresh for longer.",
+      "interactions": [
+        {
+          "id": "bath",
+          "label": "Take a bath",
+          "anim": "bath",
+          "minutes": 50,
+          "pose": "sit",
+          "effects": {
+            "hygiene": 1.0,
+            "comfort": 0.5,
+            "fun": 0.15
+          },
+          "tags": [
+            "hygiene",
+            "spa"
+          ],
+          "feeling": "home.pampered"
+        }
+      ]
+    },
+    {
+      "id": "showerStall",
+      "name": "Shower stall",
+      "model": "model.showerStall",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 320,
+      "category": "bathroom",
+      "group": "bathing",
+      "description": "A tiled corner with a curtain: cheap, cheerful and a bit slow.",
+      "interactions": [
+        {
+          "id": "shower",
+          "label": "Take a shower",
+          "anim": "shower",
+          "minutes": 25,
+          "effects": {
+            "hygiene": 1.0
+          },
+          "tags": [
+            "hygiene"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "showerWalkIn",
+      "name": "Walk-in rain shower",
+      "model": "model.showerWalkIn",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 1300,
+      "category": "bathroom",
+      "group": "bathing",
+      "decor": 0.3,
+      "description": "A stone floor, a glass screen and a big rain head. A quick, invigorating shower that leaves residents refreshed.",
+      "interactions": [
+        {
+          "id": "shower",
+          "label": "Take a shower",
+          "anim": "shower",
+          "minutes": 15,
+          "effects": {
+            "hygiene": 1.0
+          },
+          "tags": [
+            "hygiene"
+          ],
+          "feeling": "home.refreshed"
+        }
+      ]
+    },
+    {
+      "id": "sinkPedestal",
+      "name": "Pedestal sink",
+      "model": "model.sinkPedestal",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 110,
+      "category": "bathroom",
+      "group": "sinks",
+      "description": "A simple basin on a pedestal.",
+      "interactions": [
+        {
+          "id": "wash",
+          "label": "Wash hands",
+          "anim": "wash",
+          "minutes": 4,
+          "effects": {
+            "hygiene": 0.15
+          },
+          "tags": [
+            "hygiene"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "vanityDouble",
+      "name": "Double vanity",
+      "model": "model.vanityDouble",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 900,
+      "category": "bathroom",
+      "group": "sinks",
+      "slots": 2,
+      "decor": 0.3,
+      "description": "Two basins under two mirrors: no more queueing to brush your teeth.",
+      "interactions": [
+        {
+          "id": "wash",
+          "label": "Wash hands",
+          "anim": "wash",
+          "minutes": 4,
+          "effects": {
+            "hygiene": 0.18
+          },
+          "tags": [
+            "hygiene"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mirrorCabinet",
+      "name": "Mirror cabinet",
+      "model": "model.mirrorCabinet",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 90,
+      "category": "bathroom",
+      "group": "sinks",
+      "layer": "wall",
+      "decor": 0.2,
+      "description": "A mirrored cabinet for above the basin.",
+      "interactions": []
+    },
+    {
+      "id": "towelRail",
+      "name": "Towel rail",
+      "model": "model.towelRail",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 45,
+      "category": "bathroom",
+      "group": "laundry",
+      "layer": "wall",
+      "decor": 0.25,
+      "description": "Fresh towels on the wall.",
+      "interactions": []
+    },
+    {
+      "id": "laundryWasher",
+      "name": "Washing machine",
+      "model": "model.laundryWasher",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 520,
+      "category": "bathroom",
+      "group": "laundry",
+      "description": "Clean clothes help a little with hygiene, and the tidy love doing the laundry.",
+      "interactions": [
+        {
+          "id": "laundry",
+          "label": "Do the laundry",
+          "anim": "clean",
+          "minutes": 30,
+          "effects": {
+            "hygiene": 0.12,
+            "comfort": 0.05
+          },
+          "tags": [
+            "chores",
+            "cleaning"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "laundryDryer",
+      "name": "Tumble dryer",
+      "model": "model.laundryDryer",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 420,
+      "category": "bathroom",
+      "group": "laundry",
+      "description": "Warm, fresh laundry to fold.",
+      "interactions": [
+        {
+          "id": "laundry",
+          "label": "Fold the laundry",
+          "anim": "clean",
+          "minutes": 20,
+          "effects": {
+            "comfort": 0.08,
+            "fun": 0.03
+          },
+          "tags": [
+            "chores",
+            "cleaning"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kidsBed",
+      "name": "Kids' bed",
+      "model": "model.kidsBed",
+      "footprint": [
+        1,
+        2
+      ],
+      "price": 260,
+      "category": "kids",
+      "description": "A small bed with a guard rail and stars on the headboard.",
+      "interactions": [
+        {
+          "id": "sleep",
+          "label": "Sleep",
+          "anim": "sleep",
+          "minutes": 480,
+          "pose": "lie",
+          "effects": {
+            "energy": 1.0,
+            "comfort": 0.4
+          },
+          "tags": [
+            "rest",
+            "sleep"
+          ]
+        },
+        {
+          "id": "nap",
+          "label": "Take a nap",
+          "anim": "nap",
+          "minutes": 60,
+          "pose": "lie",
+          "effects": {
+            "energy": 0.25,
+            "comfort": 0.2
+          },
+          "tags": [
+            "rest",
+            "nap"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "toyBox",
+      "name": "Toy box",
+      "model": "model.toyBox",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 80,
+      "category": "kids",
+      "description": "Blocks, balls and odds and ends. Children love it; grown-ups rarely play on their own.",
+      "interactions": [
+        {
+          "id": "play",
+          "label": "Play with toys",
+          "anim": "play",
+          "minutes": 30,
+          "effects": {
+            "fun": 0.45
+          },
+          "tags": [
+            "entertainment",
+            "toys"
+          ],
+          "skills": {
+            "creativity": 0.04
+          }
+        }
+      ]
+    },
+    {
+      "id": "playMat",
+      "name": "Play mat",
+      "model": "model.playMat",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 60,
+      "category": "kids",
+      "description": "A soft mat with building blocks.",
+      "interactions": [
+        {
+          "id": "blocks",
+          "label": "Build with blocks",
+          "anim": "tend",
+          "minutes": 30,
+          "effects": {
+            "fun": 0.4
+          },
+          "tags": [
+            "entertainment",
+            "toys"
+          ],
+          "skills": {
+            "creativity": 0.05,
+            "dexterity": 0.04
+          }
+        }
+      ]
+    },
+    {
+      "id": "kidsChalkboard",
+      "name": "Chalkboard easel",
+      "model": "model.kidsChalkboard",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 110,
+      "category": "kids",
+      "description": "A child-sized chalkboard: drawing trains Creativity.",
+      "interactions": [
+        {
+          "id": "draw",
+          "label": "Draw with chalk",
+          "anim": "paint",
+          "minutes": 30,
+          "effects": {
+            "fun": 0.35
+          },
+          "tags": [
+            "entertainment",
+            "toys",
+            "creative"
+          ],
+          "skills": {
+            "creativity": 0.12
+          }
+        }
+      ]
+    },
+    {
+      "id": "dollHouse",
+      "name": "Doll house",
+      "model": "model.dollHouse",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 240,
+      "category": "kids",
+      "description": "A two-storey doll house with tiny furniture.",
+      "interactions": [
+        {
+          "id": "dolls",
+          "label": "Play with the doll house",
+          "anim": "tend",
+          "minutes": 30,
+          "effects": {
+            "fun": 0.45,
+            "social": 0.05
+          },
+          "tags": [
+            "entertainment",
+            "toys",
+            "creative"
+          ],
+          "skills": {
+            "creativity": 0.06,
+            "charisma": 0.03
+          }
+        }
+      ]
+    },
+    {
+      "id": "rockingHorse",
+      "name": "Rocking horse",
+      "model": "model.rockingHorse",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 150,
+      "category": "kids",
+      "description": "Giddy-up!",
+      "interactions": [
+        {
+          "id": "ride",
+          "label": "Ride the rocking horse",
+          "anim": "play",
+          "minutes": 15,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.35
+          },
+          "tags": [
+            "entertainment",
+            "toys"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kidsDesk",
+      "name": "Kids' desk",
+      "model": "model.kidsDesk",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 180,
+      "category": "kids",
+      "description": "A small desk and chair for homework and drawings.",
+      "interactions": [
+        {
+          "id": "homework",
+          "label": "Do homework",
+          "anim": "write",
+          "minutes": 45,
+          "pose": "sit",
+          "homework": 7,
+          "effects": {
+            "fun": -0.05
+          },
+          "tags": [
+            "study"
+          ],
+          "skills": {
+            "intelligence": 0.1,
+            "writing": 0.05
+          }
+        },
+        {
+          "id": "drawing",
+          "label": "Draw a picture",
+          "anim": "write",
+          "minutes": 30,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.3
+          },
+          "tags": [
+            "entertainment",
+            "toys",
+            "creative"
+          ],
+          "skills": {
+            "creativity": 0.1
+          }
+        }
+      ]
+    },
+    {
+      "id": "teddyBear",
+      "name": "Giant teddy bear",
+      "model": "model.teddyBear",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 45,
+      "category": "kids",
+      "decor": 0.3,
+      "description": "A big, soft bear to hug.",
+      "interactions": [
+        {
+          "id": "hug",
+          "label": "Hug the teddy",
+          "anim": "relax",
+          "minutes": 5,
+          "effects": {
+            "comfort": 0.1,
+            "fun": 0.05
+          },
+          "tags": [
+            "toys",
+            "cozy"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "deskWriting",
+      "name": "Writing desk",
+      "model": "model.deskWriting",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 260,
+      "category": "office",
+      "description": "A plain desk with a lamp, paper and pens: writing trains Writing, and pupils do their homework here.",
+      "interactions": [
+        {
+          "id": "write",
+          "label": "Write",
+          "anim": "write",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.15,
+            "comfort": 0.1
+          },
+          "tags": [
+            "training",
+            "creative"
+          ],
+          "skills": {
+            "writing": 0.2,
+            "creativity": 0.04
+          }
+        },
+        {
+          "id": "homework",
+          "label": "Do homework",
+          "anim": "write",
+          "minutes": 45,
+          "pose": "sit",
+          "homework": 7,
+          "effects": {
+            "fun": -0.05
+          },
+          "tags": [
+            "study"
+          ],
+          "skills": {
+            "intelligence": 0.1,
+            "writing": 0.05
+          }
+        }
+      ]
+    },
+    {
+      "id": "deskLaptop",
+      "name": "Laptop desk",
+      "model": "model.deskLaptop",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 650,
+      "category": "office",
+      "description": "A small desk with a laptop: browse, write or code without the price of a full computer desk.",
+      "interactions": [
+        {
+          "id": "browse",
+          "label": "Browse the web",
+          "anim": "type",
+          "minutes": 45,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.4,
+            "comfort": 0.1
+          },
+          "tags": [
+            "entertainment",
+            "screen"
+          ]
+        },
+        {
+          "id": "code",
+          "label": "Practise coding",
+          "anim": "type",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.1,
+            "comfort": 0.1
+          },
+          "tags": [
+            "training",
+            "screen"
+          ],
+          "skills": {
+            "technology": 0.18,
+            "intelligence": 0.04
+          }
+        },
+        {
+          "id": "write",
+          "label": "Write",
+          "anim": "type",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.15,
+            "comfort": 0.1
+          },
+          "tags": [
+            "training",
+            "creative"
+          ],
+          "skills": {
+            "writing": 0.18,
+            "creativity": 0.04
+          }
+        },
+        {
+          "id": "homework",
+          "label": "Do homework",
+          "anim": "type",
+          "minutes": 45,
+          "pose": "sit",
+          "homework": 7,
+          "effects": {
+            "fun": -0.05
+          },
+          "tags": [
+            "screen"
+          ],
+          "skills": {
+            "intelligence": 0.1,
+            "writing": 0.05
+          }
+        }
+      ]
+    },
+    {
+      "id": "computerGaming",
+      "name": "Gaming PC",
+      "model": "model.computerGaming",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 1900,
+      "category": "office",
+      "description": "Two screens, a glowing keyboard and a fast tower. Games are more fun the better the player (Dexterity); from Dexterity 3 a win leaves them sharp.",
+      "interactions": [
+        {
+          "id": "game",
+          "label": "Play PC games",
+          "anim": "play",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.6
+          },
+          "tags": [
+            "entertainment",
+            "screen",
+            "gaming"
+          ],
+          "skills": {
+            "dexterity": 0.06,
+            "technology": 0.04
+          },
+          "skill": "dexterity",
+          "feeling": "home.onAWin",
+          "feelingMinSkill": 3
+        },
+        {
+          "id": "code",
+          "label": "Practise coding",
+          "anim": "type",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.1,
+            "comfort": 0.1
+          },
+          "tags": [
+            "training",
+            "screen"
+          ],
+          "skills": {
+            "technology": 0.24,
+            "intelligence": 0.05
+          }
+        },
+        {
+          "id": "browse",
+          "label": "Browse the web",
+          "anim": "type",
+          "minutes": 45,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.45,
+            "comfort": 0.1
+          },
+          "tags": [
+            "entertainment",
+            "screen"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "officeChair",
+      "name": "Office chair",
+      "model": "model.officeChair",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 140,
+      "category": "office",
+      "description": "A swivel chair on castors.",
+      "interactions": [
+        {
+          "id": "sit",
+          "label": "Sit down",
+          "anim": "sit",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.35
+          },
+          "tags": [
+            "lounge"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ukulele",
+      "name": "Ukulele",
+      "model": "model.ukulele",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 160,
+      "category": "hobbies",
+      "group": "music",
+      "description": "Four strings and a cheerful sound: strumming builds Creativity; from Creativity 3 residents play so well they're in tune for hours.",
+      "interactions": [
+        {
+          "id": "strum",
+          "label": "Strum the ukulele",
+          "anim": "music",
+          "minutes": 30,
+          "effects": {
+            "fun": 0.35
+          },
+          "tags": [
+            "entertainment",
+            "music",
+            "creative"
+          ],
+          "skills": {
+            "creativity": 0.1,
+            "dexterity": 0.04
+          }
+        },
+        {
+          "id": "practise",
+          "label": "Practise chords",
+          "anim": "music",
+          "minutes": 60,
+          "effects": {
+            "fun": 0.1
+          },
+          "tags": [
+            "training",
+            "music",
+            "creative"
+          ],
+          "skills": {
+            "creativity": 0.2,
+            "dexterity": 0.05
+          },
+          "skill": "creativity",
+          "feeling": "home.inTune",
+          "feelingMinSkill": 3
+        }
+      ]
+    },
+    {
+      "id": "guitarElectric",
+      "name": "Electric guitar",
+      "model": "model.guitarElectric",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 700,
+      "category": "hobbies",
+      "group": "music",
+      "description": "A solid-body guitar and an amp. Practice builds Creativity and Dexterity; from Creativity 3 a jam leaves residents in tune.",
+      "interactions": [
+        {
+          "id": "jam",
+          "label": "Jam on the guitar",
+          "anim": "music",
+          "minutes": 45,
+          "effects": {
+            "fun": 0.45
+          },
+          "tags": [
+            "entertainment",
+            "music",
+            "creative"
+          ],
+          "skills": {
+            "creativity": 0.1,
+            "dexterity": 0.06
+          },
+          "skill": "creativity",
+          "feeling": "home.inTune",
+          "feelingMinSkill": 3
+        },
+        {
+          "id": "practise",
+          "label": "Practise riffs",
+          "anim": "music",
+          "minutes": 60,
+          "effects": {
+            "fun": 0.1
+          },
+          "tags": [
+            "training",
+            "music",
+            "creative"
+          ],
+          "skills": {
+            "creativity": 0.22,
+            "dexterity": 0.06
+          }
+        }
+      ]
+    },
+    {
+      "id": "keyboardDigital",
+      "name": "Digital piano",
+      "model": "model.keyboardDigital",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 650,
+      "category": "hobbies",
+      "group": "music",
+      "description": "A slim keyboard on a stand with a bench: piano practice for a smaller room and budget.",
+      "interactions": [
+        {
+          "id": "play",
+          "label": "Play the keyboard",
+          "anim": "music",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.4
+          },
+          "tags": [
+            "training",
+            "entertainment",
+            "creative",
+            "music"
+          ],
+          "skills": {
+            "dexterity": 0.18,
+            "creativity": 0.06
+          }
+        }
+      ]
+    },
+    {
+      "id": "poolTable",
+      "name": "Pool table",
+      "model": "model.poolTable",
+      "footprint": [
+        3,
+        2
+      ],
+      "price": 1700,
+      "category": "hobbies",
+      "group": "games",
+      "slots": 2,
+      "description": "A full-size table with balls and a cue. A game for two that trains Perception and Dexterity.",
+      "interactions": [
+        {
+          "id": "pool",
+          "label": "Shoot pool",
+          "anim": "play",
+          "minutes": 30,
+          "effects": {
+            "fun": 0.5
+          },
+          "tags": [
+            "entertainment",
+            "gaming"
+          ],
+          "skills": {
+            "perception": 0.06,
+            "dexterity": 0.06
+          }
+        },
+        {
+          "id": "trickShots",
+          "label": "Practise trick shots",
+          "anim": "play",
+          "minutes": 60,
+          "effects": {
+            "fun": 0.15
+          },
+          "tags": [
+            "training",
+            "gaming"
+          ],
+          "skills": {
+            "perception": 0.2,
+            "dexterity": 0.06
+          }
+        }
+      ]
+    },
+    {
+      "id": "foosball",
+      "name": "Foosball table",
+      "model": "model.foosball",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 420,
+      "category": "hobbies",
+      "group": "games",
+      "slots": 2,
+      "description": "Spin the rods and score: quick fun for two.",
+      "interactions": [
+        {
+          "id": "foosball",
+          "label": "Play foosball",
+          "anim": "play",
+          "minutes": 20,
+          "effects": {
+            "fun": 0.4
+          },
+          "tags": [
+            "entertainment",
+            "gaming"
+          ],
+          "skills": {
+            "dexterity": 0.04,
+            "perception": 0.02
+          }
+        }
+      ]
+    },
+    {
+      "id": "dartboard",
+      "name": "Dartboard",
+      "model": "model.dartboard",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 70,
+      "category": "hobbies",
+      "group": "games",
+      "layer": "wall",
+      "description": "A dartboard for the wall: a few throws train Perception.",
+      "interactions": [
+        {
+          "id": "darts",
+          "label": "Throw darts",
+          "anim": "play",
+          "minutes": 15,
+          "effects": {
+            "fun": 0.3
+          },
+          "tags": [
+            "entertainment",
+            "gaming"
+          ],
+          "skills": {
+            "perception": 0.08,
+            "dexterity": 0.04
+          }
+        }
+      ]
+    },
+    {
+      "id": "sewingTable",
+      "name": "Sewing table",
+      "model": "model.sewingTable",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 380,
+      "category": "hobbies",
+      "group": "crafts",
+      "description": "A sewing machine on a little table: sewing builds Dexterity and Creativity, and mending is a useful chore.",
+      "interactions": [
+        {
+          "id": "sew",
+          "label": "Sew",
+          "anim": "tinker",
+          "minutes": 60,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.15
+          },
+          "tags": [
+            "training",
+            "creative"
+          ],
+          "skills": {
+            "dexterity": 0.2,
+            "creativity": 0.06
+          }
+        },
+        {
+          "id": "mend",
+          "label": "Mend clothes",
+          "anim": "tinker",
+          "minutes": 30,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.05
+          },
+          "tags": [
+            "chores"
+          ],
+          "skills": {
+            "handiness": 0.08
+          }
+        }
+      ]
+    },
+    {
+      "id": "chemistrySet",
+      "name": "Chemistry bench",
+      "model": "model.chemistrySet",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 520,
+      "category": "hobbies",
+      "group": "crafts",
+      "description": "Flasks, a microscope and a shelf of reagents: experiments train Intelligence and Perception.",
+      "interactions": [
+        {
+          "id": "experiment",
+          "label": "Do experiments",
+          "anim": "tinker",
+          "minutes": 60,
+          "effects": {
+            "fun": 0.2
+          },
+          "tags": [
+            "training"
+          ],
+          "skills": {
+            "intelligence": 0.2,
+            "perception": 0.06
+          }
+        }
+      ]
+    },
+    {
+      "id": "exerciseBike",
+      "name": "Exercise bike",
+      "model": "model.exerciseBike",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 420,
+      "category": "fitness",
+      "description": "A basic upright bike: cycling builds Endurance.",
+      "interactions": [
+        {
+          "id": "cycle",
+          "label": "Cycle",
+          "anim": "exercise",
+          "minutes": 45,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.1,
+            "energy": -0.25,
+            "hygiene": -0.25
+          },
+          "tags": [
+            "training",
+            "fitness",
+            "sport"
+          ],
+          "skills": {
+            "endurance": 0.22,
+            "strength": 0.04
+          }
+        }
+      ]
+    },
+    {
+      "id": "yogaMat",
+      "name": "Yoga mat",
+      "model": "model.yogaMat",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 45,
+      "category": "fitness",
+      "description": "A mat, a block and a bottle of water. Yoga stretches the body and calms the mind.",
+      "interactions": [
+        {
+          "id": "yoga",
+          "label": "Do yoga",
+          "anim": "meditate",
+          "minutes": 30,
+          "effects": {
+            "comfort": 0.2,
+            "fun": 0.1
+          },
+          "tags": [
+            "training",
+            "fitness"
+          ],
+          "skills": {
+            "dexterity": 0.12,
+            "endurance": 0.06
+          }
+        }
+      ]
+    },
+    {
+      "id": "dumbbells",
+      "name": "Dumbbell rack",
+      "model": "model.dumbbells",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 160,
+      "category": "fitness",
+      "description": "Eight dumbbells on a rack: lifting builds Strength.",
+      "interactions": [
+        {
+          "id": "lift",
+          "label": "Lift dumbbells",
+          "anim": "lift",
+          "minutes": 30,
+          "effects": {
+            "fun": 0.05,
+            "energy": -0.15,
+            "hygiene": -0.15
+          },
+          "tags": [
+            "training",
+            "fitness",
+            "sport"
+          ],
+          "skills": {
+            "strength": 0.2,
+            "endurance": 0.04
+          }
+        }
+      ]
+    },
+    {
+      "id": "printFramed",
+      "name": "Framed print",
+      "model": "model.printFramed",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 45,
+      "category": "decor",
+      "group": "wall",
+      "layer": "wall",
+      "decor": 0.5,
+      "description": "A typographic print in a white frame.",
+      "interactions": []
+    },
+    {
+      "id": "photoPrint",
+      "name": "Photo print",
+      "model": "model.photoPrint",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 90,
+      "category": "decor",
+      "group": "wall",
+      "layer": "wall",
+      "decor": 0.7,
+      "description": "A black-and-white city photograph.",
+      "interactions": []
+    },
+    {
+      "id": "paintingClassic",
+      "name": "Oil painting",
+      "model": "model.paintingClassic",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 380,
+      "category": "decor",
+      "group": "wall",
+      "layer": "wall",
+      "decor": 1.2,
+      "description": "A landscape in oils in a gilded frame. Residents stop to admire it.",
+      "interactions": [
+        {
+          "id": "admire",
+          "label": "Admire the painting",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.05,
+            "comfort": 0.03
+          },
+          "tags": [
+            "entertainment",
+            "creative"
+          ],
+          "skills": {
+            "creativity": 0.02
+          }
+        }
+      ]
+    },
+    {
+      "id": "canvasAbstract",
+      "name": "Abstract canvas",
+      "model": "model.canvasAbstract",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 260,
+      "category": "decor",
+      "group": "wall",
+      "layer": "wall",
+      "decor": 1.0,
+      "description": "A big canvas of bold colour blocks.",
+      "interactions": [
+        {
+          "id": "admire",
+          "label": "Admire the painting",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.05,
+            "comfort": 0.03
+          },
+          "tags": [
+            "entertainment",
+            "creative"
+          ],
+          "skills": {
+            "creativity": 0.02
+          }
+        }
+      ]
+    },
+    {
+      "id": "wallClock",
+      "name": "Wall clock",
+      "model": "model.wallClock",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 60,
+      "category": "decor",
+      "group": "wall",
+      "layer": "wall",
+      "decor": 0.4,
+      "description": "A clean, round clock.",
+      "interactions": []
+    },
+    {
+      "id": "wallShelf",
+      "name": "Floating shelves",
+      "model": "model.wallShelf",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 55,
+      "category": "decor",
+      "group": "wall",
+      "layer": "wall",
+      "decor": 0.5,
+      "description": "Two shelves of books, a plant and a photo.",
+      "interactions": []
+    },
+    {
+      "id": "curtains",
+      "name": "Curtains",
+      "model": "model.curtains",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 70,
+      "category": "decor",
+      "group": "textiles",
+      "layer": "wall",
+      "decor": 0.5,
+      "description": "A pair of curtains on a rod: hang them over a window.",
+      "interactions": []
+    },
+    {
+      "id": "curtainsLong",
+      "name": "Floor-length curtains",
+      "model": "model.curtainsLong",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 130,
+      "category": "decor",
+      "group": "textiles",
+      "layer": "wall",
+      "decor": 0.8,
+      "description": "Long curtains for a wide window or a tall room.",
+      "interactions": []
+    },
+    {
+      "id": "rugRound",
+      "name": "Round rug",
+      "model": "model.rugRound",
+      "footprint": [
+        2,
+        2
+      ],
+      "price": 110,
+      "category": "decor",
+      "group": "textiles",
+      "layer": "rug",
+      "decor": 0.8,
+      "description": "A round rug: furniture can stand on it.",
+      "interactions": []
+    },
+    {
+      "id": "rugLarge",
+      "name": "Large area rug",
+      "model": "model.rugLarge",
+      "footprint": [
+        3,
+        2
+      ],
+      "price": 220,
+      "category": "decor",
+      "group": "textiles",
+      "layer": "rug",
+      "decor": 1.2,
+      "description": "A big rug to pull a seating area together.",
+      "interactions": []
+    },
+    {
+      "id": "rugRunner",
+      "name": "Hall runner",
+      "model": "model.rugRunner",
+      "footprint": [
+        1,
+        3
+      ],
+      "price": 70,
+      "category": "decor",
+      "group": "textiles",
+      "layer": "rug",
+      "decor": 0.5,
+      "description": "A long, narrow rug for a hall.",
+      "interactions": []
+    },
+    {
+      "id": "rugPattern",
+      "name": "Patterned rug",
+      "model": "model.rugPattern",
+      "footprint": [
+        3,
+        2
+      ],
+      "price": 480,
+      "category": "decor",
+      "group": "textiles",
+      "layer": "rug",
+      "decor": 1.6,
+      "description": "A woven rug with a border and medallions.",
+      "interactions": []
+    },
+    {
+      "id": "grandfatherClock",
+      "name": "Grandfather clock",
+      "model": "model.grandfatherClock",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 1100,
+      "category": "decor",
+      "group": "ornaments",
+      "decor": 1.5,
+      "description": "A tall clock with a pendulum. Someone has to wind it.",
+      "interactions": [
+        {
+          "id": "wind",
+          "label": "Wind the clock",
+          "anim": "tinker",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.03
+          },
+          "tags": [
+            "chores"
+          ],
+          "skills": {
+            "handiness": 0.04
+          }
+        }
+      ]
+    },
+    {
+      "id": "vaseTall",
+      "name": "Tall vase",
+      "model": "model.vaseTall",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 60,
+      "category": "decor",
+      "group": "ornaments",
+      "decor": 0.5,
+      "description": "A slim ceramic vase with dried stems.",
+      "interactions": []
+    },
+    {
+      "id": "urnPorcelain",
+      "name": "Porcelain urn",
+      "model": "model.urnPorcelain",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 180,
+      "category": "decor",
+      "group": "ornaments",
+      "decor": 0.8,
+      "description": "A blue-and-white porcelain jar.",
+      "interactions": []
+    },
+    {
+      "id": "vasePedestal",
+      "name": "Vase on a pedestal",
+      "model": "model.vasePedestal",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 160,
+      "category": "decor",
+      "group": "ornaments",
+      "decor": 0.7,
+      "description": "A white vase on its own plinth.",
+      "interactions": []
+    },
+    {
+      "id": "bustMarble",
+      "name": "Marble bust",
+      "model": "model.bustMarble",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 700,
+      "category": "decor",
+      "group": "ornaments",
+      "decor": 1.6,
+      "description": "A classical bust on a plinth. Residents stop to admire it.",
+      "interactions": [
+        {
+          "id": "admire",
+          "label": "Admire the bust",
+          "anim": "look",
+          "minutes": 5,
+          "effects": {
+            "fun": 0.05,
+            "comfort": 0.03
+          },
+          "tags": [
+            "entertainment",
+            "creative"
+          ],
+          "skills": {
+            "creativity": 0.02
+          }
+        }
+      ]
+    },
+    {
+      "id": "statueCat",
+      "name": "Cat statue",
+      "model": "model.statueCat",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 120,
+      "category": "decor",
+      "group": "ornaments",
+      "decor": 0.6,
+      "description": "A concrete cat, indoors or out.",
+      "interactions": []
+    },
+    {
+      "id": "statueHorse",
+      "name": "Porcelain horse",
+      "model": "model.statueHorse",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 260,
+      "category": "decor",
+      "group": "ornaments",
+      "decor": 1.0,
+      "description": "A rearing porcelain horse on a wooden stand.",
+      "interactions": []
+    },
+    {
+      "id": "coatRack",
+      "name": "Coat stand",
+      "model": "model.coatRack",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 60,
+      "category": "decor",
+      "group": "ornaments",
+      "decor": 0.3,
+      "description": "Somewhere for coats and hats by the door.",
+      "interactions": []
+    },
+    {
+      "id": "hangingPlant",
+      "name": "Hanging plant",
+      "model": "model.hangingPlant",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 55,
+      "category": "decor",
+      "group": "ornaments",
+      "layer": "ceiling",
+      "decor": 0.7,
+      "description": "Trailing greenery in a hanging pot.",
+      "interactions": [
+        {
+          "id": "water",
+          "label": "Water the plant",
+          "anim": "water",
+          "minutes": 5,
+          "autonomous": false,
+          "effects": {
+            "fun": 0.05
+          },
+          "tags": [
+            "chores",
+            "nature",
+            "garden"
+          ],
+          "skills": {
+            "gardening": 0.15
+          }
+        }
+      ]
+    },
+    {
+      "id": "fireplace",
+      "name": "Fireplace",
+      "model": "model.fireplace",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 1600,
+      "category": "decor",
+      "group": "ornaments",
+      "decor": 1.5,
+      "light": {
+        "range": 4.0,
+        "intensity": 0.8,
+        "height": 0.5
+      },
+      "description": "A real fire under a mantel. It lights the room at night, and warming up by it leaves residents cosy.",
+      "interactions": [
+        {
+          "id": "relax",
+          "label": "Warm up by the fire",
+          "anim": "relax",
+          "minutes": 30,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.45,
+            "fun": 0.1
+          },
+          "tags": [
+            "lounge",
+            "cozy"
+          ],
+          "feeling": "home.cosyFire"
+        }
+      ]
+    },
+    {
+      "id": "ceilingPendant",
+      "name": "Pendant lamp",
+      "model": "model.ceilingPendant",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 90,
+      "category": "lighting",
+      "group": "ceiling",
+      "layer": "ceiling",
+      "decor": 0.3,
+      "light": {
+        "range": 5.0,
+        "intensity": 1.0,
+        "height": 2.1
+      },
+      "description": "A frosted globe on a long cord.",
+      "interactions": []
+    },
+    {
+      "id": "ceilingLight",
+      "name": "Ceiling light",
+      "model": "model.ceilingLight",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 50,
+      "category": "lighting",
+      "group": "ceiling",
+      "layer": "ceiling",
+      "decor": 0.1,
+      "light": {
+        "range": 5.0,
+        "intensity": 0.9,
+        "height": 2.3
+      },
+      "description": "A simple square ceiling light.",
+      "interactions": []
+    },
+    {
+      "id": "chandelier",
+      "name": "Ring chandelier",
+      "model": "model.chandelier",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 800,
+      "category": "lighting",
+      "group": "ceiling",
+      "layer": "ceiling",
+      "decor": 1.5,
+      "light": {
+        "range": 6.5,
+        "intensity": 1.3,
+        "height": 2.1
+      },
+      "description": "Two rings of bulbs: bright, and a centrepiece.",
+      "interactions": []
+    },
+    {
+      "id": "pendantIndustrial",
+      "name": "Industrial pendant",
+      "model": "model.pendantIndustrial",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 140,
+      "category": "lighting",
+      "group": "ceiling",
+      "layer": "ceiling",
+      "decor": 0.4,
+      "light": {
+        "range": 5.0,
+        "intensity": 1.0,
+        "height": 1.9
+      },
+      "description": "An enamel factory shade on a chain.",
+      "interactions": []
+    },
+    {
+      "id": "ceilingFan",
+      "name": "Ceiling fan",
+      "model": "model.ceilingFan",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 240,
+      "category": "lighting",
+      "group": "ceiling",
+      "layer": "ceiling",
+      "decor": 0.2,
+      "light": {
+        "range": 4.5,
+        "intensity": 0.8,
+        "height": 2.4
+      },
+      "description": "Wooden blades and a light.",
+      "interactions": []
+    },
+    {
+      "id": "wallSconce",
+      "name": "Wall sconce",
+      "model": "model.wallSconce",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 70,
+      "category": "lighting",
+      "group": "wall",
+      "layer": "wall",
+      "decor": 0.3,
+      "light": {
+        "range": 3.5,
+        "intensity": 0.7,
+        "height": 1.8
+      },
+      "description": "A small shaded lamp for the wall.",
+      "interactions": []
+    },
+    {
+      "id": "wallLampArm",
+      "name": "Swing-arm wall lamp",
+      "model": "model.wallLampArm",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 120,
+      "category": "lighting",
+      "group": "wall",
+      "layer": "wall",
+      "decor": 0.3,
+      "light": {
+        "range": 3.5,
+        "intensity": 0.8,
+        "height": 1.7
+      },
+      "description": "A black gooseneck lamp for reading corners.",
+      "interactions": []
+    },
+    {
+      "id": "wallLightOutdoor",
+      "name": "Bulkhead light",
+      "model": "model.wallLightOutdoor",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 90,
+      "category": "lighting",
+      "group": "wall",
+      "layer": "wall",
+      "decor": 0.2,
+      "light": {
+        "range": 5.0,
+        "intensity": 0.9,
+        "height": 2.0
+      },
+      "description": "A caged wall light: indoors or on the outside of the house.",
+      "interactions": []
+    },
+    {
+      "id": "floorLampSimple",
+      "name": "Simple floor lamp",
+      "model": "model.floorLampSimple",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 55,
+      "category": "lighting",
+      "group": "floor",
+      "decor": 0.5,
+      "light": {
+        "range": 4.0,
+        "intensity": 0.9,
+        "height": 1.5
+      },
+      "description": "A plain floor lamp.",
+      "interactions": []
+    },
+    {
+      "id": "tableLamp",
+      "name": "Table lamp",
+      "model": "model.tableLamp",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 110,
+      "category": "lighting",
+      "group": "table",
+      "decor": 0.6,
+      "light": {
+        "range": 3.5,
+        "intensity": 0.8,
+        "height": 0.95
+      },
+      "description": "A lamp on its own little table.",
+      "interactions": []
+    },
+    {
+      "id": "grill",
+      "name": "Charcoal grill",
+      "model": "model.grill",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 280,
+      "category": "outdoor",
+      "group": "cooking",
+      "outdoors": true,
+      "description": "A kettle grill for the garden: dinner with smoke and a bit of fun. Trains Cooking.",
+      "interactions": [
+        {
+          "id": "cook",
+          "label": "Grill dinner",
+          "anim": "cook",
+          "minutes": 40,
+          "effects": {
+            "hunger": 0.85,
+            "fun": 0.15
+          },
+          "tags": [
+            "food",
+            "cooking",
+            "outdoors"
+          ],
+          "skills": {
+            "cooking": 0.12
+          },
+          "skill": "cooking"
+        }
+      ]
+    },
+    {
+      "id": "grillStation",
+      "name": "Gas grill station",
+      "model": "model.grillStation",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 1300,
+      "category": "outdoor",
+      "group": "cooking",
+      "outdoors": true,
+      "description": "An outdoor kitchen with a hooded grill. From Cooking 3 a barbecue feast leaves residents with that home-cooked glow.",
+      "interactions": [
+        {
+          "id": "cook",
+          "label": "Grill dinner",
+          "anim": "cook",
+          "minutes": 40,
+          "effects": {
+            "hunger": 0.9,
+            "fun": 0.15
+          },
+          "tags": [
+            "food",
+            "cooking",
+            "outdoors"
+          ],
+          "skills": {
+            "cooking": 0.14
+          },
+          "skill": "cooking"
+        },
+        {
+          "id": "feast",
+          "label": "Grill a barbecue feast",
+          "anim": "cook",
+          "minutes": 75,
+          "effects": {
+            "hunger": 1.0,
+            "fun": 0.2
+          },
+          "tags": [
+            "food",
+            "cooking",
+            "training",
+            "outdoors"
+          ],
+          "skills": {
+            "cooking": 0.25,
+            "creativity": 0.04
+          },
+          "skill": "cooking",
+          "feeling": "home.homeCooked",
+          "feelingMinSkill": 3
+        }
+      ]
+    },
+    {
+      "id": "firePit",
+      "name": "Fire pit",
+      "model": "model.firePit",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 380,
+      "category": "outdoor",
+      "group": "cooking",
+      "outdoors": true,
+      "light": {
+        "range": 4.0,
+        "intensity": 0.8,
+        "height": 0.5
+      },
+      "description": "A ring of stones and a crackling fire. It lights the garden at night, and warming up by it leaves residents cosy.",
+      "interactions": [
+        {
+          "id": "relax",
+          "label": "Warm up by the fire",
+          "anim": "relax",
+          "minutes": 30,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.4,
+            "fun": 0.15
+          },
+          "tags": [
+            "lounge",
+            "cozy",
+            "outdoors"
+          ],
+          "feeling": "home.cosyFire"
+        }
+      ]
+    },
+    {
+      "id": "patioSet",
+      "name": "Folding bistro set",
+      "model": "model.patioSet",
+      "footprint": [
+        1,
+        2
+      ],
+      "price": 220,
+      "category": "outdoor",
+      "group": "seating",
+      "description": "A slatted folding table and chairs for a sunny corner.",
+      "interactions": [
+        {
+          "id": "coffee",
+          "label": "Have a coffee",
+          "anim": "drink",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.25,
+            "energy": 0.08
+          },
+          "tags": [
+            "food",
+            "lounge"
+          ]
+        },
+        {
+          "id": "sit",
+          "label": "Sit in the sun",
+          "anim": "sit",
+          "minutes": 30,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.3,
+            "fun": 0.05
+          },
+          "tags": [
+            "lounge",
+            "outdoors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "picnicTable",
+      "name": "Picnic table",
+      "model": "model.picnicTable",
+      "footprint": [
+        3,
+        2
+      ],
+      "price": 260,
+      "category": "outdoor",
+      "group": "seating",
+      "slots": 2,
+      "description": "A big wooden table with benches: picnics for two.",
+      "interactions": [
+        {
+          "id": "picnic",
+          "label": "Have a picnic",
+          "anim": "eat",
+          "minutes": 25,
+          "pose": "sit",
+          "effects": {
+            "hunger": 0.35,
+            "fun": 0.15
+          },
+          "tags": [
+            "food",
+            "lounge",
+            "outdoors"
+          ]
+        },
+        {
+          "id": "coffee",
+          "label": "Have a coffee",
+          "anim": "drink",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.25,
+            "energy": 0.08
+          },
+          "tags": [
+            "food",
+            "lounge"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gardenChair",
+      "name": "Garden chair",
+      "model": "model.gardenChair",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 150,
+      "category": "outdoor",
+      "group": "seating",
+      "description": "A deep slatted chair with wide arms.",
+      "interactions": [
+        {
+          "id": "sit",
+          "label": "Sit in the garden",
+          "anim": "sit",
+          "minutes": 30,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.4,
+            "fun": 0.05
+          },
+          "tags": [
+            "lounge",
+            "outdoors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sunLounger",
+      "name": "Sun lounger",
+      "model": "model.sunLounger",
+      "footprint": [
+        1,
+        2
+      ],
+      "price": 220,
+      "category": "outdoor",
+      "group": "seating",
+      "outdoors": true,
+      "description": "Stretch out in the sun, or doze off.",
+      "interactions": [
+        {
+          "id": "sunbathe",
+          "label": "Sunbathe",
+          "anim": "relax",
+          "minutes": 40,
+          "pose": "lie",
+          "effects": {
+            "comfort": 0.45,
+            "fun": 0.1
+          },
+          "tags": [
+            "lounge",
+            "outdoors"
+          ]
+        },
+        {
+          "id": "doze",
+          "label": "Doze in the sun",
+          "anim": "nap",
+          "minutes": 60,
+          "pose": "lie",
+          "effects": {
+            "energy": 0.2,
+            "comfort": 0.2
+          },
+          "tags": [
+            "rest",
+            "nap",
+            "outdoors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hammock",
+      "name": "Hammock",
+      "model": "model.hammock",
+      "footprint": [
+        1,
+        2
+      ],
+      "price": 240,
+      "category": "outdoor",
+      "group": "seating",
+      "description": "A striped hammock on a wooden stand: swing, daydream, doze.",
+      "interactions": [
+        {
+          "id": "swing",
+          "label": "Swing in the hammock",
+          "anim": "relax",
+          "minutes": 30,
+          "pose": "lie",
+          "effects": {
+            "comfort": 0.45,
+            "fun": 0.1
+          },
+          "tags": [
+            "lounge",
+            "outdoors"
+          ]
+        },
+        {
+          "id": "doze",
+          "label": "Doze in the hammock",
+          "anim": "nap",
+          "minutes": 60,
+          "pose": "lie",
+          "effects": {
+            "energy": 0.2,
+            "comfort": 0.25
+          },
+          "tags": [
+            "rest",
+            "nap",
+            "outdoors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hotTubCedar",
+      "name": "Cedar hot tub",
+      "model": "model.hotTubCedar",
+      "footprint": [
+        2,
+        2
+      ],
+      "price": 2400,
+      "category": "outdoor",
+      "group": "seating",
+      "slots": 2,
+      "outdoors": true,
+      "description": "A round wooden tub of hot water for two. A soak leaves residents pampered.",
+      "interactions": [
+        {
+          "id": "soak",
+          "label": "Soak in the hot tub",
+          "anim": "bath",
+          "minutes": 45,
+          "pose": "sit",
+          "effects": {
+            "comfort": 0.8,
+            "hygiene": 0.3,
+            "fun": 0.2
+          },
+          "tags": [
+            "spa",
+            "lounge",
+            "outdoors"
+          ],
+          "feeling": "home.pampered"
+        }
+      ]
+    },
+    {
+      "id": "swingSet",
+      "name": "Swing set",
+      "model": "model.swingSet",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 380,
+      "category": "outdoor",
+      "group": "play",
+      "slots": 2,
+      "outdoors": true,
+      "description": "Two swings on a wooden frame. Children love it; grown-ups sometimes have a go.",
+      "interactions": [
+        {
+          "id": "swing",
+          "label": "Swing",
+          "anim": "play",
+          "minutes": 20,
+          "pose": "sit",
+          "effects": {
+            "fun": 0.45
+          },
+          "tags": [
+            "entertainment",
+            "outdoors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sandbox",
+      "name": "Sandpit",
+      "model": "model.sandbox",
+      "footprint": [
+        2,
+        2
+      ],
+      "price": 150,
+      "category": "outdoor",
+      "group": "play",
+      "outdoors": true,
+      "description": "A wooden box of sand with a bucket and spade.",
+      "interactions": [
+        {
+          "id": "sandcastle",
+          "label": "Build a sandcastle",
+          "anim": "tend",
+          "minutes": 30,
+          "effects": {
+            "fun": 0.45
+          },
+          "tags": [
+            "entertainment",
+            "toys",
+            "outdoors"
+          ],
+          "skills": {
+            "creativity": 0.06
+          }
+        }
+      ]
+    },
+    {
+      "id": "bikeRack",
+      "name": "Bike rack",
+      "model": "model.bikeRack",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 140,
+      "category": "outdoor",
+      "group": "play",
+      "outdoors": true,
+      "description": "A rack with a bike in it. Tuning it up trains Handiness.",
+      "interactions": [
+        {
+          "id": "tuneUp",
+          "label": "Tune up the bike",
+          "anim": "tinker",
+          "minutes": 30,
+          "effects": {
+            "fun": 0.08
+          },
+          "tags": [
+            "chores",
+            "outdoors"
+          ],
+          "skills": {
+            "handiness": 0.15
+          }
+        }
+      ]
+    },
+    {
+      "id": "lampPost",
+      "name": "Garden lamp post",
+      "model": "model.lampPost",
+      "footprint": [
+        1,
+        1
+      ],
+      "price": 160,
+      "category": "outdoor",
+      "group": "lights",
+      "outdoors": true,
+      "decor": 0.5,
+      "light": {
+        "range": 6.0,
+        "intensity": 1.0,
+        "height": 2.3
+      },
+      "description": "A lantern on a post to light the garden at night.",
+      "interactions": []
+    },
+    {
+      "id": "stringLights",
+      "name": "String lights",
+      "model": "model.stringLights",
+      "footprint": [
+        2,
+        1
+      ],
+      "price": 110,
+      "category": "outdoor",
+      "group": "lights",
+      "outdoors": true,
+      "decor": 0.6,
+      "light": {
+        "range": 5.0,
+        "intensity": 0.7,
+        "height": 2.1
+      },
+      "description": "Festoon bulbs between two posts.",
+      "interactions": []
+    }
+  ]
+}

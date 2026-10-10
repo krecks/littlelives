@@ -94,6 +94,38 @@ const SEATS: Record<string, { h: number; fwd: number }> = {
   'romantic.heartTub': { h: 0.35, fwd: 0 },
   'hotHeaded.coldPlunge': { h: 0.35, fwd: 0 },
   'hotHeaded.coolDownCushion': { h: 0.4, fwd: 0 },
+  // The 0.20 catalogue (content/furniture.json).
+  barStool: { h: 0.72, fwd: 0 },
+  bistroSet: { h: 0.46, fwd: -0.24 },
+  diningGlass: { h: 0.46, fwd: -0.22 },
+  diningOak: { h: 0.46, fwd: -0.22 },
+  diningChair: { h: 0.46, fwd: 0 },
+  loveseat: { h: 0.44, fwd: 0.1 },
+  sofaThree: { h: 0.44, fwd: 0.08 },
+  sofaDesign: { h: 0.42, fwd: 0.1 },
+  armchairLounge: { h: 0.42, fwd: 0.08 },
+  armchairLeather: { h: 0.44, fwd: 0.05 },
+  armchairDesign: { h: 0.45, fwd: 0.05 },
+  pouf: { h: 0.46, fwd: 0 },
+  dressingTable: { h: 0.45, fwd: -0.22 },
+  toiletCompact: { h: 0.43, fwd: -0.05 },
+  toiletSmart: { h: 0.44, fwd: 0 },
+  bathtub: { h: 0.25, fwd: 0 },
+  bathtubClawfoot: { h: 0.28, fwd: 0 },
+  hotTubCedar: { h: 0.35, fwd: 0 },
+  rockingHorse: { h: 0.56, fwd: 0 },
+  kidsDesk: { h: 0.36, fwd: -0.2 },
+  deskWriting: { h: 0.44, fwd: -0.17 },
+  deskLaptop: { h: 0.44, fwd: -0.17 },
+  computerGaming: { h: 0.44, fwd: -0.17 },
+  officeChair: { h: 0.47, fwd: 0 },
+  keyboardDigital: { h: 0.45, fwd: -0.2 },
+  sewingTable: { h: 0.46, fwd: -0.22 },
+  exerciseBike: { h: 0.76, fwd: -0.12 },
+  patioSet: { h: 0.44, fwd: -0.62 },
+  picnicTable: { h: 0.4, fwd: -0.68 },
+  gardenChair: { h: 0.4, fwd: 0 },
+  swingSet: { h: 0.5, fwd: 0 },
 };
 const DEFAULT_SEAT = { h: 0.45, fwd: 0 };
 /** Mattress / bench top height (m) for lying. */
@@ -105,10 +137,19 @@ const BEDS: Record<string, { h: number }> = {
   'romantic.heartTub': { h: 0.35 },
   'hotHeaded.coldPlunge': { h: 0.35 },
   'hotHeaded.coolDownCushion': { h: 0.2 },
+  bedSingle: { h: 0.5 },
+  bedBunk: { h: 0.44 },
+  bedFuton: { h: 0.4 },
+  bedKing: { h: 0.59 },
+  kidsBed: { h: 0.44 },
+  sunLounger: { h: 0.35 },
+  hammock: { h: 0.62 },
 };
 const DEFAULT_BED = { h: 0.5 };
+/** Bunk beds (content `bunk`): mattress tops of the lower and the upper bunk. */
+const BUNKS: Record<string, readonly [number, number]> = { bedBunk: [0.44, 1.38] };
 /** Beds whose sleepers get a blanket (pack hammocks, sofas and nap pods don't). */
-const BLANKET_BEDS = new Set(['bed', 'lazy.snoozecloudBed']);
+const BLANKET_BEDS = new Set(['bed', 'lazy.snoozecloudBed', 'bedSingle', 'bedBunk', 'bedFuton', 'bedKing', 'kidsBed']);
 /** Lying: height of the back above the feet line, and how far the feet reach past the slot centre (body scale 1). */
 const LIE_BACK = 0.1;
 const LIE_CENTRE = 0.86;
@@ -517,6 +558,8 @@ interface SeatFit {
 
 interface PlacedObject {
   def: string;
+  /** Facing (0..3, as the simulation's `rot`). */
+  rot: number;
   cx: number;
   cz: number;
   minX: number;
@@ -894,7 +937,7 @@ export class Characters {
     this.objectById.clear();
     this.objects = world.objects.map((o: ObjectPlacement) => {
       const z = this.groundRow(o.z);
-      return { def: o.def, cx: o.x + o.w / 2, cz: z + o.d / 2, minX: o.x, minZ: z, maxX: o.x + o.w, maxZ: z + o.d };
+      return { def: o.def, rot: o.rot, cx: o.x + o.w / 2, cz: z + o.d / 2, minX: o.x, minZ: z, maxX: o.x + o.w, maxZ: z + o.d };
     });
     world.objects.forEach((o, j) => this.objectById.set(o.id, this.objects[j]));
     for (const b of this.blankets.values()) {
@@ -1301,14 +1344,17 @@ export class Characters {
       const obj = (known ? useObj : null) ?? this.objectAt(rig.x, rig.z);
       const bed = (obj && BEDS[obj.def]) || DEFAULT_BED;
       rig.bed = obj;
-      rig.bedH = bed.h;
+      // A bunk's second sleeper (a hair to the right of its centre, see sim-core `slot_position`) is on top.
+      const bunk = obj && BUNKS[obj.def];
+      const across = obj ? (rig.x - obj.cx) * Math.cos((obj.rot * Math.PI) / 2) - (rig.z - obj.cz) * Math.sin((obj.rot * Math.PI) / 2) : 0;
+      rig.bedH = bunk ? bunk[across > 0 ? 1 : 0] : bed.h;
       rig.useDef = obj?.def ?? '';
       if ((rig.lastPose === Pose.Stand && rig.cur.key !== 'sitDown') || (rig.cur.key === 'sitDown' && rig.cur.time < rig.cur.clip!.duration - 0.35)) {
         // Getting in: sit down on the edge first; the crossfade to lying then leans the Sim back
         // (the root pitch blends with the clips).
         const sp = this.sitPelvis.get(rig.body.name)!;
         key = 'sitDown';
-        rootY = bed.h - sp.y * rig.scale;
+        rootY = rig.bedH - sp.y * rig.scale;
         rootFwd = LIE_ENTRY * rig.scale - sp.z * rig.scale;
         fade = 0.35;
         if (rig.cur.key !== 'sitDown') rig.actTime = 0;
@@ -1316,7 +1362,7 @@ export class Characters {
         // On the back, head towards the head of the bed (local -z), centred on the slot: the
         // relaxed standing idle rotated flat, slowed down, with breathing on top.
         key = 'lie';
-        rootY = bed.h + LIE_BACK * rig.scale;
+        rootY = rig.bedH + LIE_BACK * rig.scale;
         rootFwd = LIE_CENTRE * rig.scale;
         pitch = -Math.PI / 2;
         rate = 0.3;

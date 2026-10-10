@@ -2125,7 +2125,8 @@
         }
       ],
       "price": 600,
-      "category": "kitchen"
+      "category": "kitchen",
+      "group": "appliances"
     },
     {
       "id": "sink",
@@ -2150,7 +2151,8 @@
         }
       ],
       "price": 180,
-      "category": "bathroom"
+      "category": "bathroom",
+      "group": "sinks"
     },
     {
       "id": "bed",
@@ -2194,6 +2196,7 @@
       ],
       "price": 750,
       "category": "bedroom",
+      "group": "beds",
       "slots": 2
     },
     {
@@ -2220,7 +2223,8 @@
         }
       ],
       "price": 300,
-      "category": "bathroom"
+      "category": "bathroom",
+      "group": "toilets"
     },
     {
       "id": "shower",
@@ -2245,7 +2249,8 @@
         }
       ],
       "price": 650,
-      "category": "bathroom"
+      "category": "bathroom",
+      "group": "bathing"
     },
     {
       "id": "sofa",
@@ -2273,6 +2278,7 @@
       ],
       "price": 500,
       "category": "living",
+      "group": "seating",
       "slots": 2
     },
     {
@@ -2299,7 +2305,8 @@
         }
       ],
       "price": 400,
-      "category": "living"
+      "category": "living",
+      "group": "media"
     },
     {
       "id": "bookshelf",
@@ -2362,7 +2369,8 @@
         }
       ],
       "price": 250,
-      "category": "living"
+      "category": "living",
+      "group": "shelves"
     },
     {
       "id": "armchair",
@@ -2388,7 +2396,8 @@
         }
       ],
       "price": 300,
-      "category": "living"
+      "category": "living",
+      "group": "seating"
     },
     {
       "id": "plant",
@@ -2450,6 +2459,7 @@
       ],
       "price": 200,
       "category": "outdoor",
+      "group": "seating",
       "slots": 2
     },
     {
@@ -2667,6 +2677,7 @@
       ],
       "price": 350,
       "category": "hobbies",
+      "group": "games",
       "description": "Builds Intelligence and Perception.",
       "interactions": [
         {
@@ -2803,6 +2814,7 @@
       ],
       "price": 300,
       "category": "hobbies",
+      "group": "crafts",
       "description": "Builds Creativity.",
       "interactions": [
         {
@@ -2834,6 +2846,7 @@
       ],
       "price": 180,
       "category": "bedroom",
+      "group": "dressing",
       "description": "Builds Charisma.",
       "interactions": [
         {
@@ -2863,6 +2876,7 @@
       ],
       "price": 700,
       "category": "hobbies",
+      "group": "crafts",
       "description": "Builds Handiness — handy residents can upgrade objects.",
       "interactions": [
         {
@@ -2894,6 +2908,7 @@
       ],
       "price": 900,
       "category": "hobbies",
+      "group": "crafts",
       "description": "Builds Perception.",
       "interactions": [
         {
@@ -2925,6 +2940,7 @@
       ],
       "price": 1400,
       "category": "hobbies",
+      "group": "music",
       "description": "Builds Dexterity and Creativity.",
       "interactions": [
         {
@@ -2958,6 +2974,7 @@
       ],
       "price": 350,
       "category": "kitchen",
+      "group": "dining",
       "slots": 2,
       "interactions": [
         {
@@ -2987,7 +3004,8 @@
         1
       ],
       "price": 120,
-      "category": "decor",
+      "category": "lighting",
+      "group": "floor",
       "interactions": []
     },
     {
@@ -2997,7 +3015,7 @@
       "description": "A crib with a changing table beside it: a baby sleeps here, and grown-ups come to feed, change and play with them.",
       "footprint": [2, 1],
       "price": 350,
-      "category": "bedroom",
+      "category": "kids",
       "slots": 2,
       "wearPerUse": 0,
       "interactions": [
@@ -3016,7 +3034,8 @@
       "stairs": true,
       "interactions": [],
       "price": 900,
-      "category": "living"
+      "category": "living",
+      "group": "stairs"
     }
   ],
   "skills": [
@@ -3137,7 +3156,7 @@
     "wakeBeforeWorkMinutes": 75
   },
   "objectRules": {
-    "freeRotation": ["decor", "garden", "outdoor"],
+    "freeRotation": ["decor", "garden", "outdoor", "lighting", "kids"],
     "wear": {"perUse": 0.004, "byCategory": {"bathroom": 0.006, "garden": 0, "outdoor": 0, "decor": 0}, "perQuality": 0.2},
     "repair": {"label": "Repair", "minutes": 45, "skill": "handiness", "skillGainPerHour": 0.3, "chance": 0.5, "chancePerLevel": 0.08, "interest": 1.5, "cost": 0.3, "tags": ["chores"]},
     "maxQuality": 3,
@@ -3237,11 +3256,14 @@
       {"id": "baby", "label": "Baby", "from": 0, "baby": true, "scale": 0.36, "head": 1.6, "story": "was born"},
       {"id": "child", "label": "Child", "from": 2, "school": true, "scale": 0.62, "head": 1.3, "story": "is a child now",
        "effects": {"tagPreference": {"cooking": 0}}},
-      {"id": "teen", "label": "Teen", "from": 13, "school": true, "scale": 0.9, "head": 1.06, "story": "is a teenager now"},
-      {"id": "youngAdult", "label": "Young adult", "from": 18, "adult": true, "story": "is a young adult now"},
-      {"id": "adult", "label": "Adult", "from": 30, "story": "is an adult now", "feeling": "grownUp"},
+      {"id": "teen", "label": "Teen", "from": 13, "school": true, "scale": 0.9, "head": 1.06, "story": "is a teenager now",
+       "effects": {"tagPreference": {"toys": 0.4}}},
+      {"id": "youngAdult", "label": "Young adult", "from": 18, "adult": true, "story": "is a young adult now",
+       "effects": {"tagPreference": {"toys": 0.15}}},
+      {"id": "adult", "label": "Adult", "from": 30, "story": "is an adult now", "feeling": "grownUp",
+       "effects": {"tagPreference": {"toys": 0.15}}},
       {"id": "elder", "label": "Elder", "from": 60, "story": "is an elder now", "feeling": "goldenYears", "greyHair": 0.65, "stoop": 1,
-       "effects": {"needDecay": {"energy": 1.2}, "walkSpeed": 0.85}}
+       "effects": {"needDecay": {"energy": 1.2}, "walkSpeed": 0.85, "tagPreference": {"toys": 0.15}}}
     ]
   },
   "accidents": [
@@ -3272,7 +3294,7 @@
     "drift": 0.5,
     "away": 0.6,
     "preference": 1.0,
-    "decorByCategory": {"decor": 1, "garden": 0.8, "outdoor": 1},
+    "decorByCategory": {"decor": 1, "garden": 0.8, "outdoor": 1, "lighting": 1},
     "dirt": {"cooking": 0.12, "food": 0.06, "bathroom": 0.05, "hygiene": 0.04},
     "clean": {"label": "Tidy up", "minutes": 12, "threshold": 0.15, "amount": 0.7, "interest": 0.6}
   },
@@ -3312,22 +3334,50 @@
     {
       "id": "kitchen",
       "label": "Kitchen",
-      "icon": "icon.category.kitchen"
+      "icon": "icon.category.kitchen",
+      "groups": [
+        {"id": "appliances", "label": "Appliances"},
+        {"id": "counters", "label": "Counters & storage"},
+        {"id": "dining", "label": "Dining"}
+      ]
     },
     {
       "id": "bathroom",
       "label": "Bathroom",
-      "icon": "icon.category.bathroom"
+      "icon": "icon.category.bathroom",
+      "groups": [
+        {"id": "toilets", "label": "Toilets"},
+        {"id": "bathing", "label": "Showers & baths"},
+        {"id": "sinks", "label": "Sinks & mirrors"},
+        {"id": "laundry", "label": "Laundry & towels"}
+      ]
     },
     {
       "id": "bedroom",
       "label": "Bedroom",
-      "icon": "icon.category.bedroom"
+      "icon": "icon.category.bedroom",
+      "groups": [
+        {"id": "beds", "label": "Beds"},
+        {"id": "storage", "label": "Storage"},
+        {"id": "dressing", "label": "Dressing"}
+      ]
+    },
+    {
+      "id": "kids",
+      "label": "Kids",
+      "icon": "icon.category.kids"
     },
     {
       "id": "living",
       "label": "Living",
-      "icon": "icon.category.living"
+      "icon": "icon.category.living",
+      "groups": [
+        {"id": "seating", "label": "Seating"},
+        {"id": "tables", "label": "Tables"},
+        {"id": "media", "label": "TV & music"},
+        {"id": "shelves", "label": "Shelves"},
+        {"id": "stairs", "label": "Stairs"}
+      ]
     },
     {
       "id": "office",
@@ -3342,21 +3392,51 @@
     {
       "id": "hobbies",
       "label": "Hobbies",
-      "icon": "icon.category.hobbies"
+      "icon": "icon.category.hobbies",
+      "groups": [
+        {"id": "music", "label": "Music"},
+        {"id": "games", "label": "Games"},
+        {"id": "crafts", "label": "Crafts & science"}
+      ]
     },
     {
       "id": "decor",
       "label": "Decor",
-      "icon": "icon.category.decor"
+      "icon": "icon.category.decor",
+      "groups": [
+        {"id": "wall", "label": "Wall art"},
+        {"id": "ornaments", "label": "Ornaments"},
+        {"id": "textiles", "label": "Rugs & curtains"}
+      ]
+    },
+    {
+      "id": "lighting",
+      "label": "Lighting",
+      "icon": "icon.category.lighting",
+      "groups": [
+        {"id": "ceiling", "label": "Ceiling"},
+        {"id": "wall", "label": "Wall"},
+        {"id": "floor", "label": "Floor"},
+        {"id": "table", "label": "Table"}
+      ]
     },
     {
       "id": "outdoor",
       "label": "Outdoor",
-      "icon": "icon.category.outdoor", "outside": true}
+      "icon": "icon.category.outdoor", "outside": true,
+      "groups": [
+        {"id": "seating", "label": "Seating & dining", "outside": true},
+        {"id": "cooking", "label": "Grills & fire", "outside": true},
+        {"id": "play", "label": "Play", "outside": true},
+        {"id": "lights", "label": "Lights", "outside": true},
+        {"id": "decor", "label": "Garden decor", "outside": true}
+      ]
+    }
   ],
   "include": [
     "careers.json",
     "garden.json",
+    "furniture.json",
     "packs/example.json",
     "packs/foodie.json",
     "packs/bookworm.json",
