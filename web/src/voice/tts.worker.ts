@@ -46,38 +46,50 @@ scope.onmessage = (e) => {
       scope.postMessage({ type: 'error', message: String(err) });
     });
   } else if (msg.type === 'speak') {
-    queue = queue.then(() => speak(msg.id, msg.text, msg.speed, msg.pitch));
+    queue = queue.then(() => speak(msg.id, msg.text, msg.speed, msg.pitch, msg.depth));
   }
 };
 
-async function speak(id: number, text: string, speed: number, pitch: number): Promise<void> {
+async function speak(id: number, text: string, speed: number, pitch: number, depth: number): Promise<void> {
   try {
     await loading;
     if (!voice || !session) throw new Error('voice model not loaded');
     const start = performance.now();
-    const samples = await synthesize(voice, session, text, speed, pitch);
-    scope.postMessage({ type: 'audio', id, samples, ms: performance.now() - start }, [samples.buffer]);
+    const { samples, resampleMs } = await synthesize(voice, session, text, speed, pitch, depth);
+    scope.postMessage({ type: 'audio', id, samples, ms: performance.now() - start, resampleMs }, [samples.buffer]);
   } catch (err) {
     scope.postMessage({ type: 'error', id, message: String(err) });
   }
 }
 
-async function synthesize(voice: Voice, session: ort.InferenceSession, text: string, speed: number, pitch: number): Promise<Float32Array> {
-  const inputs = voice.inputs(text, speed, pitch);
-  const ids = inputs.ids;
-  const feeds = {
-    input_ids: new ort.Tensor('int64', ids, [1, ids.length]),
-    speed: new ort.Tensor('float32', Float32Array.of(inputs.speed), [1]),
-    pitch: new ort.Tensor('float32', Float32Array.of(inputs.pitch), [1]),
-  };
-  inputs.free();
-  if (ids.length === 0) return new Float32Array(0);
-  const out = await session.run(feeds);
-  const wave = out.waveform;
-  // A copy of our own, so its buffer can be transferred to the main thread.
-  const samples = new Float32Array(wave.data as Float32Array);
-  for (const t of Object.values(out)) t.dispose();
-  return samples;
+/** One line: the model at pitch and speed divided by the depth, then resampled by the depth (the voice's size). */
+async function synthesize(
+  voice: Voice,
+  session: ort.InferenceSession,
+  text: string,
+  speed: number,
+  pitch: number,
+  depth: number,
+): Promise<{ samples: Float32Array; resampleMs: number }> {
+  const inputs = voice.inputs(text, speed, pitch, depth);
+  try {
+    const ids = inputs.ids;
+    if (ids.length === 0) return { samples: new Float32Array(0), resampleMs: 0 };
+    const out = await session.run({
+      input_ids: new ort.Tensor('int64', ids, [1, ids.length]),
+      speed: new ort.Tensor('float32', Float32Array.of(inputs.speed), [1]),
+      pitch: new ort.Tensor('float32', Float32Array.of(inputs.pitch), [1]),
+    });
+    const wave = out.waveform.data as Float32Array;
+    const start = performance.now();
+    // A new array of our own either way, so its buffer can be transferred to the main thread.
+    const samples = inputs.depth === 1 ? new Float32Array(wave) : inputs.finish(wave);
+    const resampleMs = performance.now() - start;
+    for (const t of Object.values(out)) t.dispose();
+    return { samples, resampleMs };
+  } finally {
+    inputs.free();
+  }
 }
 
 async function load(base: string, language: string): Promise<void> {

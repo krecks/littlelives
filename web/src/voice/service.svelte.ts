@@ -131,7 +131,7 @@ const making = new Map<string, Promise<Float32Array>>();
 const cache = { bytes: 0, hits: 0 };
 
 function clipKey(text: string, voice: VoiceParams): string {
-  return `${settings.voiceLanguage}|${MODEL_ID}|${voice.speed.toFixed(3)}|${voice.pitch.toFixed(3)}|${text}`;
+  return `${settings.voiceLanguage}|${MODEL_ID}|${voice.speed.toFixed(3)}|${voice.pitch.toFixed(3)}|${voice.depth.toFixed(3)}|${text}`;
 }
 
 /** The clip for this line and voice if it was made before (and keeps it fresh), else null. */
@@ -179,7 +179,7 @@ export async function synthesize(text: string, voice: VoiceParams): Promise<Floa
   const id = nextId++;
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject });
-    post({ type: 'speak', id, text, speed: voice.speed, pitch: voice.pitch });
+    post({ type: 'speak', id, text, speed: voice.speed, pitch: voice.pitch, depth: voice.depth });
   });
 }
 
@@ -231,7 +231,7 @@ export async function runBenchmark(): Promise<BenchResult> {
   voiceStatus.benchmarking = true;
   try {
     await ensureVoice();
-    await synthesize('Ready.', { speed: 1, pitch: 1 }); // warm-up
+    await synthesize('Ready.', { speed: 1, pitch: 1, depth: 1 }); // warm-up
     let worstFrameMs = 0;
     let last = performance.now();
     let watching = true;
@@ -247,7 +247,7 @@ export async function runBenchmark(): Promise<BenchResult> {
     const runs: { ms: number; rtf: number }[] = [];
     for (const line of BENCH_LINES) {
       const start = performance.now();
-      const samples = await synthesize(line, { speed: 1, pitch: 1 });
+      const samples = await synthesize(line, { speed: 1, pitch: 1, depth: 1 });
       const ms = performance.now() - start;
       runs.push({ ms, rtf: ms / 1000 / (samples.length / SAMPLE_RATE) });
     }
