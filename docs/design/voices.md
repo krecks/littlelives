@@ -23,6 +23,8 @@ and research behind the choices are at the end.*
   gzipped), 9 MB model, 1.3 MB dictionary, cached after the first time.
 - **Voices by life stage (`voices.ts`):** children higher, boys' voices drop as teens, elders
   lower and slower. Babies don't speak.
+- **Voices chosen in the household creator:** pitch and speed per resident, kept in the save
+  (see "A resident's own voice").
 - **Guards (`voice/index.ts`):** nothing is said while the engine loads; it unloads after 5
   minutes without a line and reloads on the next (quiet meanwhile); a watchdog pauses voices for
   the session (with a toast) after three lines in a row later than 4 s, or when over 10 % of the
@@ -146,7 +148,8 @@ If the hand-written engine stalls, the `tract` baseline ships.
 ## Voices from one model
 
 Paradee speaks one female voice. Each resident gets a voice derived from their **stable resident
-id** (release 0.7), gender and (later) age, computed on the main thread and never saved:
+id** (release 0.7), gender and life stage, computed on the main thread; a voice chosen in the
+creator is saved on top (see "A resident's own voice"):
 
 ```ts
 interface VoiceSpec { pitch: number; formant: number; speed: number; seed: number }
@@ -161,6 +164,39 @@ interface VoiceSpec { pitch: number; formant: number; speed: number; seed: numbe
   so we can distil a second, male voice (e.g. Kokoro's `am_michael`) into another 9 MB model.
 - **Kokoro-82M** (optional model): two of its 28 English voices blended per resident (a voice is a
   style vector, so blending is a linear mix), plus speed. More variety, much larger download.
+
+### A resident's own voice
+
+The household creator's *Identity* tab has a *Voice* section: **Pitch** (lower to higher),
+**Speed** (slower to faster), a dice, a button back to the default, and **Hear** (the resident
+says "Hi, I'm Ada! This is how I sound." in that voice; a baby is heard as the child they will be).
+Hearing works with resident voices off in Settings and doesn't turn them on; the engine is
+unloaded again when the creator closes. The note under the button shows the engine loading or
+downloading, an error, or that voices are off.
+
+The choice is stored in the resident's appearance, which the simulation keeps as opaque JSON, so
+the save format doesn't change:
+
+```ts
+appearance.voice = { pitch: 1.08, speed: 0.95, seed: 1439030069 }
+```
+
+- **Factors on the generated voice** (`voiceFor`), 1 being as generated, each 0.88–1.12 (about
+  two semitones of pitch). The life stage still applies underneath, so a child made "a bit
+  higher" is a bit higher than their generated teen voice once grown. The result is kept within pitch
+  0.52–1.5 and speed 0.8–1.2 (the generated voices span 0.56–1.45 and 0.86–1.12), and line tones
+  (`withTone`) go on top.
+- **`seed`** replaces the resident id in the generated voice: someone made in the creator has no
+  id until they move in, and the voice heard there must be the one they keep. It is set the first
+  time the Voice section is used.
+- **Without `voice`** (older saves, neighbours, newcomers, babies, random residents from the
+  creator's dice) a resident has the generated voice, exactly as before.
+- A later voice size (`depth`, with formant shift) becomes one more optional factor.
+- Main-thread rewrites of the appearance keep `voice`: life-stage looks and grey hair copy it
+  along; the look expanded from a newcomer's or baby's seed keeps a voice stored next to it.
+  Portraits ignore it (their cache key leaves it out).
+
+There is no place to change a resident's look in a game yet; the Voice controls would go there too.
 
 ## Phonemizer: our own, in Rust, without espeak-ng
 
@@ -324,7 +360,7 @@ Web code lives in `web/src/voice/`, behind one small interface used by the game 
 |---|---|
 | `voice/index.ts` | `VoiceDirector`: watches the frame state and UI state, applies the "who may speak" rules and guards, queues lines. The only thing `game/session.ts` talks to. |
 | `voice/lines.ts` | Picks a line for an event from content (hash-based). |
-| `voice/voices.ts` | `VoiceSpec` from resident id, gender and age. |
+| `voice/voices.ts` | Pitch and speed from resident id, gender, life stage and the voice chosen in the creator. |
 | `voice/tts.ts` + `voice/tts.worker.ts` | Worker client and worker: load model, `speak(text, voice) → Float32Array` (transferred, 24 kHz), unload. |
 | `voice/benchmark.ts` | The benchmark and the device choice. |
 | `voice/player.ts` | Voice bus, panners, clip cache. |

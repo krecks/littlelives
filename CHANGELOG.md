@@ -4,6 +4,9 @@ All notable changes to Littlelives. Versions follow [semantic versioning](https:
 
 ## Unreleased (0.20.0)
 
+### New
+- **Choose a resident's voice:** the household creator's *Identity* tab has a *Voice* section with *Pitch* (lower to higher) and *Speed* (slower to faster), a dice for a random voice, a button back to the default, and *Hear* to listen to the resident say their name. Hearing a sample works with resident voices off, without turning them on. The choice is a step up or down from the voice the resident would have had, so children still sound younger and voices still change as they grow up. It is kept in the save; residents from older saves, neighbours, newcomers and babies sound exactly as before.
+
 ### Changed
 - **Lines said before play at once:** each clip a resident speaks is kept (up to 24 MB, about four minutes of speech), so when they say the same line again it plays straight away, even while the voice is unloaded. The performance overlay (F3) shows how many clips are kept and reused.
 
