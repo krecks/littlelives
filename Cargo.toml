@@ -5,7 +5,7 @@ members = ["crates/sim-core", "crates/sim-wasm", "crates/voice", "crates/voice-w
 [workspace.package]
 edition = "2024"
 version = "0.1.0"
-license = "MIT"
+license = "GPL-3.0-or-later"
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }

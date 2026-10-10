@@ -394,8 +394,8 @@ There is no place to change a resident's look in a game yet; the Voice controls 
 
 Paradee, like Kokoro, needs **Misaki** phonemes. `kokoro-js` gets phonemes from **espeak-ng
 compiled to WASM, which is GPL-3**, and needs a conversion step (`web/misaki.js` in the Paradee
-repo; without it Whisper mishears about 31 % of words). Idyll Lives is MIT. We don't use
-espeak-ng.
+repo; without it Whisper mishears about 31 % of words). The game was MIT then (GPL-3.0-or-later since
+0.1.0). We don't use espeak-ng.
 
 Existing Rust options (checked 2026-10-09):
 

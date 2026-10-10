@@ -328,7 +328,7 @@ Every release ships with native sim tests (including the town soak), `pnpm check
 1. **Devices:** desktop only.
 2. **Art direction:** modern, minimalist and stylised; all art is replaceable through the manifest.
 3. **Name:** Idyll Lives (`idyll-lives` in slugs).
-4. **Licence:** MIT for the code; third-party art keeps its own licence (CC0, see `web/public/assets/CREDITS.md`).
+4. **Licence:** Idyll Lives is free software, released under the GNU General Public License v3.0 (or later). You may use, study, share, and modify it; if you distribute Idyll Lives or a modified version, you must make the source available under the same licence. (MIT until 0.1.0.) Third-party parts keep their own licences (art CC0, voice model and dictionary Apache-2.0; see `web/public/assets/CREDITS.md`).
 
 ### Naming
 

@@ -2,6 +2,12 @@
 
 All notable changes to Idyll Lives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
+## Unreleased
+
+### Changed
+- **New name: Idyll Lives** (it was Littlelives). The game is now at https://krecks.github.io/idyll-lives/; saves, settings and downloads carry over. The sparkle beside the name on the main menu and the loading card is gone.
+- **Licence:** Idyll Lives is free software, released under the GNU General Public License v3.0 (or later). You may use, study, share, and modify it; if you distribute Idyll Lives or a modified version, you must make the source available under the same licence. (It was MIT.)
+
 ## 0.1.0 — 2026-10-10
 
 **Play it in your browser:** https://krecks.github.io/idyll-lives/

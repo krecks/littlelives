@@ -138,4 +138,4 @@ The current version is **0.1.0**, the first release. One version number covers t
 
 ## Licence
 
-The code is released under the [MIT licence](LICENSE). Third-party art keeps its own licence: everything listed in [`web/public/assets/CREDITS.md`](web/public/assets/CREDITS.md) is CC0.
+Idyll Lives is free software, released under the [GNU General Public License v3.0 (or later)](LICENSE). You may use, study, share, and modify it; if you distribute Idyll Lives or a modified version, you must make the source available under the same licence. Third-party parts keep their own licences: the art listed in [`web/public/assets/CREDITS.md`](web/public/assets/CREDITS.md) is CC0, and the voice model and dictionary are Apache-2.0 (also listed there).
