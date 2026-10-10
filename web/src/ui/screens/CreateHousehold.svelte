@@ -157,7 +157,7 @@
     if (!settings.voices) {
       return voiceStatus.state === 'ready'
         ? 'Resident voices are off in Settings → Audio: turn them on to hear residents in the game.'
-        : 'Resident voices are off in Settings → Audio. Hearing a sample downloads the voice once (about 29 MB).';
+        : 'Resident voices are off in Settings → Audio. Hearing a sample downloads the voice once (about 25 MB).';
     }
     return isBaby ? '' : 'Voices change as residents grow up; this choice goes along.';
   });
