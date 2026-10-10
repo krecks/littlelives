@@ -258,5 +258,91 @@
       },
       "startingSkills": { "dexterity": 1 }
     }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "natureLover.veggieBed": {
+          "interactions": {
+            "tendVeggies": [
+              "Weeds out, veggies in.",
+              "My little vegetable kingdom.",
+              "Growing nicely!"
+            ],
+            "pickSnack": [
+              "Fresh from the bed!",
+              "A crunchy carrot. Yum.",
+              "Nature's snack bar."
+            ]
+          }
+        },
+        "natureLover.pottingBench": {
+          "interactions": {
+            "potSeedlings": [
+              "In you go, little seedling.",
+              "New plants for the garden.",
+              "Soil, seed, water."
+            ],
+            "tieBouquet": [
+              "A bouquet from the garden.",
+              "Flowers for the table.",
+              "A little ribbon, and done."
+            ]
+          }
+        },
+        "natureLover.birdFeeder": {
+          "lines": [
+            "Look, a woodpecker!",
+            "So many birds today.",
+            "Keep still. Don't scare them.",
+            "Birds are the best."
+          ]
+        },
+        "natureLover.gardenHammock": {
+          "interactions": {
+            "swing": [
+              "Swinging in the garden.",
+              "Listen to the birds.",
+              "Pure nature, pure bliss."
+            ],
+            "doze": [
+              "A doze in the fresh air.",
+              "So peaceful out here.",
+              "Sleepy in the sun."
+            ]
+          }
+        },
+        "natureLover.cedarShower": {
+          "lines": [
+            "A shower under the sky!",
+            "Smells like cedar.",
+            "Fresh air, fresh me.",
+            "Chilly, but lovely."
+          ]
+        },
+        "natureLover.mossTerrarium": {
+          "lines": [
+            "A little mist for the moss.",
+            "A tiny forest.",
+            "So green and soft.",
+            "Grow, little moss."
+          ]
+        },
+        "natureLover.glasshouse": {
+          "interactions": {
+            "unwind": [
+              "So green in here.",
+              "I love these ferns.",
+              "Warm and peaceful."
+            ],
+            "orchids": [
+              "Careful with the orchids.",
+              "Look, a new bloom!",
+              "Such fussy flowers."
+            ]
+          }
+        }
+      }
+    }
   }
 }

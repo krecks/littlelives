@@ -228,5 +228,86 @@
         "skillGain": { "dexterity": 1.1 }
       }
     }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "slob.microwaveCart": {
+          "interactions": {
+            "nuke": [
+              "Ding! Dinner's ready.",
+              "Three minutes. Gourmet.",
+              "Frozen dinner, my old friend.",
+              "Is it hot yet?"
+            ],
+            "invent": [
+              "Microwave cooking!",
+              "Cheese on everything.",
+              "Science! Delicious science.",
+              "What if I add ketchup?"
+            ]
+          }
+        },
+        "slob.beanbag": {
+          "interactions": {
+            "flop": [
+              "Flop!",
+              "Beanbag, catch me.",
+              "I'm sinking. Happily.",
+              "So squishy."
+            ],
+            "snooze": [
+              "Beanbag nap.",
+              "Not moving. Ever.",
+              "So squishy. So sleepy."
+            ]
+          }
+        },
+        "slob.snackNightstand": {
+          "lines": [
+            "Midnight snack!",
+            "Hush, nobody saw that.",
+            "Crunch, crunch.",
+            "Snacks in bed. Living the dream."
+          ]
+        },
+        "slob.spritzStation": {
+          "lines": [
+            "Spritz and go!",
+            "Good enough.",
+            "Smell fresh, done.",
+            "Who needs a shower?"
+          ]
+        },
+        "slob.arcadeCabinet": {
+          "interactions": {
+            "chaseHighScore": [
+              "New high score! Almost.",
+              "I'm going for the record.",
+              "One more coin!"
+            ],
+            "quickRound": [
+              "Just a quick round.",
+              "Pew, pew, pew!",
+              "Game over? Again?"
+            ]
+          }
+        },
+        "slob.gamingRecliner": {
+          "interactions": {
+            "marathon": [
+              "Gaming marathon. No breaks.",
+              "I'm on level fifty.",
+              "Snacks, check. Games, check."
+            ],
+            "armrestSoda": [
+              "Soda from the armrest!",
+              "This chair has a fridge!",
+              "Ahh, fizzy."
+            ]
+          }
+        }
+      }
+    }
   }
 }

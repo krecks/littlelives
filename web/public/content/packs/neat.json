@@ -216,5 +216,71 @@
         "skillGain": { "dexterity": 1.1, "perception": 1.1 }
       }
     }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "neat.steamMopDock": {
+          "lines": [
+            "Steam it clean!",
+            "Sparkling floors, here we go.",
+            "Every last spot.",
+            "So shiny!"
+          ]
+        },
+        "neat.laundryCenter": {
+          "interactions": {
+            "laundry": [
+              "Wash, dry, press.",
+              "Fresh laundry smells so good.",
+              "No more wrinkles!"
+            ],
+            "fold": [
+              "Corners together. Perfect.",
+              "Fold, fold, stack.",
+              "Neat as a pin."
+            ]
+          }
+        },
+        "neat.rainShowerTower": {
+          "lines": [
+            "A rainfall shower. Fancy!",
+            "Steam and rain. Heaven.",
+            "So fresh and clean.",
+            "Like standing in warm rain."
+          ]
+        },
+        "neat.organizerDesk": {
+          "interactions": {
+            "sort": [
+              "Label everything!",
+              "A place for everything.",
+              "Sorted. So satisfying."
+            ],
+            "ledger": [
+              "Let's balance the books.",
+              "Every penny counts.",
+              "Income, bills, done."
+            ]
+          }
+        },
+        "neat.robotVacuumDock": {
+          "lines": [
+            "Kitchen first, then the hall.",
+            "Clean while I relax. Smart.",
+            "Go, little robot, go!",
+            "Mapping the route."
+          ]
+        },
+        "neat.entryConsole": {
+          "lines": [
+            "Keys here, mail there.",
+            "A tidy hall, a happy home.",
+            "Shoes in a row.",
+            "Much better."
+          ]
+        }
+      }
+    }
   }
 }

@@ -231,5 +231,86 @@
         "skillGain": { "writing": 1.1, "creativity": 1.1 }
       }
     }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "gloomy.recordCabinet": {
+          "interactions": {
+            "listen": [
+              "Old [records](/ɹˈɛkəɹdz/) sound the best.",
+              "Crackle, crackle. Perfect.",
+              "This one makes me feel things."
+            ],
+            "newAlbum": [
+              "Let's try something new.",
+              "A new album. Moody. Good.",
+              "Ooh, this sounds dark."
+            ]
+          }
+        },
+        "gloomy.cello": {
+          "interactions": {
+            "practise": [
+              "Scales, scales, scales.",
+              "Slow and steady.",
+              "Again, from the top."
+            ],
+            "lament": {
+              "lines": [
+                "A sad song for a gray day.",
+                "Music for a rainy heart.",
+                "This one always gets me."
+              ],
+              "tone": "sad"
+            }
+          }
+        },
+        "gloomy.journalDesk": {
+          "interactions": {
+            "journal": [
+              "Dear journal, today was hard.",
+              "Let me write it all down.",
+              "Feelings, on paper."
+            ],
+            "poetry": [
+              "A poem about the rain.",
+              "Words for the night.",
+              "Dark skies, darker ink."
+            ]
+          }
+        },
+        "gloomy.rainLamp": {
+          "lines": [
+            "I love the sound of rain.",
+            "Drip, drip, drip.",
+            "Rainy days are my favorite.",
+            "So calm."
+          ]
+        },
+        "gloomy.windowSeat": {
+          "interactions": {
+            "brood": [
+              "Gray skies. Fitting.",
+              "Just thinking. Deeply.",
+              "The world goes on out there."
+            ],
+            "doze": [
+              "Wrapped up and sleepy.",
+              "A little nap under the throw.",
+              "So cozy here."
+            ]
+          }
+        },
+        "gloomy.soakingTub": {
+          "lines": [
+            "Candles, quiet, warm water.",
+            "A candlelit soak. Lovely.",
+            "Let the day float away.",
+            "Just me and the moonlight."
+          ]
+        }
+      }
+    }
   }
 }

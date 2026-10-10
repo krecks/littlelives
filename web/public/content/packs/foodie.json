@@ -241,5 +241,93 @@
     "foodie": {
       "effects": { "tagPreference": { "garden": 1.4, "party": 1.3 } }
     }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "foodie.herbGarden": {
+          "lines": [
+            "Fresh herbs make all the difference.",
+            "Basil, thyme, rosemary.",
+            "Mmm, smell that mint.",
+            "Grow, little herbs."
+          ]
+        },
+        "foodie.deliPantry": {
+          "interactions": {
+            "nibble": [
+              "A gourmet nibble.",
+              "Fancy olives? Yes, please.",
+              "Just a little taste."
+            ],
+            "cheeseBoard": [
+              "A cheese board, coming up.",
+              "Soft, hard, blue. Perfect.",
+              "Grapes, crackers, cheese!"
+            ]
+          }
+        },
+        "foodie.espressoBar": {
+          "interactions": {
+            "espresso": [
+              "Espresso, short and strong.",
+              "Ah, the perfect shot.",
+              "Coffee, the fancy way."
+            ],
+            "latteArt": [
+              "Steady hand. A heart!",
+              "Is that a leaf? Kind of.",
+              "Latte art takes practice."
+            ]
+          }
+        },
+        "foodie.cookbookLectern": {
+          "interactions": {
+            "studyRecipes": [
+              "Ooh, I want to try this.",
+              "Let me learn this recipe.",
+              "Fold, don't stir. Got it."
+            ],
+            "foodMagazines": [
+              "Look at this cake!",
+              "Food pictures make me hungry.",
+              "So many ideas."
+            ]
+          }
+        },
+        "foodie.pizzaOven": {
+          "interactions": {
+            "bakePizza": {
+              "lines": [
+                "Wood-fired pizza, coming up!",
+                "Watch that crust bubble.",
+                "Pizza night!",
+                "Ooh, that smells amazing."
+              ],
+              "tone": "happy"
+            },
+            "warmUp": [
+              "So warm by the oven.",
+              "Toasty.",
+              "I could stay here all day."
+            ]
+          }
+        },
+        "foodie.chefsIsland": {
+          "interactions": {
+            "tastingMenu": [
+              "Tonight, a tasting menu.",
+              "Seven courses. Let's go.",
+              "Plate it like a pro."
+            ],
+            "barBite": [
+              "A quick bite at the island.",
+              "Just a nibble.",
+              "Perfect spot for a snack."
+            ]
+          }
+        }
+      }
+    }
   }
 }

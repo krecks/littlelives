@@ -208,5 +208,77 @@
     "bookworm": {
       "effects": { "tagPreference": { "cozy": 1.6, "study": 1.8 } }
     }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "bookworm.readingNook": {
+          "lines": [
+            "Curled up with a novel. Bliss.",
+            "Just me and my book.",
+            "The perfect reading spot.",
+            "One more chapter. Okay, two."
+          ]
+        },
+        "bookworm.libraryWall": {
+          "interactions": {
+            "research": [
+              "Such old, rare books.",
+              "Careful, this one's fragile.",
+              "Let me look this up properly."
+            ],
+            "browse": [
+              "So many first editions!",
+              "Look at this old binding.",
+              "I could browse here for hours."
+            ]
+          }
+        },
+        "bookworm.writingBureau": {
+          "interactions": {
+            "draft": [
+              "Chapter one. Here we go.",
+              "The words are finally flowing.",
+              "My manuscript is coming along."
+            ],
+            "letter": [
+              "Dear friend...",
+              "A real letter, by hand.",
+              "I hope they write back."
+            ]
+          }
+        },
+        "bookworm.teaTrolley": {
+          "lines": [
+            "Tea and books. Perfect.",
+            "Shall I pour?",
+            "A pot of tea for the book club.",
+            "Milk, no sugar, please."
+          ]
+        },
+        "bookworm.firesideLounge": {
+          "interactions": {
+            "readByFire": [
+              "Reading by the fire. Lovely.",
+              "Warm toes, good book.",
+              "Listen to the fire crackle."
+            ],
+            "readAloud": [
+              "Ahem. Once upon a time...",
+              "Gather round, everyone.",
+              "Let me read you this bit."
+            ]
+          }
+        },
+        "bookworm.bedsideStack": {
+          "lines": [
+            "Just one more chapter.",
+            "I should sleep. One more.",
+            "I can't stop now!",
+            "It's getting so good."
+          ]
+        }
+      }
+    }
   }
 }

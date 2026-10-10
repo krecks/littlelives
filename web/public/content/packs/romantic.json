@@ -231,5 +231,86 @@
         "skillGain": { "charisma": 1.1 }
       }
     }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "romantic.candlelitTable": {
+          "interactions": {
+            "candlelitDinner": {
+              "lines": [
+                "Dinner by candlelight.",
+                "Just us and the candles.",
+                "How romantic."
+              ],
+              "tone": "flirty"
+            },
+            "shareDessert": [
+              "One cake, two spoons.",
+              "You have the last bite.",
+              "Dessert is better shared."
+            ]
+          }
+        },
+        "romantic.heartTub": {
+          "lines": [
+            "Rose petals everywhere!",
+            "A heart-shaped tub. Cute.",
+            "So romantic.",
+            "Smells like roses."
+          ]
+        },
+        "romantic.letterBureau": {
+          "interactions": {
+            "writeLetter": [
+              "My dearest...",
+              "How do I say I love you?",
+              "Sealed with a kiss."
+            ],
+            "writePoem": [
+              "Roses are red...",
+              "A poem from the heart.",
+              "Love is... hmm."
+            ]
+          }
+        },
+        "romantic.vanity": {
+          "lines": [
+            "Looking good!",
+            "A little perfume.",
+            "Ready for a date?",
+            "Hair, perfect."
+          ]
+        },
+        "romantic.gramophone": {
+          "interactions": {
+            "listen": [
+              "Love songs. My favorite.",
+              "Such a sweet tune.",
+              "This old song still gets me."
+            ],
+            "waltz": [
+              "One, two, three. One, two, three.",
+              "May I have this dance?",
+              "And twirl!"
+            ]
+          }
+        },
+        "romantic.roseArbourSwing": {
+          "interactions": {
+            "swing": [
+              "Swinging under the roses.",
+              "Smells so lovely.",
+              "Pure romance."
+            ],
+            "tendRoses": [
+              "Careful of the thorns.",
+              "Climb, little roses, climb!",
+              "More blooms, please."
+            ]
+          }
+        }
+      }
+    }
   }
 }

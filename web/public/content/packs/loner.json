@@ -232,5 +232,89 @@
         "skillGain": { "perception": 1.15 }
       }
     }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "loner.quietPod": {
+          "interactions": {
+            "retreat": [
+              "Finally, some quiet.",
+              "Just me in here.",
+              "No people. Perfect."
+            ],
+            "read": [
+              "Reading in peace.",
+              "Shush. Book time.",
+              "No one to bother me."
+            ]
+          }
+        },
+        "loner.shortwaveRadio": {
+          "interactions": {
+            "airwaves": [
+              "Hello? Anyone out there?",
+              "Calling from my desk.",
+              "Friends far away. Nice."
+            ],
+            "tune": [
+              "Just a bit of solder.",
+              "Tune it in, slowly.",
+              "Static, static... there!"
+            ]
+          }
+        },
+        "loner.puzzleTable": {
+          "interactions": {
+            "piece": [
+              "Where does this piece go?",
+              "Edge pieces first.",
+              "Ooh, that fits!"
+            ],
+            "newPuzzle": [
+              "Two thousand pieces. Let's go.",
+              "A brand new puzzle!",
+              "Sky pieces. Lots of sky."
+            ]
+          }
+        },
+        "loner.bonsaiBench": {
+          "interactions": {
+            "shape": [
+              "Wire it gently.",
+              "A tiny tree, a big job.",
+              "Patience, little tree."
+            ],
+            "tend": [
+              "A little mist for you.",
+              "Feed and mist.",
+              "Growing slowly, but surely."
+            ]
+          }
+        },
+        "loner.soloSauna": {
+          "lines": [
+            "Hot and quiet. Perfect.",
+            "Just me and the heat.",
+            "Sweat it all out.",
+            "So peaceful in here."
+          ]
+        },
+        "loner.deliveryHatch": {
+          "interactions": {
+            "order": [
+              "A meal for one.",
+              "No knocking, just food.",
+              "Dinner, no talking needed."
+            ],
+            "treat": [
+              "A treat box! For me.",
+              "I deserve a treat.",
+              "Ooh, what's inside?"
+            ]
+          }
+        }
+      }
+    }
   }
 }

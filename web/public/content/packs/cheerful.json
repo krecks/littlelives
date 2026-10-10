@@ -200,5 +200,69 @@
         "skillGain": { "charisma": 1.1 }
       }
     }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "cheerful.jukebox": {
+          "lines": [
+            "Put on something fun!",
+            "Ooh, I love this one!",
+            "Dance with me!",
+            "Jukebox, don't stop!"
+          ],
+          "tone": "happy"
+        },
+        "cheerful.karaokeMachine": {
+          "lines": [
+            "Mic check, one, two!",
+            "This song is my jam!",
+            "Everybody sing along!",
+            "I'm a star!"
+          ],
+          "tone": "happy"
+        },
+        "cheerful.mocktailCart": {
+          "lines": [
+            "A fruity mocktail, coming up!",
+            "Shake, shake, shake!",
+            "Extra cherries, please!",
+            "Sunshine in a glass."
+          ]
+        },
+        "cheerful.rainbowHammock": {
+          "interactions": {
+            "swing": [
+              "Swinging in a rainbow!",
+              "Back and forth, so dreamy.",
+              "Look at all these colors."
+            ],
+            "doze": [
+              "A little doze in the sun.",
+              "So warm and sleepy.",
+              "Wake me for dinner."
+            ]
+          }
+        },
+        "cheerful.sunriseLamp": {
+          "lines": [
+            "Good morning, sunshine!",
+            "Reach for the sky!",
+            "Stretch it out!",
+            "What a bright start."
+          ],
+          "tone": "happy"
+        },
+        "cheerful.partyBooth": {
+          "lines": [
+            "Party time, everyone!",
+            "Can you all see me?",
+            "Confetti! Woo!",
+            "Hello, hello! Welcome!"
+          ],
+          "tone": "happy"
+        }
+      }
+    }
   }
 }

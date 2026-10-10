@@ -213,5 +213,68 @@
     "energetic": {
       "effects": { "tagPreference": { "sport": 1.8, "fitness": 1.2 } }
     }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "energetic.boulderingWall": {
+          "lines": [
+            "Up I go!",
+            "Find the next hold.",
+            "Don't look down!",
+            "Made it to the top!"
+          ]
+        },
+        "energetic.spinBike": {
+          "lines": [
+            "Pedal, pedal, pedal!",
+            "Uphill! Push it!",
+            "What a view. Sort of.",
+            "Faster, faster!"
+          ]
+        },
+        "energetic.trampoline": {
+          "lines": [
+            "Boing, boing!",
+            "Higher! Higher!",
+            "This is so much fun!",
+            "Whee!"
+          ],
+          "tone": "happy"
+        },
+        "energetic.streetballHoop": {
+          "lines": [
+            "Nothing but net!",
+            "Swish!",
+            "Three points!",
+            "Missed. One more."
+          ]
+        },
+        "energetic.powerBlender": {
+          "lines": [
+            "Smoothie time!",
+            "Bananas, berries, go!",
+            "Power up!",
+            "Blend it, blend it!"
+          ]
+        },
+        "energetic.contrastShower": {
+          "lines": [
+            "Hot! Now cold! [Brr](/bˈɜɹ/)!",
+            "Wake up, body!",
+            "Cold water, I'm ready.",
+            "Ooh! That's fresh!"
+          ]
+        },
+        "energetic.recoveryPod": {
+          "lines": [
+            "Recovery time.",
+            "My muscles thank me.",
+            "Rest, then go again.",
+            "Ah, that's better."
+          ]
+        }
+      }
+    }
   }
 }

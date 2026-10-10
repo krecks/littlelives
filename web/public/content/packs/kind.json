@@ -390,5 +390,83 @@
         "cooking": 1
       }
     }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "kind.neighbourlyOven": {
+          "interactions": {
+            "familyPie": [
+              "A pie for the family!",
+              "Apple pie, coming up.",
+              "Love is the secret ingredient."
+            ],
+            "treatsToShare": [
+              "Treats for the neighbors!",
+              "Everyone gets a cookie.",
+              "These are for sharing."
+            ]
+          }
+        },
+        "kind.givingJar": {
+          "lines": [
+            "Every little bit helps.",
+            "For a good cause.",
+            "Happy to help.",
+            "There you go."
+          ]
+        },
+        "kind.knittingRocker": {
+          "interactions": {
+            "knitGift": [
+              "A scarf for a friend.",
+              "Knit one, purl one.",
+              "They're going to love this."
+            ],
+            "rock": [
+              "Rock, rock, rock.",
+              "So peaceful.",
+              "Just rocking gently."
+            ]
+          }
+        },
+        "kind.welcomeTeaTable": {
+          "lines": [
+            "Tea, anyone?",
+            "Come, sit, have some tea.",
+            "Tea for everyone!",
+            "How do you take it?"
+          ]
+        },
+        "kind.songbirdFeeder": {
+          "interactions": {
+            "refill": [
+              "Breakfast for the birds!",
+              "Fill it right up.",
+              "Here come the songbirds."
+            ],
+            "watchBirds": [
+              "Look, a little finch!",
+              "Listen to them sing.",
+              "So many visitors today."
+            ]
+          }
+        },
+        "kind.hearthSettee": {
+          "interactions": {
+            "curlUp": [
+              "Warm by the hearth.",
+              "So snug here.",
+              "Nothing beats a fire."
+            ],
+            "quiltNap": [
+              "A nap under the quilt.",
+              "So warm, so sleepy.",
+              "Just a little rest."
+            ]
+          }
+        }
+      }
+    }
   }
 }

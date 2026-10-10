@@ -225,5 +225,88 @@
       },
       "startingSkills": { "dexterity": 1 }
     }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "couchPotato.cinemaWall": {
+          "interactions": {
+            "marathon": [
+              "Movie marathon time!",
+              "Popcorn? Check. Blanket? Check.",
+              "Just one more movie.",
+              "This screen is huge!"
+            ],
+            "channelSurf": [
+              "Nope. Nope. Ooh, maybe.",
+              "Nothing good on.",
+              "Click, click, click.",
+              "Where's the cooking show?"
+            ]
+          }
+        },
+        "couchPotato.gameConsole": {
+          "interactions": {
+            "play": [
+              "Just one more level!",
+              "Game on!",
+              "I'm on a roll!",
+              "Boss fight! Here we go."
+            ],
+            "speedrun": [
+              "New record, here I come.",
+              "Every second counts!",
+              "Skip, jump, faster!",
+              "Ugh, start over."
+            ]
+          }
+        },
+        "couchPotato.recliner": {
+          "interactions": {
+            "recline": [
+              "Recliner, do your thing.",
+              "Feet up. Way up.",
+              "This chair loves me.",
+              "I'm never getting up."
+            ],
+            "doze": [
+              "So comfy. So sleepy.",
+              "Just closing my eyes.",
+              "Five more minutes."
+            ]
+          }
+        },
+        "couchPotato.snackFridge": {
+          "interactions": {
+            "snack": [
+              "Snacks within arm's reach!",
+              "Couch snack time.",
+              "A fridge by the sofa. Genius."
+            ],
+            "takeout": [
+              "Takeout? Takeout.",
+              "Pizza or noodles?",
+              "No cooking tonight!"
+            ]
+          }
+        },
+        "couchPotato.fitnessGame": {
+          "lines": [
+            "Exercise, but it's a game!",
+            "Jump! Duck! Jump!",
+            "I'm winning and sweating.",
+            "This counts as a workout."
+          ]
+        },
+        "couchPotato.lavaLamp": {
+          "lines": [
+            "Ooh, the blobs.",
+            "So floaty. So calm.",
+            "Up and down they go.",
+            "I could watch this forever."
+          ]
+        }
+      }
+    }
   }
 }

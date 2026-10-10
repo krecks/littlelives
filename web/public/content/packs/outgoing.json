@@ -204,5 +204,76 @@
     "outgoing": {
       "effects": { "tagPreference": { "party": 1.8, "music": 1.4 } }
     }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "outgoing.partyBar": {
+          "interactions": {
+            "mixDrinks": [
+              "Drinks for everyone!",
+              "Who wants a fruit punch?",
+              "Shake it up!"
+            ],
+            "soda": [
+              "A fizzy soda. Cheers!",
+              "Bubbles!",
+              "Ah, nice and cold."
+            ]
+          }
+        },
+        "outgoing.conversationSectional": {
+          "lines": [
+            "Plenty of room for everyone!",
+            "Come sit, let's hang out.",
+            "Best seat in the house.",
+            "Who's coming over later?"
+          ]
+        },
+        "outgoing.karaokeStage": {
+          "interactions": {
+            "practise": [
+              "Mi, mi, mi, mi!",
+              "Let me warm up.",
+              "From the top!"
+            ],
+            "perform": {
+              "lines": [
+                "This one's a showstopper!",
+                "Thank you, thank you!",
+                "Hit it!",
+                "Everybody, clap along!"
+              ],
+              "tone": "happy"
+            }
+          }
+        },
+        "outgoing.videoCallNook": {
+          "lines": [
+            "Hey! Can you see me?",
+            "It's so good to see you!",
+            "You're frozen. Hello?",
+            "Wave hi!"
+          ]
+        },
+        "outgoing.danceFloor": {
+          "lines": [
+            "Light it up!",
+            "Dance the night away!",
+            "Look at those lights!",
+            "Everybody, dance!"
+          ],
+          "tone": "happy"
+        },
+        "outgoing.photoWall": {
+          "lines": [
+            "Ha, look at this one!",
+            "What a party that was.",
+            "Good times, good friends.",
+            "I miss these days."
+          ]
+        }
+      }
+    }
   }
 }

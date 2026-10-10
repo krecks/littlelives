@@ -222,5 +222,89 @@
         "skillGain": { "technology": 1.15 }
       }
     }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "lazy.snoozecloudBed": {
+          "interactions": {
+            "sleep": [
+              "Cloud bed, take me away.",
+              "Best bed ever.",
+              "Good night, cloud."
+            ],
+            "sleepIn": [
+              "Just a bit longer.",
+              "Five more minutes. Or fifty.",
+              "Mornings can wait."
+            ]
+          }
+        },
+        "lazy.napPod": {
+          "interactions": {
+            "curlUp": [
+              "Into the pod I go.",
+              "My little nest.",
+              "Do not disturb."
+            ],
+            "powerNap": [
+              "Power nap. Twenty minutes.",
+              "Recharging.",
+              "Wake me up later."
+            ]
+          }
+        },
+        "lazy.quiltTable": {
+          "interactions": {
+            "tuckIn": [
+              "Warm legs, happy me.",
+              "I'm never leaving this table.",
+              "So toasty under here."
+            ],
+            "doze": [
+              "Dozing off. Don't mind me.",
+              "So warm and sleepy.",
+              "Just resting my eyes."
+            ]
+          }
+        },
+        "lazy.deliveryLocker": {
+          "interactions": {
+            "takeout": [
+              "Food, delivered. Perfect.",
+              "No cooking for me.",
+              "Dinner's at the door!"
+            ],
+            "noodles": [
+              "Cheap noodles, my favorite.",
+              "Slurp time!",
+              "Easy and tasty."
+            ]
+          }
+        },
+        "lazy.vibePlate": {
+          "lines": [
+            "A workout without working out.",
+            "Shake, shake, shake.",
+            "This counts. Right?",
+            "Exercise, the easy way."
+          ]
+        },
+        "lazy.smartHub": {
+          "interactions": {
+            "program": [
+              "Lights, do your thing.",
+              "Okay, set the routine.",
+              "The house does the work now."
+            ],
+            "story": [
+              "Tell me a story.",
+              "Once upon a time... go on.",
+              "This is nice. Keep going."
+            ]
+          }
+        }
+      }
+    }
   }
 }

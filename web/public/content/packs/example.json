@@ -85,5 +85,35 @@
   "traitPatches": {
     "lazy": { "effects": { "tagPreference": { "spa": 1.6 } } },
     "foodie": { "startingSkills": { "cooking": 2 } }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "whirlpoolTub": {
+          "lines": [
+            "Bubbles, bubbles everywhere!",
+            "Jets on full!",
+            "This is the life.",
+            "My own little spa."
+          ]
+        },
+        "chefStove": {
+          "interactions": {
+            "cook": [
+              "Six burners, all mine!",
+              "A proper chef's stove.",
+              "Let it sizzle!",
+              "Tonight, I cook like a pro."
+            ],
+            "practise": [
+              "Practice makes perfect.",
+              "Let's try that recipe again.",
+              "A little more salt this time.",
+              "My cooking gets better every day."
+            ]
+          }
+        }
+      }
+    }
   }
 }

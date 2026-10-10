@@ -1,19 +1,27 @@
 {
-  "_comment": "Spoken lines for English (docs/design/voices.md), keyed by id: social interaction ids, animation tags (`action`), emotion ids and planner thought kinds. Other languages get their own file (content/voice/<lang>.json) with the same keys. {name} is the other resident's first name, {me} the speaker's. A line may fix a pronunciation with [word](/phonemes/) (Misaki's alphabet). Optional tone per group: happy, sad, angry, flirty.",
+  "_comment": "Spoken lines for English (docs/design/voices.md). Other languages get their own file (content/voice/<lang>.json) with the same keys, and content packs add or replace lines under the same keys with a top-level \"voice\": {\"en\": {...}} (docs/content-packs.md). Keys are content ids. social: per social interaction, start (said by the one who starts it), good and bad (the answer, by outcome). object: per object id, lines for any of its interactions and, under interactions, per interaction id. interaction: per interaction id, on any object. action: per animation tag. emotion: per emotion id. thought: per planner thought kind. For something being used, the most specific lines win: object + interaction, then object, then interaction id, then animation tag. A group is a list of lines, or {\"lines\": [...], \"tone\": ...}; tones: happy, sad, angry, flirty, question. {name} is the other resident's first name, {me} the speaker's. A line may fix a pronunciation with [word](/phonemes/) (Misaki's alphabet). Keep lines short (most under 40 characters) and right for children, teens and grown-ups alike (babies don't speak); several per key, as a resident doesn't repeat their last few. cargo test -p voice --release --test lines checks every line.",
   "social": {
     "introduce": {
       "start": [
         "Hi, I'm {me}. Nice to meet you!",
         "Hello there! I don't think we've met.",
-        "Hey, I'm {me}. And you are?"
+        "Hey, I'm {me}. And you are?",
+        "Hi! I'm {me}, from down the road.",
+        "Hello! I keep seeing you around."
       ],
       "good": [
-        "Nice to meet you too, {me}!",
-        "Hi! Lovely to meet you."
+        "Nice to meet you too, {name}!",
+        "Hi! Lovely to meet you.",
+        "Oh, hi! Great to finally meet you.",
+        "Hello, {name}! Welcome, welcome.",
+        "Nice to meet you. Glad you said hi."
       ],
       "bad": [
         "Uh, okay. Hi.",
-        "Sorry, I'm a bit busy."
+        "Sorry, I'm a bit busy.",
+        "Do I know you?",
+        "Hmm. Right. Hello.",
+        "Not now, thanks."
       ]
     },
     "chat": {
@@ -21,31 +29,47 @@
         "How was your day, {name}?",
         "Did you see the weather today?",
         "So, what have you been up to?",
-        "Have you tried the new café in town?"
+        "Have you tried the new café in town?",
+        "Anything fun planned this week?",
+        "I had the strangest dream last night."
       ],
       "good": [
         "Pretty good, thanks for asking!",
         "Oh, you won't believe it!",
-        "Not bad at all. How about you?"
+        "Not bad at all. How about you?",
+        "Ha, me too! Tell me more.",
+        "It's been a really nice day."
       ],
       "bad": [
         "I'd rather not talk right now.",
-        "Hmm. Fine, I guess."
+        "Hmm. Fine, I guess.",
+        "Can we do this later?",
+        "Not really in the mood, sorry.",
+        "Sure. Whatever."
       ]
     },
     "joke": {
       "start": [
-        "Want to hear a joke? Why did the scarecrow win a prize? He was outstanding in his field!",
+        "Why did the scarecrow win a prize? He was outstanding in his field!",
         "What do you call a sleeping dinosaur? A dino snore!",
-        "I told my plants a joke. They didn't laugh, but they grew a little."
+        "I told my plants a joke. They grew a little.",
+        "Why don't eggs tell jokes? They'd crack up!",
+        "Why was the math book sad? Too many problems.",
+        "What do you call a bear with no teeth? A gummy bear!"
       ],
       "good": [
         "Ha! That's a good one!",
-        "Oh no, that's terrible. I love it!"
+        "Oh no, that's terrible. I love it!",
+        "Ha ha! Stop it, my sides hurt!",
+        "Okay, that got me.",
+        "I'm stealing that one."
       ],
       "bad": [
         "That's not funny.",
-        "Was that supposed to be a joke?"
+        "Was that supposed to be a joke?",
+        "I've heard that one before.",
+        "I don't get it.",
+        "Please, no more jokes."
       ],
       "tone": "happy"
     },
@@ -53,45 +77,72 @@
       "start": [
         "You look great today, {name}!",
         "I really like your style.",
-        "You always make me smile."
+        "You always make me smile.",
+        "You're really good at this, you know.",
+        "That color looks amazing on you.",
+        "You're one of the kindest people I know."
       ],
       "good": [
         "Aw, thank you! That's so sweet.",
-        "You just made my day!"
+        "You just made my day!",
+        "Oh, stop! But thank you.",
+        "That's really kind of you, {name}.",
+        "You're pretty great yourself."
       ],
       "bad": [
         "Um, thanks, I guess.",
-        "Are you making fun of me?"
+        "Are you making fun of me?",
+        "What do you want from me?",
+        "Okay. Weird, but okay.",
+        "Save it."
       ],
       "tone": "happy"
     },
     "deepTalk": {
       "start": [
         "Do you ever wonder what we're all here for?",
-        "What's the one thing you'd change about your life?",
-        "Can I tell you something personal?"
+        "What's one thing you'd change in your life?",
+        "Can I tell you something personal?",
+        "What are you most afraid of, {name}?",
+        "Do you think people really change?",
+        "What makes you truly happy?"
       ],
       "good": [
         "I think about that all the time.",
-        "I'm really glad you told me."
+        "I'm really glad you told me.",
+        "That's a big question. I love it.",
+        "You know, I've never told anyone this.",
+        "I feel like I really get you now."
       ],
       "bad": [
         "That's a bit too deep for me right now.",
-        "I don't really want to get into that."
+        "I don't really want to get into that.",
+        "Can we talk about something lighter?",
+        "That's kind of personal.",
+        "Let's not go there."
       ]
     },
     "hug": {
       "start": [
         "Come here, you need a hug!",
-        "Hug?"
+        "Hug?",
+        "Bring it in!",
+        "Can I give you a hug?",
+        "Hug time, {name}!"
       ],
       "good": [
         "Aww, I needed that.",
-        "You give the best hugs."
+        "You give the best hugs.",
+        "Thank you. That helps.",
+        "Mmm, cozy.",
+        "Don't let go just yet."
       ],
       "bad": [
         "Whoa, personal space please!",
-        "Let's not."
+        "Let's not.",
+        "I'm not a hugger, sorry.",
+        "Okay, okay, that's enough.",
+        "Please don't."
       ],
       "tone": "happy"
     },
@@ -99,75 +150,144 @@
       "start": [
         "Has anyone told you your eyes are lovely?",
         "Is it warm in here, or is it just you?",
-        "I could listen to you all day, {name}."
+        "I could listen to you all day, {name}.",
+        "You have the best smile in town.",
+        "Are you free later? Asking for me.",
+        "Do you come here often?"
       ],
       "good": [
         "You're quite charming yourself.",
-        "Oh, stop it. Actually, don't."
+        "Oh, stop it. Actually, don't.",
+        "Well, aren't you smooth.",
+        "Maybe I am free later.",
+        "You're making me blush."
       ],
       "bad": [
         "Let's keep it friendly, okay?",
-        "Nice try."
+        "Nice try.",
+        "Does that line ever work?",
+        "I'm flattered, but no.",
+        "Ha. No."
       ],
       "tone": "flirty"
     },
     "sweetTalk": {
       "start": [
         "You make every day better, {name}.",
-        "I keep thinking about you."
+        "I keep thinking about you.",
+        "You're my favorite person.",
+        "Everything's better when you're here.",
+        "I'm so lucky to have you."
       ],
       "good": [
         "You always know what to say.",
-        "I feel the same way."
+        "I feel the same way.",
+        "You're so sweet to me.",
+        "Say that again. Slowly.",
+        "And I'm lucky to have you."
       ],
       "bad": [
         "That's a little much.",
-        "Maybe slow down a bit."
+        "Maybe slow down a bit.",
+        "Okay, that's very cheesy.",
+        "Do you say that to everyone?",
+        "Hmm. Words are easy."
       ],
       "tone": "flirty"
     },
     "kiss": {
       "start": [
         "Come here, you.",
-        "Can I kiss you?"
+        "Can I kiss you?",
+        "I've wanted to do this all day.",
+        "[Close](/klˈOz/) your eyes.",
+        "Just one kiss?"
       ],
       "good": [
         "Mmm. Again?",
-        "That was wonderful."
+        "That was wonderful.",
+        "Wow.",
+        "I could get used to that.",
+        "You're full of surprises."
       ],
       "bad": [
         "Whoa, not now!",
-        "I'm not ready for that."
+        "I'm not ready for that.",
+        "Hey! Too fast.",
+        "Not here, please.",
+        "No. Just no."
       ],
       "tone": "flirty"
     },
     "askPartner": {
       "start": [
         "{name}, will you be my partner?",
-        "I want us to be together. What do you say?"
+        "I want us to be together. What do you say?",
+        "Will you be mine, {name}?",
+        "I don't want to be just friends anymore.",
+        "Let's make it official. Us."
       ],
       "good": [
         "Yes! Of course, yes!",
-        "I thought you'd never ask!"
+        "I thought you'd never ask!",
+        "I'd love that more than anything.",
+        "Yes, yes, a thousand times yes!",
+        "I was hoping you'd say that."
       ],
       "bad": [
         "I'm sorry. I don't feel the same way.",
-        "I need some time to think."
+        "I need some time to think.",
+        "I like you, but not like that.",
+        "I'm not ready for that.",
+        "Can we just stay friends?"
       ],
       "tone": "happy"
+    },
+    "tryForBaby": {
+      "start": [
+        "Should we start a family?",
+        "I think I'm ready for a little one.",
+        "How about a baby, {name}?",
+        "Let's make our family bigger.",
+        "Imagine a tiny you running around."
+      ],
+      "good": [
+        "Yes. I'd love that.",
+        "Let's do it!",
+        "I've been hoping you'd ask.",
+        "A little one. Oh, wow.",
+        "I'm ready too."
+      ],
+      "bad": [
+        "Not yet. I'm not ready.",
+        "Maybe one day, but not now.",
+        "That's a big step.",
+        "Let's wait a while.",
+        "I need to think about it."
+      ],
+      "tone": "flirty"
     },
     "breakUp": {
       "start": [
         "We need to talk about us.",
-        "I think we should go our separate ways."
+        "I think we should go our separate ways.",
+        "This isn't working anymore.",
+        "I'm sorry, {name}. It's over.",
+        "I think we both know it's time."
       ],
       "good": [
         "Maybe you're right.",
-        "I understand."
+        "I understand.",
+        "I've felt it too.",
+        "Okay. Take care of yourself.",
+        "I'll miss you, though."
       ],
       "bad": [
         "What? How could you?",
-        "I can't believe this is happening."
+        "I can't believe this is happening.",
+        "Please, don't do this.",
+        "After everything we've been through?",
+        "You'll regret this!"
       ],
       "tone": "sad"
     },
@@ -175,15 +295,24 @@
       "start": [
         "You really are a piece of work, {name}.",
         "Did you get dressed in the dark?",
-        "Wow. Just wow."
+        "Wow. Just wow.",
+        "Is that your best? Really?",
+        "You're about as fun as a wet sock.",
+        "Nobody asked you, {name}."
       ],
       "good": [
         "Ha, fair enough.",
-        "Takes one to know one."
+        "Takes one to know one.",
+        "Oh, is that all you've got?",
+        "I'll let that one slide.",
+        "You're lucky I like you."
       ],
       "bad": [
         "How dare you!",
-        "That was mean."
+        "That was mean.",
+        "Excuse me?",
+        "Wow. Rude.",
+        "Say that again, I dare you."
       ],
       "tone": "angry"
     },
@@ -191,206 +320,1416 @@
       "start": [
         "You're wrong, and you know it!",
         "Why do you always do this?",
-        "We need to settle this right now."
+        "We need to settle this right now.",
+        "That's not what you said before!",
+        "Will you just listen to me?",
+        "I can't believe you, {name}!"
       ],
       "good": [
         "Fine, maybe you have a point.",
-        "Okay, okay. Let's calm down."
+        "Okay, okay. Let's calm down.",
+        "All right. I hear you.",
+        "Let's not fight about this.",
+        "You're right. I'm sorry."
       ],
       "bad": [
         "I'm not listening to this!",
-        "You never listen to me!"
+        "You never listen to me!",
+        "No, you're the one who's wrong!",
+        "Here we go again.",
+        "Unbelievable!"
       ],
       "tone": "angry"
     },
     "prank": {
       "start": [
         "Hey {name}, look over there!",
-        "Ha! Gotcha!"
+        "Ha! Gotcha!",
+        "Boo!",
+        "Don't move. There's a bug on you!",
+        "Surprise!"
       ],
       "good": [
         "Okay, you got me. Nice one!",
-        "I'll get you back for that."
+        "I'll get you back for that.",
+        "Ha! I didn't see that coming.",
+        "You little rascal!",
+        "Oh, you'll pay for that. Ha!"
       ],
       "bad": [
         "That's not funny at all.",
-        "Grow up!"
+        "Grow up!",
+        "You scared me half to death!",
+        "Seriously? Again?",
+        "Not cool, {name}."
       ],
       "tone": "happy"
     },
     "fight": {
       "start": [
         "That's it, I've had enough of you!",
-        "Come on then!"
+        "Come on then!",
+        "You asked for it!",
+        "Put them up!",
+        "Right, that does it!"
       ],
       "good": [
         "Ow! Okay, okay, I give up!",
-        "You'll pay for that."
+        "You'll pay for that.",
+        "Fine! You win this time.",
+        "Ow, my arm!",
+        "Stop, stop! I'm done!"
       ],
       "bad": [
         "Get away from me!",
-        "Ow! Stop it!"
+        "Ow! Stop it!",
+        "Leave me alone!",
+        "Help! Somebody!",
+        "You've gone too far!"
       ],
       "tone": "angry"
     },
     "apologize": {
       "start": [
         "I'm sorry, {name}. I didn't mean it.",
-        "Can you forgive me?"
+        "Can you forgive me?",
+        "I was wrong. I'm really sorry.",
+        "I feel terrible about what I did.",
+        "Can we start over?"
       ],
       "good": [
         "It's okay. I forgive you.",
-        "Thank you for saying that."
+        "Thank you for saying that.",
+        "Apology accepted.",
+        "Let's forget about it.",
+        "Come here. We're fine."
       ],
       "bad": [
         "Sorry isn't enough.",
-        "I'm not ready to forgive you."
+        "I'm not ready to forgive you.",
+        "You always say that.",
+        "I need time, {name}.",
+        "Words won't fix this."
       ],
       "tone": "sad"
     }
+  },
+  "object": {
+    "fridge": {
+      "interactions": {
+        "snack": [
+          "Ooh, leftovers!",
+          "What's in the fridge?",
+          "Just a quick bite.",
+          "Cold pizza? Don't mind if I do.",
+          "A little something from the fridge."
+        ],
+        "meal": [
+          "Let's cook something simple.",
+          "What can I make with this?",
+          "Eggs, cheese, done.",
+          "Nothing fancy, just good food.",
+          "Pasta again? Pasta again."
+        ],
+        "gourmet": {
+          "lines": [
+            "Tonight, we eat like kings!",
+            "A gourmet meal, coming up.",
+            "This needs fresh herbs.",
+            "Let it simmer. Patience.",
+            "A real chef never rushes."
+          ],
+          "tone": "happy"
+        }
+      }
+    },
+    "sink": {
+      "lines": [
+        "Wash those hands!",
+        "Scrub, scrub, scrub.",
+        "Soap first, then water.",
+        "Squeaky clean.",
+        "Twenty seconds. One, two..."
+      ]
+    },
+    "bed": {
+      "interactions": {
+        "sleep": [
+          "Good night, sweet bed.",
+          "Ah, my own bed.",
+          "Under the covers I go.",
+          "Time to dream.",
+          "Lights out. Good night!"
+        ],
+        "nap": [
+          "A nap on a real bed.",
+          "Just lying down for a bit.",
+          "Wake me in an hour.",
+          "So soft. So sleepy."
+        ]
+      }
+    },
+    "toilet": {
+      "lines": [
+        "Nature calls!",
+        "Excuse me a moment.",
+        "Occupied!",
+        "Don't come in!",
+        "Who left the seat up?"
+      ]
+    },
+    "shower": {
+      "lines": [
+        "Hot water, here I come.",
+        "A shower wakes me right up.",
+        "La la la!",
+        "Shampoo, rinse, repeat.",
+        "Ah, that's the stuff."
+      ]
+    },
+    "sofa": {
+      "lines": [
+        "This sofa is so comfy.",
+        "Room for one more?",
+        "Feet up, finally.",
+        "I could sink into this.",
+        "Don't mind me, just lounging."
+      ]
+    },
+    "tv": {
+      "lines": [
+        "What's on TV?",
+        "Where's the remote?",
+        "Ooh, a new episode!",
+        "Just one more episode.",
+        "Nothing on. Again."
+      ]
+    },
+    "bookshelf": {
+      "interactions": {
+        "read": [
+          "Which one should I read?",
+          "Ooh, I haven't [read](/ɹˈɛd/) this one.",
+          "A good book is a good friend.",
+          "Let me find my place."
+        ],
+        "study": [
+          "Time to hit the books.",
+          "Knowledge is power.",
+          "Let me take some notes.",
+          "This is hard, but I've got it."
+        ],
+        "homework": [
+          "Ugh, homework again.",
+          "Okay, let's get this done.",
+          "Why do we need to learn this?",
+          "Almost finished!"
+        ]
+      }
+    },
+    "armchair": {
+      "lines": [
+        "My favorite chair.",
+        "Ah, a good sit.",
+        "So comfy.",
+        "I'll just sit here a while."
+      ]
+    },
+    "plant": {
+      "lines": [
+        "There you go, little plant.",
+        "Looking green today!",
+        "Drink up, buddy.",
+        "Grow, little plant, grow."
+      ]
+    },
+    "bench": {
+      "lines": [
+        "A nice bench in the sun.",
+        "Let me rest my legs.",
+        "Good spot to watch people.",
+        "What a lovely day to sit out."
+      ]
+    },
+    "flowerbed": {
+      "interactions": {
+        "tend": [
+          "These flowers need some love.",
+          "Out with the weeds!",
+          "Blooming nicely.",
+          "A little care, a lot of color."
+        ],
+        "smell": [
+          "Mmm, what a smell.",
+          "These flowers smell lovely.",
+          "Fresh as spring.",
+          "Ah, sweet."
+        ]
+      }
+    },
+    "tree": {
+      "lines": [
+        "Nice and cool under this old oak.",
+        "This tree must be ancient.",
+        "Listen to the leaves.",
+        "A perfect spot for shade."
+      ]
+    },
+    "bush": {
+      "lines": [
+        "Time for a haircut, bush.",
+        "A little off the sides.",
+        "Round and neat.",
+        "Snip, snip. Done."
+      ]
+    },
+    "treadmill": {
+      "lines": [
+        "Let's get running!",
+        "Faster, faster!",
+        "Just one more mile.",
+        "My legs are on fire!",
+        "Running nowhere, very fast."
+      ]
+    },
+    "weightBench": {
+      "lines": [
+        "Time to pump some iron.",
+        "Just ten more reps.",
+        "Look at these muscles!",
+        "Heavy, heavy, heavy!",
+        "Lift with the legs. Wait, no."
+      ]
+    },
+    "chessTable": {
+      "lines": [
+        "Your move. Oh wait, it's mine.",
+        "Knight to... hmm.",
+        "Check! Wait, no.",
+        "Think three moves ahead.",
+        "Chess is all about patience."
+      ]
+    },
+    "computerDesk": {
+      "interactions": {
+        "code": [
+          "Why won't this work?",
+          "One more bug to fix.",
+          "It works! Wait, no.",
+          "Coding is like magic."
+        ],
+        "write": [
+          "Let's write something great.",
+          "Chapter one. Again.",
+          "The words are flowing today.",
+          "Delete, delete, delete."
+        ],
+        "markets": [
+          "Let's see how the markets are doing.",
+          "Buy low, sell high.",
+          "Numbers up, numbers down.",
+          "Hmm, interesting trend."
+        ],
+        "browse": [
+          "Just checking one thing.",
+          "Ooh, funny video!",
+          "Where did the time go?",
+          "Let me look that up."
+        ],
+        "homework": [
+          "Homework on the computer. Better.",
+          "Let me look this up.",
+          "Okay, focus. Homework first.",
+          "I'll be done soon. Maybe."
+        ]
+      }
+    },
+    "easel": {
+      "lines": [
+        "A little more blue, I think.",
+        "Let's paint something beautiful.",
+        "Every stroke counts.",
+        "It's not a mess, it's art.",
+        "Happy little clouds."
+      ]
+    },
+    "mirror": {
+      "lines": [
+        "Ahem. Thank you all for coming.",
+        "Ladies and gentlemen...",
+        "Smile, and speak clearly.",
+        "Okay, one more time.",
+        "You've got this. You totally do."
+      ]
+    },
+    "workbench": {
+      "lines": [
+        "Let's build something.",
+        "Measure twice, cut once.",
+        "Where's my hammer?",
+        "Just a little tweak.",
+        "This is going to be great."
+      ]
+    },
+    "telescope": {
+      "lines": [
+        "Look at all those stars!",
+        "Is that Saturn?",
+        "Hello, moon!",
+        "I think I see a comet!",
+        "The sky is huge tonight."
+      ]
+    },
+    "piano": {
+      "lines": [
+        "Let me play a little tune.",
+        "Do, re, mi...",
+        "I've been practicing this one.",
+        "Oops, wrong key.",
+        "Music fills the room."
+      ]
+    },
+    "diningTable": {
+      "lines": [
+        "Coffee time!",
+        "Ah, the first sip.",
+        "A warm cup makes everything better.",
+        "Just a quick cup."
+      ]
+    },
+    "crib": {
+      "interactions": {
+        "feed": [
+          "Who's hungry? Here's the bottle.",
+          "Little sips, sweetie.",
+          "Yum, yum, yum.",
+          "There we go. All full."
+        ],
+        "change": [
+          "Phew! Time for a change.",
+          "Oh, that's a stinky one.",
+          "Fresh and clean, little one.",
+          "Hold still, wiggle worm."
+        ],
+        "play": {
+          "lines": [
+            "Peekaboo!",
+            "Who's my little sweetie?",
+            "Where's your nose? There it is!",
+            "Look at that smile!",
+            "Tickle, tickle!"
+          ],
+          "tone": "happy"
+        }
+      }
+    },
+    "garden.maple": {
+      "lines": [
+        "Maple leaves. So pretty.",
+        "Lovely shade under the maple.",
+        "I love this old maple.",
+        "Cool and quiet under here."
+      ]
+    },
+    "garden.birch": {
+      "lines": [
+        "Look at that white bark.",
+        "The birch is so graceful.",
+        "Lovely, light shade.",
+        "Listen to the birch leaves."
+      ]
+    },
+    "garden.cherry": {
+      "interactions": {
+        "shade": [
+          "Petals everywhere!",
+          "Shade and blossoms. Perfect.",
+          "Like sitting in pink snow."
+        ],
+        "admire": {
+          "lines": [
+            "Look at all that blossom!",
+            "Cherry blossom season!",
+            "It's so pink and pretty.",
+            "Make a wish under the blossom."
+          ],
+          "tone": "happy"
+        }
+      }
+    },
+    "garden.apple": {
+      "interactions": {
+        "pick": [
+          "An apple a day!",
+          "This one looks perfect.",
+          "Crunchy and sweet.",
+          "Straight from the tree!"
+        ],
+        "shade": [
+          "Shade and apples. Nice.",
+          "Mind the falling apples!",
+          "A cozy spot under the apple tree."
+        ]
+      }
+    },
+    "garden.japaneseMaple": {
+      "interactions": {
+        "shade": [
+          "Such delicate leaves.",
+          "Red leaves, cool shade.",
+          "So peaceful here."
+        ],
+        "shape": [
+          "A careful snip here.",
+          "Shape it slowly.",
+          "Patience makes it pretty."
+        ]
+      }
+    },
+    "garden.magnolia": {
+      "interactions": {
+        "shade": [
+          "Big, beautiful blooms above me.",
+          "The magnolia is in flower!",
+          "What a lovely tree."
+        ],
+        "smell": [
+          "Mmm, magnolia.",
+          "Smells like lemon and honey.",
+          "Such big flowers!",
+          "What a sweet smell."
+        ]
+      }
+    },
+    "garden.willow": {
+      "lines": [
+        "I love how the willow weeps.",
+        "Like a green curtain.",
+        "So calm under the willow.",
+        "Hidden away under here."
+      ]
+    },
+    "garden.lemonTree": {
+      "interactions": {
+        "pick": [
+          "A lemon! Lemonade time.",
+          "Sour, but so fresh.",
+          "Look at this little lemon."
+        ],
+        "water": [
+          "Thirsty, little lemon tree?",
+          "Grow more lemons for me.",
+          "There you go, lemon tree."
+        ]
+      }
+    },
+    "garden.boxwood": {
+      "lines": [
+        "Round and round.",
+        "A perfect ball. Almost.",
+        "Clip, clip, clip.",
+        "Keep it neat and round."
+      ]
+    },
+    "garden.topiary": {
+      "lines": [
+        "A perfect cone. Steady now.",
+        "This takes a steady hand.",
+        "Clip the point just so.",
+        "Looking sharp!"
+      ]
+    },
+    "garden.hedge": {
+      "lines": [
+        "Straight lines only.",
+        "Nice and even.",
+        "A tidy hedge, a tidy garden.",
+        "Just a bit more on this side."
+      ]
+    },
+    "garden.hydrangea": {
+      "interactions": {
+        "water": [
+          "Hydrangeas love water.",
+          "Big blue blooms, drink up.",
+          "Keep those flowers fat and happy."
+        ],
+        "admire": [
+          "Look at those big blooms!",
+          "Blue, pink, purple. Pretty!",
+          "Such fluffy flowers."
+        ]
+      }
+    },
+    "garden.roses": {
+      "interactions": {
+        "smell": [
+          "Ah, roses.",
+          "Stop and smell the roses.",
+          "Nothing smells like a rose.",
+          "Careful of the thorns."
+        ],
+        "prune": [
+          "Ouch! Thorns.",
+          "Snip the old ones off.",
+          "More roses next year.",
+          "Careful, careful."
+        ]
+      }
+    },
+    "garden.azalea": {
+      "interactions": {
+        "water": [
+          "Drink up, azalea.",
+          "Such bright flowers.",
+          "Look at you blooming."
+        ],
+        "trim": [
+          "A little shape for the azalea.",
+          "Just after flowering. Perfect.",
+          "Snip, snip, done."
+        ]
+      }
+    },
+    "garden.lavender": {
+      "interactions": {
+        "smell": [
+          "Mmm, lavender.",
+          "So calming.",
+          "Smells like summer.",
+          "I feel relaxed already."
+        ],
+        "cut": [
+          "Lavender for the house.",
+          "A little bunch for my pillow.",
+          "Snip, and it smells amazing."
+        ]
+      }
+    },
+    "garden.fern": {
+      "lines": [
+        "Ferns love it damp.",
+        "Lovely, feathery fern.",
+        "Drink up, little fern."
+      ]
+    },
+    "garden.hosta": {
+      "lines": [
+        "Those big leaves need water.",
+        "Watch out for snails.",
+        "Lovely, shady hosta."
+      ]
+    },
+    "garden.tulips": {
+      "interactions": {
+        "water": [
+          "Drink up, tulips.",
+          "Stand tall, tulips!"
+        ],
+        "smell": [
+          "Tulips! So cheerful.",
+          "Red, yellow, pink. Lovely.",
+          "They hardly smell, but wow."
+        ]
+      }
+    },
+    "garden.daffodils": {
+      "interactions": {
+        "water": [
+          "Drink up, daffodils.",
+          "Spring is here!"
+        ],
+        "smell": [
+          "Daffodils mean spring!",
+          "So bright and yellow.",
+          "Little trumpets of sunshine."
+        ]
+      }
+    },
+    "garden.daisies": {
+      "interactions": {
+        "water": [
+          "Here you go, daisies.",
+          "Little daisies, drink up."
+        ],
+        "smell": [
+          "He loves me, he loves me not.",
+          "Simple and sweet.",
+          "Fresh as a daisy!"
+        ]
+      }
+    },
+    "garden.sunflowers": {
+      "interactions": {
+        "water": [
+          "Grow tall, sunflowers!",
+          "Sunflowers drink a lot."
+        ],
+        "admire": [
+          "They're taller than me!",
+          "Always facing the sun.",
+          "Big, happy flowers."
+        ]
+      }
+    },
+    "garden.poppies": {
+      "interactions": {
+        "smell": [
+          "Red as can be.",
+          "Such papery petals.",
+          "Poppies always look so happy."
+        ]
+      }
+    },
+    "garden.marigolds": {
+      "interactions": {
+        "smell": [
+          "Marigolds! Like little suns.",
+          "Bright orange. I love it.",
+          "They keep the bugs away."
+        ]
+      }
+    },
+    "garden.pansies": {
+      "interactions": {
+        "smell": [
+          "Pansies have little faces!",
+          "So sweet and small.",
+          "Purple and yellow. Pretty."
+        ]
+      }
+    },
+    "garden.lilies": {
+      "interactions": {
+        "smell": [
+          "Lilies smell amazing.",
+          "So elegant.",
+          "What a strong perfume."
+        ]
+      }
+    },
+    "garden.lupins": {
+      "interactions": {
+        "smell": [
+          "Lupins, tall and proud.",
+          "Like colorful towers.",
+          "So many little flowers."
+        ]
+      }
+    },
+    "garden.forgetMeNots": {
+      "interactions": {
+        "smell": [
+          "Forget me not. I won't.",
+          "Tiny and blue.",
+          "Such little flowers."
+        ]
+      }
+    },
+    "garden.cosmos": {
+      "interactions": {
+        "smell": [
+          "Dancing in the wind.",
+          "So light and airy.",
+          "Pink and white. Lovely."
+        ]
+      }
+    },
+    "garden.meadow": {
+      "lines": [
+        "Just one wildflower.",
+        "A little bunch for the table.",
+        "Wildflowers are the best.",
+        "Look at all these colors!"
+      ]
+    },
+    "garden.geraniums": {
+      "interactions": {
+        "smell": [
+          "Geraniums! So cheerful.",
+          "Bright red by the window.",
+          "Smells a little spicy."
+        ]
+      }
+    },
+    "garden.flowerBox": {
+      "interactions": {
+        "water": [
+          "Drink up, petunias!",
+          "A splash for the window box.",
+          "Such a cheerful little box."
+        ]
+      }
+    },
+    "garden.vegPatch": {
+      "interactions": {
+        "tend": [
+          "Weeds, be gone!",
+          "Grow, veggies, grow!",
+          "Water and love."
+        ],
+        "harvest": [
+          "Look at these carrots!",
+          "Fresh veggies for dinner!",
+          "Homegrown tastes best."
+        ]
+      }
+    },
+    "garden.tomatoes": {
+      "interactions": {
+        "tend": [
+          "Up you go, tomatoes.",
+          "Tied up nice and tall.",
+          "These leaves smell so green."
+        ],
+        "harvest": [
+          "Ripe, red tomatoes!",
+          "Salad tonight!",
+          "Pick the red ones only."
+        ]
+      }
+    },
+    "garden.strawberries": {
+      "interactions": {
+        "tend": [
+          "Grow sweet for me.",
+          "Keep the birds away!",
+          "Little berries coming."
+        ],
+        "harvest": [
+          "One for the bowl, one for me.",
+          "So sweet and red!",
+          "Strawberries! Yum!"
+        ]
+      }
+    },
+    "garden.herbs": {
+      "interactions": {
+        "pickHerbs": [
+          "Fresh basil for dinner.",
+          "Mmm, smell that mint!",
+          "A little thyme, a little parsley."
+        ],
+        "water": [
+          "Drink up, herbs.",
+          "Grow bushy for me."
+        ]
+      }
+    },
+    "garden.pumpkins": {
+      "interactions": {
+        "tend": [
+          "Grow big, pumpkins!",
+          "Room to spread out.",
+          "This one's getting huge."
+        ],
+        "harvest": [
+          "What a pumpkin!",
+          "Pumpkin pie time!",
+          "Oof, this one's heavy!"
+        ]
+      }
+    },
+    "garden.monstera": {
+      "interactions": {
+        "talk": [
+          "Look at your big leaves!",
+          "Another new leaf? Show off.",
+          "You're getting so big."
+        ],
+        "water": [
+          "Drink up, big guy.",
+          "Big leaves, big thirst."
+        ]
+      }
+    },
+    "garden.fiddleFig": {
+      "interactions": {
+        "talk": [
+          "Please don't drop your leaves.",
+          "You're so dramatic, you know.",
+          "Happy in your corner?"
+        ],
+        "water": [
+          "Not too much, I know.",
+          "Just right for you."
+        ]
+      }
+    },
+    "garden.snakePlant": {
+      "interactions": {
+        "talk": [
+          "You never complain, do you?",
+          "Tough as nails, you are.",
+          "Standing tall, as always."
+        ],
+        "water": [
+          "Just a little. You don't need much.",
+          "A tiny drink for you."
+        ]
+      }
+    },
+    "garden.cacti": {
+      "interactions": {
+        "talk": [
+          "Hello, prickly friends.",
+          "No hugs, I know.",
+          "You three are so cute."
+        ],
+        "water": [
+          "Just a drop for you.",
+          "Don't drink it all at once."
+        ]
+      }
+    },
+    "garden.succulents": {
+      "interactions": {
+        "talk": [
+          "Look at you, so plump.",
+          "You little cuties.",
+          "Doing great, all of you."
+        ],
+        "water": [
+          "Barely any water for you.",
+          "A little sip, that's all."
+        ]
+      }
+    },
+    "garden.bostonFern": {
+      "interactions": {
+        "talk": [
+          "Your fronds look lovely.",
+          "So green and fluffy.",
+          "Feeling fresh today?"
+        ],
+        "water": [
+          "Ferns love a drink.",
+          "Nice and damp, just how you like it."
+        ]
+      }
+    },
+    "garden.palm": {
+      "interactions": {
+        "talk": [
+          "My little indoor holiday.",
+          "You make it feel like summer.",
+          "Stretch those fronds!"
+        ],
+        "water": [
+          "Here's a drink, palm.",
+          "Sunshine and water. That's all you need."
+        ]
+      }
+    },
+    "garden.orchid": {
+      "interactions": {
+        "talk": [
+          "You're so elegant.",
+          "Bloom for me again?",
+          "Such a fancy flower."
+        ],
+        "admire": [
+          "Look at those orchids.",
+          "So perfect. So delicate.",
+          "Like little butterflies."
+        ],
+        "water": [
+          "Careful. Orchids are fussy.",
+          "Just a little, my beauty."
+        ]
+      }
+    },
+    "garden.bonsai": {
+      "interactions": {
+        "prune": [
+          "A tiny tree. A tiny snip.",
+          "Patience, little tree.",
+          "Shape it slowly."
+        ],
+        "water": [
+          "Just a little water.",
+          "A tiny drink for a tiny tree."
+        ]
+      }
+    },
+    "garden.birdbath": {
+      "lines": [
+        "Look, a robin!",
+        "Splash, splash, little bird.",
+        "So many birds today!",
+        "Hush, don't scare them."
+      ]
+    },
+    "garden.fountain": {
+      "interactions": {
+        "wish": {
+          "lines": [
+            "I wish, I wish...",
+            "Heads or tails? Splash!",
+            "Make a wish!",
+            "Please come true."
+          ],
+          "tone": "happy"
+        },
+        "listen": [
+          "The sound of water is so calm.",
+          "Trickle, trickle.",
+          "So peaceful here."
+        ]
+      }
+    },
+    "garden.gnome": {
+      "lines": [
+        "Bring me luck, little gnome.",
+        "Good gnome.",
+        "Hello, Mister Gnome.",
+        "Guard the garden for me."
+      ]
+    },
+    "garden.pond": {
+      "interactions": {
+        "fish": [
+          "Look at the fish!",
+          "So many colors.",
+          "One, two, three fish.",
+          "They're so calm."
+        ],
+        "feedFish": [
+          "Dinner time, fishies!",
+          "Here, fishy, fishy.",
+          "Not too much, now."
+        ]
+      }
+    },
+    "garden.wheelbarrow": {
+      "interactions": {
+        "water": [
+          "A wheelbarrow full of flowers!",
+          "Drink up, little bed."
+        ],
+        "smell": [
+          "Flowers in a wheelbarrow. Cute.",
+          "Smells like a garden party."
+        ]
+      }
+    }
+  },
+  "interaction": {
+    "snack": [
+      "Just a little something.",
+      "A snack can't hurt.",
+      "Something to munch on.",
+      "Mmm, crunchy."
+    ],
+    "meal": [
+      "Let's make a proper meal.",
+      "Real food, coming up.",
+      "Time to cook dinner.",
+      "A hot meal sounds good."
+    ],
+    "takeout": [
+      "Food's on the way!",
+      "No cooking tonight.",
+      "What should I order?",
+      "Delivery, here I come."
+    ],
+    "pick": [
+      "Let me pick one.",
+      "Ripe and ready.",
+      "Got one!",
+      "Straight from the tree."
+    ],
+    "sleep": [
+      "Good night, everyone.",
+      "Time to hit the pillow.",
+      "My bed is calling me.",
+      "Sleep tight."
+    ],
+    "nap": [
+      "Just resting my eyes.",
+      "A short nap, that's all.",
+      "Wake me in an hour.",
+      "So sleepy."
+    ],
+    "doze": [
+      "Just a little doze.",
+      "So cozy. So sleepy.",
+      "Mmm, five minutes.",
+      "Don't mind me."
+    ],
+    "curlUp": [
+      "Time to curl up.",
+      "Nice and cozy.",
+      "My favorite spot.",
+      "Don't disturb me."
+    ],
+    "sit": [
+      "Mind if I sit?",
+      "Ah, a seat at last.",
+      "Let me sit a while.",
+      "Feet, take a break."
+    ],
+    "swing": [
+      "Swing, swing.",
+      "Back and forth.",
+      "This is so relaxing.",
+      "Whee!"
+    ],
+    "soak": [
+      "A long soak, at last.",
+      "Ah, nice and warm.",
+      "I'm not getting out.",
+      "Pure bliss."
+    ],
+    "rinse": [
+      "A quick rinse.",
+      "[Brr](/bˈɜɹ/)! Refreshing!",
+      "Wake up, body!",
+      "Ah, cool water."
+    ],
+    "shade": [
+      "Nice and cool under here.",
+      "What a lovely bit of shade.",
+      "Let me cool off a bit.",
+      "Listen to those leaves."
+    ],
+    "water": [
+      "Here's a drink for you.",
+      "Nice and fresh.",
+      "Not too much now.",
+      "Drink up, little one."
+    ],
+    "smell": [
+      "Mmm, smell that.",
+      "Lovely scent.",
+      "So fragrant!",
+      "Ah, that's nice."
+    ],
+    "admire": [
+      "Isn't that beautiful?",
+      "Just look at that.",
+      "Wow.",
+      "So pretty."
+    ],
+    "trim": [
+      "A little trim.",
+      "Neat and tidy.",
+      "Snip, snip, done.",
+      "Let's shape this up."
+    ],
+    "prune": [
+      "Just the dead bits.",
+      "Snip, snip.",
+      "Careful now.",
+      "There, that's better."
+    ],
+    "tend": [
+      "Out with the weeds.",
+      "Let's see how you're doing.",
+      "A little care goes a long way.",
+      "Growing nicely."
+    ],
+    "harvest": [
+      "Ready to pick!",
+      "Look how much there is!",
+      "Fresh from the garden.",
+      "Into the basket."
+    ],
+    "talk": [
+      "You're growing so well.",
+      "Who's a good plant?",
+      "Grow big and strong!",
+      "Did you miss me?",
+      "Don't tell anyone I talk to you."
+    ],
+    "listen": [
+      "Ah, a classic.",
+      "Turn it up!",
+      "I love this one.",
+      "Hush, listen."
+    ],
+    "homework": [
+      "Ugh, homework again.",
+      "Okay, let's get this done.",
+      "Why do we need to learn this?",
+      "Almost finished!",
+      "I hope I get a good grade."
+    ]
   },
   "action": {
     "eat": [
       "Mmm, this is delicious.",
       "Finally, some food!",
-      "I was so hungry."
+      "I was so hungry.",
+      "Just what I needed.",
+      "Good food, good mood."
     ],
     "cook": [
       "Time to cook something tasty.",
-      "Let's see what we have in the fridge.",
-      "Dinner is coming right up!"
+      "Let's see what we have.",
+      "Dinner is coming right up!",
+      "A pinch of salt, and...",
+      "Smells good already.",
+      "Who's hungry?"
+    ],
+    "drink": [
+      "Ah, refreshing.",
+      "Cheers!",
+      "Just what I needed.",
+      "Mmm, nice.",
+      "One sip at a time."
     ],
     "wash": [
       "Better wash up.",
-      "Clean hands, happy life."
+      "Clean hands, happy life.",
+      "Soap, water, done.",
+      "All fresh again.",
+      "Quick wash and I'm off."
     ],
     "shower": [
       "A nice hot shower. Just what I needed.",
-      "Time to freshen up."
+      "Time to freshen up.",
+      "Ah, nice and warm.",
+      "I feel brand new.",
+      "Shower time!"
     ],
     "bath": [
       "A long bath sounds perfect right now.",
-      "Bubbles!"
+      "Bubbles!",
+      "Ah, nice and warm.",
+      "Just a few more minutes.",
+      "This is so relaxing."
     ],
     "toilet": [
       "Excuse me for a moment.",
-      "Be right back!"
+      "Be right back!",
+      "When you've got to go...",
+      "Just a second!",
+      "Don't come in!"
     ],
     "sleep": [
       "I'm so tired. Good night.",
       "Time for bed.",
-      "I can barely keep my eyes open."
+      "I can barely keep my eyes open.",
+      "Sweet dreams, everyone.",
+      "Lights out."
     ],
     "nap": [
       "Just a quick nap.",
-      "Five more minutes."
+      "Five more minutes.",
+      "A little snooze can't hurt.",
+      "Wake me up in a bit.",
+      "My eyes need a rest."
     ],
     "sit": [
-      "Ah, it feels good to sit down."
-    ],
-    "type": [
-      "Let me check my messages.",
-      "Back to work."
-    ],
-    "read": [
-      "Where was I? Oh yes, chapter three.",
-      "I love a good book."
-    ],
-    "watch": [
-      "What's on TV tonight?",
-      "Ooh, I love this show!"
-    ],
-    "play": [
-      "Game on!",
-      "One more round!"
-    ],
-    "paint": [
-      "Let's make something beautiful.",
-      "A little more blue, I think."
-    ],
-    "exercise": [
-      "Let's get moving!",
-      "Feel the burn!"
-    ],
-    "run": [
-      "Gotta keep my legs moving.",
-      "Just one more lap."
-    ],
-    "lift": [
-      "Come on, just one more!",
-      "Getting stronger every day."
-    ],
-    "dance": [
-      "I love this song!",
-      "Look at me go!"
-    ],
-    "clean": [
-      "This place is a mess. Somebody has to clean it.",
-      "Tidy house, tidy mind."
-    ],
-    "garden": [
-      "The garden needs some love.",
-      "Time to get my hands dirty."
-    ],
-    "water": [
-      "There you go, little plants.",
-      "Drink up!"
-    ],
-    "tend": [
-      "Let's see how the plants are doing."
-    ],
-    "harvest": [
-      "Look at these! Fresh from the garden.",
-      "What a harvest!"
-    ],
-    "prune": [
-      "Just a little trim."
-    ],
-    "smell": [
-      "Mmm, these flowers smell lovely."
-    ],
-    "admire": [
-      "Isn't that beautiful?",
-      "I could look at this all day."
-    ],
-    "music": [
-      "Let me play you something.",
-      "I've been practicing this one."
-    ],
-    "tinker": [
-      "Now, how does this work?",
-      "I can fix this."
-    ],
-    "drink": [
-      "Ah, refreshing.",
-      "Cheers!"
+      "Ah, it feels good to sit down.",
+      "Let me rest my feet.",
+      "Nice spot.",
+      "Just sitting here for a bit.",
+      "Comfy."
     ],
     "relax": [
       "Ah, this is the life.",
-      "Finally, some peace and quiet."
+      "Finally, some peace and quiet.",
+      "I'm not moving for a while.",
+      "Pure bliss.",
+      "Nothing to do. Perfect."
     ],
-    "phone": [
-      "Let me call someone.",
-      "Who should I call?"
-    ],
-    "sing": [
-      "La la la!",
-      "I'm a natural!"
+    "type": [
+      "Let me check my messages.",
+      "Back to work.",
+      "Click, click, click.",
+      "Now where was I?",
+      "Just one more thing."
     ],
     "write": [
       "Let me write this down before I forget.",
-      "Dear diary."
+      "Dear diary.",
+      "How do I put this?",
+      "There. That sounds right.",
+      "Words, words, words."
+    ],
+    "read": [
+      "Where was I? Oh yes, chapter three.",
+      "I love a good book.",
+      "Just one more page.",
+      "This is getting good.",
+      "Shush, I'm reading."
+    ],
+    "watch": [
+      "What's on TV tonight?",
+      "Ooh, I love this show!",
+      "Let's see what's on.",
+      "Oh, this one's good.",
+      "Don't tell me the ending!"
+    ],
+    "look": [
+      "What a view.",
+      "Let me have a look.",
+      "Ooh, look at that.",
+      "I could watch this for hours.",
+      "What's that over there?"
+    ],
+    "admire": [
+      "Isn't that beautiful?",
+      "I could look at this all day.",
+      "Wow. Just look at it.",
+      "Nature is amazing.",
+      "So pretty."
+    ],
+    "smell": [
+      "Mmm, these flowers smell lovely.",
+      "Ah, smell that!",
+      "So sweet.",
+      "I could smell these all day.",
+      "Smells like summer."
     ],
     "listen": [
-      "I love this song."
+      "I love this song.",
+      "Hush, this is the best part.",
+      "Turn it up a little.",
+      "What a sound.",
+      "Ah, a classic."
+    ],
+    "play": [
+      "Game on!",
+      "One more round!",
+      "I'm going to win this time.",
+      "Your move.",
+      "Ha! Beat that."
+    ],
+    "music": [
+      "Let me play you something.",
+      "I've been practicing this one.",
+      "Hmm, a little sharp.",
+      "From the top.",
+      "Music makes everything better."
+    ],
+    "sing": [
+      "La la la!",
+      "I'm a natural!",
+      "Do, re, mi, fa, so!",
+      "This one's for you!",
+      "Sing along!"
+    ],
+    "dance": [
+      "I love this song!",
+      "Look at me go!",
+      "Dance like no one's watching.",
+      "Feel the beat!",
+      "Woo! Let's dance!"
+    ],
+    "paint": [
+      "Let's make something beautiful.",
+      "A little more blue, I think.",
+      "Happy little trees.",
+      "It's coming along nicely.",
+      "Art takes time."
+    ],
+    "tinker": [
+      "Now, how does this work?",
+      "I can fix this.",
+      "Just one more screw.",
+      "Hmm, interesting.",
+      "Almost got it."
+    ],
+    "exercise": [
+      "Let's get moving!",
+      "Feel the burn!",
+      "Just ten more!",
+      "Keep going, keep going!",
+      "I'm getting stronger."
+    ],
+    "run": [
+      "Gotta keep my legs moving.",
+      "Just one more lap.",
+      "Keep the pace.",
+      "Breathe, step, breathe.",
+      "Almost there!"
+    ],
+    "lift": [
+      "Come on, just one more!",
+      "Getting stronger every day.",
+      "Up, and down.",
+      "This one's heavy!",
+      "Look at these arms!"
+    ],
+    "water": [
+      "There you go, little plants.",
+      "Drink up!",
+      "Nice and wet.",
+      "Not too much, not too little.",
+      "Thirsty, aren't you?"
+    ],
+    "tend": [
+      "Let's see how the plants are doing.",
+      "Out with the weeds.",
+      "Looking healthy.",
+      "Just a little care.",
+      "Grow strong for me."
+    ],
+    "harvest": [
+      "Look at these! Fresh from the garden.",
+      "What a harvest!",
+      "Into the basket you go.",
+      "Ripe and ready.",
+      "Dinner, straight from the garden."
+    ],
+    "prune": [
+      "Just a little trim.",
+      "Snip, snip.",
+      "There. Much neater.",
+      "A little off the top.",
+      "Careful, careful."
+    ],
+    "garden": [
+      "The garden needs some love.",
+      "Time to get my hands dirty.",
+      "Nothing like fresh air.",
+      "Grow, little ones, grow.",
+      "A gardener's work is never done."
+    ],
+    "clean": [
+      "This place is a mess. Somebody has to clean it.",
+      "Tidy house, tidy mind.",
+      "Almost sparkling.",
+      "Who made this mess?",
+      "There. Much better."
+    ],
+    "talk": [
+      "Let me practise what I'll say.",
+      "Hello there, how are you?",
+      "Ahem. Can everyone hear me?",
+      "Okay, from the top.",
+      "And another thing..."
+    ],
+    "phone": [
+      "Let me call someone.",
+      "Who should I call?",
+      "Hey, it's me!",
+      "Hello? Can you hear me?",
+      "Guess what happened today!"
     ],
     "meditate": [
       "Breathe in. Breathe out.",
-      "Let it all go."    ],
+      "Let it all go.",
+      "Calm, calm, calm.",
+      "Be here now.",
+      "Peace and quiet."
+    ],
+    "idle": [
+      "Hmm, what now?",
+      "Let me see.",
+      "Okay then.",
+      "Right.",
+      "There we go."
+    ],
     "knock": [
       "Hello? Anybody home?",
       "Knock, knock!",
-      "It's me, {me}!"
+      "It's me, {me}!",
+      "Hi! Are you in?",
+      "Anyone there?"
     ]
   },
   "emotion": {
@@ -398,121 +1737,160 @@
       "lines": [
         "What a wonderful day!",
         "I feel great!",
-        "Life is good."
+        "Life is good.",
+        "I can't stop smiling.",
+        "Everything's going my way.",
+        "Today is a good day."
       ],
       "tone": "happy"
     },
     "flirty": {
       "lines": [
         "I'm in a romantic mood.",
-        "Is it just me, or is love in the air?"
+        "Is it just me, or is love in the air?",
+        "I feel like dancing with someone.",
+        "Who's looking cute today? Me.",
+        "I could use a little romance."
       ],
       "tone": "flirty"
     },
     "angry": {
       "lines": [
         "Ugh, everything is annoying me today!",
-        "I'm so angry right now!"
+        "I'm so angry right now!",
+        "Don't talk to me.",
+        "I need to punch a pillow.",
+        "Why does this always happen?"
       ],
       "tone": "angry"
     },
     "sad": {
       "lines": [
         "I just feel so down.",
-        "Today is not my day."
+        "Today is not my day.",
+        "I could use a hug.",
+        "Everything feels gray.",
+        "I miss the good days."
       ],
       "tone": "sad"
     },
-    "embarrassed": {
-      "lines": [
-        "Oh no, that was so embarrassing.",
-        "I want to hide."
-      ]
-    },
-    "focused": {
-      "lines": [
-        "I'm really in the zone today.",
-        "Let's get things done."
-      ]
-    },
+    "embarrassed": [
+      "Oh no, that was so embarrassing.",
+      "I want to hide.",
+      "Please tell me nobody saw that.",
+      "My face is so red.",
+      "Let's pretend that never happened."
+    ],
+    "focused": [
+      "I'm really in the zone today.",
+      "Let's get things done.",
+      "Nothing can distract me now.",
+      "One thing at a time.",
+      "My mind feels sharp."
+    ],
     "inspired": {
       "lines": [
         "I've got a brilliant idea!",
-        "I feel so inspired!"
+        "I feel so inspired!",
+        "I have to make something.",
+        "Ideas everywhere!",
+        "This could be my best work yet."
       ],
       "tone": "happy"
     },
     "energized": {
       "lines": [
         "I've got so much energy!",
-        "Let's do something!"
+        "Let's do something!",
+        "I could run a mile!",
+        "I can't sit still!",
+        "Bring it on!"
       ],
       "tone": "happy"
     },
-    "relaxed": {
-      "lines": [
-        "I feel so relaxed.",
-        "Nothing can bother me today."
-      ]
-    }
+    "relaxed": [
+      "I feel so relaxed.",
+      "Nothing can bother me today.",
+      "Calm and easy.",
+      "No rush, no worries.",
+      "Ah, this is nice."
+    ]
   },
   "thought": {
-    "skipped": {
-      "lines": [
-        "I really don't feel like it today.",
-        "Maybe tomorrow."
-      ]
-    },
-    "noPlace": {
-      "lines": [
-        "I wish we had somewhere to do that.",
-        "There's nowhere to do that here."
-      ]
-    },
+    "skipped": [
+      "I really don't feel like it today.",
+      "Maybe tomorrow.",
+      "Not today, thanks.",
+      "I'll do it later. Probably.",
+      "I need a break from the plan."
+    ],
+    "noPlace": [
+      "I wish we had somewhere to do that.",
+      "There's nowhere to do that here.",
+      "We need more space for that.",
+      "If only we had the right spot.",
+      "Where am I supposed to do that?"
+    ],
     "kept": {
       "lines": [
         "Right on schedule!",
-        "I'm keeping to my plan."
+        "I'm keeping to my plan.",
+        "Another thing done.",
+        "Plan it, then do it. Easy.",
+        "Look at me, so organized!"
       ],
       "tone": "happy"
     },
     "goal": {
       "lines": [
         "I did it! I actually did it!",
-        "Another goal reached!"
+        "Another goal reached!",
+        "All that work paid off!",
+        "I knew I could do it!",
+        "Time for a new goal."
       ],
       "tone": "happy"
     },
     "roomLoved": {
       "lines": [
         "I love it in here.",
-        "This room feels just right."
+        "This room feels just right.",
+        "What a lovely room.",
+        "I could stay here forever.",
+        "Everything here is perfect."
       ],
       "tone": "happy"
     },
-    "roomDisliked": {
-      "lines": [
-        "This room could be so much nicer.",
-        "I don't like it in here."
-      ]
-    },
-    "broken": {
-      "lines": [
-        "Oh no, it's broken!",
-        "Someone should fix that."
-      ]
-    },
-    "accident": {
-      "lines": [
-        "Oh, this is embarrassing.",
-        "That wasn't supposed to happen."
-      ]
-    },
+    "roomDisliked": [
+      "This room could be so much nicer.",
+      "I don't like it in here.",
+      "It's so gloomy in here.",
+      "This place needs some work.",
+      "Who designed this room?"
+    ],
+    "broken": [
+      "Oh no, it's broken!",
+      "Someone should fix that.",
+      "Great. Now it's broken.",
+      "That's not supposed to happen.",
+      "Who broke it?"
+    ],
+    "accident": [
+      "Oh, this is embarrassing.",
+      "That wasn't supposed to happen.",
+      "Oops.",
+      "Well, that's awkward.",
+      "Let's never speak of this."
+    ],
     "crying": {
       "lines": [
-        "Waaah!",
-        "Wah, wah, waaah!"
-      ]
+        "Wah!",
+        "Wah, wah, wah!",
+        "Mama!",
+        "Dada!",
+        "Boohoo!"
+      ],
+      "tone": "sad"
     }
   }
 }

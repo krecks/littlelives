@@ -215,5 +215,67 @@
         "skillGain": { "strength": 1.15 }
       }
     }
+  },
+  "voice": {
+    "en": {
+      "object": {
+        "hotHeaded.heavyBag": {
+          "lines": [
+            "Take that!",
+            "Better the bag than anyone else.",
+            "One, two! One, two!",
+            "Feels good to let it out."
+          ],
+          "tone": "angry"
+        },
+        "hotHeaded.smashBin": {
+          "lines": [
+            "Smash!",
+            "That plate had it coming.",
+            "Ahh, so satisfying!",
+            "One more plate!"
+          ],
+          "tone": "angry"
+        },
+        "hotHeaded.thunderDrums": {
+          "lines": [
+            "Boom, boom, crash!",
+            "Loud is good!",
+            "Feel that beat!",
+            "Drum it out!"
+          ]
+        },
+        "hotHeaded.coolDownCushion": {
+          "interactions": {
+            "countToTen": [
+              "One. Two. Three...",
+              "Count to ten. Calm down.",
+              "Eight, nine, ten. Better."
+            ],
+            "breathe": [
+              "Breathe in. Hold. Breathe out.",
+              "In through the nose.",
+              "I am calm. I am calm."
+            ]
+          }
+        },
+        "hotHeaded.grudgeJournal": {
+          "lines": [
+            "Let me write out this grudge.",
+            "Okay, what made me so mad?",
+            "Maybe it wasn't that bad.",
+            "Writing it out helps."
+          ]
+        },
+        "hotHeaded.coldPlunge": {
+          "lines": [
+            "Cold! Cold! Cold!",
+            "Okay, I can do this.",
+            "[Brr](/bˈɜɹ/)! I feel alive!",
+            "Three, two, one... ahh!"
+          ]
+        }
+      }
+    }
   }
 }
