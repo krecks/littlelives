@@ -8,6 +8,7 @@ All notable changes to Littlelives. Versions follow [semantic versioning](https:
 - **Choose a resident's voice:** the household creator's *Identity* tab has a *Voice* section with *Pitch* (lower to higher) and *Speed* (slower to faster), a dice for a random voice, a button back to the default, and *Hear* to listen to the resident say their name. Hearing a sample works with resident voices off, without turning them on. The choice is a step up or down from the voice the resident would have had, so children still sound younger and voices still change as they grow up. It is kept in the save; residents from older saves, neighbours, newcomers and babies sound exactly as before.
 
 ### Changed
+- **Resident voices are made about twice as fast:** the voice model now runs on ONNX Runtime Web instead of `tract`. In Chrome on an M-series Mac a typical line takes about 0.5 s instead of 1–1.2 s (6–7× faster than real time instead of 3–4×), with frames as smooth as before; the engine takes about a second longer to start. The download is a little smaller (24.8 MB instead of 28.7 MB, about 12.5 MB compressed), and everything stays self-hosted and cached. Old speed-test results are discarded; run the speed test again.
 - **Lines said before play at once:** each clip a resident speaks is kept (up to 24 MB, about four minutes of speech), so when they say the same line again it plays straight away, even while the voice is unloaded. The performance overlay (F3) shows how many clips are kept and reused.
 
 ### Removed
