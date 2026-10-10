@@ -1,55 +1,44 @@
 #!/usr/bin/env node
 /**
- * Checks the voice as the browser runs it: our phonemizer WASM (`web/src/voice/wasm-pkg`) and
- * ONNX Runtime Web (its WASM build, one thread, the same package the worker uses) on the edited
- * model in `web/public/voice/`. The same text and voice must give bit-identical samples, in one
- * session and in a fresh one: the clip cache (`web/src/voice/service.svelte.ts`) relies on it.
- * Also checks the voice controls (pitch, speed, depth) and prints the time per line.
+ * Checks the voices as the browser makes them (`engine.mjs`: our phonemizer WASM, ONNX Runtime
+ * Web's WASM build on one thread, the worker's own `synth.ts`), for both models:
+ *
+ * - the same text and voice give bit-identical samples, in one session and in a fresh one (the
+ *   clip cache in `web/src/voice/service.svelte.ts` relies on it), and KittenTTS's match golden
+ *   hashes (a change to the model, its edit, the phonemizer or the mixing shows up here);
+ * - the voice controls work: pitch changes the sound but not the timing, speed the length,
+ *   depth the brightness; KittenTTS's mixes differ from their voices; its silence is trimmed;
+ * - and prints the time per line.
  *
  * Needs `pnpm voice` first. Usage (from web/): `pnpm check:voice`.
  */
 
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { gunzipSync } from 'node:zlib';
+import { SAMPLE_RATE, engine, say } from './engine.mjs';
 
-const web = new URL('../../web/', import.meta.url);
-const ort = createRequire(new URL('package.json', web))('onnxruntime-web');
-const { initSync, Voice } = await import(new URL('src/voice/wasm-pkg/voice_wasm.js', web).href);
-
-const MODEL = 'paradee-8m-edit1.onnx';
 const LINES = [
   'Hello there!',
   "I'm so hungry, I could eat a whole pizza by myself.",
   'What a lovely garden. I should water the roses before it gets dark.',
 ];
+const PARADEE = { model: 'paradee', mix: [0, 0, 1], speed: 1, pitch: 1, depth: 1 };
+/** Bruno (one of KittenTTS's men), and a mix of Luna and Rosie (two women). */
+const BRUNO = { model: 'kitten', mix: [5, 5, 1], speed: 1, pitch: 1, depth: 1 };
+const MIX = { model: 'kitten', mix: [1, 2, 0.6], speed: 1.05, pitch: 1.02, depth: 0.98 };
+/**
+ * KittenTTS's output for `LINES` in `BRUNO`, then line 2 in `MIX` (SHA-256, first 12 hex digits).
+ * WASM arithmetic is the same on every machine, so these hold everywhere; update them only on
+ * purpose (a new model, edit, phonemizer rule or mixing).
+ */
+const GOLDEN = ['ee17e172d952', '61899b6ba874', '848017ba7531', 'fb4a29635bcf'];
 
-initSync({ module: readFileSync(new URL('src/voice/wasm-pkg/voice_wasm_bg.wasm', web)) });
-const dir = new URL('public/voice/', web);
-const voice = new Voice(gunzipSync(readFileSync(new URL('en-us.lexz', dir))).toString(), readFileSync(new URL('paradee-8m.json', dir), 'utf8'));
-const model = readFileSync(new URL(MODEL, dir));
-ort.env.wasm.numThreads = 1;
-ort.env.logLevel = 'error';
-const session = () => ort.InferenceSession.create(model, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
-
-/** As the worker makes a line: the model at pitch and speed divided by the depth, then resampled by it. */
-async function say(s, text, speed = 1, pitch = 1, depth = 1) {
-  const inputs = voice.inputs(text, speed, pitch, depth);
-  const ids = inputs.ids;
-  const out = await s.run({
-    input_ids: new ort.Tensor('int64', ids, [1, ids.length]),
-    speed: new ort.Tensor('float32', Float32Array.of(inputs.speed), [1]),
-    pitch: new ort.Tensor('float32', Float32Array.of(inputs.pitch), [1]),
-  });
-  const wave = out.waveform.data;
-  const start = performance.now();
-  const samples = inputs.depth === 1 ? new Float32Array(wave) : inputs.finish(wave);
-  lastResampleMs = performance.now() - start;
-  inputs.free();
-  return samples;
-}
-let lastResampleMs = 0;
+const hash = (a) => createHash('sha256').update(Buffer.from(a.buffer, a.byteOffset, a.byteLength)).digest('hex').slice(0, 12);
+const same = (a, b) => a.length === b.length && Buffer.from(a.buffer, a.byteOffset, a.byteLength).equals(Buffer.from(b.buffer, b.byteOffset, b.byteLength));
+const fail = (message) => {
+  console.error(`voice check FAILED: ${message}`);
+  process.exit(1);
+};
+const rms = (x) => Math.sqrt(x.reduce((s, v) => s + v * v, 0) / Math.max(1, x.length));
 
 /** Mean spectral centroid (Hz) of the loud frames, by a direct DFT (no dependencies). */
 function centroid(x) {
@@ -70,7 +59,7 @@ function centroid(x) {
         im += v * Math.sin((2 * Math.PI * k * i) / n);
       }
       const mag = Math.hypot(re, im);
-      num += (mag * k * 24000) / n;
+      num += (mag * k * SAMPLE_RATE) / n;
       den += mag;
     }
     sum += num / den;
@@ -79,47 +68,96 @@ function centroid(x) {
   return sum / count;
 }
 
-const same = (a, b) => a.length === b.length && Buffer.from(a.buffer).equals(Buffer.from(b.buffer));
-const fail = (message) => {
-  console.error(`voice check FAILED: ${message}`);
-  process.exit(1);
-};
-
-const first = await session();
-const second = await session();
-for (const line of LINES) {
-  const a = await say(first, line);
-  const start = performance.now();
-  const b = await say(first, line);
-  const ms = performance.now() - start;
-  const c = await say(second, line);
-  if (!same(a, b)) fail(`"${line}" differs between two runs`);
-  if (!same(a, c)) fail(`"${line}" differs between two sessions`);
-  const rms = Math.sqrt(a.reduce((s, x) => s + x * x, 0) / a.length);
-  if (!(rms > 0.01)) fail(`"${line}" is silent`);
-  const secs = a.length / 24000;
-  const hash = createHash('sha256').update(Buffer.from(a.buffer)).digest('hex').slice(0, 12);
-  console.log(`voice: ${secs.toFixed(2)} s of audio in ${ms.toFixed(0)} ms (${(secs / (ms / 1000)).toFixed(1)}x real time), identical every time [${hash}]  ${line}`);
+/** Median pitch (Hz) of the loud frames, by normalised autocorrelation. */
+function pitch(x) {
+  const n = 960;
+  const level = rms(x);
+  const found = [];
+  for (let i = 0; i + n + 400 < x.length; i += 480) {
+    let e = 0;
+    for (let k = 0; k < n; k++) e += x[i + k] ** 2;
+    if (Math.sqrt(e / n) < level) continue;
+    let best = 0;
+    let lag = 0;
+    for (let L = 48; L < 400; L++) {
+      let c = 0;
+      let e2 = 0;
+      for (let k = 0; k < n; k++) {
+        c += x[i + k] * x[i + k + L];
+        e2 += x[i + k + L] ** 2;
+      }
+      c /= Math.sqrt(e * e2) + 1e-9;
+      if (c > best) [best, lag] = [c, L];
+    }
+    if (best > 0.8) found.push(SAMPLE_RATE / lag);
+  }
+  found.sort((a, b) => a - b);
+  return found[found.length >> 1] ?? 0;
 }
+
+const first = await engine();
+const second = await engine();
+
+/** Same samples twice in one engine and once in a fresh one; prints the time. */
+async function steady(label, line, voice) {
+  const a = await say(first, line, voice);
+  const start = performance.now();
+  const b = await say(first, line, voice);
+  const ms = performance.now() - start;
+  const c = await say(second, line, voice);
+  if (!same(a, b)) fail(`${label}: "${line}" differs between two runs`);
+  if (!same(a, c)) fail(`${label}: "${line}" differs between two sessions`);
+  if (!(rms(a) > 0.01)) fail(`${label}: "${line}" is silent`);
+  const secs = a.length / SAMPLE_RATE;
+  console.log(`voice: ${label}: ${secs.toFixed(2)} s of audio in ${ms.toFixed(0)} ms (${(secs / (ms / 1000)).toFixed(1)}x real time), identical every time [${hash(a)}]  ${line}`);
+  return a;
+}
+
+// ---- Paradee (children, and the fallback) ------------------------------------------------------
+
+for (const line of LINES) await steady('Paradee', line, PARADEE);
 const line = LINES[1];
-const base = await say(first, line);
-const low = await say(first, line, 1, 0.7);
-const fast = await say(first, line, 1.25, 1);
-if (low.length !== base.length || same(low, base)) fail('pitch should change the sound but not the timing');
-if (!(fast.length < base.length)) fail('a faster voice should be shorter');
-if (voice.inputs('', 1, 1).ids.length !== 0) fail('empty text should give no ids (the worker then skips the model)');
-console.log('voice: pitch and speed work');
+const base = await say(first, line, PARADEE);
+const low = await say(first, line, { ...PARADEE, pitch: 0.7 });
+const fast = await say(first, line, { ...PARADEE, speed: 1.25 });
+if (low.length !== base.length || same(low, base)) fail('Paradee: pitch should change the sound but not the timing');
+if (!(fast.length < base.length)) fail('Paradee: a faster voice should be shorter');
+if (first.phonemizer.inputs('', 1, 1, 1).ids.length !== 0) fail('empty text should give no ids (the worker then skips the model)');
+console.log('voice: Paradee: pitch and speed work');
 
 // Depth (the voice's size, by resampling): deterministic too, keeps the length, darker when larger.
 for (const depth of [0.85, 1.1]) {
-  const a = await say(first, line, 1, 1, depth);
-  const resampleMs = lastResampleMs;
-  const b = await say(first, line, 1, 1, depth);
-  const c = await say(second, line, 1, 1, depth);
-  if (!same(a, b) || !same(a, c)) fail(`depth ${depth} differs between runs or sessions`);
+  const a = await say(first, line, { ...PARADEE, depth });
+  const b = await say(first, line, { ...PARADEE, depth });
+  const c = await say(second, line, { ...PARADEE, depth });
+  if (!same(a, b) || !same(a, c)) fail(`Paradee: depth ${depth} differs between runs or sessions`);
   const ratio = a.length / base.length;
-  if (ratio < 0.94 || ratio > 1.06) fail(`depth ${depth} changed the length by ${ratio.toFixed(3)}`);
-  const hash = createHash('sha256').update(Buffer.from(a.buffer)).digest('hex').slice(0, 12);
-  console.log(`voice: depth ${depth}: identical every time [${hash}], length ×${ratio.toFixed(3)}, resampled in ${resampleMs.toFixed(1)} ms, spectral centroid ${centroid(a).toFixed(0)} Hz (depth 1: ${centroid(base).toFixed(0)} Hz)`);
+  if (ratio < 0.94 || ratio > 1.06) fail(`Paradee: depth ${depth} changed the length by ${ratio.toFixed(3)}`);
+  console.log(`voice: Paradee: depth ${depth}: identical every time [${hash(a)}], length ×${ratio.toFixed(3)}, spectral centroid ${centroid(a).toFixed(0)} Hz (depth 1: ${centroid(base).toFixed(0)} Hz)`);
 }
-if (!(centroid(await say(first, line, 1, 1, 0.85)) < centroid(base) * 0.95)) fail('a larger voice should sound darker');
+if (!(centroid(await say(first, line, { ...PARADEE, depth: 0.85 })) < centroid(base) * 0.95)) fail('Paradee: a larger voice should sound darker');
+
+// ---- KittenTTS (teens and grown-ups) -----------------------------------------------------------
+
+const got = [];
+for (const l of LINES) got.push(await steady('KittenTTS', l, BRUNO));
+got.push(await steady('KittenTTS mix', line, MIX));
+const hashes = got.map(hash);
+if (GOLDEN.some((g, i) => g !== hashes[i])) fail(`KittenTTS: samples changed: [${hashes.join(', ')}], expected [${GOLDEN.join(', ')}] (update GOLDEN only on purpose)`);
+console.log('voice: KittenTTS: matches the golden samples');
+
+const kBase = got[1];
+const kLow = await say(first, line, { ...BRUNO, pitch: 0.85 });
+const kFast = await say(first, line, { ...BRUNO, speed: 1.25 });
+const [p0, p1] = [pitch(kBase), pitch(kLow)];
+if (same(kLow, kBase) || !(p1 < p0 * 0.93)) fail(`KittenTTS: pitch 0.85 should lower the pitch (${p0.toFixed(0)} Hz to ${p1.toFixed(0)} Hz)`);
+if (Math.abs(kLow.length - kBase.length) > 0.05 * kBase.length) fail('KittenTTS: pitch should not change the timing');
+if (!(kFast.length < kBase.length * 0.9)) fail('KittenTTS: a faster voice should be shorter');
+const kLarge = await say(first, line, { ...BRUNO, depth: 0.88 });
+if (!(centroid(kLarge) < centroid(kBase) * 0.97)) fail('KittenTTS: a larger voice should sound darker');
+const luna = await say(first, line, { ...MIX, mix: [1, 1, 1] });
+if (same(luna, got[3])) fail('KittenTTS: a mix should differ from its main voice');
+// Trimmed: speech starts within 0.1 s (the model's own clips start with up to 0.8 s of silence).
+const onset = kBase.findIndex((v) => Math.abs(v) > 0.05 * kBase.reduce((m, x) => Math.max(m, Math.abs(x)), 0));
+if (onset > 0.1 * SAMPLE_RATE) fail(`KittenTTS: speech starts after ${(onset / SAMPLE_RATE).toFixed(2)} s: silence not trimmed`);
+console.log(`voice: KittenTTS: pitch (${p0.toFixed(0)} to ${p1.toFixed(0)} Hz at x0.85), speed, depth and mixes work; speech starts at ${(onset / SAMPLE_RATE).toFixed(2)} s`);

@@ -1,6 +1,7 @@
 //! Every spoken line in the content (`web/public/content/voice/en.json` and the `voice.en` of
-//! every content file `base.json` includes) phonemizes from the dictionary into symbols the
-//! model knows, and every key names something that exists. Needs `node tools/voice/fetch.mjs`
+//! every content file `base.json` includes) phonemizes from the dictionary into symbols both
+//! models know (Paradee's Misaki phonemes, KittenTTS's espeak-style IPA), and every key names
+//! something that exists. Needs `node tools/voice/fetch.mjs`
 //! first for the phonemizer part.
 
 use std::collections::{BTreeSet, HashMap};
@@ -8,7 +9,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
-use voice::{G2p, Lexicon};
+use voice::{G2p, KittenTokenizer, Lexicon, misaki_to_espeak};
 
 const TONES: [&str; 5] = ["happy", "sad", "angry", "flirty", "question"];
 /// Short lines: each one is made into speech on its own while the game runs.
@@ -117,6 +118,31 @@ fn every_line_phonemizes_from_the_dictionary() {
             if !odd.is_empty() {
                 wrong.push(format!("{at}: {text}\n  unknown symbols {odd:?} in {ps}"));
             }
+        }
+    }
+    assert!(wrong.is_empty(), "{} of {} lines:\n{}", wrong.len(), all.len(), wrong.join("\n"));
+}
+
+#[test]
+fn every_line_tokenises_for_kitten() {
+    let Some(g2p) = g2p() else { return };
+    let kitten = KittenTokenizer::new();
+    let mut all = Vec::new();
+    for (name, file) in line_files() {
+        lines(&file, &name, &mut all);
+    }
+    let mut wrong = Vec::new();
+    for (at, text) in &all {
+        let text = text.replace("{me}", "Anna").replace("{name}", "Ben");
+        let ipa = misaki_to_espeak(&g2p.phonemize(&text));
+        let odd = kitten.unknown(&ipa);
+        let ids = kitten.ids(&ipa);
+        if !odd.is_empty() {
+            wrong.push(format!("{at}: {text}\n  symbols KittenTTS doesn't know {odd:?} in {ipa}"));
+        } else if ids.len() < 4 {
+            wrong.push(format!("{at}: {text}\n  nothing to say: {ipa:?}"));
+        } else if ids.len() > 512 {
+            wrong.push(format!("{at}: {text}\n  too long for the model"));
         }
     }
     assert!(wrong.is_empty(), "{} of {} lines:\n{}", wrong.len(), all.len(), wrong.join("\n"));

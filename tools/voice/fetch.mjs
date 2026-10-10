@@ -4,24 +4,49 @@
  * `web/public/voice/` (not in git; see docs/design/voices.md).
  *
  * - Paradee-8M (Apache-2.0): https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.0
+ * - KittenTTS nano 0.8 (Apache-2.0): https://huggingface.co/KittenML/kitten-tts-nano-0.8-fp32
  * - Misaki's US English dictionaries (Apache-2.0): https://github.com/hexgrad/misaki
  *
  * Everything is pinned to a revision and checked against its SHA-256, so every build speaks the
- * same. The model is edited after download (`model.mjs`: a `pitch` input and deterministic
- * noise) and the edited file is pinned by its own SHA-256 too. Files already present with the
- * right hash are kept. Usage: `node tools/voice/fetch.mjs`.
+ * same. The models are edited after download (`model.mjs`: a `pitch` input and deterministic
+ * noise; KittenTTS's float weights also stored as int8) and KittenTTS's voices are packed into
+ * one raw float file; every result is pinned by its own SHA-256 too. Files already present with
+ * the right hash are kept. Usage: `node tools/voice/fetch.mjs`.
  */
 
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
-import { editModel } from './model.mjs';
+import { editModel, quantizeWeights } from './model.mjs';
+import { readNpz } from './npz.mjs';
 
 const OUT = fileURLToPath(new URL('../../web/public/voice/', import.meta.url));
 
 const PARADEE = 'https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.0/resolve/f662642d44c03c17588e4176469c54d462c0b623';
+const KITTEN = 'https://huggingface.co/KittenML/kitten-tts-nano-0.8-fp32/resolve/7a1db645b1f3ab9420761d87428e042b9cec3f26';
 const MISAKI = 'https://raw.githubusercontent.com/hexgrad/misaki/fba1236595f2d2bf21d414ba6e57d25256afada3/misaki/data';
+
+/**
+ * KittenTTS's voices in the order `web/src/voice/voices.ts` numbers them (`KITTEN_VOICES`): the
+ * four women's, then the four men's. Each is a table of style vectors, one per text length;
+ * lines are short, so only the first `KITTEN_ROWS` rows are kept (longer text uses the last).
+ */
+const KITTEN_VOICE_IDS = ['expr-voice-2-f', 'expr-voice-3-f', 'expr-voice-4-f', 'expr-voice-5-f', 'expr-voice-2-m', 'expr-voice-3-m', 'expr-voice-4-m', 'expr-voice-5-m'];
+const KITTEN_ROWS = 128;
+const STYLE = 256;
+
+/** `voices.npz` to one little-endian float32 array [voice][row][256]. */
+function packKittenVoices(bytes) {
+  const voices = readNpz(bytes);
+  const out = new Float32Array(KITTEN_VOICE_IDS.length * KITTEN_ROWS * STYLE);
+  KITTEN_VOICE_IDS.forEach((id, v) => {
+    const a = voices[id];
+    if (!a || a.shape[1] !== STYLE || a.shape[0] < KITTEN_ROWS) throw new Error(`voices.npz: ${id} missing or shaped ${a?.shape}`);
+    out.set(a.data.subarray(0, KITTEN_ROWS * STYLE), v * KITTEN_ROWS * STYLE);
+  });
+  return new Uint8Array(out.buffer);
+}
 
 /**
  * `edit`: applied to the downloaded bytes; `sha256` pins the download, `editedSha256` the result.
@@ -36,6 +61,20 @@ const FILES = [
     editedSha256: '9a7da90056ff77d5ba527f4bd0684b59e8aa4306a0600cdb93b30ec8ecbad394',
   },
   { url: `${PARADEE}/config.json`, out: 'paradee-8m.json', sha256: 'f24046974a3a8c747affefb45c7c504263a99d5081787908b16abe8f5ac94fcd' },
+  {
+    url: `${KITTEN}/kitten_tts_nano_v0_8.onnx`,
+    out: 'kitten-nano-0.8-edit1.onnx',
+    sha256: '320564d2615f235de972ca27a7f39551c94185cfa24ca85b07a29084135f1e5e',
+    edit: (bytes) => editModel(quantizeWeights(bytes), { splice: 'output' }),
+    editedSha256: '8bbd7c3908568fba37feffbf2257c5227d5502211afd466ac6400221a26f9e80',
+  },
+  {
+    url: `${KITTEN}/voices.npz`,
+    out: 'kitten-nano-0.8-voices.f32',
+    sha256: '8aa7cee235abb0739cb51e6559685f65a4dacd95568833d05699b1633f519b3f',
+    edit: packKittenVoices,
+    editedSha256: 'd85d3d0b44cc56574cc53058080292a357406ae161fafb10b3b8cae3d2f45192',
+  },
 ];
 /** Files earlier versions wrote that are no longer used (they would be copied into the build). */
 const OBSOLETE = ['paradee-8m.onnx'];

@@ -142,13 +142,16 @@ Unlike the art above, these are **Apache-2.0** (attribution required). They are 
 | File | Source | Authors | URL | Licence |
 |---|---|---|---|---|
 | `paradee-8m-edit1.onnx`, `paradee-8m.json` | Paradee-8M v1.0 (int8 ONNX, `onnx/paradee_int8.onnx`), distilled from Kokoro-82M; **modified** (see below) | Sahil Mahendrakar; Kokoro-82M by hexgrad | https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.0 | Apache-2.0 |
+| `kitten-nano-0.8-edit1.onnx`, `kitten-nano-0.8-voices.f32` | KittenTTS nano 0.8 (fp32 ONNX `kitten_tts_nano_v0_8.onnx` and `voices.npz`, revision `7a1db645`); **modified** (see below) | KittenML (Stellon Labs) | https://huggingface.co/KittenML/kitten-tts-nano-0.8-fp32, https://github.com/KittenML/KittenTTS | Apache-2.0 |
 | `en-us.lexz` | Misaki US English dictionaries (`us_gold`, `us_silver`), merged and gzipped | hexgrad | https://github.com/hexgrad/misaki | Apache-2.0 |
 
 **Changes to Paradee-8M:** `paradee-8m-edit1.onnx` is the upstream `paradee_int8.onnx` changed by `tools/voice/model.mjs`: an added `pitch` input multiplies the predicted pitch curve, and the two random-number nodes (`RandomNormalLike`, `RandomUniformLike`) are replaced by a deterministic hash of each value's position. The weights are unchanged.
 
+**Changes to KittenTTS nano 0.8:** `kitten-nano-0.8-edit1.onnx` is the upstream `kitten_tts_nano_v0_8.onnx` changed by `tools/voice/model.mjs`: the large float weights of its convolutions, matrix products and LSTMs are stored as int8 with a float scale per output channel (`DequantizeLinear` turns them back into floats, so the arithmetic stays float but the values are rounded); an added `pitch` input multiplies the predicted pitch curve; and its two random-number nodes are replaced by the same deterministic hash. `kitten-nano-0.8-voices.f32` holds the first 128 style rows of its eight voices from `voices.npz`, as raw floats, unchanged. KittenTTS's input (espeak-style phonemes and its symbol table) is rebuilt in `crates/voice/src/kitten.rs` from our phonemizer; its own code and espeak-ng are not used.
+
 The phonemizer in `crates/voice/src/g2p.rs` ports the English rules of Misaki (Apache-2.0); no espeak-ng code is used.
 
-The model runs with **ONNX Runtime Web** 1.30.0 (`onnxruntime-web`, its WebAssembly build `ort-wasm-simd-threaded.wasm`, bundled with the game), © Microsoft Corporation, MIT licence: https://github.com/microsoft/onnxruntime.
+The models run with **ONNX Runtime Web** 1.30.0 (`onnxruntime-web`, its WebAssembly build `ort-wasm-simd-threaded.wasm`, bundled with the game), © Microsoft Corporation, MIT licence: https://github.com/microsoft/onnxruntime.
 
 ## Decoders (`../decoders/`, refreshed by `tools/assets/decoders.mjs`)
 

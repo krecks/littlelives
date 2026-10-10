@@ -10,16 +10,12 @@
  * `before=/tmp/voices-old.ts after=web/src/voice/voices.ts` (made with `git show <rev>:web/src/voice/voices.ts`).
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { gunzipSync } from 'node:zlib';
+import { engine, say as sayLine, voices } from './engine.mjs';
 
 const web = new URL('../../web/', import.meta.url);
-const ort = createRequire(new URL('package.json', web))('onnxruntime-web');
-const { initSync, Voice } = await import(new URL('src/voice/wasm-pkg/voice_wasm.js', web).href);
-
 const [outDir, ...versionArgs] = process.argv.slice(2);
 if (!outDir) {
   console.error('usage: node tools/voice/samples.mjs <out-dir> [label=voices.ts ...]');
@@ -31,45 +27,35 @@ const versions = (versionArgs.length ? versionArgs : [`after=${new URL('src/voic
 });
 
 /**
- * Ids chosen so each group spans its generated range (`voiceFor`'s hash): a low and large, a
- * middle and a high and small voice. Any other id lands somewhere in between.
+ * Ids chosen so the grown-ups' mixes all differ (`voiceFor`'s hash): each man and woman leads
+ * with another of KittenTTS's voices. Any other id gets some other mix.
  */
 const RESIDENTS = [
-  { name: 'man-1-low', id: 280, gender: 'male', stage: 'adult' },
-  { name: 'man-2-mid', id: 186, gender: 'male', stage: 'adult' },
-  { name: 'man-3-high', id: 106, gender: 'male', stage: 'adult' },
-  { name: 'woman-1-low', id: 309, gender: 'female', stage: 'adult' },
-  { name: 'woman-2-mid', id: 484, gender: 'female', stage: 'adult' },
-  { name: 'woman-3-high', id: 354, gender: 'female', stage: 'adult' },
+  { name: 'man-1', id: 1, gender: 'male', stage: 'adult' },
+  { name: 'man-2', id: 2, gender: 'male', stage: 'adult' },
+  { name: 'man-3', id: 7, gender: 'male', stage: 'youngAdult' },
+  { name: 'woman-1', id: 1, gender: 'female', stage: 'adult' },
+  { name: 'woman-2', id: 2, gender: 'female', stage: 'adult' },
+  { name: 'woman-3', id: 7, gender: 'female', stage: 'youngAdult' },
+  { name: 'teen-boy', id: 57, gender: 'male', stage: 'teen' },
+  { name: 'teen-girl', id: 58, gender: 'female', stage: 'teen' },
   { name: 'child', id: 45, gender: 'female', stage: 'child' },
   { name: 'elder-man', id: 56, gender: 'male', stage: 'elder' },
+  { name: 'elder-woman', id: 61, gender: 'female', stage: 'elder' },
 ];
 const LINES = [
   { name: 'hello', text: "Hello there! I don't think we've met." },
   { name: 'garden', text: 'What a lovely garden. I should water the roses before it gets dark.' },
 ];
 const SR = 24000;
+const e = await engine();
 
-initSync({ module: readFileSync(new URL('src/voice/wasm-pkg/voice_wasm_bg.wasm', web)) });
-const dir = new URL('public/voice/', web);
-const voice = new Voice(gunzipSync(readFileSync(new URL('en-us.lexz', dir))).toString(), readFileSync(new URL('paradee-8m.json', dir), 'utf8'));
-ort.env.wasm.numThreads = 1;
-ort.env.logLevel = 'error';
-const session = await ort.InferenceSession.create(readFileSync(new URL('paradee-8m-edit1.onnx', dir)), { executionProviders: ['wasm'] });
-
-async function say(text, v) {
-  const inputs = voice.inputs(text, v.speed, v.pitch, v.depth ?? 1);
-  const ids = inputs.ids;
-  const out = await session.run({
-    input_ids: new ort.Tensor('int64', ids, [1, ids.length]),
-    speed: new ort.Tensor('float32', Float32Array.of(inputs.speed), [1]),
-    pitch: new ort.Tensor('float32', Float32Array.of(inputs.pitch), [1]),
-  });
-  const wave = out.waveform.data;
-  const samples = inputs.depth === 1 ? new Float32Array(wave) : inputs.finish(wave);
-  inputs.free();
-  return samples;
-}
+/** Older versions of voices.ts (Paradee only) give no model: theirs was Paradee. */
+const say = (text, v) => sayLine(e, text, { model: 'paradee', mix: [0, 0, 1], depth: 1, ...v });
+const describe = (v) =>
+  v.model === 'kitten'
+    ? `KittenTTS ${voices.KITTEN_VOICES[v.mix[0]].name}${v.mix[2] < 1 ? ` ${Math.round(v.mix[2] * 100)} % + ${voices.KITTEN_VOICES[v.mix[1]].name}` : ''}`
+    : 'Paradee';
 
 function wav(samples) {
   const peak = samples.reduce((m, v) => Math.max(m, Math.abs(v)), 1e-6);
@@ -167,32 +153,34 @@ for (const version of versions) {
   for (const r of RESIDENTS) {
     const v = voiceFor(r.id, r.gender, r.stage);
     const stats = [];
+    let ms = 0;
     for (const line of LINES) {
+      const start = performance.now();
       const samples = await say(line.text, v);
+      ms += performance.now() - start;
       const file = `${version.label}/${r.name}-${line.name}.wav`;
       writeFileSync(`${outDir}/${file}`, wav(samples));
       stats.push(measure(samples));
-      index.push(`- \`${file}\`: ${r.name} (${r.gender}, ${r.stage}), ${version.label}`);
+      index.push(`- \`${file}\`: ${r.name} (${r.gender}, ${r.stage}): ${describe(v)}, pitch ${v.pitch.toFixed(2)}, speed ${v.speed.toFixed(2)}, depth ${(v.depth ?? 1).toFixed(2)}`);
     }
     const avg = (k) => stats.reduce((s, x) => s + x[k], 0) / stats.length;
-    rows.push({ version: version.label, ...r, ...v, depth: v.depth ?? 1, f0: avg('f0'), centroid: avg('centroid'), voicedCentroid: avg('voicedCentroid') });
+    rows.push({ version: version.label, ...r, ...v, voice: describe(v), ms: ms / LINES.length, depth: v.depth ?? 1, f0: avg('f0'), centroid: avg('centroid'), voicedCentroid: avg('voicedCentroid') });
   }
 }
 
 const table = [
-  '| Version | Resident | pitch | speed | depth | median F0 (Hz) | centroid (Hz) | voiced centroid < 5 kHz (Hz) |',
-  '|---|---|---|---|---|---|---|---|',
+  '| Version | Resident | voice | pitch | speed | depth | ms per line | median F0 (Hz) | centroid (Hz) | voiced centroid < 5 kHz (Hz) |',
+  '|---|---|---|---|---|---|---|---|---|---|',
   ...rows.map(
     (r) =>
-      `| ${r.version} | ${r.name} | ${r.pitch.toFixed(2)} | ${r.speed.toFixed(2)} | ${r.depth.toFixed(2)} | ${r.f0.toFixed(0)} | ${r.centroid.toFixed(0)} | ${r.voicedCentroid.toFixed(0)} |`,
+      `| ${r.version} | ${r.name} | ${r.voice} | ${r.pitch.toFixed(2)} | ${r.speed.toFixed(2)} | ${r.depth.toFixed(2)} | ${r.ms.toFixed(0)} | ${r.f0.toFixed(0)} | ${r.centroid.toFixed(0)} | ${r.voicedCentroid.toFixed(0)} |`,
   ),
 ];
 const groups = [];
 for (const version of versions) {
-  const of = (prefix) => rows.filter((r) => r.version === version.label && r.name.startsWith(prefix));
   const mean = (rs, k) => rs.reduce((s, r) => s + r[k], 0) / rs.length;
-  const men = of('man-');
-  const women = of('woman-');
+  const men = rows.filter((r) => r.version === version.label && /^man-/.test(r.name));
+  const women = rows.filter((r) => r.version === version.label && /^woman-/.test(r.name));
   groups.push(
     `| ${version.label} | ${mean(men, 'f0').toFixed(0)} / ${mean(women, 'f0').toFixed(0)} | ${mean(men, 'centroid').toFixed(0)} / ${mean(women, 'centroid').toFixed(0)} | ${mean(men, 'voicedCentroid').toFixed(0)} / ${mean(women, 'voicedCentroid').toFixed(0)} (${((mean(men, 'voicedCentroid') / mean(women, 'voicedCentroid') - 1) * 100).toFixed(0)} %) |`,
   );

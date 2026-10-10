@@ -6,8 +6,11 @@
  * - the one whose panel is open (`game.inspected`), and whoever they are talking to;
  * - both sides of a conversation the player started from the social menu.
  *
- * Lines are only said once the voice model is ready; babies don't speak. Voices pause for the
- * session when speech keeps coming late or slows the frames.
+ * Teens and grown-ups speak with KittenTTS, children with Paradee (`voices.ts`); babies don't
+ * speak. A grown-up's line that KittenTTS would make too late (or while it is still loading) is
+ * said with Paradee instead; if KittenTTS keeps coming late, slows the frames or can't load,
+ * Paradee speaks for everyone for the rest of the session. If even Paradee keeps coming late or
+ * slows the frames, voices pause for the session.
  *
  * Presentation only: nothing goes back to the simulation. Work per frame is a cheap check; the
  * snapshot is read about ten times a second.
@@ -20,8 +23,8 @@ import { settings } from '../settings/settings.svelte';
 import { game, toast } from '../ui/state.svelte';
 import { fill, loadLines, Lines, type Line } from './lines';
 import { playClip, updateVoiceVolume, type Playing } from './player';
-import { cachedClip, ensureVoice, speak, unloadVoice, voiceStatus } from './service.svelte';
-import { voiceFor, withTone } from './voices';
+import { benchVerdict, cachedClip, ensureVoice, estimateLineMs, speak, unloadVoice, voiceReady, voiceStatus } from './service.svelte';
+import { paradeeVoice, voiceFor, withTone, type VoiceModel } from './voices';
 
 const TICK_MS = 100;
 /** At most this many voices at once, and lines being made at once. */
@@ -31,6 +34,15 @@ const MAX_IN_FLIGHT = 2;
 const MAX_WAIT_MS = 4000;
 /** Lines this late, so many times in a row, pause voices for the session. */
 const LATE_RUN = 3;
+/**
+ * A KittenTTS line expected later than this (from its recent lines, with what's queued) is made
+ * with Paradee instead; KittenTTS lines this late, so many times in a row, hand every line to
+ * Paradee for the session.
+ */
+const KITTEN_LATE_MS = 2500;
+const KITTEN_LATE_RUN = 3;
+/** So many grown-ups' lines in a row expected too late (on their own, nothing queued) also hand everything to Paradee. */
+const KITTEN_SKIP_RUN = 5;
 /** Frames this slow, in this share of the frames drawn while speech is being made, pause them too. */
 const SLOW_FRAME_MS = 50;
 const SLOW_SHARE = 0.1;
@@ -64,6 +76,9 @@ export interface VoiceDirectorStats {
   spoken: number;
   dropped: number;
   language: 'off' | 'english' | 'paused';
+  /** Teens' and grown-ups' model this session (Paradee once KittenTTS was too slow or failed), and their lines said with Paradee instead. */
+  grownUps: VoiceModel;
+  fallbacks: number;
 }
 
 interface Speaking {
@@ -83,6 +98,12 @@ export class VoiceDirector {
   /** Speech came late or slowed the game: no voices for the rest of the session. */
   private paused = false;
   private lateRun = 0;
+  /** KittenTTS was too slow, slowed the frames or couldn't load: Paradee speaks for everyone this session. */
+  private kittenOff = false;
+  private kittenLateRun = 0;
+  /** Grown-ups' lines in a row sent to Paradee because KittenTTS would be too slow. */
+  private kittenSkipRun = 0;
+  private fallbacks = 0;
   private lastFrame = 0;
   /** Frames drawn while speech was being made, and those over `SLOW_FRAME_MS`; the same while not. */
   private readonly frames = { busy: 0, busySlow: 0, idle: 0, idleSlow: 0 };
@@ -105,6 +126,16 @@ export class VoiceDirector {
     private readonly renderer: Renderer,
   ) {
     if (this.debug) Object.assign(window, { __voices: this });
+    // The speed test found KittenTTS too slow on this computer: Paradee from the start.
+    const bench = voiceStatus.bench.kitten;
+    if (bench && benchVerdict(bench) === 'slow') this.kittenOff = true;
+  }
+
+  /** Loads the models a game needs: Paradee (children, and the fallback) and, unless it's off, KittenTTS. */
+  private wake(): void {
+    this.asleep = false;
+    const models: VoiceModel[] = this.kittenOff ? ['paradee'] : ['paradee', 'kitten'];
+    for (const m of models) if (voiceStatus.models[m] === 'off') void ensureVoice(m).catch(() => {});
   }
 
   /** Lines for the voice language, (re)loaded when it changes. */
@@ -133,7 +164,8 @@ export class VoiceDirector {
       return;
     }
     this.ensureLines();
-    if (voiceStatus.state === 'off' && !this.asleep) void ensureVoice().catch(() => {});
+    if (!this.asleep) this.wake();
+    if (!this.kittenOff && voiceStatus.models.kitten === 'error') this.stepDown('failed');
     if (voiceStatus.state === 'ready' && this.inFlight === 0 && performance.now() - this.lastLine > IDLE_UNLOAD_MS) {
       unloadVoice();
       this.asleep = true;
@@ -202,7 +234,15 @@ export class VoiceDirector {
   /** For the debug overlay. */
   stats(): VoiceDirectorStats {
     const language = !settings.voices ? 'off' : this.paused ? 'paused' : 'english';
-    return { speaking: this.speaking.length, inFlight: this.inFlight, spoken: this.spoken, dropped: this.dropped, language };
+    return {
+      speaking: this.speaking.length,
+      inFlight: this.inFlight,
+      spoken: this.spoken,
+      dropped: this.dropped,
+      language,
+      grownUps: this.kittenOff ? 'paradee' : 'kitten',
+      fallbacks: this.fallbacks,
+    };
   }
 
   /** Counts slow frames while speech is being made, against those while it isn't. */
@@ -224,8 +264,26 @@ export class VoiceDirector {
     const busyShare = f.busySlow / f.busy;
     const idleShare = f.idle ? f.idleSlow / f.idle : 0;
     // Only when speech makes it worse: a game that is slow anyway isn't the voices' fault.
-    if (busyShare > SLOW_SHARE && busyShare > idleShare * 2) this.pause('frames');
+    // KittenTTS first gives way to the lighter Paradee; if that still slows the game, voices pause.
+    if (busyShare > SLOW_SHARE && busyShare > idleShare * 2) {
+      if (!this.kittenOff) this.stepDown('frames');
+      else this.pause('frames');
+    }
     Object.assign(f, { busy: 0, busySlow: 0, idle: 0, idleSlow: 0 });
+  }
+
+  /** KittenTTS out for the session: Paradee speaks for everyone (its engine stays). */
+  private stepDown(why: 'late' | 'frames' | 'failed'): void {
+    if (this.kittenOff) return;
+    this.kittenOff = true;
+    toast(
+      why === 'late'
+        ? 'Grown-ups now use the smaller voice: the larger one was too slow on this computer.'
+        : why === 'frames'
+          ? 'Grown-ups now use the smaller voice: the larger one slowed the game down.'
+          : "Grown-ups use the smaller voice: the larger one couldn't load.",
+      6000,
+    );
   }
 
   private pause(why: 'late' | 'frames'): void {
@@ -314,16 +372,19 @@ export class VoiceDirector {
     const info = game.roster.find((s) => s.id === id);
     if (info?.stage === 'baby') return;
     const text = fill(line.text, this.firstName(id), partnerId >= 0 ? this.firstName(partnerId) : '');
-    const voice = withTone(voiceFor(id, info?.gender, info?.stage, info?.appearance?.voice), line.tone);
+    const choice = info?.appearance?.voice;
+    let voice = withTone(voiceFor(id, info?.gender, info?.stage, choice), line.tone);
     // A line said before plays at once, even while the engine is unloaded.
-    const cached = cachedClip(text, voice);
+    let cached = cachedClip(text, voice);
+    if (!cached && voice.model === 'kitten' && !this.useKitten(text)) {
+      voice = withTone(paradeeVoice(id, info?.gender, info?.stage, choice), line.tone);
+      cached = cachedClip(text, voice);
+      if (!this.kittenOff) this.fallbacks++;
+    }
     if (!cached) {
       // Nothing new is said while the engine loads (or reloads after being idle): the moment passes.
-      if (voiceStatus.state !== 'ready') {
-        if (voiceStatus.state === 'off') {
-          this.asleep = false;
-          void ensureVoice().catch(() => {});
-        }
+      if (!voiceReady(voice.model)) {
+        if (voiceStatus.models[voice.model] === 'off') this.wake();
         return;
       }
       if (this.inFlight >= MAX_IN_FLIGHT) {
@@ -340,8 +401,9 @@ export class VoiceDirector {
     } else {
       this.inFlight++;
       this.lastLine = requested;
+      const model = voice.model;
       clip = speak(text, voice).finally(() => this.inFlight--);
-      void clip.then(() => this.timed(performance.now() - requested)).catch(() => {});
+      void clip.then(() => this.timed(performance.now() - requested, model)).catch(() => {});
     }
     void clip
       .then(async (samples) => {
@@ -367,8 +429,28 @@ export class VoiceDirector {
       .catch(() => {});
   }
 
-  /** How long a line took to make; too many late ones in a row pause voices. */
-  private timed(ms: number): void {
+  /**
+   * Whether this grown-up's line goes to KittenTTS: not after it was stepped down, not while it
+   * loads (Paradee speaks meanwhile, if it's ready), and not when it would come too late.
+   */
+  private useKitten(text: string): boolean {
+    if (this.kittenOff) return false;
+    if (!voiceReady('kitten')) return !voiceReady('paradee');
+    const estimate = estimateLineMs('kitten', text);
+    if (estimate === null || estimate * (1 + this.inFlight) <= KITTEN_LATE_MS) return true;
+    // Too slow even with nothing queued, line after line: it isn't a busy moment, it's this computer.
+    this.kittenSkipRun = estimate > KITTEN_LATE_MS ? this.kittenSkipRun + 1 : 0;
+    if (this.kittenSkipRun >= KITTEN_SKIP_RUN) this.stepDown('late');
+    return false;
+  }
+
+  /** How long a line took to make (waiting included); too many late ones in a row step down or pause voices. */
+  private timed(ms: number, model: VoiceModel): void {
+    if (model === 'kitten') {
+      this.kittenSkipRun = 0;
+      this.kittenLateRun = ms > KITTEN_LATE_MS ? this.kittenLateRun + 1 : 0;
+      if (this.kittenLateRun >= KITTEN_LATE_RUN) this.stepDown('late');
+    }
     this.lateRun = ms > MAX_WAIT_MS ? this.lateRun + 1 : 0;
     if (this.lateRun >= LATE_RUN) this.pause('late');
   }
