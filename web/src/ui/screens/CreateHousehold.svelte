@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
+  import { onDestroy, onMount, untrack } from 'svelte';
   import {
     bondBetween,
+    draftVoice,
     ensureOutfit,
     HAIR_STYLES,
     householdProblems,
@@ -11,6 +12,7 @@
     randomFirstName,
     randomHousehold,
     randomSim,
+    randomVoice,
     regender,
     setBond,
     type Appearance,
@@ -24,6 +26,10 @@
   import Icon from '../Icon.svelte';
   import SimPreview from '../kit/SimPreview.svelte';
   import { services } from '../services';
+  import { settings } from '../../settings/settings.svelte';
+  import { playClip, type Playing } from '../../voice/player';
+  import { speak, unloadVoice, voiceStatus } from '../../voice/service.svelte';
+  import { VOICE_RANGE, voiceFor } from '../../voice/voices';
 
   const { content, assets } = services;
   const rules = content.rules;
@@ -134,6 +140,56 @@
     sim.appearance[key] = value;
     stage?.react('admire');
   }
+
+  // Voice: a sample line in the resident's own voice at their age (a baby's as the child they'll be).
+  const voice = $derived(sim.appearance.voice);
+  const voiceChanged = $derived((voice?.pitch ?? 1) !== 1 || (voice?.speed ?? 1) !== 1);
+  const isBaby = $derived(!!content.stageOf(sim.age)?.baby);
+  let hearing = $state(false);
+  let heard = false;
+  let playing: Playing | null = null;
+  const voiceNote = $derived.by(() => {
+    if (voiceStatus.state === 'error') return `Couldn't load the voice: ${voiceStatus.error}`;
+    if (voiceStatus.state === 'loading') {
+      const p = voiceStatus.progress;
+      return p > 0 && p < 1 ? `Downloading the voice… ${Math.floor(p * 100)} %` : 'Getting the voice ready…';
+    }
+    if (!settings.voices) {
+      return voiceStatus.state === 'ready'
+        ? 'Resident voices are off in Settings → Audio: turn them on to hear residents in the game.'
+        : 'Resident voices are off in Settings → Audio. Hearing a sample downloads the voice once (about 29 MB).';
+    }
+    return isBaby ? '' : 'Voices change as residents grow up; this choice goes along.';
+  });
+
+  async function hear() {
+    const stageId = isBaby ? content.lifeStages.find((s) => !s.baby)?.id : content.stageOf(sim.age)?.id;
+    const params = voiceFor(0, sim.gender, stageId, $state.snapshot(draftVoice(sim)));
+    const name = sim.name.trim();
+    hearing = heard = true;
+    try {
+      const clip = await speak(name ? `Hi, I'm ${name}! This is how I sound.` : 'Hi! This is how I sound.', params);
+      playing?.stop();
+      playing = playClip(clip);
+      stage?.react('hello');
+    } catch {
+      // The note under the button says why (the voice couldn't load).
+    } finally {
+      hearing = false;
+    }
+  }
+
+  function resetVoice() {
+    if (!voice) return;
+    voice.pitch = 1;
+    voice.speed = 1;
+  }
+
+  // Hearing a sample doesn't turn voices on: with them off, the engine goes again on the way out.
+  onDestroy(() => {
+    playing?.stop();
+    if (heard && !settings.voices) unloadVoice();
+  });
 
   function addMember() {
     if (household.members.length >= rules.maxHousehold) return;
@@ -355,6 +411,45 @@
             </div>
             {/if}
           {/if}
+          <div class="field">
+            <span class="eyebrow">Voice</span>
+            <label class="slider">
+              <input
+                type="range"
+                aria-label="Pitch"
+                min={VOICE_RANGE.pitch[0]}
+                max={VOICE_RANGE.pitch[1]}
+                step="0.01"
+                bind:value={() => voice?.pitch ?? 1, (v) => (draftVoice(sim).pitch = v)}
+              />
+              <span class="scale"><span>Lower</span><b>Pitch</b><span>Higher</span></span>
+            </label>
+            <label class="slider">
+              <input
+                type="range"
+                aria-label="Speed"
+                min={VOICE_RANGE.speed[0]}
+                max={VOICE_RANGE.speed[1]}
+                step="0.01"
+                bind:value={() => voice?.speed ?? 1, (v) => (draftVoice(sim).speed = v)}
+              />
+              <span class="scale"><span>Slower</span><b>Speed</b><span>Faster</span></span>
+            </label>
+            <div class="row">
+              <button class="btn hear" disabled={hearing} onclick={hear}>
+                <Icon name="icon.ui.speed1" size={18} />
+                {hearing ? (voiceStatus.state === 'ready' ? 'One moment…' : 'Loading the voice…') : `Hear ${sim.name.trim() || 'it'}`}
+              </button>
+              <button class="btn" aria-label="Random voice" title="Random voice" onclick={() => randomVoice(sim)}>
+                <Icon name="icon.ui.dice" size={18} />
+              </button>
+              <button class="btn" aria-label="Default voice" title="Default voice" disabled={!voiceChanged} onclick={resetVoice}>
+                <Icon name="icon.ui.undo" size={18} />
+              </button>
+            </div>
+            {#if isBaby}<span class="hint small">Babies don't talk yet: this is how they'll sound as a child.</span>{/if}
+            {#if voiceNote}<span class="hint small">{voiceNote}</span>{/if}
+          </div>
           <p class="hint">
             Traits shape what {sim.name || 'this resident'} enjoys and how quickly their needs change. Perks are small advantages bought with
             {rules.perkPoints} points.
@@ -748,6 +843,14 @@
   .row .btn {
     padding: 0 12px;
   }
+  .row .hear {
+    flex: 1;
+  }
+  .slider {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
   .hint {
     margin: 0;
     color: var(--text-muted);
@@ -822,6 +925,10 @@
     justify-content: space-between;
     color: var(--text-muted);
     font-size: 12px;
+  }
+  .scale b {
+    color: var(--text);
+    font-weight: 600;
   }
   .pane-head {
     display: flex;
