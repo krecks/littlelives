@@ -47,7 +47,7 @@ export interface VoiceThreadStats {
 // Before `voiceStatus`, which reads stored results with them.
 const BENCH_KEY = 'littlelives.voiceBench';
 /** The model, its edit and the runtime: a new id discards old speed-test results and cached clips. */
-export const MODEL_ID = 'kitten-nano-0.8@7a1db64+int8+edit1/ort-web@1.30.0';
+export const MODEL_ID = 'kitten-nano-0.8@7a1db64+int8+edit2/ort-web@1.30.0';
 
 export const voiceStatus = $state({
   state: 'off' as ModelState,

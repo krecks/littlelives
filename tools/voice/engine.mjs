@@ -16,7 +16,7 @@ export const { synthesizeLine } = await import(new URL('src/voice/synth.ts', web
 export const voices = await import(new URL('src/voice/voices.ts', web).href);
 
 /** The model files (as the worker names them). */
-export const FILES = { model: 'kitten-nano-0.8-edit1.onnx', voices: 'kitten-nano-0.8-voices.f32' };
+export const FILES = { model: 'kitten-nano-0.8-edit2.onnx', voices: 'kitten-nano-0.8-voices.f32' };
 export const SAMPLE_RATE = 24000;
 
 const dir = new URL('public/voice/', web);

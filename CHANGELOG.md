@@ -2,17 +2,11 @@
 
 All notable changes to Idyll Lives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
-## Unreleased
-
-### Changed
-- **New name: Idyll Lives** (it was Littlelives). The game is now at https://krecks.github.io/idyll-lives/; saves, settings and downloads carry over. The sparkle beside the name on the main menu and the loading card is gone.
-- **Licence:** Idyll Lives is free software, released under the GNU General Public License v3.0 (or later). You may use, study, share, and modify it; if you distribute Idyll Lives or a modified version, you must make the source available under the same licence. (It was MIT.)
-
 ## 0.1.0 — 2026-10-10
 
 **Play it in your browser:** https://krecks.github.io/idyll-lives/
 
-The first release: a home-building game with a living simulation, in the browser. You build and furnish a home; its residents live in it on their own while you watch. (Earlier development builds were numbered 0.3–0.20; their notes are in the git history.)
+The first release: a home-building game with a living simulation, in the browser. You build and furnish a home; its residents live in it on their own while you watch. (Earlier development builds were called Littlelives, numbered 0.3–0.20, and MIT-licensed; their notes are in the git history. Saves, settings and downloads from them carry over.)
 
 ### In this release
 - **A living town:** create a neighbourhood (town size, neighbour households), then play one of the households who already live there or make your own in the 3D household creator (gender, who they're attracted to, skin, hair, clothes, traits, perks, starting bonds, voice) and move into a vacant house. Neighbour houses are generated, with one or two storeys. Everyone in town lives, works, socialises, visits friends and falls in and out of love on their own; the rest of the town keeps simulating while only your lot is drawn.
@@ -25,3 +19,4 @@ The first release: a home-building game with a living simulation, in the browser
 - **Sound:** birds by species singing in bouts through the day, crickets at night, and the sounds of things in use at home.
 - **Saves, settings and tools:** save and load, Settings (graphics quality, audio, controls), a performance overlay (F3) and debug reports (F8). Content packs can add objects, art and voice lines (see `docs/content-packs.md`).
 - **Runs on:** desktop Chrome, Edge, Brave or Safari with WebGPU; other browsers use the WebGL2 fallback. The simulation is Rust compiled to WebAssembly in its own worker.
+- **Licence:** Idyll Lives is free software, released under the GNU General Public License v3.0 (or later). You may use, study, share, and modify it; if you distribute Idyll Lives or a modified version, you must make the source available under the same licence. Third-party parts keep their own licences (art CC0, voice model and dictionary Apache-2.0).

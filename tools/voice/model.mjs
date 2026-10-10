@@ -175,8 +175,7 @@ function intAttr(data, name) {
 
 const PITCH_NODE = '/F0_proj/Conv';
 const P = 2147483647;
-// Names of the added nodes; part of the pinned model, so it keeps the game's old name.
-const K = '/littlelives/noise/';
+const K = '/idyll-lives/noise/';
 
 /** Constants shared by the noise subgraphs. */
 function noiseConstants() {

@@ -332,20 +332,18 @@ Every release ships with native sim tests (including the town soak), `pnpm check
 
 ### Naming
 
-The project was first called `open-sims-wasm`. Before going open source it was renamed to
-**Littlelives** to stay clear of Electronic Arts' trademarks, and for 0.1.0, the first release,
-to **Idyll Lives** ("idyll" sounds like "idle": lives you leave alone and watch):
+The project was first called `open-sims-wasm`. It was renamed to stay clear of Electronic Arts'
+trademarks, and for 0.1.0, the first release, it became **Idyll Lives** ("idyll" sounds like
+"idle": lives you leave alone and watch):
 
 - Display text says *Idyll Lives*; slugs (package name, repository, file names) use `idyll-lives`.
-  The game is at https://krecks.github.io/idyll-lives/ (the old `/littlelives/` address is gone).
+  The game is at https://krecks.github.io/idyll-lives/.
 - Characters are called **residents** in everything a player or pack author reads.
 - The temporary mood modifiers are called **feelings**. Content packs and saves written with the
   old key names still load (serde aliases in sim-core, `LEGACY_KEYS` in both content mergers).
 - Kept on purpose: the repository folder, the crate names `sim-core` / `sim-wasm` ("sim" for
   simulation), code identifiers such as `sim` and `SimView`, and the browser storage keys
-  (`open-sims-wasm` IndexedDB database, `open-sims-wasm.settings`; from the Littlelives days
-  `littlelives.blueprints`, `littlelives.voiceBench`, and the `littlelives-voice-*` and
-  `littlelives-item-pictures-*` caches) so existing saves, settings, blueprints and downloads
-  survive. The voice model's added nodes are named `/littlelives/noise/…` (`tools/voice/model.mjs`):
-  renaming them would change the pinned model.
+  (the IndexedDB database, settings, blueprints, the voice speed test and the voice and
+  item-picture caches keep the names of earlier versions) so existing saves, settings, blueprints
+  and downloads survive.
 - Credits and the README keep a short nominative disclaimer naming EA's trademark.

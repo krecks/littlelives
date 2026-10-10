@@ -52,10 +52,10 @@ function packKittenVoices(bytes) {
 const FILES = [
   {
     url: `${KITTEN}/kitten_tts_nano_v0_8.onnx`,
-    out: 'kitten-nano-0.8-edit1.onnx',
+    out: 'kitten-nano-0.8-edit2.onnx',
     sha256: '320564d2615f235de972ca27a7f39551c94185cfa24ca85b07a29084135f1e5e',
     edit: (bytes) => editModel(quantizeWeights(bytes)),
-    editedSha256: '8bbd7c3908568fba37feffbf2257c5227d5502211afd466ac6400221a26f9e80',
+    editedSha256: '251899772c73278b76b95d256a22a539bc4bc2a39a58e4a619bf8fead2f2836c',
   },
   {
     url: `${KITTEN}/voices.npz`,
@@ -66,7 +66,7 @@ const FILES = [
   },
 ];
 /** Files earlier versions wrote that are no longer used (they would be copied into the build). */
-const OBSOLETE = ['paradee-8m.onnx', 'paradee-8m-edit1.onnx', 'paradee-8m.json'];
+const OBSOLETE = ['paradee-8m.onnx', 'paradee-8m-edit1.onnx', 'paradee-8m.json', 'kitten-nano-0.8-edit1.onnx'];
 const LEXICON = [
   { url: `${MISAKI}/us_gold.json`, sha256: 'dc414872a49a28ae6c141463d502fd945f3b2fde040484fdc47d00cc4612686f' },
   { url: `${MISAKI}/us_silver.json`, sha256: 'de8f67be911bb6c659187b4a65fd966b6a30e56350e0f790d763210b053ac475' },

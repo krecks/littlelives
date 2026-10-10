@@ -28,7 +28,7 @@ const CACHE = 'littlelives-voice-v2';
 /** Files under `voice/` (made by `tools/voice/fetch.mjs`), with sizes in bytes for the progress bar. */
 type File = [name: string, bytes: number];
 const LEXICON: File = ['en-us.lexz', 1_320_518];
-const MODEL: File = ['kitten-nano-0.8-edit1.onnx', 15_450_474];
+const MODEL: File = ['kitten-nano-0.8-edit2.onnx', 15_450_474];
 const VOICES: File = ['kitten-nano-0.8-voices.f32', 1_048_576];
 const ORT_WASM_BYTES = 14_239_897;
 const VOICE_WASM_BYTES = 140_103;

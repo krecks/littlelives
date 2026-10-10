@@ -34,7 +34,7 @@ may replace the runtime later. Measurements and research behind the choices are 
   give **bit-identical samples**, which the clip cache relies on. The noise is as white as a
   library generator's (autocorrelation under 0.004, spectral flatness 0.998), the output is as
   close to the original model as two runs of the original are to each other, and it costs no
-  time. The result is pinned by its own SHA-256 and named `kitten-nano-0.8-edit1.onnx` (a new
+  time. The result is pinned by its own SHA-256 and named `kitten-nano-0.8-edit2.onnx` (a new
   edit gets a new name, so browsers never mix versions); its weights are also stored as int8
   (see "KittenTTS nano").
 - **Tests:** `npm run test:voice` (Rust: phonemizer against Misaki, ids, trimming, and every game
