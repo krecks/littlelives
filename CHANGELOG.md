@@ -2,7 +2,11 @@
 
 All notable changes to Littlelives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
-## Unreleased (0.20.0)
+## 0.20.0 — 2026-10-10
+
+**Play it in your browser:** https://krecks.github.io/littlelives/
+
+Voices and things: real men's and women's voices you can choose, residents who say what fits what they use, 130 new things to buy, and birds that sound like birds.
 
 ### New
 - **Real men's and women's voices:** teens and grown-ups now speak with KittenTTS nano (Apache-2.0), which has eight real voices, four men's and four women's (Jasper, Bruno, Hugo, Leo; Bella, Luna, Rosie, Kiki). Each resident gets a mix of two of them that is theirs alone (men from the men's voices, women from the women's, other genders from all eight), plus their own pitch, speed and size, so men sound like men and no two residents sound alike. Children keep the smaller Paradee voice, higher and smaller; babies don't speak. The voices' pace is evened out, so none of them drawls or rushes. A typical grown-up's line takes about 1 s to make (Chrome on an M-series Mac), a child's about 0.5 s; frames stay smooth.
