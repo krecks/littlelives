@@ -8,7 +8,8 @@
 //! - other values are replaced; a key whose type changes between files is an error;
 //! - `traitPatches` (`{ traitId: { effects, startingSkills } }`) are applied to the merged
 //!   traits last: map entries are set per key, `mood` is added, `walkSpeed` multiplied;
-//! - `include` and `$comment` are dropped;
+//! - `include` and `$comment` are dropped, and so is `voice` (spoken lines per language: only
+//!   the web side reads them, and merges them per key);
 //! - keys from before the moodlet → feeling rename (`moodlets`, `moodlet`, `targetMoodlet`, ...)
 //!   are renamed first, so old packs still load (`LEGACY_KEYS`).
 
@@ -103,7 +104,7 @@ pub fn merge_named(files: &[(&str, &str)]) -> Result<String, Error> {
         };
         for (key, value) in file {
             match key.as_str() {
-                "include" | "$comment" => continue,
+                "include" | "$comment" | "voice" => continue,
                 "traitPatches" => {
                     patches.push((name, value));
                     continue;
@@ -260,7 +261,7 @@ mod tests {
             (
                 "a.json",
                 r#"{"$comment":"y","version":2,"objects":[{"id":"tub"}],"schedule":[{"from":1}],
-                    "economy":{"startingFunds":20},"tags":["spa"]}"#,
+                    "economy":{"startingFunds":20},"tags":["spa"],"voice":{"en":{"object":{}}}}"#,
             ),
         ]);
         assert_eq!(v["objects"].as_array().unwrap().len(), 2);
@@ -275,6 +276,7 @@ mod tests {
         assert_eq!(v["version"], 2);
         assert_eq!(v["tags"][0], "spa");
         assert!(v.get("include").is_none() && v.get("$comment").is_none());
+        assert!(v.get("voice").is_none(), "spoken lines are the web side's");
     }
 
     #[test]

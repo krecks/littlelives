@@ -329,6 +329,8 @@ interface ContentFile {
   activities?: ActivityDef[];
   goals?: GoalDef[];
   planner?: Partial<PlannerRules>;
+  /** Spoken lines per language, laid out like `content/voice/<lang>.json` (see `voice/lines.ts`). */
+  voice?: Record<string, Json>;
   /** Further content files (relative to this one), merged key by key. */
   include?: string[];
 }
@@ -377,6 +379,8 @@ export class Content {
   private readonly objects: Map<string, ObjectDef>;
   /** Every object, in the order the simulation numbers them (story events name them by index). */
   readonly objectList: readonly ObjectDef[];
+  /** Spoken lines from content packs per language, laid over `content/voice/<lang>.json`. */
+  readonly voice: Readonly<Record<string, Json>>;
 
   private constructor(
     /** Raw JSON, forwarded unchanged to the simulation. */
@@ -417,6 +421,7 @@ export class Content {
     this.planner = { maxMinutes: 240, maxSleepMinutes: 720, maxGoals: 10, ...file.planner };
     this.objects = new Map(file.objects.map((o) => [o.id, o]));
     this.objectList = file.objects;
+    this.voice = file.voice ?? {};
     this.freeRotation = new Set(file.objectRules?.freeRotation ?? []);
   }
 
@@ -605,7 +610,8 @@ const PATCH_MAPS = ['needDecay', 'needGain', 'tagPreference', 'tagAcceptance', '
  * top-level arrays are appended (a repeated `id` is an error), objects are merged
  * shallowly, other values replaced, `traitPatches` are applied to the merged traits
  * last, and `include` / `$comment` are dropped. Keys from before the moodlet → feeling rename
- * are renamed first (`LEGACY_KEYS`).
+ * are renamed first (`LEGACY_KEYS`). Only here: `voice` (spoken lines, which sim-core drops) is
+ * merged at every depth, so packs add or replace single lines (`mergeDeep`).
  */
 export function mergeContent(files: [name: string, text: string][]): Json {
   const out: Json = {};
@@ -624,6 +630,11 @@ export function mergeContent(files: [name: string, text: string][]): Json {
       if (key === 'include' || key === '$comment') continue;
       if (key === 'traitPatches') {
         patches.push([name, value]);
+        continue;
+      }
+      if (key === 'voice') {
+        if (!isJsonObject(value)) throw new Error(`${name}: voice must be an object`);
+        out.voice = mergeDeep(isJsonObject(out.voice) ? out.voice : {}, value);
         continue;
       }
       const prev = out[key];
@@ -681,6 +692,19 @@ export function mergeContent(files: [name: string, text: string][]): Json {
         }
       }
     }
+  }
+  return out;
+}
+
+/**
+ * `b` laid over `a`: objects merge key by key at every depth, anything else (a list of lines)
+ * is replaced. Neither input changes.
+ */
+export function mergeDeep(a: Json, b: Json): Json {
+  const out: Json = { ...a };
+  for (const [key, value] of Object.entries(b)) {
+    const prev = out[key];
+    out[key] = isJsonObject(prev) && isJsonObject(value) ? mergeDeep(prev, value) : value;
   }
   return out;
 }

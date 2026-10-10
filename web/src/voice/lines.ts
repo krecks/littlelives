@@ -1,19 +1,29 @@
 /**
- * What residents say, per language (`content/voice/<lang>.json`), keyed by id: social
- * interaction ids, animation tags, emotion ids, planner thought kinds. The line for an event is
- * picked with a hash, never the simulation's random numbers, so voices can't change the game.
+ * What residents say, per language (`content/voice/<lang>.json`), keyed by content ids: social
+ * interactions, objects and their interactions, interaction ids, animation tags, emotions and
+ * planner thought kinds. Content packs add or replace lines under the same keys (`voice` in a
+ * pack). The line for an event is picked with a hash, never the simulation's random numbers,
+ * so voices can't change the game.
  */
 
+import { mergeDeep } from '../content/content';
 import { hashUnit } from './voices';
 
-interface Group {
-  lines: string[];
+/** Lines, alone or with a tone for all of them. */
+type Group = string[] | { lines: string[]; tone?: string };
+
+/** Lines for one object: for any of its interactions (`lines`), and per interaction id. */
+interface ObjectLines {
+  lines?: string[];
   tone?: string;
+  interactions?: Record<string, Group>;
 }
 
 interface LinesFile {
   social: Record<string, { start: string[]; good: string[]; bad: string[]; tone?: string }>;
-  action: Record<string, string[]>;
+  object?: Record<string, ObjectLines>;
+  interaction?: Record<string, Group>;
+  action: Record<string, Group>;
   emotion: Record<string, Group>;
   thought: Record<string, Group>;
 }
@@ -21,10 +31,22 @@ interface LinesFile {
 export interface Line {
   text: string;
   tone?: string;
+  /** Where it came from, e.g. `object:fridge:gourmet` (for debugging). */
+  key: string;
+}
+
+/** What a resident is using, by content id. */
+export interface Use {
+  object?: string;
+  interaction?: string;
 }
 
 /** Planner thought kinds in snapshot order (`thought` 1..9). */
 const THOUGHTS = ['skipped', 'noPlace', 'kept', 'goal', 'roomLoved', 'roomDisliked', 'broken', 'accident', 'crying'] as const;
+/** Lines a resident said lately per key, not picked again while others are left. */
+const RECENT = 3;
+/** Forget everyone's recent lines past this many keys (a long session with many residents). */
+const MAX_RECENT_KEYS = 4096;
 
 const files = new Map<string, Promise<LinesFile | null>>();
 
@@ -40,32 +62,72 @@ export function loadLines(language: string): Promise<LinesFile | null> {
 }
 
 export class Lines {
-  constructor(private readonly data: LinesFile) {}
+  private readonly data: LinesFile;
+  /** Recently said line indices per resident and key, newest last. */
+  private readonly recent = new Map<string, number[]>();
 
-  social(id: string, part: 'start' | 'good' | 'bad', seed: number): Line | null {
+  /** `packs`: the same layout from content packs (`Content.voice[language]`), laid over the file. */
+  constructor(file: LinesFile, packs?: Record<string, unknown>) {
+    this.data = packs ? (mergeDeep(file as unknown as Record<string, unknown>, packs) as unknown as LinesFile) : file;
+  }
+
+  social(who: number, id: string, part: 'start' | 'good' | 'bad', seed: number): Line | null {
     const s = this.data.social[id];
-    return s ? pick({ lines: s[part], tone: part === 'bad' && s.tone === 'happy' ? undefined : s.tone }, seed) : null;
+    return s ? this.pick(who, `social:${id}:${part}`, s[part], part === 'bad' && s.tone === 'happy' ? undefined : s.tone, seed) : null;
   }
 
-  action(tag: string, seed: number): Line | null {
-    const lines = this.data.action[tag];
-    return lines ? pick({ lines }, seed) : null;
+  /**
+   * A line for using something, the most specific first: this object's lines for this
+   * interaction, the object's lines, lines for the interaction id on any object, lines for the
+   * animation tag.
+   */
+  use(who: number, tag: string | undefined, use: Use, seed: number): Line | null {
+    const { object, interaction } = use;
+    const o = object ? this.data.object?.[object] : undefined;
+    if (o && interaction) {
+      const line = this.group(who, `object:${object}:${interaction}`, o.interactions?.[interaction], seed);
+      if (line) return line;
+    }
+    if (o) {
+      const line = this.pick(who, `object:${object}`, o.lines, o.tone, seed);
+      if (line) return line;
+    }
+    if (interaction) {
+      const line = this.group(who, `interaction:${interaction}`, this.data.interaction?.[interaction], seed);
+      if (line) return line;
+    }
+    return tag ? this.group(who, `action:${tag}`, this.data.action[tag], seed) : null;
   }
 
-  emotion(id: string, seed: number): Line | null {
-    const g = this.data.emotion[id];
-    return g ? pick(g, seed) : null;
+  emotion(who: number, id: string, seed: number): Line | null {
+    return this.group(who, `emotion:${id}`, this.data.emotion[id], seed);
   }
 
-  thought(kind: number, seed: number): Line | null {
-    const g = this.data.thought[THOUGHTS[kind - 1]];
-    return g ? pick(g, seed) : null;
+  thought(who: number, kind: number, seed: number): Line | null {
+    const id = THOUGHTS[kind - 1];
+    return id ? this.group(who, `thought:${id}`, this.data.thought[id], seed) : null;
   }
-}
 
-function pick(g: Group, seed: number): Line | null {
-  if (!g.lines?.length) return null;
-  return { text: g.lines[Math.floor(hashUnit(seed, 7) * g.lines.length)], tone: g.tone };
+  private group(who: number, key: string, g: Group | undefined, seed: number): Line | null {
+    if (!g) return null;
+    return Array.isArray(g) ? this.pick(who, key, g, undefined, seed) : this.pick(who, key, g.lines, g.tone, seed);
+  }
+
+  /** A line by hash, skipping the ones this resident said last under this key. */
+  private pick(who: number, key: string, lines: string[] | undefined, tone: string | undefined, seed: number): Line | null {
+    if (!lines?.length) return null;
+    const n = lines.length;
+    const memo = `${who}:${key}`;
+    const recent = this.recent.get(memo) ?? [];
+    let at = Math.floor(hashUnit(seed, 7) * n);
+    for (let i = 0; i < n && recent.includes(at); i++) at = (at + 1) % n;
+    recent.push(at);
+    // Remember fewer than there are lines, so there is always another one to pick.
+    while (recent.length > Math.min(RECENT, n - 1)) recent.shift();
+    if (!this.recent.has(memo) && this.recent.size >= MAX_RECENT_KEYS) this.recent.clear();
+    this.recent.set(memo, recent);
+    return { text: lines[at], tone, key };
+  }
 }
 
 /** Fills `{name}` (the other resident) and `{me}`. */

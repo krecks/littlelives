@@ -49,6 +49,9 @@ interface SimState {
   social: number;
   outcome: number;
   action: number;
+  /** What they use: object definition and interaction indices (-1: nothing, or an older layout). */
+  def: number;
+  interaction: number;
   emotion: number;
   thought: number;
   /** When this resident may next say a thought (ms, performance clock). */
@@ -93,11 +96,15 @@ export class VoiceDirector {
   private playerTalk: { a: number; b: number; until: number; started: boolean } | null = null;
   private readonly head = { x: 0, y: 0, z: 0 };
   private readonly screen = { x: 0, y: 0 };
+  /** With `?debug`: the last lines chosen, as `id key: text` (`window.__voices.heard`). */
+  readonly heard: string[] = [];
+  private readonly debug = new URLSearchParams(location.search).has('debug');
 
   constructor(
     private readonly content: Content,
     private readonly renderer: Renderer,
   ) {
+    if (this.debug) Object.assign(window, { __voices: this });
   }
 
   /** Lines for the voice language, (re)loaded when it changes. */
@@ -107,7 +114,7 @@ export class VoiceDirector {
     this.linesLanguage = language;
     this.lines = null;
     void loadLines(language).then((data) => {
-      if (data && !this.disposed && this.linesLanguage === language) this.lines = new Lines(data);
+      if (data && !this.disposed && this.linesLanguage === language) this.lines = new Lines(data, this.content.voice[language]);
     });
   }
 
@@ -170,6 +177,8 @@ export class VoiceDirector {
         social: curr[o + k.social],
         outcome: curr[o + k.outcome],
         action: curr[o + k.action],
+        def: k.objectDef === undefined ? -1 : curr[o + k.objectDef],
+        interaction: k.interaction === undefined ? -1 : curr[o + k.interaction],
         emotion: curr[o + k.emotion],
         thought: k.thought === undefined ? 0 : curr[o + k.thought],
         quietUntil: 0,
@@ -182,7 +191,9 @@ export class VoiceDirector {
       const playerSide = !!talk && (id === talk.a || id === talk.b || this.isPartnerOf(curr, row, k, i, talk));
       if (fast && !playerSide) continue;
       const line = this.event(prev, next, frame, i, id, now);
-      if (line) this.say(id, i, line.line, line.partnerId, line.thought, now);
+      if (!line) continue;
+      if (this.debug && this.heard.push(`${id} ${line.line.key}: ${line.line.text}`) > 50) this.heard.shift();
+      this.say(id, i, line.line, line.partnerId, line.thought, now);
     }
 
     this.pan(frame);
@@ -269,28 +280,31 @@ export class VoiceDirector {
       const def = this.content.social(next.social - 1);
       if (!def) return null;
       if (role === 1 && next.social !== prev.social) {
-        const line = lines.social(def.id, 'start', seed);
+        const line = lines.social(id, def.id, 'start', seed);
         return line && { line, partnerId, thought: false };
       }
       if (role === 2 && prev.outcome === 0 && next.outcome > 0) {
-        const line = lines.social(def.id, next.outcome === 1 ? 'good' : 'bad', seed);
+        const line = lines.social(id, def.id, next.outcome === 1 ? 'good' : 'bad', seed);
         return line && { line, partnerId, thought: false };
       }
       return null;
     }
     if (now < next.quietUntil) return null;
     if (next.thought > 0 && next.thought !== prev.thought) {
-      const line = lines.thought(next.thought, seed);
+      const line = lines.thought(id, next.thought, seed);
       return line && { line, partnerId: -1, thought: true };
     }
     if (next.emotion > 0 && next.emotion !== prev.emotion && chance(seed, EMOTION_CHANCE)) {
       const emotion = this.content.emotions[next.emotion - 1];
-      const line = emotion ? lines.emotion(emotion.id, seed) : null;
+      const line = emotion ? lines.emotion(id, emotion.id, seed) : null;
       if (line) return { line, partnerId: -1, thought: true };
     }
-    if (next.action >= 0 && next.action !== prev.action && chance(seed + 1, ACTION_CHANCE)) {
-      const tag = layout.actions[next.action];
-      const line = tag ? lines.action(tag, seed) : null;
+    // Starting something, or going on to another thing with the same animation (a snack, then a meal).
+    const started = next.action !== prev.action || next.def !== prev.def || next.interaction !== prev.interaction;
+    if (next.action >= 0 && started && chance(seed + 1, ACTION_CHANCE)) {
+      const object = next.def >= 0 ? this.content.objectList[next.def] : undefined;
+      const interaction = next.interaction >= 0 ? object?.interactions[next.interaction]?.id : undefined;
+      const line = lines.use(id, layout.actions[next.action], { object: object?.id, interaction }, seed);
       if (line) return { line, partnerId: -1, thought: true };
     }
     return null;
