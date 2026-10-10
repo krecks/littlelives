@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use std::f32::consts::FRAC_PI_2;
 
 use crate::clock::{AUTO_FAST_SPEED, MAX_SPEED, TICKS_PER_STEP};
-use crate::content::{Content, MAX_NEEDS, MAX_SKILLS, MAX_SLOTS, Modifiers, Pose, TagMask};
+use crate::content::{Content, Layer, MAX_NEEDS, MAX_SKILLS, MAX_SLOTS, Modifiers, Pose, TagMask};
 use crate::index::ObjectIndex;
 use crate::lot::{BondRaw, Lot, LotFile, SimSpawn};
 use crate::path::NavGrid;
@@ -119,7 +119,10 @@ impl ObjectInstance {
         let def = &content.objects[self.def];
         let c = self.centre(content);
         let n = def.slots.max(1) as f32;
-        let offset = (slot as f32 - (n - 1.0) / 2.0) * def.footprint[0] as f32 / n;
+        // Bunks lie one above the other: both in the middle (a hair apart, so the renderer can
+        // tell the lower bunk from the upper one).
+        let spread = if def.bunk { 0.04 } else { def.footprint[0] as f32 / n };
+        let offset = (slot as f32 - (n - 1.0) / 2.0) * spread;
         let yaw = self.yaw();
         // Local +x (the object's right) after rotation.
         [c[0] + yaw.cos() * offset, c[1] - yaw.sin() * offset]
@@ -154,6 +157,19 @@ impl ObjectInstance {
             1 => (self.x + w, self.z + (d - 1) / 2),
             2 => (self.x + (w - 1) / 2, self.z - 1),
             _ => (self.x - 1, self.z + (d - 1) / 2),
+        }
+    }
+
+    /// The grid edges along its back (`(horizontal, x, z)`: an `h` or a `v` edge), where a thing
+    /// on a wall hangs.
+    pub(crate) fn back_edges(&self, content: &Content) -> Vec<(bool, i32, i32)> {
+        let (w, d) = self.size(content);
+        let (x, z) = (self.x, self.z);
+        match self.rot % 4 {
+            0 => (x..x + w).map(|tx| (true, tx, z)).collect(),
+            2 => (x..x + w).map(|tx| (true, tx, z + d)).collect(),
+            1 => (z..z + d).map(|tz| (false, x, tz)).collect(),
+            _ => (z..z + d).map(|tz| (false, x + w, tz)).collect(),
         }
     }
 
@@ -969,11 +985,24 @@ impl World {
             wear: 0.0,
         };
         let name = &self.content.objects[def].id;
+        let layer = self.content.objects[def].layer;
         for (tx, tz) in obj.tiles(&self.content) {
-            if !self.lot.in_bounds(tx, tz) || self.blocked[self.lot.tile_index(tx, tz)] {
+            // Furniture needs free floor; things on a wall, the ceiling or rugs only a free spot
+            // on their own layer.
+            let taken = if layer.mounted() {
+                self.objects.iter().any(|o| {
+                    self.content.objects[o.def].layer == layer && o.tiles(&self.content).any(|t| t == (tx, tz))
+                })
+            } else {
+                self.lot.in_bounds(tx, tz) && self.blocked[self.lot.tile_index(tx, tz)]
+            };
+            if !self.lot.in_bounds(tx, tz) || taken {
                 return Err(Error::new(format!(
                     "'{name}' at {x},{z} overlaps or leaves the lot"
                 )));
+            }
+            if layer == Layer::Ceiling && self.lot.room_at(tx, tz) == crate::lot::OUTDOORS {
+                return Err(Error::new(format!("'{name}' at {x},{z} needs a ceiling")));
             }
             // Furniture never stands on a tile split by a diagonal wall (it would overlap it).
             if self.lot.diag(tx, tz).is_some() {
@@ -993,8 +1022,32 @@ impl World {
         }) {
             return Err(Error::new(format!("'{name}' at {x},{z} is blocked by a wall")));
         }
+        if layer == Layer::Wall && !self.backed_by_wall(&obj) {
+            return Err(Error::new(format!("'{name}' at {x},{z} has no wall to hang on")));
+        }
         self.check_storey_fit(&obj)?;
         Ok(obj)
+    }
+
+    /// Whether a wall (plain or with a window) runs along the whole back edge of `obj`.
+    fn backed_by_wall(&self, obj: &ObjectInstance) -> bool {
+        use crate::lot::Edge;
+        let lot = &self.lot;
+        obj.back_edges(&self.content).into_iter().all(|(horizontal, x, z)| {
+            let e = if horizontal {
+                (x >= 0 && (x as usize) < lot.width && z >= 0 && (z as usize) <= lot.depth).then(|| lot.h_edge(x as usize, z as usize))
+            } else {
+                (x >= 0 && (x as usize) <= lot.width && z >= 0 && (z as usize) < lot.depth).then(|| lot.v_edge(x as usize, z as usize))
+            };
+            matches!(e, Some(Edge::Wall | Edge::Window))
+        })
+    }
+
+    /// Whether something hangs on the wall at this grid edge (`horizontal`: an `h` edge).
+    pub(crate) fn hangs_on(&self, horizontal: bool, x: i32, z: i32) -> bool {
+        self.objects.iter().any(|o| {
+            self.content.objects[o.def].layer == Layer::Wall && o.back_edges(&self.content).contains(&(horizontal, x, z))
+        })
     }
 
     #[allow(clippy::too_many_arguments)]

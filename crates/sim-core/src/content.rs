@@ -147,6 +147,35 @@ pub struct ObjectDef {
     pub wear_per_use: f32,
     /// Every tag its interactions have (what the room it stands in can be used for).
     pub tags: TagMask,
+    /// Where it goes: on the floor like furniture, or on a wall, the ceiling or flat on the floor
+    /// as a rug, where it takes no floor space (content `layer`).
+    pub layer: Layer,
+    /// Its two slots are bunks, one above the other (content `bunk`): both users lie in the
+    /// middle of its width, and the renderer lifts the second to the upper bunk.
+    pub bunk: bool,
+}
+
+/// Where an object goes (content `layer`). Things on a wall, the ceiling or the floor's surface
+/// (rugs) take no floor space: residents walk under and over them, furniture stands in front of,
+/// under or on them, and only things on the same layer can't overlap.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Layer {
+    /// Furniture: stands on its tiles and blocks them.
+    #[default]
+    Floor,
+    /// Hangs on a wall (its back edge must be a wall or a window): pictures, shelves, sconces.
+    Wall,
+    /// Hangs from the ceiling of a room (indoors only): pendant lamps, fans.
+    Ceiling,
+    /// Lies flat on the floor: rugs.
+    Rug,
+}
+
+impl Layer {
+    /// Off the furniture layer: it takes no floor space.
+    pub fn mounted(self) -> bool {
+        self != Layer::Floor
+    }
 }
 
 /// Most accidents content can define (`Sim::accident_at` keeps one cooldown each).
@@ -1615,6 +1644,12 @@ struct ObjectRaw {
     /// Lamps: the renderer reads the light's look; the simulation only that it gives light.
     #[serde(default)]
     light: Option<serde_json::Value>,
+    /// `wall`, `ceiling` or `rug` (default `floor`: furniture).
+    #[serde(default)]
+    layer: Option<String>,
+    /// Bunk beds: the two slots lie one above the other.
+    #[serde(default)]
+    bunk: bool,
 }
 
 fn one_slot() -> u8 {
@@ -2030,6 +2065,27 @@ impl Content {
             }
             let offered = interactions.iter().fold(0, |m: TagMask, it| m | it.tags);
             let used = !interactions.is_empty();
+            let layer = match obj.layer.as_deref() {
+                None | Some("floor") => Layer::Floor,
+                Some("wall") => Layer::Wall,
+                Some("ceiling") => Layer::Ceiling,
+                Some("rug") => Layer::Rug,
+                Some(other) => {
+                    return Err(Error::new(format!(
+                        "object '{}': unknown layer '{other}' (floor, wall, ceiling or rug)",
+                        obj.id
+                    )));
+                }
+            };
+            if obj.bunk && (obj.slots != 2 || layer.mounted()) {
+                return Err(Error::new(format!(
+                    "object '{}': a bunk bed has 2 slots and stands on the floor",
+                    obj.id
+                )));
+            }
+            if obj.stairs && layer.mounted() {
+                return Err(Error::new(format!("object '{}': stairs stand on the floor", obj.id)));
+            }
             objects.push(ObjectDef {
                 id: obj.id.clone(),
                 name: obj.name.clone(),
@@ -2039,8 +2095,10 @@ impl Content {
                 slots: obj.slots,
                 outdoors: obj.outdoors,
                 stairs: obj.stairs,
+                // Things on a wall hang square to it.
                 turns: obj.free_rotation.unwrap_or_else(|| {
-                    obj.footprint == [1, 1]
+                    layer != Layer::Wall
+                        && obj.footprint == [1, 1]
                         && obj.category.as_ref().is_some_and(|c| {
                             raw.object_rules.free_rotation.iter().flatten().any(|f| f == c)
                         })
@@ -2065,6 +2123,8 @@ impl Content {
                         .max(0.0)
                 },
                 tags: offered,
+                layer,
+                bunk: obj.bunk,
             });
         }
 

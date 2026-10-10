@@ -51,6 +51,8 @@ export interface ModelTemplate {
   bones: (BoneName | null)[];
   /** Height of the model's bounding box, for picking. */
   height: number;
+  /** Bottom of its bounding box (above 0 for things on a wall or the ceiling), for picking. */
+  bottom?: number;
 }
 
 export interface BuildOptions {
@@ -79,7 +81,7 @@ function buildPlaceholder(scene: Scene, name: string, parts: PlaceholderPart[], 
   const groups = new PartGroups(scene);
   parts.forEach((part, index) => groups.addPart(part, lod, index));
   const { meshes, tints, bones } = groups.build(name);
-  return { meshes, tints, bones, height: groups.height };
+  return { meshes, tints, bones, height: groups.height, bottom: groups.bottom };
 }
 
 /**
@@ -90,6 +92,7 @@ class PartGroups {
   private readonly lib: MaterialLibrary;
   private readonly groups = new Map<string, { tint: TintSlot | null; finish: string; bone: BoneName | null; meshes: Mesh[] }>();
   height = 0;
+  bottom = Infinity;
 
   constructor(private readonly scene: Scene) {
     this.lib = MaterialLibrary.for(scene);
@@ -105,6 +108,7 @@ class PartGroups {
     const { alpha, group } = this.finish(part.material ?? DEFAULT_FINISH);
     const mesh = partMesh(this.scene, part, lod, index, alpha);
     this.height = Math.max(this.height, part.at[1] + part.size[1] / 2);
+    this.bottom = Math.min(this.bottom, part.at[1] - part.size[1] / 2);
     this.add(mesh, part.tint ?? null, group, part.bone ?? null);
   }
 
@@ -519,8 +523,10 @@ async function loadGltf(scene: Scene, name: string, entry: ModelEntry): Promise<
   const kept: Mesh[] = [];
   const tinted = new Set<Material>();
   let height = 0;
+  let bottom = Infinity;
   for (const node of baked) {
     height = Math.max(height, node.getBoundingInfo().boundingBox.maximum.y);
+    bottom = Math.min(bottom, node.getBoundingInfo().boundingBox.minimum.y);
     const ov = overrideFor(node.material);
     if (ov?.finish) {
       groups.add(restyledMesh(scene, node, ov, groups.finish(ov.finish).alpha), null, groups.finish(ov.finish).group, null);
@@ -538,6 +544,7 @@ async function loadGltf(scene: Scene, name: string, entry: ModelEntry): Promise<
   }
   extras.parts?.forEach((part, i) => groups.addPart(part, 0, i));
   height = Math.max(height, groups.height);
+  bottom = Math.min(bottom, groups.bottom);
 
   // Everything not kept (hierarchy nodes, hidden or restyled meshes, their unused materials) goes.
   const used = new Set(kept.map((m) => m.material));
@@ -556,6 +563,7 @@ async function loadGltf(scene: Scene, name: string, entry: ModelEntry): Promise<
     tints: [...merged.map(() => null), ...restyled.tints],
     bones: [...merged.map(() => null), ...restyled.bones],
     height,
+    bottom,
   };
 }
 

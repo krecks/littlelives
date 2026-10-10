@@ -67,6 +67,14 @@ export interface ObjectDef {
   light?: { range?: number; intensity?: number; height?: number };
   /** Turns freely (at any angle, for looks); default: 1×1 objects of `objectRules.freeRotation` categories. */
   freeRotation?: boolean;
+  /**
+   * Where it goes (sim-core `content::Layer`): furniture on the floor (default), on a `wall` (its
+   * back against one), from the `ceiling` (indoors) or flat on the floor as a `rug`. Off the floor
+   * layer it takes no floor space; only things on the same layer can't overlap.
+   */
+  layer?: 'floor' | 'wall' | 'ceiling' | 'rug';
+  /** Bunk beds: the second slot lies on the upper bunk. */
+  bunk?: boolean;
 }
 
 export interface SkillDef {
@@ -430,7 +438,12 @@ export class Content {
   /** Whether an object turns freely (sim-core `ObjectDef::turns`): at any angle past its facing. */
   turns(def: ObjectDef): boolean {
     const [w, d] = def.footprint ?? [1, 1];
-    return def.freeRotation ?? (w === 1 && d === 1 && def.category !== undefined && this.freeRotation.has(def.category));
+    return def.freeRotation ?? (def.layer !== 'wall' && w === 1 && d === 1 && def.category !== undefined && this.freeRotation.has(def.category));
+  }
+
+  /** Its layer (`floor` for furniture): only things on the same layer take each other's place. */
+  layer(def: ObjectDef | undefined): 'floor' | 'wall' | 'ceiling' | 'rug' {
+    return def?.layer ?? 'floor';
   }
 
   /** Loads a content file and merges the files it includes (content packs); see `mergeContent`. */

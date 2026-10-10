@@ -63,6 +63,10 @@ impl World {
     /// The tiles an object takes from walking: its footprint, or for stairs the stairwell above
     /// its steps (the steps themselves are walked on).
     pub(crate) fn blocking_tiles(&self, obj: &ObjectInstance) -> Vec<(i32, i32)> {
+        // Pictures, ceiling lamps and rugs take no floor space.
+        if self.content.objects[obj.def].layer.mounted() {
+            return Vec::new();
+        }
         if self.content.objects[obj.def].stairs {
             if self.stairs.depth == 0 {
                 return Vec::new();

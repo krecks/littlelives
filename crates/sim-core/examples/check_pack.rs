@@ -13,6 +13,7 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use serde_json::{Value, json};
+use sim_core::content::Layer;
 use sim_core::pack::merge_named;
 use sim_core::world::{Phase, TaskKind};
 use sim_core::{Command, Content, MINUTES_PER_TICK, World, clock};
@@ -53,7 +54,8 @@ fn run() -> Result<bool, String> {
         .and_then(|v| serde_json::from_value(v["include"].clone()).ok())
         .unwrap_or_default();
     let mut files = vec![("base.json".to_owned(), base)];
-    for name in includes.iter().filter(|n| !n.starts_with("packs/")) {
+    // (Not the file being checked if base.json already includes it, like furniture.json.)
+    for name in includes.iter().filter(|n| !n.starts_with("packs/") && !path.ends_with(n.as_str())) {
         files.push((name.clone(), read(name)?));
     }
     files.push((path.clone(), pack_text.clone()));
@@ -98,14 +100,19 @@ fn check_object(merged: &str, content: &Content, id: &str) -> bool {
         def.footprint[0],
         def.footprint[1]
     );
-    let lot = json!({
+    let mut lot = json!({
         "width": 14, "depth": 14,
         "plots": [{"name": "Test", "x": 0, "z": 0, "w": 14, "d": 14, "entry": [2.5, 12.5]}],
         "households": [{"name": "Test", "plot": 0, "player": true, "funds": TEST_FUNDS}],
         "objects": [{"def": id, "x": 5, "z": 4, "rot": 0}],
         "sims": [{"name": "Tester", "traits": [neutral_trait(content)], "x": 2.5, "z": 12.5}],
-    })
-    .to_string();
+    });
+    // Things on a wall or the ceiling hang in a room (its back wall runs behind them).
+    if matches!(def.layer, Layer::Wall | Layer::Ceiling) {
+        lot["walls"] = json!([[3, 4, 11, 4], [3, 11, 11, 11], [3, 4, 3, 11], [11, 4, 11, 11]]);
+        lot["doors"] = json!([{"x": 6, "z": 11, "axis": "x"}]);
+    }
+    let lot = lot.to_string();
     if let Err(e) = World::from_json(merged, &lot, 1) {
         println!("  FAIL: can't place it on a 14x14 test lot: {e}");
         return false;

@@ -332,11 +332,22 @@ export class BuildBuyInput {
     const def = placing && this.content.object(placing.def);
     if (!placing || !def) return null;
     const [fw, fd] = def.footprint ?? [1, 1];
-    const [w, d] = placing.rot % 2 === 0 ? [fw, fd] : [fd, fw];
-    const x = Math.floor(ground.x - w / 2 + 0.5);
-    const z = Math.floor(ground.z - d / 2 + 0.5);
-    const fit = this.fits(x, z, w, d, placing.rot, placing.objectId, def);
-    return { def, rot: placing.rot, turn: placing.turn, x, z, w, d, valid: fit === true, reason: fit === true ? null : fit };
+    const at = (rot: number) => {
+      const [w, d] = rot % 2 === 0 ? [fw, fd] : [fd, fw];
+      const x = Math.floor(ground.x - w / 2 + 0.5);
+      const z = Math.floor(ground.z - d / 2 + 0.5);
+      const fit = this.fits(x, z, w, d, rot, placing.objectId, def);
+      return { def, rot, turn: placing.turn, x, z, w, d, valid: fit === true, reason: fit === true ? null : fit };
+    };
+    const p = at(placing.rot);
+    // Things on a wall turn to face away from the wall they're pointed at.
+    if (!p.valid && def.layer === 'wall') {
+      for (let k = 1; k < 4; k++) {
+        const q = at((placing.rot + k) % 4);
+        if (q.valid) return q;
+      }
+    }
+    return p;
   }
 
   /** Whether a tile is indoors (a tile split by a diagonal wall is when either half is, as in the simulation). */
@@ -352,14 +363,27 @@ export class BuildBuyInput {
     const home = this.home();
     if (!home) return null;
     const onPlot = (tx: number, tz: number) => tx >= home.x && tz >= home.z && tx < home.x + home.w && tz < home.z + home.d;
-    const taken = (tx: number, tz: number) =>
-      game.objects.some((o) => o.id !== moving && tx >= o.x && tz >= o.z && tx < o.x + o.w && tz < o.z + o.d);
-    for (let tz = z; tz < z + d; tz++) for (let tx = x; tx < x + w; tx++) if (!onPlot(tx, tz) || taken(tx, tz)) return null;
+    // Only things on the same layer take each other's place (a picture over a sofa, a rug under it).
+    const layer = this.content.layer(def);
+    const takenOn = (on: string, tx: number, tz: number) =>
+      game.objects.some((o) => o.id !== moving && tx >= o.x && tz >= o.z && tx < o.x + o.w && tz < o.z + o.d && this.content.layer(this.content.object(o.def)) === on);
+    for (let tz = z; tz < z + d; tz++) for (let tx = x; tx < x + w; tx++) if (!onPlot(tx, tz) || takenOn(layer, tx, tz)) return null;
     if (def.outdoors) {
       for (let tz = z; tz < z + d; tz++) for (let tx = x; tx < x + w; tx++) if (this.indoors(tx, tz)) return 'Goes outdoors';
     }
+    if (layer === 'ceiling') {
+      for (let tz = z; tz < z + d; tz++) for (let tx = x; tx < x + w; tx++) if (!this.indoors(tx, tz)) return 'Hangs from a ceiling';
+    }
+    if (layer === 'wall') {
+      const backs: { axis: Axis; x: number; z: number }[] = [];
+      for (let tx = x; tx < x + w; tx++) if (rot % 4 === 0 || rot % 4 === 2) backs.push({ axis: 'h', x: tx, z: rot % 4 === 0 ? z : z + d });
+      for (let tz = z; tz < z + d; tz++) if (rot % 4 === 1 || rot % 4 === 3) backs.push({ axis: 'v', x: rot % 4 === 1 ? x : x + w, z: tz });
+      if (!backs.every((e) => ['wall', 'window'].includes(this.edgeState(e)))) return 'Hangs on a wall';
+    }
+    // Something on a wall, the ceiling or the floor that nobody uses needn't be reached.
+    const unused = layer !== 'floor' && def.interactions.length === 0;
     const front = frontTile(x, z, w, d, rot);
-    if (!onPlot(front[0], front[1]) || taken(front[0], front[1])) return null;
+    if (!onPlot(front[0], front[1]) || (!unused && takenOn('floor', front[0], front[1]))) return null;
     // As the simulation: no wall through the footprint, or between it and where it's used from.
     for (let tz = z; tz < z + d; tz++) {
       for (let tx = x; tx < x + w; tx++) {

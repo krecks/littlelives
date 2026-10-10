@@ -124,6 +124,10 @@ interface PlacedObject {
   maxX: number;
   maxZ: number;
   height: number;
+  /** Bottom of the model above `y0` (things on a wall or the ceiling hang higher). */
+  bottom: number;
+  /** Things on a wall: the way they face (`rot`), to hide them with the wall they hang on. */
+  wallRot?: number;
   /** Its instance in the template's matrix buffer (for the placement pop). */
   pop: PopTarget;
   /** Its contact shadow's instance. */
@@ -452,6 +456,7 @@ export class BabylonRenderer implements Renderer {
     for (const mesh of this.worldMeshes) mesh.dispose(false, false);
     this.worldMeshes = [];
     this.placed = [];
+    this.wallItemsHidden.clear();
     this.fx.clearPops();
     // The held object's buffers go with the old world; a moved one now shows in its new place.
     this.held = null;
@@ -588,7 +593,8 @@ export class BabylonRenderer implements Renderer {
     let objectId: number | null = null;
     let nearest = Infinity;
     for (const p of this.placed) {
-      const t = rayBox(o, d, p.minX, p.y0, p.minZ, p.maxX, p.y0 + p.height, p.maxZ);
+      if (this.wallItemsHidden.has(p.id)) continue;
+      const t = rayBox(o, d, p.minX, p.y0 + p.bottom, p.minZ, p.maxX, p.y0 + p.height, p.maxZ);
       if (t < nearest) {
         nearest = t;
         objectId = p.id;
@@ -1163,6 +1169,7 @@ export class BabylonRenderer implements Renderer {
     this.walls = this.wallsLow = null;
     this.retireTemplates(new Set());
     this.placed = [];
+    this.wallItemsHidden.clear();
     this.held = null;
     this.characters?.clear();
     this.simCount = 0;
@@ -2030,7 +2037,35 @@ export class BabylonRenderer implements Renderer {
     if (bits === this.cutLook) return;
     this.cutLook = bits;
     this.lib.wallCut.look.set(bits & 1 ? 1 : 0, bits & 2 ? 1 : 0, bits & 4 ? 1 : 0, bits & 8 ? 1 : 0);
+    this.cutWallItems(bits);
     this.resetSnapshot();
+  }
+
+  /** Things on a wall hidden with the wall they hang on, and their matrices to show them again. */
+  private readonly wallItemsHidden = new Map<number, Float32Array>();
+
+  /**
+   * Things on a wall go with their wall: all of them with walls down, and in cutaway those on the
+   * walls that drop (facing the way the camera looks, so their wall stands between it and them).
+   */
+  private cutWallItems(bits: number): void {
+    const down = this.wallMode === 'down';
+    for (const p of this.placed) {
+      if (p.wallRot === undefined || p.id === this.held?.id) continue;
+      const r = p.wallRot;
+      const hide = down || (bits & 1 && r === 1) || (bits & 2 && r === 3) || (bits & 4 && r === 0) || (bits & 8 && r === 2);
+      const saved = this.wallItemsHidden.get(p.id);
+      if (hide && !saved) {
+        const m = p.pop.matrices.slice(p.pop.index * 16, p.pop.index * 16 + 16);
+        this.wallItemsHidden.set(p.id, m);
+        const gone = m.slice();
+        gone.fill(0, 0, 12);
+        this.writeInstance(p.pop, gone);
+      } else if (!hide && saved) {
+        this.wallItemsHidden.delete(p.id);
+        this.writeInstance(p.pop, saved);
+      }
+    }
   }
 
   /** Model key for an object, preferring its style variant (`model.sofa@modern`) when one exists. */
@@ -2069,7 +2104,20 @@ export class BabylonRenderer implements Renderer {
         Quaternion.RotationYawPitchRollToRef((o.rot * Math.PI) / 2 + ((o.turn ?? 0) * Math.PI) / 180 + turn, 0, 0, this.qTmp);
         Matrix.ComposeToRef(this.vScale.setAll(size), this.qTmp, this.vTmp.set(o.x + o.w / 2, y0, z + o.d / 2), this.mOut);
         this.mOut.copyToArray(matrices, i * 16);
-        this.placed.push({ id: o.id, y0, minX: o.x, minZ: z, maxX: o.x + o.w, maxZ: z + o.d, height: template.height, pop: { meshes: template.meshes, matrices, index: i } });
+        const layer = this.deps.content.object(o.def)?.layer;
+        const bottom = layer === 'wall' || layer === 'ceiling' ? Math.max(0, Math.min(template.bottom ?? 0, template.height - 0.05)) : 0;
+        this.placed.push({
+          id: o.id,
+          y0,
+          minX: o.x,
+          minZ: z,
+          maxX: o.x + o.w,
+          maxZ: z + o.d,
+          height: template.height,
+          bottom,
+          wallRot: layer === 'wall' ? o.rot % 4 : undefined,
+          pop: { meshes: template.meshes, matrices, index: i },
+        });
       });
       for (const mesh of template.meshes) {
         mesh.thinInstanceSetBuffer('matrix', matrices, 16, true);
@@ -2080,9 +2128,11 @@ export class BabylonRenderer implements Renderer {
     shown.forEach((o, i) => {
       const k = i * 16;
       const s = this.storeyOf(o.z);
-      blobs[k] = o.w * 1.15;
-      blobs[k + 5] = 1;
-      blobs[k + 10] = o.d * 1.15;
+      // Nothing on a wall, the ceiling or the floor's surface (rugs) sits on a contact shadow.
+      const flat = (this.deps.content.object(o.def)?.layer ?? 'floor') !== 'floor' ? 0 : 1;
+      blobs[k] = o.w * 1.15 * flat;
+      blobs[k + 5] = flat;
+      blobs[k + 10] = o.d * 1.15 * flat;
       blobs[k + 12] = o.x + o.w / 2;
       blobs[k + 13] = 0.018 + s * WALL_HEIGHT;
       blobs[k + 14] = o.z - s * D + o.d / 2;

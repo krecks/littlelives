@@ -295,7 +295,10 @@ impl World {
             .iter()
             .map(|o| {
                 let (fx, fz) = o.front_tile(&self.content);
+                let def = &self.content.objects[o.def];
+                // Nobody needs to reach a picture or a rug nobody uses.
                 self.object_plot[o.id as usize] != Some(plot)
+                    || (def.layer.mounted() && def.interactions.is_empty())
                     || (self.lot.in_bounds(fx, fz) && seen[self.lot.tile_index(fx, fz)])
             })
             .collect();
@@ -344,8 +347,13 @@ impl World {
         value: i64,
     ) -> Result<u32, Error> {
         let obj = self.check_fit(def, x, z, rot).map_err(|e| {
-            Error::new(if e.to_string().contains("diagonal") {
+            let e = e.to_string();
+            Error::new(if e.contains("diagonal") {
                 "furniture can't stand on a tile with a diagonal wall"
+            } else if e.contains("no wall to hang on") {
+                "that hangs on a wall: put its back to one"
+            } else if e.contains("needs a ceiling") {
+                "that hangs from a ceiling: put it in a room"
             } else {
                 "there's no room for that here"
             })
@@ -356,7 +364,9 @@ impl World {
         if self.content.objects[def].outdoors && !self.all_outdoors(&obj) {
             return Err(Error::new("that has to go outside"));
         }
-        if self.sim_in_the_way(&obj) {
+        // Residents walk under pictures and lamps and over rugs.
+        let mounted = self.content.objects[def].layer.mounted();
+        if !mounted && self.sim_in_the_way(&obj) {
             return Err(Error::new("someone is standing there"));
         }
         let before = self.reach_signature(plot);
@@ -371,7 +381,9 @@ impl World {
             room != OUTDOORS
                 && !(p.z + k..p.z + p.d + k).any(|z| (p.x..p.x + p.w).any(|x| self.lot.room_at(x, z) == room && seen[self.lot.tile_index(x, z)]))
         };
-        let front_ok = seen[self.lot.tile_index(fx, fz)] || (self.storey_of(fz) > 0 && cut_off());
+        // A picture or a rug nobody uses can go anywhere (over a bed, behind a sofa).
+        let unused = mounted && self.content.objects[def].interactions.is_empty();
+        let front_ok = unused || seen[self.lot.tile_index(fx, fz)] || (self.storey_of(fz) > 0 && cut_off());
         if !front_ok || !self.keeps_reach(plot, &before, Some(id)) {
             self.remove_object(id);
             return Err(Error::new("that would block the way"));
@@ -667,6 +679,12 @@ impl World {
                 return Err(Error::new(
                     "a wall can't go through furniture or in front of it",
                 ));
+            }
+            if !matches!(target, Edge::Wall | Edge::Window)
+                && diagonal.is_none()
+                && self.hangs_on(e.axis == EdgeAxis::H, e.x, e.z)
+            {
+                return Err(Error::new("something hangs on that wall: move it first"));
             }
             if let Some(dir) = diagonal
                 && target != Edge::Open
