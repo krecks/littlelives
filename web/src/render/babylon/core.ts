@@ -17,7 +17,7 @@ import '@babylonjs/core/Engines/WebGPU/Extensions/engine.multiRender';
 
 export { Bone } from '@babylonjs/core/Bones/bone';
 export { Skeleton } from '@babylonjs/core/Bones/skeleton';
-export { VertexBuffer } from '@babylonjs/core/Buffers/buffer';
+export { Buffer, VertexBuffer } from '@babylonjs/core/Buffers/buffer';
 export { ArcRotateCamera } from '@babylonjs/core/Cameras/arcRotateCamera';
 export { Camera } from '@babylonjs/core/Cameras/camera';
 export { FreeCamera } from '@babylonjs/core/Cameras/freeCamera';

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { Appearance } from '../../game/household';
   import type { SimStage, StageReaction } from '../../render/types';
+  import type { VisemeTrack } from '../../voice/visemes';
   import Icon from '../Icon.svelte';
   import { services } from '../services';
   import SimPreview from './SimPreview.svelte';
@@ -55,6 +56,11 @@
   export function react(reaction: StageReaction): void {
     if (stage) stage.react(reaction);
     else queued = reaction;
+  }
+
+  /** Lip sync while a line plays (null: stops); nothing before the stage is up. */
+  export function speak(track: VisemeTrack | null, startTime: number): void {
+    stage?.speak(track, startTime);
   }
 </script>
 

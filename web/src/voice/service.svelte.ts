@@ -6,7 +6,14 @@
 
 import { settings } from '../settings/settings.svelte';
 import { SAMPLE_RATE, type FromVoiceWorker, type ToVoiceWorker } from './protocol';
+import { parseVisemes, type VisemeTrack } from './visemes';
 import type { VoiceParams } from './voices';
+
+/** One line of speech: 24 kHz mono and its mouth shapes. */
+export interface Clip {
+  samples: Float32Array;
+  visemes: VisemeTrack;
+}
 
 export interface BenchResult {
   /** Median generation time ÷ audio length (lower is faster; 0.25 = four times real time). */
@@ -70,7 +77,7 @@ const BENCH_VOICE: VoiceParams = { mix: [5, 5, 1], speed: 1, pitch: 1, depth: 1 
 
 let worker: Worker | null = null;
 let nextId = 1;
-const pending = new Map<number, { resolve: (s: Float32Array) => void; reject: (e: Error) => void }>();
+const pending = new Map<number, { resolve: (c: Clip) => void; reject: (e: Error) => void }>();
 let waiters: { resolve: () => void; reject: (e: Error) => void }[] = [];
 /** Counters behind `voiceThreadStats` (not reactive: read by the overlay's timer). */
 const BUSY_WINDOW_MS = 5000;
@@ -97,7 +104,7 @@ function onMessage(msg: FromVoiceWorker): void {
     counters.audioSeconds += msg.samples.length / SAMPLE_RATE;
     counters.recent.push({ at: now, ms: msg.ms });
     while (counters.recent.length && counters.recent[0].at < now - BUSY_WINDOW_MS) counters.recent.shift();
-    pending.get(msg.id)?.resolve(msg.samples);
+    pending.get(msg.id)?.resolve({ samples: msg.samples, visemes: parseVisemes(msg.visemes) });
     pending.delete(msg.id);
   } else if (msg.type === 'error') {
     if (msg.id !== undefined) {
@@ -141,8 +148,8 @@ export function voiceReady(): boolean {
  * instead of making it again. Least recently used first out; survives the engine unloading.
  */
 const CACHE_BYTES = 24 * 2 ** 20;
-const clips = new Map<string, Float32Array>();
-const making = new Map<string, Promise<Float32Array>>();
+const clips = new Map<string, Clip>();
+const making = new Map<string, Promise<Clip>>();
 const cache = { bytes: 0, hits: 0 };
 
 function clipKey(text: string, voice: VoiceParams): string {
@@ -151,7 +158,7 @@ function clipKey(text: string, voice: VoiceParams): string {
 }
 
 /** The clip for this line and voice if it was made before (and keeps it fresh), else null. */
-export function cachedClip(text: string, voice: VoiceParams): Float32Array | null {
+export function cachedClip(text: string, voice: VoiceParams): Clip | null {
   const key = clipKey(text, voice);
   const clip = clips.get(key);
   if (!clip) return null;
@@ -162,35 +169,41 @@ export function cachedClip(text: string, voice: VoiceParams): Float32Array | nul
 }
 
 /** Audio for one line, from the cache or made (once, however often it's asked for meanwhile). */
-export function speak(text: string, voice: VoiceParams): Promise<Float32Array> {
+export function speak(text: string, voice: VoiceParams): Promise<Clip> {
   const cached = cachedClip(text, voice);
   if (cached) return Promise.resolve(cached);
   const key = clipKey(text, voice);
   const inFlight = making.get(key);
   if (inFlight) return inFlight;
   const clip = synthesize(text, voice)
-    .then((samples) => {
-      keep(key, samples);
-      return samples;
+    .then((c) => {
+      keep(key, c);
+      return c;
     })
     .finally(() => making.delete(key));
   making.set(key, clip);
   return clip;
 }
 
-function keep(key: string, samples: Float32Array): void {
-  if (clips.has(key) || samples.byteLength > CACHE_BYTES / 8) return;
-  clips.set(key, samples);
-  cache.bytes += samples.byteLength;
+function keep(key: string, clip: Clip): void {
+  const bytes = clipBytes(clip);
+  if (clips.has(key) || bytes > CACHE_BYTES / 8) return;
+  clips.set(key, clip);
+  cache.bytes += bytes;
   for (const [k, old] of clips) {
     if (cache.bytes <= CACHE_BYTES) break;
     clips.delete(k);
-    cache.bytes -= old.byteLength;
+    cache.bytes -= clipBytes(old);
   }
 }
 
-/** Audio for one line (24 kHz mono), always made fresh (the speed test). Lines are made one after another in the worker. */
-export async function synthesize(text: string, voice: VoiceParams): Promise<Float32Array> {
+/** The samples and the whole flat track the parsed one views. */
+function clipBytes(c: Clip): number {
+  return c.samples.byteLength + c.visemes.times.buffer.byteLength + c.visemes.visemes.byteLength;
+}
+
+/** Audio for one line (24 kHz mono) and its mouth shapes, always made fresh (the speed test). Lines are made one after another in the worker. */
+export async function synthesize(text: string, voice: VoiceParams): Promise<Clip> {
   await ensureVoice();
   const id = nextId++;
   return new Promise((resolve, reject) => {
@@ -281,7 +294,7 @@ async function bench(): Promise<BenchResult> {
   try {
     for (const line of BENCH_LINES) {
       const start = performance.now();
-      const samples = await synthesize(line, BENCH_VOICE);
+      const { samples } = await synthesize(line, BENCH_VOICE);
       const ms = performance.now() - start;
       runs.push({ ms, rtf: ms / 1000 / (samples.length / SAMPLE_RATE) });
     }

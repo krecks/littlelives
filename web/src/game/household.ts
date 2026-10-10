@@ -5,7 +5,35 @@ import type { Content, LifeStageDef } from '../content/content';
 import { GARMENTS, pickOutfit } from '../render/babylon/characters/outfit';
 import { baseVoice, KITTEN_VOICES, VOICE_RANGE, type VoiceChoice } from '../voice/voices';
 
-export const HAIR_STYLES = ['short', 'long', 'bun', 'none'] as const;
+/** Hairstyles (character parts `hair.<style>`): the stylised set, MakeHuman's, and bald. */
+export const HAIR_STYLES = [
+  'short',
+  'crop',
+  'layered',
+  'tousled',
+  'sideSwept',
+  'afro',
+  'bob',
+  'long',
+  'ponytail',
+  'braid',
+  'bun',
+  'none',
+] as const;
+export const HAIR_LABELS: Record<HairStyle, string> = {
+  short: 'Parted',
+  crop: 'Crop',
+  layered: 'Layered',
+  tousled: 'Tousled',
+  sideSwept: 'Side-swept',
+  afro: 'Afro',
+  bob: 'Bob',
+  long: 'Long',
+  ponytail: 'Ponytail',
+  braid: 'Braid',
+  bun: 'Buns',
+  none: 'Bald',
+};
 export type HairStyle = (typeof HAIR_STYLES)[number];
 
 /** Opaque to the simulation; read by the renderer and UI. */
@@ -15,6 +43,8 @@ export interface Appearance {
   skin: string;
   hair: string;
   hairStyle: HairStyle;
+  /** Iris colour (missing in older saves: the renderer picks one from the Sim's id). */
+  eyes?: string;
   /** Scale factor, 0.9..1.1. */
   height: number;
   /** Facial hair (bodies that have it). */
@@ -27,12 +57,15 @@ export interface Appearance {
   bottom?: string;
   shoes?: string;
   bottomColor?: string;
+  /** No longer used (shoes keep their own colours); kept in older saves. */
   shoesColor?: string;
   /** Optional model key overriding `model.sim` (for future character models). */
   model?: string;
   /** The hair colour before age greyed it (`hair` is what's shown). */
   hairBase?: string;
-  /** Body and head size for the life stage (set when shown; children are small with big heads). */
+  /** Life stage id (content `life.stages`; set when shown): the renderer draws the body made for it. */
+  stage?: string;
+  /** Body and head size for the life stage (set when shown; children are small with big heads), for bodies without one made for it. */
   stageScale?: number;
   stageHead?: number;
   stageStoop?: number;
@@ -92,7 +125,7 @@ export interface SimSpawn {
 
 export function palette(
   assets: AssetRegistry,
-  key: 'palette.skin' | 'palette.hair' | 'palette.outfit' | 'palette.bottoms' | 'palette.shoes',
+  key: 'palette.skin' | 'palette.hair' | 'palette.eyes' | 'palette.outfit' | 'palette.bottoms' | 'palette.shoes',
 ): string[] {
   return assets.get(key, 'palette')?.colors ?? ['#CCCCCC'];
 }
@@ -127,8 +160,33 @@ function randomAttraction(content: Content, gender: string): string[] {
 
 function randomHair(gender: string, rand: () => number = Math.random): HairStyle {
   return gender === 'female'
-    ? weighted<HairStyle>([['long', 50], ['bun', 25], ['short', 25]], rand)
-    : weighted<HairStyle>([['short', 75], ['long', 10], ['none', 15]], rand);
+    ? weighted<HairStyle>(
+        [
+          ['long', 24],
+          ['ponytail', 14],
+          ['bob', 16],
+          ['braid', 8],
+          ['bun', 10],
+          ['afro', 6],
+          ['sideSwept', 6],
+          ['tousled', 5],
+          ['layered', 5],
+        ],
+        rand,
+      )
+    : weighted<HairStyle>(
+        [
+          ['short', 20],
+          ['crop', 20],
+          ['layered', 14],
+          ['tousled', 12],
+          ['sideSwept', 10],
+          ['afro', 6],
+          ['long', 4],
+          ['none', 14],
+        ],
+        rand,
+      );
 }
 
 /** A first name that suits `gender`, avoiding `taken` names while there are others. */
@@ -154,8 +212,10 @@ export function regender(content: Content, sim: SimDraft, from: string, taken: r
     'top.blouse': 'top.polo',
     'top.vneck': 'top.tank',
     'top.polo': 'top.blouse',
+    'top.suit': 'top.jacket',
     'bottom.skirt': 'bottom.trousers',
     'bottom.capri': 'bottom.trousers',
+    'bottom.suit': 'bottom.trousers',
   };
   if (look.top && !tops.includes(look.top)) look.top = tops.includes(similar[look.top]) ? similar[look.top] : tops[0];
   if (look.bottom && !bottoms.includes(look.bottom)) look.bottom = bottoms.includes(similar[look.bottom]) ? similar[look.bottom] : bottoms[0];
@@ -231,6 +291,7 @@ export function randomLook(assets: AssetRegistry, gender: string, rand: () => nu
     skin: pick(palette(assets, 'palette.skin'), rand),
     hair: pick(palette(assets, 'palette.hair'), rand),
     hairStyle: randomHair(gender, rand),
+    eyes: pick(palette(assets, 'palette.eyes'), rand),
     height: Math.round((0.94 + rand() * 0.12) * 100) / 100,
     beard: gender === 'male' && rand() < 0.2,
     ...pickOutfit(gender, rand),
@@ -386,10 +447,11 @@ export function lookOfStage(appearance: Appearance, stage: LifeStageDef | undefi
     for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
     appearance = { ...appearance, hair: young[h % young.length], hairBase: undefined };
   }
+  const stageId = stage?.id;
   const stageScale = stage?.scale;
   const stageHead = stage?.head;
   const stageStoop = stage?.stoop;
-  return stageScale === appearance.stageScale && stageHead === appearance.stageHead && stageStoop === appearance.stageStoop
+  return stageId === appearance.stage && stageScale === appearance.stageScale && stageHead === appearance.stageHead && stageStoop === appearance.stageStoop
     ? appearance
-    : { ...appearance, stageScale, stageHead, stageStoop };
+    : { ...appearance, stage: stageId, stageScale, stageHead, stageStoop };
 }

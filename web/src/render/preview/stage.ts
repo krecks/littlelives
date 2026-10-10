@@ -7,6 +7,7 @@
 
 import { FreeCamera, Vector3 } from '../babylon/core';
 import type { StageDirection } from '../babylon/characters';
+import type { VisemeTrack } from '../../voice/visemes';
 import type { SimLook, SimStage, StageReaction } from '../types';
 import { reactionFor, slump, tilt, wave, WAVE_SECONDS, type Performance } from './reactions';
 import type { Studio } from './studio';
@@ -115,6 +116,10 @@ export class StageController implements SimStage {
     this.onZoom?.(this.zoomTarget);
   }
 
+  speak(track: VisemeTrack | null, startTime: number): void {
+    if (!this.detached) this.studio.characters.setSpeech(ROW, track, startTime);
+  }
+
   /** Before posing: the Sim's turn, its directions and the camera. */
   direct(now: number): void {
     const t = now / 1000;
@@ -166,6 +171,7 @@ export class StageController implements SimStage {
     canvas.remove();
     this.studio.pool.setEnabled(false);
     this.studio.characters.directions[ROW] = null;
+    this.studio.characters.setSpeech(ROW, null, 0);
     this.studio.setRow(ROW, null);
     this.camera.dispose();
     this.release();

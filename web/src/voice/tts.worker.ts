@@ -31,7 +31,7 @@ const LEXICON: File = ['en-us.lexz', 1_320_518];
 const MODEL: File = ['kitten-nano-0.8-edit2.onnx', 15_450_474];
 const VOICES: File = ['kitten-nano-0.8-voices.f32', 1_048_576];
 const ORT_WASM_BYTES = 14_239_897;
-const VOICE_WASM_BYTES = 140_103;
+const VOICE_WASM_BYTES = 152_378;
 
 const engine: Engine = { ort: ort as unknown as Engine['ort'], phonemizer: null as unknown as Engine['phonemizer'], session: null, kittenVoices: null };
 let loading: Promise<void> | null = null;
@@ -59,8 +59,8 @@ async function speak(id: number, text: string, voice: VoiceParams): Promise<void
     if (!loading) throw new Error('voice model not loaded');
     await loading;
     const start = performance.now();
-    const { samples, resampleMs } = await synthesizeLine(engine, text, voice);
-    scope.postMessage({ type: 'audio', id, samples, ms: performance.now() - start, resampleMs }, [samples.buffer]);
+    const { samples, visemes, resampleMs } = await synthesizeLine(engine, text, voice);
+    scope.postMessage({ type: 'audio', id, samples, visemes, ms: performance.now() - start, resampleMs }, [samples.buffer, visemes.buffer]);
   } catch (err) {
     scope.postMessage({ type: 'error', id, message: String(err) });
   }

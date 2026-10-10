@@ -15,7 +15,7 @@
     <dt>Typeface</dt>
     <dd>Inter by Rasmus Andersson (SIL Open Font License)</dd>
     <dt>Art</dt>
-    <dd>Models, textures and animations from Poly Haven, ambientCG, Kenney and Quaternius (all CC0), plus geometry and icons made for this project; all art is replaceable through the asset manifest</dd>
+    <dd>Models, textures and animations from Poly Haven, ambientCG, Kenney, Quaternius and the MakeHuman Community (all CC0), plus geometry and icons made for this project; all art is replaceable through the asset manifest</dd>
     <dt>Licence</dt>
     <dd>Free software under the GNU General Public License v3.0 (or later): you may use, study, share and modify it; if you distribute it or a modified version, you must make the source available under the same licence. Third-party art keeps its own licence (CC0).</dd>
   </dl>

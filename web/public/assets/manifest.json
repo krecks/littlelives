@@ -3795,6 +3795,18 @@
         "#6E4A32"
       ]
     },
+    "palette.eyes": {
+      "type": "palette",
+      "colors": [
+        "#4A2E1B",
+        "#6B4226",
+        "#8A6237",
+        "#A57C2C",
+        "#5F7A3E",
+        "#4E7BA6",
+        "#7C8A96"
+      ]
+    },
     "palette.hair": {
       "type": "palette",
       "colors": [

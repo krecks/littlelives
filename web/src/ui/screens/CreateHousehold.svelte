@@ -4,6 +4,7 @@
     bondBetween,
     draftVoice,
     ensureOutfit,
+    HAIR_LABELS,
     HAIR_STYLES,
     householdProblems,
     lookAtAge,
@@ -36,23 +37,29 @@
   const swatches = {
     body: palette(assets, 'palette.outfit'),
     skin: palette(assets, 'palette.skin'),
+    eyes: palette(assets, 'palette.eyes'),
     hair: palette(assets, 'palette.hair'),
     bottomColor: palette(assets, 'palette.bottoms'),
-    shoesColor: palette(assets, 'palette.shoes'),
   };
   const garmentLabels: Record<string, string> = {
     'top.tee': 'T-shirt',
     'top.long': 'Long sleeve',
     'top.vneck': 'V-neck',
     'top.polo': 'Polo',
-    'top.tank': 'Tank top',
+    'top.tank': 'Crop top',
     'top.blouse': 'Blouse',
-    'bottom.trousers': 'Trousers',
+    'top.shirt': 'Shirt',
+    'top.jacket': 'Jacket',
+    'top.suit': 'Suit jacket',
+    'bottom.trousers': 'Jeans',
     'bottom.shorts': 'Shorts',
-    'bottom.capri': 'Capris',
+    'bottom.capri': 'Leggings',
     'bottom.skirt': 'Skirt',
+    'bottom.suit': 'Suit trousers',
     'shoes.sneakers': 'Sneakers',
+    'shoes.trainers': 'Trainers',
     'shoes.boots': 'Boots',
+    'shoes.dress': 'Dress shoes',
   };
   const garmentLabel = (part: string) => garmentLabels[part] ?? part.slice(part.indexOf('.') + 1).replace(/^./, (c) => c.toUpperCase());
   const tabs = ['Identity', 'Look', 'Traits', 'Perks', 'Bonds'] as const;
@@ -186,8 +193,15 @@
     try {
       const clip = await speak(name ? `Hi, I'm ${name}! This is how I sound.` : 'Hi! This is how I sound.', params);
       playing?.stop();
-      playing = playClip(clip);
+      const p = (playing = playClip(clip.samples));
       stage?.react('hello');
+      if (p) {
+        // The Sim on the stage says it; the mouth rests when it ends (or another sample cuts in).
+        stage?.speak(clip.visemes, p.startTime);
+        void p.ended.then(() => {
+          if (playing === p) stage?.speak(null, 0);
+        });
+      }
     } catch {
       // The note under the button says why (the voice couldn't load).
     } finally {
@@ -500,7 +514,7 @@
             {rules.perkPoints} points.
           </p>
         {:else if tab === 'Look'}
-          {#snippet colors(key: 'body' | 'skin' | 'hair' | 'bottomColor' | 'shoesColor', label: string)}
+          {#snippet colors(key: 'body' | 'skin' | 'eyes' | 'hair' | 'bottomColor', label: string)}
             <div class="swatches" role="radiogroup" aria-label={label}>
               {#each swatches[key] as color (color)}
                 <button
@@ -529,12 +543,18 @@
             {@render colors('skin', 'Skin tone')}
           </div>
           <div class="field">
+            <span class="eyebrow">Eyes</span>
+            {@render colors('eyes', 'Eye colour')}
+          </div>
+          <div class="field">
             <span class="eyebrow">Hair</span>
-            <Segmented
-              label="Hairstyle"
-              bind:value={sim.appearance.hairStyle}
-              options={HAIR_STYLES.map((h) => ({ value: h, label: h === 'none' ? 'Bald' : h[0].toUpperCase() + h.slice(1) }))}
-            />
+            <div class="chips-row" role="radiogroup" aria-label="Hairstyle">
+              {#each HAIR_STYLES as h (h)}
+                <button class="pill" role="radio" aria-checked={sim.appearance.hairStyle === h} class:on={sim.appearance.hairStyle === h} onclick={() => setLook('hairStyle', h)}>
+                  {HAIR_LABELS[h]}
+                </button>
+              {/each}
+            </div>
             {@render colors('hair', 'Hair colour')}
             {#if wardrobe?.beard}
               <div class="chips-row" role="radiogroup" aria-label="Facial hair">
@@ -556,7 +576,6 @@
           <div class="field">
             <span class="eyebrow">Shoes</span>
             {#if wardrobe}{@render garments('shoes', wardrobe.shoes, 'Shoes')}{/if}
-            {@render colors('shoesColor', 'Shoe colour')}
           </div>
           <label class="field">
             <span class="eyebrow">Height</span>

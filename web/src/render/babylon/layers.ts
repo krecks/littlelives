@@ -7,3 +7,5 @@ export const LAYER_WORLD = 0x0fffffff;
 export const LAYER_TOWN = 0x10000000;
 /** Drawn in both (sky, and a landscape shared by the overview and the game). */
 export const LAYER_ALL = LAYER_WORLD | LAYER_TOWN;
+/** Meshes only shadow maps draw (their own render lists); no camera has this layer. */
+export const LAYER_SHADOW_ONLY = 0x20000000;

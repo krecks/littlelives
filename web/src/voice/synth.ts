@@ -5,8 +5,8 @@
  *
  * KittenTTS nano takes espeak-style ids, `speed`, `pitch` and a 256-number `style`: the
  * resident's mix of two of its eight voices, from the row for the line's length. Its output is
- * trimmed of the silence around the speech and given the voice's size by resampling (`depth`;
- * both done in Rust).
+ * trimmed of the silence around the speech and given the voice's size by resampling (`depth`),
+ * and its mouth shapes are found (`visemes.ts`; all three done in Rust).
  */
 
 import type { VoiceParams } from './voices';
@@ -26,6 +26,8 @@ interface Inputs {
   readonly depth: number;
   readonly row: number;
   finish(samples: Float32Array): Float32Array;
+  /** After `finish`: the clip's mouth shapes, flat (`parseVisemes`). */
+  readonly visemes: Float32Array;
   free(): void;
 }
 export interface Phonemizer {
@@ -54,14 +56,14 @@ export function kittenStyle(table: Float32Array, row: number, [a, b, w]: readonl
   return style;
 }
 
-/** 24 kHz mono for one line; `resampleMs`: the part spent trimming and resizing. */
-export async function synthesizeLine(engine: Engine, text: string, voice: VoiceParams): Promise<{ samples: Float32Array; resampleMs: number }> {
+/** 24 kHz mono for one line and its mouth shapes (flat); `resampleMs`: the part spent trimming, resizing and finding them. */
+export async function synthesizeLine(engine: Engine, text: string, voice: VoiceParams): Promise<{ samples: Float32Array; visemes: Float32Array; resampleMs: number }> {
   const { session, kittenVoices } = engine;
   if (!session || !kittenVoices) throw new Error('voice model not loaded');
   const inputs = engine.phonemizer.inputs(text, voice.speed, voice.pitch, voice.depth);
   try {
     const ids = inputs.ids;
-    if (ids.length === 0) return { samples: new Float32Array(0), resampleMs: 0 };
+    if (ids.length === 0) return { samples: new Float32Array(0), visemes: Float32Array.of(0, 0), resampleMs: 0 };
     const { Tensor } = engine.ort;
     const feeds: Record<string, unknown> = {
       input_ids: new Tensor('int64', ids, [1, ids.length]),
@@ -72,11 +74,12 @@ export async function synthesizeLine(engine: Engine, text: string, voice: VoiceP
     const out = await session.run(feeds);
     const wave = out.waveform.data as Float32Array;
     const start = performance.now();
-    // A new array of our own, so its buffer can be transferred to the main thread.
+    // New arrays of our own, so their buffers can be transferred to the main thread.
     const samples = inputs.finish(wave);
+    const visemes = inputs.visemes;
     const resampleMs = performance.now() - start;
     for (const t of Object.values(out)) t.dispose?.();
-    return { samples, resampleMs };
+    return { samples, visemes, resampleMs };
   } finally {
     inputs.free();
   }

@@ -14,6 +14,7 @@ pub struct Voice {
 #[wasm_bindgen]
 pub struct Inputs {
     inner: ModelInputs,
+    visemes: Vec<f32>,
 }
 
 #[wasm_bindgen]
@@ -48,9 +49,19 @@ impl Inputs {
         self.inner.depth
     }
 
-    /// The model's output (24 kHz) trimmed and resampled to the voice's size.
-    pub fn finish(&self, samples: &[f32]) -> Vec<f32> {
-        self.inner.finish(samples)
+    /// The model's output (24 kHz) trimmed and resampled to the voice's size; its mouth shapes
+    /// are then in `visemes`.
+    pub fn finish(&mut self, samples: &[f32]) -> Vec<f32> {
+        let (samples, visemes) = self.inner.finish(samples);
+        self.visemes = visemes;
+        samples
+    }
+
+    /// The finished clip's mouth shapes, flat: `[segments, energy frames, times…, visemes…,
+    /// energy…]` (see `voice::VisemeTrack::flat`); empty before `finish`.
+    #[wasm_bindgen(getter)]
+    pub fn visemes(&self) -> Vec<f32> {
+        self.visemes.clone()
     }
 }
 
@@ -69,6 +80,6 @@ impl Voice {
     /// KittenTTS's inputs for a line in a voice (speed, pitch and depth clamped to what sounds
     /// right); `row` says which style vectors to mix.
     pub fn inputs(&self, text: &str, speed: f32, pitch: f32, depth: f32) -> Inputs {
-        Inputs { inner: self.engine.inputs(text, VoiceParams { speed, pitch, depth }) }
+        Inputs { inner: self.engine.inputs(text, VoiceParams { speed, pitch, depth }), visemes: Vec::new() }
     }
 }

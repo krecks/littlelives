@@ -1,9 +1,9 @@
 /**
- * Sims as skinned, animated characters (CC0 bodies, hair and clips by Quaternius; see
- * `tools/characters/build.py` and `assets/characters/`).
+ * Sims as skinned, animated characters (CC0 MakeHuman bodies and faces, hair and clips by
+ * Quaternius; see `tools/characters/build_mpfb.py` and `assets/characters/`).
  *
  * GPU / performance model:
- * - One mesh per (body, part) — body, eyes, eyelids, brows, each hairstyle and each garment
+ * - One mesh per (body, part) — body, eyes, brows, lashes, teeth, tongue, each hairstyle and each garment
  *   (`top.*`, `bottom.*`, `shoes.*`) — drawn with thin instances (one per Sim wearing it).
  * - Skinning runs on the GPU through Babylon's baked-vertex-animation path: a float texture holds
  *   one row per Sim (all bone matrices, plus appearance texels), and each instance reads "its"
@@ -12,6 +12,15 @@
  *   Only buffer contents change per frame (bone texture, contact-shadow / ring / blanket instance
  *   matrices), never meshes. (WebGPU snapshot replays don't pick up the texture writes, so the game
  *   draws live; see `scheduleSnapshot` in BabylonRenderer.)
+ * - The body's skin is split into chunks by the garments that hide them completely (the build's
+ *   `body_chunks`): a Sim draws only the chunks its outfit leaves visible.
+ * - Small face parts (teeth, tongue, lashes, brows) are drawn only on faces big enough on screen to
+ *   show them, and faces too small to show expressions skip their morphs (`faceDetail`); only the
+ *   instance lists change per frame.
+ * - Far from the camera a Sim switches to MakeHuman's low-detail body and clothes (`lod.*` parts,
+ *   about a tenth of the vertices; with a gap between switching down and up), and every Sim casts
+ *   its sun shadow from shadow-only copies of those (`shadowMeshes`, on `LAYER_SHADOW_ONLY`).
+ * - Hairstyles and life stages load the first time a Sim needs them (`loadPart`, `loadStage`).
  * - No allocations per frame.
  *
  * Animation: a small state machine per Sim, driven by the snapshot: pose, moving, conversation
@@ -21,13 +30,15 @@
  * height per object), lie (under a blanket in beds), talk / listen / laugh / argue / fight / hug /
  * kiss, and object use. States crossfade over ~0.25 s; turns are smoothed.
  *
- * Face: bones under the head (eyes, eyelids, jaw, lip corners, brows) rotated in the head's frame:
- * irregular blinks, eyes on the conversation partner or now and then the camera, expressions from
- * the snapshot `emotion`, and the mouth moving while the Sim speaks (`animateFace`).
+ * Face: face morphs (ARKit face units and visemes, mixed per Sim in `characters/face.ts` and added
+ * on the GPU before skinning) plus eye bones: irregular blinks, eyes on the conversation partner or
+ * now and then the camera with the lids following, expressions from the snapshot `emotion`, and
+ * the mouth speaking the voice line's visemes (`setSpeech`), or babbling without one (`animateFace`).
  */
 
 import {
   Bone,
+  Buffer,
   Color3,
   Constants,
   DynamicTexture,
@@ -37,7 +48,6 @@ import {
   PBRMaterial,
   RawTexture,
   Skeleton,
-  Texture,
   Matrix,
   VertexData,
   type Scene,
@@ -47,16 +57,33 @@ import type { AssetRegistry } from '../../assets/registry';
 import type { FrameState } from '../../core/bridge';
 import type { ObjectPlacement, SimInfo, WorldStructure } from '../../core/protocol';
 import { Pose } from '../../core/snapshot';
-import { loadCharacterSet, type BodyData, type CharacterSet, type Clip } from './characters/data';
-import { APPEARANCE_TEXELS, CharacterPlugin, type CharacterSurface } from './characters/material';
+import { loadCharacterSet, loadPart, loadStage, type BodyData, type CharacterSet, type Clip } from './characters/data';
+import { APPEARANCE_TEXELS, CharacterPlugin, MORPH_TEXELS, type CharacterSurface, type MorphBinding } from './characters/material';
+import { FACE_KEYS, FaceMixer, NEUTRAL, type Face } from './characters/face';
+import { ENERGY_RATE, type VisemeTrack } from '../../voice/visemes';
 import { outfitFor, writeOutfit, type OutfitParams } from './characters/outfit';
 import { BLANKET_WIDTH, blanketMaterial, buildBlanket, type BlanketShape } from './characters/blanket';
 import { addLocal, addRotation, blendInto, makeAdditive, PoseScratch, resetAdditive, sampleClip, skin, type Additive, type Placement } from './characters/pose';
 import { textureWithFallback, type MaterialLibrary } from './materials';
 import { WALL_HEIGHT } from './house';
+import { LAYER_SHADOW_ONLY } from './layers';
 
 /** Rows in the pose texture (= Sim capacity). */
 export const MAX_CHARACTERS = 64;
+/** Hip roll (rad) while walking, per body. */
+const GAIT_SWAY: Record<string, number> = { female: 0.07, male: 0.015 };
+
+/** Life stages without facial hair. */
+const YOUNG_STAGES = new Set(['baby', 'child', 'teen']);
+/** Parts every Sim has (besides the body's skin, hair and clothes). */
+const FACE_PARTS: readonly string[] = ['eyes', 'brows', 'lashes', 'teeth', 'tongue'];
+
+/** The body's skin chunks a Sim wearing `parts` shows (those no worn garment hides completely). */
+function skinChunks(body: BodyData, parts: readonly string[]): string[] {
+  return Object.entries(body.bodyChunks)
+    .filter(([, hiders]) => !hiders.some((h) => parts.includes(h)))
+    .map(([chunk]) => chunk);
+}
 /** Standing heights (metres) before a Sim's own height factor. */
 const BASE_HEIGHT: Record<string, number> = { male: 1.77, female: 1.67 };
 /** Snapshot animation codes (see `social::ANIMATIONS` in sim-core). */
@@ -180,6 +207,10 @@ const USE: Record<string, readonly string[]> = {
   tree: ['idle'],
 };
 
+/** Per finger and per joint (knuckle, middle, tip): share of the hand pose's opening (see `fingerMask`). */
+const FINGER_OPEN: Record<string, number> = { index: 1, middle: 0.93, ring: 0.86, pinky: 0.8, thumb: 0.9 };
+const JOINT_OPEN = [0.78, 0.9, 1];
+
 /** Finger pose: 0 = the clip's grip, 1 = open hand (rest pose). */
 const HANDS = {
   grip: 0.1,
@@ -296,81 +327,38 @@ const CLIP_FALLBACK: Record<string, string> = {
 /** Looping clips in a use sequence play this long (s) per step. */
 const LOOP_STEP = 4;
 
-/**
- * Facial expression (all roughly 0..1): smile / frown (lip corners up / down), wide (corners
- * apart, negative = pucker), jaw (mouth open), browUp, browIn (inner ends up: worry, sadness),
- * browDown (frown, anger), lidU (upper lids: + droop, - wide open), lidL (lower lids raised: squint,
- * the eyes of a real smile), gazeDown.
- */
-export interface Face {
-  smile: number;
-  frown: number;
-  wide: number;
-  jaw: number;
-  browUp: number;
-  browIn: number;
-  browDown: number;
-  lidU: number;
-  lidL: number;
-  gazeDown: number;
-}
-const NEUTRAL: Face = {
-  smile: 0,
-  frown: 0,
-  wide: 0,
-  jaw: 0,
-  browUp: 0,
-  browIn: 0,
-  browDown: 0,
-  lidU: 0,
-  lidL: 0,
-  gazeDown: 0,
-};
+export type { Face } from './characters/face';
 /** Expression per emotion id (content `emotions`, packs included); unknown ids stay neutral. */
 export const EXPRESSIONS: Record<string, Partial<Face>> = {
-  happy: { smile: 1, wide: 0.5, lidL: 0.55, browUp: 0.25 },
-  flirty: { smile: 0.65, wide: 0.2, lidU: 0.3, lidL: 0.3, browUp: 0.45 },
-  confident: { smile: 0.45, lidU: 0.12, browDown: 0.15 },
-  focused: {
-    browDown: 0.45,
-    lidU: 0.15,
-    lidL: 0.25,
-    frown: 0.1,
-    gazeDown: 0.15,
-  },
-  inspired: { smile: 0.55, wide: 0.3, browUp: 0.7, lidU: -0.25 },
-  energized: { smile: 0.7, wide: 0.4, browUp: 0.4, lidU: -0.3 },
-  playful: { smile: 0.8, wide: 0.4, lidL: 0.4, browUp: 0.35 },
-  relaxed: { smile: 0.35, lidU: 0.3 },
-  embarrassed: {
-    smile: 0.25,
-    wide: -0.2,
-    browIn: 0.6,
-    lidU: 0.2,
-    gazeDown: 0.6,
-  },
-  sad: { frown: 0.8, wide: -0.2, browIn: 1, lidU: 0.4, gazeDown: 0.45 },
-  tense: { frown: 0.35, wide: -0.35, browIn: 0.55, browDown: 0.3, lidU: -0.15 },
-  uncomfortable: { frown: 0.45, browIn: 0.5, lidU: 0.1 },
-  bored: { frown: 0.15, lidU: 0.45, gazeDown: 0.2 },
-  angry: { frown: 0.75, wide: 0.15, browDown: 1, lidU: -0.1, lidL: 0.35 },
-  dazed: { jaw: 0.15, lidU: 0.35, browUp: 0.3 },
+  happy: { mood: 'happy' },
+  flirty: { mood: 'flirty' },
+  confident: { mood: 'confident' },
+  focused: { mood: 'focused', gazeDown: 0.15 },
+  inspired: { mood: 'inspired' },
+  energized: { mood: 'energized' },
+  playful: { mood: 'playful' },
+  relaxed: { mood: 'relaxed' },
+  embarrassed: { mood: 'embarrassed', gazeDown: 0.6 },
+  sad: { mood: 'sad', gazeDown: 0.45 },
+  tense: { mood: 'tense' },
+  uncomfortable: { mood: 'uncomfortable' },
+  bored: { mood: 'bored', gazeDown: 0.2 },
+  angry: { mood: 'angry' },
+  dazed: { mood: 'dazed' },
+  surprised: { mood: 'surprised' },
+  tired: { mood: 'tired', gazeDown: 0.3 },
+  disgusted: { mood: 'disgusted' },
 };
-const FACE_KEYS = Object.keys(NEUTRAL) as (keyof Face)[];
 /**
- * The resting face every expression starts from: a soft closed-lip smile (corners up, held
- * together so the lips stay closed), relaxed brows lifted a touch with soft inner ends, eyes a
- * little more open with the lower lids raised as in a real smile. Scaled by mood (gone
- * when a Sim is very unhappy) and left out under emotions that frown or knit the brows, which
+ * The resting face every expression starts from: a soft closed-lip smile, relaxed brows lifted a
+ * touch with soft inner ends, the lower lids a little raised as in a real smile. Scaled by mood
+ * (gone when a Sim is very unhappy) and left out under emotions that frown or knit the brows, which
  * define the face themselves; the face returns to it when they pass.
  */
-export const FRIENDLY: Partial<Face> = { smile: 0.45, wide: -0.25, lidU: -0.03, lidL: 0.25, browUp: 0.2, browIn: 0.12 };
+export const FRIENDLY: Partial<Face> = { smile: 0.35, lidL: 0.15, browUp: 0.15, browIn: 0.1 };
 
-const COLD = new Set(
-  Object.entries(EXPRESSIONS)
-    .filter(([, e]) => (e.frown ?? 0) > 0.05 || (e.browDown ?? 0) > 0.3 || (e.browIn ?? 0) > 0.3)
-    .map(([id]) => id),
-);
+/** Emotions that set the whole face themselves (no resting smile under them). */
+const COLD = new Set(['focused', 'embarrassed', 'sad', 'tense', 'uncomfortable', 'bored', 'angry', 'dazed', 'tired', 'disgusted']);
 /** Mood (0..1) below which the resting smile fades out, and where it is full. */
 const MOOD_COLD = 0.2;
 const MOOD_WARM = 0.55;
@@ -382,6 +370,13 @@ const MOOD_WARM = 0.55;
  * little forward with soft elbows (so the hands clear the hips), shoulders down.
  */
 export const STANCE = {
+  /** How far standing idles straighten towards the upright rest stance (0..1). */
+  upright: 0.8,
+  /** Upper arms towards the body (+) from the clips' (all poses but lying). */
+  armsIn: 0,
+  /** Folded arms: upper arms forward (pitch) and out from the body. */
+  fold: -0.25,
+  foldOut: -0.12,
   feet: 0.075,
   stagger: 0.27,
   hip: 0.05,
@@ -400,10 +395,10 @@ export const STANCE = {
 /** Clips standing on the idle base: legs relaxed in all; arms also in the first ones. */
 const RELAX_ARMS = new Set(['idle', 'talk', 'yes', 'no']);
 const RELAX_LEGS = new Set(['idle', 'talk', 'yes', 'no', 'foldArms', 'phone', 'lantern', 'rail']);
-const ASLEEP: Partial<Face> = { jaw: 0.06, smile: 0 };
-const LAUGH: Partial<Face> = { smile: 1, wide: 0.6, lidL: 0.75, browUp: 0.35, frown: 0, browDown: 0 };
-const KISS: Partial<Face> = { smile: 0.2, wide: -1, frown: 0, browDown: 0 };
-const HUG: Partial<Face> = { smile: 0.7, wide: 0.3, frown: 0, browDown: 0 };
+const ASLEEP: Partial<Face> = { mood: 'asleep', smile: 0 };
+const LAUGH: Partial<Face> = { mood: 'laugh', smile: 0, frown: 0, browDown: 0, press: 0 };
+const KISS: Partial<Face> = { mood: 'kiss', smile: 0, frown: 0, browDown: 0, press: 0 };
+const HUG: Partial<Face> = { mood: 'hug', smile: 0, frown: 0, browDown: 0, press: 0 };
 const NONE: Partial<Face> = {};
 
 /**
@@ -548,6 +543,15 @@ interface SimRig {
   shift: number;
   /** Wears a skirt (the hands hang clear of it). */
   skirt: boolean;
+  /** The face's morph weights (one per channel), settling towards the expression. */
+  faceState: Float32Array;
+  /** Face asymmetry: left / right side scales (~0.9..1.1, from the seed). */
+  faceL: number;
+  faceR: number;
+  /** Voice line being spoken (lip sync): its visemes, start (s, `performance.now` clock) and segment. */
+  speech: VisemeTrack | null;
+  speechStart: number;
+  speechSeg: number;
 }
 
 /** Pelvis offset of the seated clip for one body (scale 1). */
@@ -570,8 +574,36 @@ interface PlacedObject {
 
 interface PartMesh {
   mesh: Mesh;
+  /** Instance settings (the Sims' rows) currently drawn. */
   settings: Float32Array;
+  /** Every Sim wearing it; small face parts draw only those close enough (`detail`). */
+  all: Float32Array;
+  /** Projected size (px) of a 5 cm face feature below which this part isn't drawn (0: always). */
+  detail: number;
+  /** Drawn on Sims near the camera, far from it (the low-detail body and clothes), or always. */
+  range: Range;
 }
+
+const enum Range {
+  Always,
+  Near,
+  Far,
+}
+
+/**
+ * Sims switch to the low-detail body and clothes below this projected size (px per 5 cm of face)
+ * and back above the second: the gap keeps a Sim at the threshold from flickering between them.
+ */
+const LOD_FAR_PX = 6;
+const LOD_NEAR_PX = 7;
+
+/**
+ * Small face parts are skipped on faces too small on screen to show them: the projected size (px)
+ * of a 5 cm feature (a mouth, an eye with its brow) below which each isn't drawn.
+ */
+const DETAIL_PX: Record<string, number> = { teeth: 8, tongue: 8, lashes: 3, brows: 2 };
+/** Below this (same measure), a face doesn't run its morphs at all (expressions can't be seen). */
+const MORPH_PX = 3;
 
 export class Characters {
   private set: CharacterSet | null = null;
@@ -580,6 +612,9 @@ export class Characters {
   private data!: Float32Array;
   private width = 0;
   private vat!: BakedVertexAnimationManager;
+  /** Face morphs (null for sets without them) and the per-Sim channel mixer. */
+  private morph: MorphBinding | null = null;
+  private mixer: FaceMixer | null = null;
   private readonly meshes = new Map<string, PartMesh>();
   private readonly materials = new Map<string, PBRMaterial>();
   private readonly skeletons = new Map<string, Skeleton>();
@@ -605,6 +640,7 @@ export class Characters {
   private upperMask!: Float32Array;
   private fingerMask!: Float32Array;
   private legMask!: Float32Array;
+  private uprightMask!: Float32Array;
   private readonly place: Placement = {
     x: 0,
     y: 0,
@@ -623,6 +659,14 @@ export class Characters {
   private readonly blankets = new Map<string, BlanketShape & { matrices: Float32Array; ext: Float32Array }>();
   /** Per Sim row: head top (x, y, z) for speech bubbles and the selection marker. */
   readonly heads = new Float32Array(MAX_CHARACTERS * 3);
+  /** Per Sim row: projected size (px) of 5 cm of its face, from the last frame (see `faceDetail`). */
+  private readonly facePx = new Float32Array(MAX_CHARACTERS).fill(1e6);
+  /** Per Sim row: drawn with the low-detail body and clothes. */
+  private readonly far = new Uint8Array(MAX_CHARACTERS);
+  /** The set has low-detail bodies. */
+  private hasLod = false;
+  /** Shadow-only copies of the low-detail meshes (all Sims cast shadows from those). */
+  private readonly shadowMeshes = new Map<string, PartMesh>();
   readonly visible = new Uint8Array(MAX_CHARACTERS);
   private lastNow = 0;
   /** Seconds of animation played: stands still while the game is paused (Sims hold their pose). */
@@ -631,8 +675,13 @@ export class Characters {
   private readonly sitPelvis = new Map<string, SeatFit>();
   /** `?debug`: force a clip on every Sim (`__characters.force = 'sit'`). */
   force: string | null = null;
-  /** `?debug`: expression override (`__characters.faceDebug = { smile: 1, jaw: 0.5, closed: 1 }`). */
-  faceDebug: (Partial<Face> & { closed?: number; talk?: boolean }) | null = null;
+  /** `?debug`: keep the standing stance layers on a forced clip (as the clip looks in game). */
+  forceStance = false;
+  /**
+   * `?debug`: expression override (`__characters.faceDebug = { smile: 1, jaw: 0.5, closed: 1 }`;
+   * `channels: { jawOpen: 1 }` adds raw morph channels, `viseme: 10` holds a viseme).
+   */
+  faceDebug: (Partial<Face> & { closed?: number; talk?: boolean; channels?: Record<string, number>; viseme?: number }) | null = null;
   /** `?debug`: animation speed override (e.g. to keep animating while the game is paused). */
   debugRate: number | null = null;
   /** CPU time of the last `update` (ms, smoothed), for profiling. */
@@ -670,7 +719,7 @@ export class Characters {
     }
     const set = this.set;
     const NB = set.bones.length;
-    this.width = NB * 4 + APPEARANCE_TEXELS;
+    this.width = NB * 4 + APPEARANCE_TEXELS + MORPH_TEXELS;
     this.data = new Float32Array(this.width * MAX_CHARACTERS * 4);
     this.texture = new RawTexture(
       this.data,
@@ -687,6 +736,23 @@ export class Characters {
     this.vat = new BakedVertexAnimationManager(this.scene);
     this.vat.texture = this.texture;
     this.vat.isEnabled = true;
+    const morphs = set.morphs;
+    if (morphs) {
+      const texture = new RawTexture(
+        morphs.data,
+        morphs.width,
+        morphs.height,
+        Constants.TEXTUREFORMAT_RGBA,
+        this.scene,
+        false,
+        false,
+        Constants.TEXTURE_NEAREST_SAMPLINGMODE,
+        Constants.TEXTURETYPE_HALF_FLOAT,
+      );
+      texture.name = 'simMorphs';
+      this.morph = { texture, width: morphs.width, header: morphs.headerTexels };
+      this.mixer = new FaceMixer(morphs);
+    }
     this.scratch = new PoseScratch(NB);
     this.qA = new Float32Array(NB * 4);
     this.qB = new Float32Array(NB * 4);
@@ -709,10 +775,19 @@ export class Characters {
       }
       this.upperMask[b] = w;
     }
+    // How far each finger joint opens towards the rest pose (scaled by the hand pose): the knuckles
+    // keep more of the clip's curl than the tips, and the curl grows from the index to the little
+    // finger, so open hands rest softly curved instead of straight-knuckled with curled tips (a claw).
     this.fingerMask = new Float32Array(NB);
-    set.bones.forEach((n, b) => (this.fingerMask[b] = /^(index|middle|ring|pinky|thumb)_/.test(n) ? 1 : 0));
+    set.bones.forEach((n, b) => {
+      const m = /^(index|middle|ring|pinky|thumb)_0(\d)/.exec(n);
+      if (m) this.fingerMask[b] = FINGER_OPEN[m[1]] * (JOINT_OPEN[Number(m[2]) - 1] ?? 1);
+    });
     this.legMask = new Float32Array(NB);
     set.bones.forEach((n, b) => (this.legMask[b] = /^(thigh|calf|foot|ball)_/.test(n) ? 1 : 0));
+    // Standing upright: legs and hips fully, the back less towards the neck.
+    const UPRIGHT: Record<string, number> = { pelvis: 1, spine_01: 0.9, spine_02: 0.8, spine_03: 0.7, neck_01: 0.5, Head: 0.3 };
+    this.uprightMask = Float32Array.from(set.bones, (n, b) => UPRIGHT[n] ?? this.legMask[b]);
     for (const body of set.bodies.values()) this.sitPelvis.set(body.name, this.measureSit(body));
     const lying = [...set.bodies.values()].map((body) => ({
       body,
@@ -734,6 +809,18 @@ export class Characters {
     this.ring = this.makeRing();
     if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __characters: this, __stance: STANCE, __friendly: FRIENDLY });
     return true;
+  }
+
+  /** The mesh part of a hairstyle (manifest `model.hair.<style>` may name another part). */
+  private hairPart(style = 'short'): string {
+    const key = `model.hair.${style}`;
+    return (this.assets.has(key, 'character') ? this.assets.get(key, 'character')!.part : undefined) ?? `hair.${style}`;
+  }
+
+  /** The base body (young adult) for a gender. */
+  private baseBody(gender: string): BodyData {
+    const set = this.set!;
+    return set.bodies.get(gender === 'female' ? 'female' : 'male') ?? set.bodies.values().next().value!;
   }
 
   /** Emotion ids in snapshot order (`emotion` field = index + 1), for facial expressions. */
@@ -802,7 +889,10 @@ export class Characters {
   /** Character meshes in use (shadow casters; small details excluded). */
   casters(): Mesh[] {
     const out: Mesh[] = [];
-    for (const [key, p] of this.meshes) if (p.mesh.isEnabled() && !/:(eyes|brows|lids|shoes\.)/.test(key)) out.push(p.mesh);
+    // The low-detail body and clothes' shadow copies; sets without them cast from the full meshes.
+    for (const p of this.shadowMeshes.values()) if (p.mesh.isEnabled()) out.push(p.mesh);
+    if (out.length) return out;
+    for (const [key, p] of this.meshes) if (p.mesh.isEnabled() && !/:(eyes|brows|lashes|teeth|tongue|shoes\.)/.test(key)) out.push(p.mesh);
     return out;
   }
 
@@ -813,9 +903,28 @@ export class Characters {
    */
   async build(world: Pick<WorldStructure, 'sims' | 'objects'> & { storeys?: number; storeyDepth?: number }, keep = false): Promise<void> {
     if (!(await this.init())) return;
+    const set = this.set!;
+    // Life stages other than the base bodies' (children, teens, elders …) and hairstyles load on
+    // demand, the first time a Sim needs them.
+    await Promise.all(
+      world.sims.map(async (s) => {
+        if (s.gone || s.id >= MAX_CHARACTERS) return;
+        const base = this.baseBody(s.gender);
+        const stage = s.appearance?.stage;
+        let body = base;
+        if (stage && stage !== base.stage) {
+          const b = await loadStage(set, base, stage).catch((err) => (console.warn(`[render] ${base.name}.${stage} unavailable`, err), null));
+          if (b) {
+            if (!this.sitPelvis.has(b.name)) this.sitPelvis.set(b.name, this.measureSit(b));
+            body = b;
+          }
+        }
+        const hair = [this.hairPart(s.appearance?.hairStyle), ...(s.appearance?.beard ? ['hair.beard'] : [])];
+        await Promise.all(hair.map((h) => loadPart(set, body, h).catch((err) => console.warn(`[render] ${body.name}:${h} unavailable`, err))));
+      }),
+    );
     // Positions arrive in lot rows, which hold every storey (see `WorldStructure.storeys`).
     this.storeyDepth = (world.storeys ?? 1) > 1 ? (world.storeyDepth ?? 0) : 0;
-    const set = this.set!;
     const kept = keep ? this.sims : [];
     this.sims = [];
     this.ghosts = [];
@@ -829,31 +938,33 @@ export class Characters {
     };
     for (const s of world.sims) {
       if (s.id >= MAX_CHARACTERS || s.gone) continue;
-      const bodyName = s.gender === 'female' ? 'female' : 'male';
-      const body = set.bodies.get(bodyName) ?? set.bodies.values().next().value!;
-      const style = s.appearance?.hairStyle ?? 'short';
-      const hairKey = this.assets.has(`model.hair.${style}`, 'character')
-        ? (this.assets.get(`model.hair.${style}`, 'character')!.part ?? `hair.${style}`)
-        : `hair.${style}`;
+      const base = this.baseBody(s.gender);
+      const stage = s.appearance?.stage;
+      // The body shaped for the Sim's life stage when there is one (else the base body, scaled).
+      const body = stage && stage !== base.stage ? (set.bodies.get(`${base.name}.${stage}`) ?? base) : base;
+      const shaped = !!stage && body.stage === stage;
+      const hairKey = this.hairPart(s.appearance?.hairStyle);
       const outfitId = (s as SimInfo & { outfitId?: number }).outfitId ?? s.id;
-      push(`${body.name}:body`, s);
-      push(`${body.name}:eyes`, s);
-      push(`${body.name}:brows`, s);
-      if (body.parts.has('lids')) push(`${body.name}:lids`, s);
-      if (body.parts.has(hairKey)) push(`${body.name}:${hairKey}`, s);
-      if (s.appearance?.beard && body.parts.has('hair.beard')) push(`${body.name}:hair.beard`, s);
       const day = outfitFor(outfitId, s.gender, s.appearance, body);
+      // (Pyjamas are the same garments, so the same chunks show at night.)
+      for (const part of skinChunks(body, day.parts)) if (body.parts.has(part)) push(`${body.name}:${part}`, s);
+      for (const part of FACE_PARTS) if (body.parts.has(part)) push(`${body.name}:${part}`, s);
+      if (body.parts.has(hairKey)) push(`${body.name}:${hairKey}`, s);
+      if (s.appearance?.beard && !YOUNG_STAGES.has(body.stage) && body.parts.has('hair.beard')) push(`${body.name}:hair.beard`, s);
       for (const part of day.parts) if (body.parts.has(part)) push(`${body.name}:${part}`, s);
+      // The low-detail body and clothes (drawn instead when the Sim is far from the camera).
+      for (const part of ['lod.body', ...day.parts.map((p) => `lod.${p}`)]) if (body.parts.has(part)) push(`${body.name}:${part}`, s);
       const height = clampHeight(s.appearance?.height);
-      // Life stage: children are smaller, with bigger heads (the session sets these).
-      const stageScale = s.appearance?.stageScale ?? 1;
-      const scale = ((BASE_HEIGHT[body.name] ?? 1.72) / body.height) * height * stageScale;
+      // Life stage: a body shaped for it keeps its own size (at the base body's scale); otherwise
+      // children are the base body made smaller with a bigger head (the session sets these).
+      const stageScale = shaped ? 1 : (s.appearance?.stageScale ?? 1);
+      const scale = ((BASE_HEIGHT[base.name] ?? 1.72) / base.height) * height * stageScale;
       const rig: SimRig = {
         id: s.id,
         floorY: 0,
         body,
         scale,
-        head: s.appearance?.stageHead ?? 1,
+        head: shaped ? 1 : (s.appearance?.stageHead ?? 1),
         stoop: s.appearance?.stageStoop ?? 0,
         seed: hash(s.id + 17),
         visible: false,
@@ -906,6 +1017,12 @@ export class Characters {
         relaxArms: 0,
         shift: 0,
         skirt: false,
+        faceState: new Float32Array(set.morphs?.channels.length ?? 0),
+        faceL: 1 + (hash(s.id * 7 + 3) - 0.5) * 0.2,
+        faceR: 1 + (hash(s.id * 7 + 5) - 0.5) * 0.2,
+        speech: null,
+        speechStart: 0,
+        speechSeg: 0,
       };
       const old = kept[s.id];
       if (old) Object.assign(rig, old, { body, scale, asleep: false });
@@ -916,22 +1033,24 @@ export class Characters {
       writeOutfit(rig.day, this.data, this.row(s.id) + set.bones.length * 16);
     }
     for (const p of this.meshes.values()) p.mesh.setEnabled(false);
+    for (const p of this.shadowMeshes.values()) p.mesh.setEnabled(false);
+    this.hasLod = [...set.bodies.values()].some((b) => b.parts.has('lod.body'));
     for (const [key, sims] of groups) {
       const [bodyName, part] = splitKey(key);
       const body = set.bodies.get(bodyName)!;
       const pm = this.partMesh(body, part);
       if (!pm) continue;
-      const n = sims.length;
-      const identity = new Float32Array(n * 16);
-      const settings = new Float32Array(n * 4);
-      for (let j = 0; j < n; j++) {
-        identity[j * 16] = identity[j * 16 + 5] = identity[j * 16 + 10] = identity[j * 16 + 15] = 1;
-        settings[j * 4] = settings[j * 4 + 1] = sims[j].id;
-      }
-      pm.mesh.thinInstanceSetBuffer('matrix', identity, 16, true);
-      pm.mesh.thinInstanceSetBuffer('bakedVertexAnimationSettingsInstanced', settings, 4, true);
-      pm.settings = settings;
+      const ids = sims.map((x) => x.id);
+      this.setInstances(pm, ids);
       pm.mesh.setEnabled(true);
+      // Every Sim casts its sun shadow from the low-detail body and clothes (no hair, no face).
+      if (part.startsWith('lod.')) {
+        const sm = this.partMesh(body, part, true);
+        if (sm) {
+          this.setInstances(sm, ids);
+          sm.mesh.setEnabled(true);
+        }
+      }
     }
     // Objects Sims sit, lie or stand at (for seat heights and object-use animations).
     this.objectById.clear();
@@ -956,6 +1075,17 @@ export class Characters {
     if (!set || !base) return;
     const count = this.sims.length;
     const clips = ['idle', 'walk', 'talk', 'foldArms', 'idle', 'walk'];
+    // Young adults of both genders in a T-shirt, trousers and sneakers.
+    const bodies = [this.baseBody('male'), this.baseBody('female')];
+    const clothes = ['top.tee', 'bottom.trousers', 'shoes.sneakers'];
+    const parts = [
+      ...FACE_PARTS,
+      'hair.short',
+      ...clothes,
+      ...new Set(bodies.flatMap((b) => skinChunks(b, clothes))),
+      'lod.body',
+      ...clothes.map((c) => `lod.${c}`),
+    ];
     this.ghosts = [];
     for (let k = 0; k < n && count + k < MAX_CHARACTERS; k++) {
       const id = count + k;
@@ -964,11 +1094,14 @@ export class Characters {
         z: z + Math.floor(k / 5) * 1.1,
         clip: clips[k % clips.length],
       });
-      const body = [...set.bodies.values()][k % 2];
+      const body = bodies[k % 2];
       const rig: SimRig = {
         ...base,
         id,
         body,
+        scale: (BASE_HEIGHT[body.name] ?? 1.72) / body.height,
+        head: 1,
+        stoop: 0,
         cur: player(),
         prev: player(),
         upper: player(),
@@ -978,52 +1111,33 @@ export class Characters {
         yaw: k,
         seed: hash(id),
         face: { ...NEUTRAL },
+        faceState: new Float32Array(set.morphs?.channels.length ?? 0),
+        speech: null,
       };
       this.sims[id] = rig;
-      writeOutfit(
-        outfitFor(
-          id,
-          body.name,
-          {
-            body: '#5F86C9',
-            skin: '#C08A64',
-            hair: '#2B2320',
-            hairStyle: 'short',
-            height: 1,
-          },
-          body,
-        ),
-        this.data,
-        this.row(id) + set.bones.length * 16,
-      );
+      const look = { body: '#5F86C9', skin: '#C08A64', hair: '#2B2320', hairStyle: 'short' as const, height: 1, top: 'top.tee', bottom: 'bottom.trousers', shoes: 'shoes.sneakers' };
+      writeOutfit(outfitFor(id, body.name, look, body), this.data, this.row(id) + set.bones.length * 16);
     }
-    for (const [key, pm] of this.meshes) {
+    // The ghosts' meshes (and the low-detail ones' shadow copies), even where nobody in the world wears them.
+    for (const body of bodies) {
+      for (const part of parts) {
+        for (const shadow of part.startsWith('lod.') ? [false, true] : [false]) {
+          const pm = this.partMesh(body, part, shadow);
+          if (pm && !pm.mesh.isEnabled()) {
+            pm.all = new Float32Array(0);
+            pm.mesh.setEnabled(true);
+          }
+        }
+      }
+    }
+    for (const [key, pm] of [...this.meshes, ...this.shadowMeshes]) {
       if (!pm.mesh.isEnabled()) continue;
       const [bodyName, part] = splitKey(key);
-      const ids = [...pm.settings.filter((_, j) => j % 4 === 0)];
+      const ids = [...pm.all.filter((_, j) => j % 4 === 0)];
       this.ghosts.forEach((_, k) => {
-        const body = [...set.bodies.values()][k % 2];
-        if (
-          body.name === bodyName &&
-          (part === 'body' ||
-            part === 'eyes' ||
-            part === 'brows' ||
-            part === 'lids' ||
-            part === 'hair.short' ||
-            part === 'top.tee' ||
-            part === 'bottom.trousers' ||
-            part === 'shoes.sneakers')
-        )
-          ids.push(count + k);
+        if (bodies[k % 2].name === bodyName && parts.includes(part)) ids.push(count + k);
       });
-      const identity = new Float32Array(ids.length * 16);
-      const settings = new Float32Array(ids.length * 4);
-      ids.forEach((id, j) => {
-        identity[j * 16] = identity[j * 16 + 5] = identity[j * 16 + 10] = identity[j * 16 + 15] = 1;
-        settings[j * 4] = settings[j * 4 + 1] = id;
-      });
-      pm.mesh.thinInstanceSetBuffer('matrix', identity, 16, true);
-      pm.mesh.thinInstanceSetBuffer('bakedVertexAnimationSettingsInstanced', settings, 4, true);
+      this.setInstances(pm, ids);
     }
   }
 
@@ -1236,6 +1350,16 @@ export class Characters {
       }
       // Hand pose: the clips clench fists; open them according to the activity.
       blendInto(this.qA, this.pA, set.sourceRestQ, this.pA, rig.hands, this.fingerMask);
+      // Standing upright: the idle-based clips stand ready to move (knees bent, hips back, chest and
+      // head forward). Legs, hips and back go most of the way to the upright rest stance (the
+      // pelvis back over the feet at its standing height); the clip still moves the arms and head.
+      const upright = STANCE.upright * smooth(clamp(rig.relaxLegs, 0, 1));
+      if (upright > 1e-3) {
+        blendInto(this.qA, this.pA, set.sourceRestQ, this.pA, upright, this.uprightMask);
+        const sp = set.sourcePelvis;
+        this.pA[1] += (sp[1] - this.pA[1]) * upright;
+        this.pA[2] += (sp[2] - this.pA[2]) * upright;
+      }
 
       // Procedural layers.
       resetAdditive(this.add);
@@ -1266,7 +1390,7 @@ export class Characters {
       // Head top (speech bubbles, selection marker): a little above the head joint.
       const hs = rig.scale * rig.head;
       this.heads[i * 3] = this.headTmp[0];
-      this.heads[i * 3 + 1] = this.headTmp[1] + 0.26 * hs;
+      this.heads[i * 3 + 1] = this.headTmp[1] + (rig.body.headAbove + HEAD_MARGIN) * hs;
       this.heads[i * 3 + 2] = this.headTmp[2];
 
       // Contact shadow under standing / sitting Sims.
@@ -1282,6 +1406,7 @@ export class Characters {
       shadows[m + 15] = 1;
     }
     if (this.ghosts.length) this.poseGhosts(count, dt, time);
+    this.faceDetail(count + this.ghosts.length);
     this.writeRing(now * 0.001);
     for (let i = count + this.ghosts.length; i < MAX_CHARACTERS; i++) {
       if (!this.visible[i]) continue;
@@ -1655,17 +1780,48 @@ export class Characters {
     // Posture: the clips stand slightly hunched; Sims stand tall (and lean back when seated).
     if (pose !== Pose.Lie && this.force !== 'rest') {
       // (Elders a little less so: a stoop in the upper back, the head lifted to look ahead.)
-      addRotation(add, B.spine_03, 1, 0, 0, -0.09 + 0.2 * rig.stoop);
-      addRotation(add, B.neck_01, 1, 0, 0, -0.07 + 0.08 * rig.stoop);
-      addRotation(add, B.Head, 1, 0, 0, -0.07 - 0.12 * rig.stoop);
+      // (Less when standing upright: the back is straight already.)
+      const tall = 1 - STANCE.upright * smooth(clamp(rig.relaxLegs, 0, 1));
+      addRotation(add, B.spine_03, 1, 0, 0, -0.09 * tall + 0.2 * rig.stoop);
+      addRotation(add, B.neck_01, 1, 0, 0, -0.07 * tall + 0.08 * rig.stoop);
+      addRotation(add, B.Head, 1, 0, 0, -0.07 * tall - 0.12 * rig.stoop);
       // Arms closer to the body and a narrower stance than the clips' athletic ones.
-      addRotation(add, B.upperarm_l, 0, 0, 1, 0.13);
-      addRotation(add, B.upperarm_r, 0, 0, 1, -0.13);
+      addRotation(add, B.upperarm_l, 0, 0, 1, STANCE.armsIn);
+      addRotation(add, B.upperarm_r, 0, 0, 1, -STANCE.armsIn);
       if (pose === Pose.Stand && !moving) {
         addRotation(add, B.thigh_l, 0, 0, 1, 0.04);
         addRotation(add, B.thigh_r, 0, 0, 1, -0.04);
       }
       this.stance(rig, i, pose, moving, time, dt);
+      // Walking: women's hips sway more (the pelvis rolls over each standing leg, the chest
+      // counters it), as in real gaits; one roll each way per stride.
+      const walkW = (rig.cur.key === 'walk' ? smooth(rig.w) : 0) * (GAIT_SWAY[rig.body.family] ?? 0);
+      if (walkW > 0 && rig.cur.clip) {
+        const roll = Math.sin((rig.cur.time / rig.cur.clip.duration) * Math.PI * 2) * walkW;
+        addRotation(add, B.pelvis, 0, 0, 1, roll);
+        addRotation(add, B.spine_02, 0, 0, 1, -roll * 0.7);
+        addRotation(add, B.spine_03, 0, 0, 1, -roll * 0.4);
+      }
+      if (!dir?.still) {
+        // Breathing (a slow lift of the chest, the head kept level; quicker when worked up) and a
+        // faint sway of the head: nobody stands perfectly still.
+        const rate = social === Anim.Argue || social === Anim.Fight || moving ? 2.2 : 1.55;
+        const breath = Math.sin(time * rate + rig.seed * 6);
+        addRotation(add, B.spine_02, 1, 0, 0, -0.014 * breath);
+        addRotation(add, B.spine_03, 1, 0, 0, -0.008 * breath);
+        addRotation(add, B.Head, 1, 0, 0, 0.012 * breath + 0.012 * Math.sin(time * 0.53 + rig.seed * 11));
+        addRotation(add, B.Head, 0, 1, 0, 0.018 * Math.sin(time * 0.37 + rig.seed * 17));
+      }
+      // Folded arms: the clip folds them across a broad chest; bring the upper arms forward so the
+      // forearms rest in front of the body instead of in it.
+      const cw = smooth(rig.w);
+      const fold = (rig.cur.key === 'foldArms' ? cw : 0) + (rig.prev.key === 'foldArms' ? 1 - cw : 0);
+      if (fold > 0) {
+        addRotation(add, B.upperarm_l, 1, 0, 0, STANCE.fold * fold);
+        addRotation(add, B.upperarm_r, 1, 0, 0, STANCE.fold * fold);
+        addRotation(add, B.upperarm_l, 0, 0, 1, STANCE.foldOut * fold);
+        addRotation(add, B.upperarm_r, 0, 0, 1, -STANCE.foldOut * fold);
+      }
       if (rig.cur.key === 'sitHands') {
         // Hands down onto the desk / keys (the clip holds them high).
         addRotation(add, B.upperarm_l, 1, 0, 0, 0.22);
@@ -1943,7 +2099,7 @@ export class Characters {
   private stance(rig: SimRig, i: number, pose: number, moving: boolean, time: number, dt: number): void {
     const B = this.set!.bone;
     const add = this.add;
-    const standing = pose === Pose.Stand && !moving && !this.force;
+    const standing = pose === Pose.Stand && !moving && (!this.force || this.forceStance);
     const legs = standing && RELAX_LEGS.has(rig.cur.key) ? 1 : 0;
     const arms = standing && RELAX_ARMS.has(rig.cur.key) && !(rig.upperW > 0.05) ? 1 : 0;
     const f = rig.dir?.still ? 1 : Math.min(1, dt * 5);
@@ -1961,16 +2117,18 @@ export class Characters {
       addRotation(add, B.pelvis, 0, 0, 1, S.hip * w);
       addRotation(add, B.spine_01, 0, 0, 1, -S.hip * w * 0.6);
       addRotation(add, B.spine_02, 0, 0, 1, -S.hip * w * 0.4);
-      // Feet in under the hips (legs back to vertical after the tilt), soles flat.
-      addRotation(add, B.thigh_l, 0, 0, 1, S.feet * l - S.hip * w);
-      addRotation(add, B.thigh_r, 0, 0, 1, -S.feet * l - S.hip * w);
-      addRotation(add, B.foot_l, 0, 0, 1, -S.feet * l);
-      addRotation(add, B.foot_r, 0, 0, 1, S.feet * l);
-      // The clip stands with the left foot well ahead of the right: bring them level.
-      addRotation(add, B.thigh_l, 1, 0, 0, S.stagger * l);
-      addRotation(add, B.thigh_r, 1, 0, 0, -S.stagger * l);
-      addRotation(add, B.foot_l, 1, 0, 0, -S.stagger * l);
-      addRotation(add, B.foot_r, 1, 0, 0, S.stagger * l);
+      // Feet in under the hips (legs back to vertical after the tilt), soles flat; the clip stands
+      // with the left foot well ahead of the right: bring them level. (Only what the upright
+      // stance leaves of the clip's legs needs it.)
+      const clipLegs = l * (1 - S.upright);
+      addRotation(add, B.thigh_l, 0, 0, 1, S.feet * clipLegs - S.hip * w);
+      addRotation(add, B.thigh_r, 0, 0, 1, -S.feet * clipLegs - S.hip * w);
+      addRotation(add, B.foot_l, 0, 0, 1, -S.feet * clipLegs);
+      addRotation(add, B.foot_r, 0, 0, 1, S.feet * clipLegs);
+      addRotation(add, B.thigh_l, 1, 0, 0, S.stagger * clipLegs);
+      addRotation(add, B.thigh_r, 1, 0, 0, -S.stagger * clipLegs);
+      addRotation(add, B.foot_l, 1, 0, 0, -S.stagger * clipLegs);
+      addRotation(add, B.foot_r, 1, 0, 0, S.stagger * clipLegs);
       // The free leg's knee softens.
       // (Barely under a skirt: a knee pushed forward would show through it.)
       const knee = rig.skirt ? 0.25 : 1;
@@ -1990,7 +2148,7 @@ export class Characters {
       addRotation(add, B.clavicle_r, 0, 0, 1, -S.shoulders * a);
       addRotation(add, B.upperarm_l, 1, 0, 0, (-S.forward + S.even * 0.5) * a);
       addRotation(add, B.upperarm_r, 1, 0, 0, (-S.forward - S.even) * a);
-      const arms = (S.arms[rig.body.name] ?? 0) + (rig.skirt ? S.skirt : 0);
+      const arms = (S.arms[rig.body.family] ?? 0) + (rig.skirt ? S.skirt : 0);
       addRotation(add, B.upperarm_l, 0, 0, 1, arms * a);
       addRotation(add, B.upperarm_r, 0, 0, 1, -(arms + S.right) * a);
       addRotation(add, B.upperarm_l, 0, 1, 0, S.twist * a);
@@ -2003,8 +2161,9 @@ export class Characters {
   /**
    * Face: blinks at irregular intervals, eyes that look at the conversation partner (or now and
    * then at the camera / around), an expression from the Sim's emotion and conversation, and the
-   * mouth moving while it speaks. Written as local rotations of the face bones (head frame), so it
-   * follows the head and skins on the GPU like everything else.
+   * mouth moving while it speaks (to the voice line's visemes when there is one). The eyes are
+   * bones (local rotations in the head's frame); the rest are face morphs, mixed by `FaceMixer` and
+   * written into the Sim's row after the appearance texels.
    */
   private animateFace(
     rig: SimRig,
@@ -2017,8 +2176,10 @@ export class Characters {
     time: number,
     dt: number,
   ): void {
-    const B = this.set!.bone;
-    if (B.jaw === undefined) return;
+    const set = this.set!;
+    const B = set.bone;
+    const mixer = this.mixer;
+    if (!mixer || B.eye_l === undefined) return;
     const add = this.add;
     const pair = partner ? Math.min(i, partner.id) : i;
     const asleep = pose === Pose.Lie && rig.cur.key === 'lie' && (!rig.tagKnown || rig.tag === 'sleep' || rig.tag === 'nap');
@@ -2038,7 +2199,7 @@ export class Characters {
       switch (social) {
         case Anim.Laugh:
           Object.assign(tgt, LAUGH);
-          tgt.jaw = 0.45 + 0.25 * Math.abs(Math.sin(time * 11 + i));
+          tgt.jaw = 0.1 + 0.2 * Math.abs(Math.sin(time * 11 + i));
           break;
         case Anim.Flirt:
           Object.assign(tgt, EXPRESSIONS.flirty);
@@ -2085,19 +2246,18 @@ export class Characters {
     const face = rig.face;
     for (const k of FACE_KEYS) face[k] += (tgt[k] - face[k]) * f;
 
-    // Speech: syllable-like jaw motion while it's this Sim's turn.
-    let jaw = face.jaw;
-    if (talking) {
-      const syl = Math.max(0, Math.sin(time * 12.5 + rig.seed * 40 + Math.sin(time * 3.7 + i) * 2.2));
-      const phrase = 0.55 + 0.45 * Math.sin(time * 1.9 + rig.seed * 9);
-      jaw = Math.max(jaw, 0.12 + 0.75 * Math.pow(syl, 0.8) * phrase);
-    }
+    // A voice line takes over from the conversation's turn-taking.
+    const speech = rig.speech;
+    const now = performance.now() / 1000;
+    const voiced = !!speech && now - rig.speechStart < (speech.times[speech.times.length - 1] ?? 0) + 0.3;
+    if (voiced) talking = true;
 
-    // Blinks: every 1.5 - 6 s (sometimes twice), ~0.17 s each.
+    // Blinks: every 1.5 - 6 s at rest, more often while talking (sometimes twice), ~0.17 s each.
     if (time >= rig.nextBlink) {
       rig.blinkAt = time;
       const r = hash(Math.floor(time * 10) + i * 7919);
-      rig.nextBlink = time + (r < 0.15 ? 0.32 : 1.5 + 4.5 * hash(Math.floor(time * 13) + i * 31));
+      const gap = talking ? 1 + 2.6 * hash(Math.floor(time * 13) + i * 31) : 1.5 + 4.5 * hash(Math.floor(time * 13) + i * 31);
+      rig.nextBlink = time + (r < 0.15 ? 0.32 : gap);
     }
     const bt = (time - rig.blinkAt) / 0.17;
     const blink = !dir?.still && bt >= 0 && bt < 1 ? (bt < 0.4 ? bt / 0.4 : 1 - (bt - 0.4) / 0.6) : 0;
@@ -2107,18 +2267,21 @@ export class Characters {
     let gy = 0;
     let gp = 0.35 * face.gazeDown;
     const ex = this.heads[i * 3];
-    const eyeY = this.heads[i * 3 + 1] - 0.17 * rig.scale;
+    const eyeY = this.heads[i * 3 + 1] - eyesBelowTop(rig);
     const ez = this.heads[i * 3 + 2];
     if (time >= rig.gazeUntil) {
       const r = hash(Math.floor(time * 7) + i * 131);
-      rig.gazeMode = social && partner ? (r < 0.82 ? 1 : 3) : moving ? 0 : r < 0.3 ? 2 : r < 0.65 ? 3 : 0;
+      const mode = social && partner ? (r < 0.82 ? 1 : 3) : moving ? 0 : r < 0.3 ? 2 : r < 0.65 ? 3 : 0;
+      // A big shift of gaze often comes with a blink.
+      if (mode !== rig.gazeMode && hash(Math.floor(time * 11) + i * 3) < 0.4 && time - rig.blinkAt > 0.5) rig.nextBlink = time;
+      rig.gazeMode = mode;
       rig.gazeUntil = time + 1.2 + 2.8 * hash(Math.floor(time * 5) + i * 17);
       rig.glanceYaw = (hash(Math.floor(time * 3) + i) - 0.5) * 0.7;
       rig.glancePitch = (hash(Math.floor(time * 3) + i + 5) - 0.6) * 0.3;
     }
     if (!asleep && closed < 0.99) {
       if (rig.gazeMode === 1 && partner?.visible) {
-        this.gazeAt(rig, ex, eyeY, ez, this.heads[partner.id * 3], this.heads[partner.id * 3 + 1] - 0.17 * partner.scale, this.heads[partner.id * 3 + 2]);
+        this.gazeAt(rig, ex, eyeY, ez, this.heads[partner.id * 3], this.heads[partner.id * 3 + 1] - eyesBelowTop(partner), this.heads[partner.id * 3 + 2]);
         gy = this.gaze[0];
         gp = this.gaze[1];
       } else if (rig.gazeMode === 2) {
@@ -2149,32 +2312,82 @@ export class Characters {
     rig.eyeYaw += (gy - rig.eyeYaw) * fe;
     rig.eyePitch += (gp - rig.eyePitch) * fe;
 
-    // Bones (local axes = the head's: x right, y up, z forward; +x rotation turns the front down).
+    // Eye bones (local axes = the head's: x right, y up, z forward; +x rotation turns the front down).
     addLocal(add, B.eye_l, 0, 1, 0, rig.eyeYaw);
     addLocal(add, B.eye_l, 1, 0, 0, rig.eyePitch);
     addLocal(add, B.eye_r, 0, 1, 0, rig.eyeYaw);
     addLocal(add, B.eye_r, 1, 0, 0, rig.eyePitch);
-    const upper = clamp(face.lidU * 0.26 + rig.eyePitch * 0.45 + face.lidL * 0.05, -0.2, 0.7);
-    const lidU = upper + (0.8 - upper) * closed;
-    const lidL = -(face.lidL * 0.32 + closed * 0.25) + Math.max(0, rig.eyePitch) * 0.15;
-    addLocal(add, B.lidU_l, 1, 0, 0, lidU);
-    addLocal(add, B.lidU_r, 1, 0, 0, lidU);
-    addLocal(add, B.lidL_l, 1, 0, 0, lidL);
-    addLocal(add, B.lidL_r, 1, 0, 0, lidL);
-    addLocal(add, B.jaw, 1, 0, 0, jaw * 0.2);
-    // Lip corners: up for smiles, down for frowns; apart for smiles, together for a pucker.
-    const corner = -0.17 * face.smile + 0.2 * face.frown;
-    const wide = 0.09 * face.wide;
-    addLocal(add, B.lip_l, 1, 0, 0, corner - jaw * 0.04);
-    addLocal(add, B.lip_r, 1, 0, 0, corner - jaw * 0.04);
-    addLocal(add, B.lip_l, 0, 1, 0, -wide);
-    addLocal(add, B.lip_r, 0, 1, 0, wide);
-    const brow = -0.11 * face.browUp + 0.09 * face.browDown;
-    const tilt = 0.18 * face.browIn - 0.16 * face.browDown;
-    addLocal(add, B.brow_l, 1, 0, 0, brow);
-    addLocal(add, B.brow_r, 1, 0, 0, brow);
-    addLocal(add, B.brow_l, 0, 0, 1, tilt);
-    addLocal(add, B.brow_r, 0, 0, 1, -tilt);
+
+    // Morphs: the expression (lids following the eyes), then speech. Faces too small on screen to
+    // show them skip their morphs (in the vertex shader too).
+    const morphRow = this.row(i) + set.bones.length * 16 + APPEARANCE_TEXELS * 4;
+    if (this.facePx[i] < MORPH_PX && !dir && !dbg) {
+      mixer.off(this.data, morphRow);
+      return;
+    }
+    mixer.begin();
+    mixer.mood(tgt.mood, 1, rig.faceL, rig.faceR);
+    mixer.expression(tgt, rig.faceL, rig.faceR);
+    if (!talking && !asleep && !dir?.still && !dbg) mixer.micro(time, rig.seed, 1);
+    mixer.settle(rig.faceState, f);
+    mixer.eyes(closed, rig.eyePitch);
+    if (voiced) {
+      mixer.speaking(1);
+      this.speak(rig, speech!, now - rig.speechStart);
+    } else if (talking) {
+      mixer.speaking(1);
+      this.babble(rig, i, time);
+    } else if (dbg?.viseme) {
+      mixer.viseme(dbg.viseme, 1, 1);
+    }
+    if (dbg?.channels) mixer.raw(dbg.channels);
+    mixer.write(this.data, morphRow);
+  }
+
+  /**
+   * Visemes of the voice line at `t` (s from its first sample): the mouth moves a little ahead of
+   * the sound, and each shape blends in from the last over ~70 ms; quiet stretches open less.
+   */
+  private speak(rig: SimRig, track: VisemeTrack, t: number): void {
+    const mixer = this.mixer!;
+    const times = track.times;
+    const n = track.visemes.length;
+    if (!n) return;
+    const tt = t + 0.04;
+    let k = rig.speechSeg;
+    if (k >= n || tt < times[k]) k = 0;
+    while (k < n - 1 && tt >= times[k + 1]) k++;
+    rig.speechSeg = k;
+    if (tt < times[0] - 0.08 || tt > times[n] + 0.08) return;
+    const e = track.energy;
+    const energy = e.length ? e[Math.min(e.length - 1, Math.max(0, Math.floor(t * ENERGY_RATE)))] : 1;
+    // Fade in before the first segment and out after the last.
+    const edge = Math.min(1, (tt - times[0] + 0.08) / 0.08, (times[n] + 0.08 - tt) / 0.08);
+    const a = smooth(clamp((tt - times[k]) / 0.07, 0, 1));
+    mixer.viseme(track.visemes[k], a * edge, energy);
+    if (k > 0 && a < 1) mixer.viseme(track.visemes[k - 1], (1 - a) * edge, energy);
+  }
+
+  /** Talking without a voice line: syllable-like mouth shapes, in phrases. */
+  private babble(rig: SimRig, i: number, time: number): void {
+    const rate = 5.5;
+    const s = time * rate + rig.seed * 40;
+    const k = Math.floor(s);
+    const f = s - k;
+    const phrase = Math.sin(time * 1.9 + rig.seed * 9);
+    if (phrase < -0.55) return;
+    const env = Math.sin(Math.PI * f) * (0.55 + 0.45 * Math.min(1, phrase + 0.55));
+    const v = BABBLE[Math.floor(hash(k * 7 + i * 131) * BABBLE.length)];
+    this.mixer!.viseme(v, env, 0.6);
+  }
+
+  /** Lip sync: `track` plays on Sim row `index` from `startTime` (s, `performance.now` clock); null stops it. */
+  setSpeech(index: number, track: VisemeTrack | null, startTime: number): void {
+    const rig = this.sims[index];
+    if (!rig) return;
+    rig.speech = track && track.visemes.length ? track : null;
+    rig.speechStart = startTime;
+    rig.speechSeg = 0;
   }
 
   // --- helpers --------------------------------------------------------------------------
@@ -2230,7 +2443,7 @@ export class Characters {
    * and to the bed's foot end, pulled up over ~0.5 s when the Sim lies down; zero-scaled otherwise.
    */
   private writeBlanket(rig: SimRig, i: number, pose: number, dt: number): void {
-    const blanket = this.blankets.get(rig.body.name);
+    const blanket = this.blankets.get(rig.body.family);
     if (!blanket) return;
     const bed = rig.bed;
     const under = pose === Pose.Lie && rig.cur.key === 'lie' && !!bed && BLANKET_BEDS.has(bed.def) && (rig.tagKnown ? rig.tag === 'sleep' || rig.tag === 'nap' : true);
@@ -2329,7 +2542,7 @@ export class Characters {
     const chestZ = Math.max(this.scratch.worldT[B.upperarm_l * 3 + 2], this.scratch.worldT[B.upperarm_r * 3 + 2]) + 0.07;
     resetAdditive(this.add);
     // The body plus the clothes that stand off it most (skirts, boots).
-    const parts = ['body', 'bottom.skirt', 'shoes.boots'].map((k) => body.parts.get(k)).filter((p): p is NonNullable<typeof p> => !!p);
+    const parts = [...Object.keys(body.bodyChunks), 'bottom.skirt', 'shoes.boots'].map((k) => body.parts.get(k)).filter((p): p is NonNullable<typeof p> => !!p);
     const total = parts.reduce((n, p) => n + p.positions.length / 3, 0);
     const out = new Float32Array(total * 3);
     let feetZ = -Infinity;
@@ -2379,13 +2592,18 @@ export class Characters {
     return { y: sit.y - 0.11, z: sit.z };
   }
 
-  private partMesh(body: BodyData, part: string): PartMesh | null {
+  /**
+   * The mesh of a part of a body (`shadow`: its shadow-only copy, drawn into the sun's shadow map
+   * but not by the camera).
+   */
+  private partMesh(body: BodyData, part: string, shadow = false): PartMesh | null {
     const key = `${body.name}:${part}`;
-    const cached = this.meshes.get(key);
+    const meshes = shadow ? this.shadowMeshes : this.meshes;
+    const cached = meshes.get(key);
     if (cached) return cached;
     const data = body.parts.get(part);
     if (!data) return null;
-    const mesh = new Mesh(`sim:${key}`, this.scene);
+    const mesh = new Mesh(`${shadow ? 'simShadow' : 'sim'}:${key}`, this.scene);
     const vd = new VertexData();
     vd.positions = data.positions;
     vd.normals = data.normals;
@@ -2394,60 +2612,178 @@ export class Characters {
     vd.matricesIndices = data.joints;
     vd.matricesWeights = data.weights;
     vd.applyToMesh(mesh, false);
-    mesh.setVerticesData('simField', data.fields, false, 4);
+    if (data.morph && this.morph) {
+      // Fields and morph slots interleaved in one buffer: WebGPU allows 8 vertex buffers per
+      // draw, and with the instance buffers these would be the ninth.
+      const n = data.fields.length / 4;
+      const both = new Float32Array(n * 8);
+      for (let v = 0; v < n; v++) {
+        both.set(data.fields.subarray(v * 4, v * 4 + 4), v * 8);
+        both.set(data.morph.subarray(v * 4, v * 4 + 4), v * 8 + 4);
+      }
+      const buffer = new Buffer(this.scene.getEngine(), both, false, 8);
+      mesh.setVerticesBuffer(buffer.createVertexBuffer('simField', 0, 4));
+      mesh.setVerticesBuffer(buffer.createVertexBuffer('simMorph', 4, 4));
+    } else {
+      mesh.setVerticesData('simField', data.fields, false, 4);
+    }
     mesh.skeleton = this.skeleton(body);
     mesh.numBoneInfluencers = 4;
     mesh.bakedVertexAnimationManager = this.vat;
     mesh.material = this.material(body, part);
     mesh.isPickable = false;
-    mesh.receiveShadows = true;
+    mesh.receiveShadows = !shadow;
+    // Shadow copies: on a layer no camera draws (the shadow map draws its own list of meshes).
+    if (shadow) mesh.layerMask = LAYER_SHADOW_ONLY;
     // Sims move every frame (bones carry the placement): skip culling and bounds work.
     mesh.alwaysSelectAsActiveMesh = true;
     mesh.doNotSyncBoundingInfo = true;
     mesh.freezeWorldMatrix();
-    const pm = { mesh, settings: new Float32Array(0) };
-    this.meshes.set(key, pm);
+    const range = shadow ? Range.Always : part.startsWith('lod.') ? Range.Far : part === 'body' || /^(body|top|bottom|shoes)\./.test(part) ? Range.Near : Range.Always;
+    const pm: PartMesh = { mesh, settings: new Float32Array(0), all: new Float32Array(0), detail: shadow ? 0 : (DETAIL_PX[part] ?? 0), range };
+    meshes.set(key, pm);
     return pm;
+  }
+
+  /** Draws `pm` for Sim rows `ids` (thin instances). */
+  private setInstances(pm: PartMesh, ids: readonly number[]): void {
+    const n = ids.length;
+    const identity = new Float32Array(n * 16);
+    const settings = new Float32Array(n * 4);
+    ids.forEach((id, j) => {
+      identity[j * 16] = identity[j * 16 + 5] = identity[j * 16 + 10] = identity[j * 16 + 15] = 1;
+      settings[j * 4] = settings[j * 4 + 1] = id;
+    });
+    pm.mesh.thinInstanceSetBuffer('matrix', identity, 16, true);
+    // Parts drawn by distance rewrite their rows each frame.
+    pm.mesh.thinInstanceSetBuffer('bakedVertexAnimationSettingsInstanced', settings, 4, pm.detail === 0 && pm.range === Range.Always);
+    pm.settings = settings;
+    pm.all = settings.slice();
+    pm.mesh.isVisible = n > 0;
+  }
+
+  /**
+   * How big each Sim's face is on screen (`facePx`: px per 5 cm), and the small face parts (teeth,
+   * tongue, lashes, brows) drawn only on the faces big enough to show them.
+   */
+  private faceDetail(count: number): void {
+    const cam = this.scene.activeCamera;
+    const px = this.facePx;
+    if (!cam || cam.mode !== 0) {
+      px.fill(1e6);
+    } else {
+      const k = (0.05 * this.scene.getEngine().getRenderHeight()) / (2 * Math.tan(cam.fov / 2));
+      const c = cam.globalPosition;
+      for (let i = 0; i < count; i++) {
+        const rig = this.sims[i];
+        if (!rig || !this.visible[i]) {
+          px[i] = 0;
+          continue;
+        }
+        // Directed Sims (the creator's stage, portraits drawn by their own cameras): full detail.
+        if (rig.dir) {
+          px[i] = 1e6;
+          continue;
+        }
+        const d = Math.hypot(this.heads[i * 3] - c.x, this.heads[i * 3 + 1] - c.y, this.heads[i * 3 + 2] - c.z);
+        px[i] = (k * rig.scale * rig.head) / Math.max(d, 0.05);
+      }
+    }
+    // Low detail far from the camera (with a gap between switching down and up).
+    const far = this.far;
+    for (let i = 0; i < count; i++) {
+      if (far[i] && px[i] > LOD_NEAR_PX) far[i] = 0;
+      else if (!far[i] && px[i] < LOD_FAR_PX && this.hasLod) far[i] = 1;
+    }
+    for (const pm of this.meshes.values()) {
+      if ((!pm.detail && pm.range === Range.Always) || !pm.mesh.isEnabled()) continue;
+      const all = pm.all;
+      const out = pm.settings;
+      const near = pm.range === Range.Near;
+      const ranged = pm.range !== Range.Always;
+      let n = 0;
+      let changed = false;
+      for (let j = 0; j < all.length; j += 4) {
+        const id = all[j];
+        if (px[id] < pm.detail) continue;
+        if (ranged && (far[id] === 1) === near) continue;
+        if (out[n * 4] !== id) {
+          out[n * 4] = out[n * 4 + 1] = id;
+          changed = true;
+        }
+        n++;
+      }
+      if (changed || pm.mesh.thinInstanceCount !== n) {
+        pm.mesh.thinInstanceCount = n;
+        pm.mesh.thinInstanceBufferUpdated('bakedVertexAnimationSettingsInstanced');
+      }
+      // (With no thin instances Babylon would draw the mesh once, uninstanced: unposed and untinted.)
+      pm.mesh.isVisible = n > 0;
+    }
   }
 
   /** A skeleton only declares the bone count to the shaders; poses come from the texture. */
   private skeleton(body: BodyData): Skeleton {
-    let sk = this.skeletons.get(body.name);
+    let sk = this.skeletons.get(body.family);
     if (sk) return sk;
     const set = this.set!;
-    sk = new Skeleton(`sim:${body.name}`, `sim:${body.name}`, this.scene);
+    sk = new Skeleton(`sim:${body.family}`, `sim:${body.family}`, this.scene);
     const bones: Bone[] = [];
     set.bones.forEach((name, b) => {
       const p = set.parents[b];
       bones.push(new Bone(name, sk!, p >= 0 ? bones[p] : null, Matrix.Identity()));
     });
-    this.skeletons.set(body.name, sk);
+    this.skeletons.set(body.family, sk);
     return sk;
   }
 
   private material(body: BodyData, part: string): PBRMaterial {
     const set = this.set!;
     const kind: CharacterSurface =
-      part === 'body' ? 'body' : part === 'eyes' ? 'plain' : part === 'lids' ? 'lid' : /^(top|bottom|shoes)\./.test(part) ? 'cloth' : 'hair';
-    const hairTex = part === 'brows' ? (body.name === 'female' ? 'hair2' : 'hair1') : (set.hairTextures[part.replace('hair.', '')] ?? 'hair1');
-    const key = kind === 'body' || kind === 'cloth' ? `${kind}:${body.name}` : kind === 'hair' ? `hair:${hairTex}` : kind;
+      part === 'body' || part === 'lod.body' || part.startsWith('body.')
+        ? 'body'
+        : part === 'eyes'
+          ? 'eye'
+          : part === 'brows'
+            ? 'brow'
+            : part === 'lashes'
+              ? 'lash'
+              : part === 'teeth' || part === 'tongue'
+                ? 'mouth'
+                : /^(lod\.)?(top|bottom|shoes)\./.test(part)
+                  ? 'cloth'
+                  : set.hairCards[part.replace('hair.', '')]
+                    ? 'card'
+                    : 'hair';
+    const hairTex = set.hairTextures[part.replace('hair.', '')] ?? 'hair1';
+    const key =
+      kind === 'body'
+        ? `body:${body.textures.albedo}`
+        : kind === 'brow'
+          ? `brow:${body.family}`
+          : kind === 'hair'
+            ? `hair:${hairTex}`
+            : kind === 'mouth' || kind === 'card'
+              ? `${kind}:${part}`
+              : kind;
     const cached = this.materials.get(key);
     if (cached) return cached;
     const mat = new PBRMaterial(`sim:${key}`, this.scene);
     const tex = (file: string, srgb: boolean) => textureWithFallback(set.file(file), this.scene, srgb, 4);
     mat.metallic = 0;
     mat.maxSimultaneousLights = 6;
-    let fabric: Texture | null = null;
     if (kind === 'body') {
       mat.albedoTexture = tex(body.textures.albedo, true);
-      mat.bumpTexture = tex(body.textures.normal, false);
-      mat.bumpTexture.level = 0.8;
-      mat.roughness = 0.5;
+      if (body.textures.normal) {
+        mat.bumpTexture = tex(body.textures.normal, false);
+        mat.bumpTexture.level = 0.8;
+      }
+      mat.roughness = 0.52;
     } else if (kind === 'cloth') {
-      mat.albedoColor = Color3.White();
-      mat.bumpTexture = tex(body.textures.folds ?? body.textures.normal, false);
-      mat.bumpTexture.level = 1;
-      fabric = tex('fabric.jpg', false);
+      // MakeHuman's clothes: tops and bottoms tint the atlas' detail per Sim (see the plugin).
+      mat.albedoTexture = tex(set.cloth.albedo, true);
+      mat.bumpTexture = tex(set.cloth.normal, false);
+      mat.bumpTexture.level = 0.8;
       mat.roughness = 0.82;
       mat.sheen.isEnabled = true;
       mat.sheen.intensity = 0.35;
@@ -2465,19 +2801,53 @@ export class Characters {
       mat.anisotropy.isEnabled = true;
       mat.anisotropy.intensity = 0.75;
       mat.anisotropy.direction.set(0, 1);
-    } else if (kind === 'lid') {
-      mat.albedoColor = Color3.White();
-      mat.roughness = 0.55;
+    } else if (kind === 'card') {
+      // MakeHuman hair: strand cards, alpha-tested, tinted with the hair colour (see the plugin).
+      const t = tex(set.hairCards[part.replace('hair.', '')], true);
+      t.hasAlpha = true;
+      mat.albedoTexture = t;
+      mat.useAlphaFromAlbedoTexture = true;
+      mat.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHATEST;
+      mat.alphaCutOff = 0.45;
+      mat.roughness = 0.45;
+      mat.backFaceCulling = false;
+      mat.twoSidedLighting = true;
+      mat.anisotropy.isEnabled = true;
+      mat.anisotropy.intensity = 0.6;
+      mat.anisotropy.direction.set(0, 1);
+    } else if (kind === 'brow' || kind === 'lash') {
+      // Soft-edged cards (brows in the hair colour, see the plugin; lashes dark brown): blended, so
+      // lashes read as a soft line rather than spikes.
+      const t = tex(kind === 'brow' ? (body.textures.brows ?? 'lashes.png') : (set.textures.lashes ?? 'lashes.png'), true);
+      t.hasAlpha = true;
+      mat.albedoTexture = t;
+      mat.useAlphaFromAlbedoTexture = true;
+      mat.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHABLEND;
+      mat.alpha = kind === 'lash' ? 0.85 : 0.9;
+      if (kind === 'lash') mat.albedoColor = new Color3(0.16, 0.12, 0.1);
+      mat.roughness = 0.6;
+      mat.backFaceCulling = false;
+      mat.twoSidedLighting = true;
+    } else if (kind === 'mouth') {
+      mat.albedoTexture = tex(set.textures[part] ?? `${part}.jpg`, true);
+      // Warm, soft and hardly reflecting the sky (the mouth hides most of it).
+      mat.albedoColor = part === 'teeth' ? new Color3(1, 0.96, 0.9) : new Color3(0.85, 0.8, 0.8);
+      mat.roughness = 0.5;
+      mat.environmentIntensity = 0.35;
     } else {
-      mat.albedoTexture = tex('eye_albedo.jpg', true);
-      mat.roughness = 0.12;
+      // Eyes: wet and glossy (a clear coat for the catchlight).
+      mat.albedoTexture = tex(set.textures.eyes ?? 'eye_albedo.jpg', true);
+      mat.roughness = 0.25;
+      mat.clearCoat.isEnabled = true;
+      mat.clearCoat.intensity = 1;
+      mat.clearCoat.roughness = 0.03;
     }
     if (mat.bumpTexture) {
       // OpenGL-style maps on geometry mirrored from glTF (same as Babylon's glTF loader).
       mat.invertNormalMapX = true;
       mat.invertNormalMapY = false;
     }
-    new CharacterPlugin(mat, kind, set.bones.length * 4, this.texture, fabric);
+    new CharacterPlugin(mat, kind, set.bones.length * 4, this.texture, this.morph);
     this.lib.adopt(mat);
     this.materials.set(key, mat);
     return mat;
@@ -2489,6 +2859,17 @@ function advance(p: Player, dt: number): void {
   p.time += dt * p.rate;
   if (p.clip.loop && p.time > p.clip.duration * 64) p.time %= p.clip.duration;
 }
+
+/** Head-top marker (speech bubbles, the selection marker, the creator's framing) above the crown (m, body scale). */
+const HEAD_MARGIN = 0.04;
+
+/** The eyes' height below a Sim's head-top marker (m). */
+function eyesBelowTop(rig: SimRig): number {
+  return (rig.body.headAbove * 0.7 + HEAD_MARGIN) * rig.scale * rig.head;
+}
+
+/** Mouth shapes for talk without a voice line (viseme indices: aa, E, O, I, U, PP, DD, SS, nn). */
+const BABBLE = [10, 11, 13, 12, 14, 1, 4, 7, 8, 10, 11];
 
 /** Whose turn it is in a conversation: the starter (role 1) and the other Sim alternate. */
 function speaking(pair: number, role: number, time: number): boolean {

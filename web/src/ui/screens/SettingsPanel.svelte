@@ -63,7 +63,7 @@
       const male = sampleCount++ % 2 === 1;
       const text = male ? "Hey! I'm one of your residents. Is this what I sound like?" : "Hi! I'm one of your residents. This is how I sound.";
       const voice = voiceFor(sampleCount, male ? 'male' : 'female');
-      playClip(await speak(text, voice));
+      playClip((await speak(text, voice)).samples);
     } finally {
       sampleBusy = false;
     }
