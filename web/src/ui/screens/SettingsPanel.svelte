@@ -10,7 +10,7 @@
   import Toggle from '../kit/Toggle.svelte';
   import SettingRow from './SettingRow.svelte';
   import type { Lifespan } from '../../core/protocol';
-  import { benchVerdict, runBenchmark, speak, voiceStatus } from '../../voice/service.svelte';
+  import { benchVerdict, DOWNLOAD_MB, runBenchmark, speak, voiceStatus, type BenchResult } from '../../voice/service.svelte';
   import { playClip } from '../../voice/player';
   import { voiceFor } from '../../voice/voices';
 
@@ -42,21 +42,26 @@
   const NEXT_LOAD = 'Next load';
 
 
-  const modelStatus = $derived(
-    voiceStatus.state === 'loading'
-      ? `Downloading… ${Math.round(voiceStatus.progress * 100)} %`
-      : voiceStatus.state === 'ready'
-        ? 'Ready. Runs on the CPU.'
-        : voiceStatus.state === 'error'
-          ? `Couldn't load the voice: ${voiceStatus.error}`
-          : 'Small and fast (9 MB): one voice, pitched for each resident.',
-  );
-  const VERDICT = { good: 'Smooth', ok: 'Lines may start a moment late', slow: 'Too slow: voices will lag on this computer' };
+  const STATE = { off: '', loading: 'loading', ready: 'ready', error: "couldn't load" } as const;
+  const modelStatus = $derived.by(() => {
+    if (voiceStatus.state === 'loading') return `Downloading… ${Math.round(voiceStatus.progress * 100)} %`;
+    if (voiceStatus.state === 'error') return `Couldn't load the voice: ${voiceStatus.error}`;
+    const m = voiceStatus.models;
+    const status = (state: keyof typeof STATE) => (STATE[state] ? ` (${STATE[state]})` : '');
+    return (
+      `Teens and grown-ups: KittenTTS nano, eight voices mixed for each resident${status(m.kitten)}. ` +
+      `Children: Paradee-8M${status(m.paradee)}, which also stands in when KittenTTS is too slow here. ` +
+      `Both run on the CPU; about ${Math.round(DOWNLOAD_MB.shared + DOWNLOAD_MB.kitten + DOWNLOAD_MB.paradee)} MB, downloaded once.`
+    );
+  });
+  const VERDICT = { good: 'smooth', ok: 'lines may start a moment late', slow: 'too slow here: Paradee speaks instead' };
+  const benchLine = (name: string, b: BenchResult | undefined) =>
+    b ? `${name}: ${(b.lineMs / 1000).toFixed(1)} s per line, ${(1 / b.rtf).toFixed(1)}× real time, ${VERDICT[benchVerdict(b)]}` : '';
   const benchText = $derived.by(() => {
-    const b = voiceStatus.bench;
     if (voiceStatus.benchmarking) return 'Testing…';
-    if (!b) return 'How fast this computer makes speech while the game keeps drawing.';
-    return `${(b.lineMs / 1000).toFixed(1)} s per line · ${(1 / b.rtf).toFixed(1)}× real time · ${VERDICT[benchVerdict(b)]}`;
+    const b = voiceStatus.bench;
+    if (!b.kitten && !b.paradee) return 'How fast this computer makes speech while the game keeps drawing, for both voice models.';
+    return [benchLine('Grown-ups (KittenTTS)', b.kitten), benchLine('Children (Paradee)', b.paradee)].filter(Boolean).join(' · ');
   });
   let sampleBusy = $state(false);
   let sampleCount = 0;
@@ -335,12 +340,16 @@
       </section>
       <section>
         <h3>Voices</h3>
-        <SettingRow title="Resident voices" hint="The resident you're looking at, and conversations you start, are spoken out loud in English. Runs on this computer; the voice downloads about 25 MB once." badges={['Experimental']}>
+        <SettingRow
+          title="Resident voices"
+          hint="The resident you're looking at, and conversations you start, are spoken out loud in English. Runs on this computer; the voices download about {Math.round(DOWNLOAD_MB.shared + DOWNLOAD_MB.kitten + DOWNLOAD_MB.paradee)} MB once."
+          badges={['Experimental']}
+        >
           <Toggle label="Resident voices" bind:checked={settings.voices} />
         </SettingRow>
         {#if settings.voices}
-          <SettingRow title="Voice model" hint={modelStatus}>
-            <Segmented label="Voice model" bind:value={settings.voiceModel} options={[{ value: 'paradee-8m', label: 'Paradee-8M' }]} />
+          <SettingRow title="Voice models" hint={modelStatus}>
+            <output>{voiceStatus.state === 'ready' ? 'Ready' : voiceStatus.state === 'loading' ? 'Loading' : voiceStatus.state === 'error' ? 'Failed' : 'Not loaded'}</output>
           </SettingRow>
           <SettingRow title="Voice volume">
             <input class="slider" type="range" min="0" max="1" step="0.05" aria-label="Voice volume" bind:value={settings.voiceVolume} />

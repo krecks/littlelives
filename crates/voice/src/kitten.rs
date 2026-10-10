@@ -21,10 +21,11 @@ const MAX_IDS: usize = 512;
 pub const STYLE_ROWS: usize = 128;
 /// Its code drops the last 5000 samples of every clip (they end in noise).
 const TAIL: usize = 5000;
-/// Silence trimming: 10 ms frames; a frame is sound when its RMS is over 2 % of the loudest
-/// frame's (−34 dB); 50 ms are kept before the first sound and 100 ms after the last.
+/// Silence trimming: 10 ms frames; a frame is sound when its RMS is over 5 % of the loudest
+/// frame's (−26 dB: above the soft breath KittenTTS starts many clips with, below the first
+/// consonant); 50 ms are kept before the first sound and 100 ms after the last.
 const FRAME: usize = 240;
-const THRESHOLD: f32 = 0.02;
+const THRESHOLD: f32 = 0.05;
 const LEAD: usize = 1200;
 const TRAIL: usize = 2400;
 /// Its code ends every input with `…` and the pad.
