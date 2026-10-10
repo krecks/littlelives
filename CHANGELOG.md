@@ -10,6 +10,7 @@ All notable changes to Littlelives. Versions follow [semantic versioning](https:
 - **Content packs can carry voice lines** for their own items (or replace lines) under a `voice` key; see `docs/content-packs.md`.
 
 ### Changed
+- **Resident voices are made about twice as fast:** the voice model now runs on ONNX Runtime Web instead of `tract`. In Chrome on an M-series Mac a typical line takes about 0.5 s instead of 1–1.2 s (6–7× faster than real time instead of 3–4×), with frames as smooth as before; the engine takes about a second longer to start. The download is a little smaller (24.8 MB instead of 28.7 MB, about 12.5 MB compressed), and everything stays self-hosted and cached. Old speed-test results are discarded; run the speed test again.
 - **Lines said before play at once:** each clip a resident speaks is kept (up to 24 MB, about four minutes of speech), so when they say the same line again it plays straight away, even while the voice is unloaded. The performance overlay (F3) shows how many clips are kept and reused.
 
 ### Removed

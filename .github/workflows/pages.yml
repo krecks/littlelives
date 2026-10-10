@@ -60,6 +60,7 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm wasm
           pnpm voice
+          pnpm check:voice
           pnpm check
           pnpm lint
           pnpm exec vite build --base=/${{ github.event.repository.name }}/

@@ -52,7 +52,8 @@ export const voiceStatus = $state({
 });
 
 const BENCH_KEY = 'littlelives.voiceBench';
-const MODEL_ID = 'paradee-8m@f662642';
+/** The model, its edit and the runtime: a new id discards old speed-test results and cached clips. */
+const MODEL_ID = 'paradee-8m@f662642+edit1/ort-web@1.30.0';
 const BENCH_LINES = [
   'Hello there!',
   "I'm so hungry, I could eat a whole pizza by myself.",

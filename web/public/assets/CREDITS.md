@@ -114,10 +114,14 @@ Unlike the art above, these are **Apache-2.0** (attribution required). They are 
 
 | File | Source | Authors | URL | Licence |
 |---|---|---|---|---|
-| `paradee-8m.onnx`, `paradee-8m.json` | Paradee-8M v1.0 (int8 ONNX), distilled from Kokoro-82M | Sahil Mahendrakar; Kokoro-82M by hexgrad | https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.0 | Apache-2.0 |
+| `paradee-8m-edit1.onnx`, `paradee-8m.json` | Paradee-8M v1.0 (int8 ONNX, `onnx/paradee_int8.onnx`), distilled from Kokoro-82M; **modified** (see below) | Sahil Mahendrakar; Kokoro-82M by hexgrad | https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.0 | Apache-2.0 |
 | `en-us.lexz` | Misaki US English dictionaries (`us_gold`, `us_silver`), merged and gzipped | hexgrad | https://github.com/hexgrad/misaki | Apache-2.0 |
 
+**Changes to Paradee-8M:** `paradee-8m-edit1.onnx` is the upstream `paradee_int8.onnx` changed by `tools/voice/model.mjs`: an added `pitch` input multiplies the predicted pitch curve, and the two random-number nodes (`RandomNormalLike`, `RandomUniformLike`) are replaced by a deterministic hash of each value's position. The weights are unchanged.
+
 The phonemizer in `crates/voice/src/g2p.rs` ports the English rules of Misaki (Apache-2.0); no espeak-ng code is used.
+
+The model runs with **ONNX Runtime Web** 1.30.0 (`onnxruntime-web`, its WebAssembly build `ort-wasm-simd-threaded.wasm`, bundled with the game), © Microsoft Corporation, MIT licence: https://github.com/microsoft/onnxruntime.
 
 ## Decoders (`../decoders/`, refreshed by `tools/assets/decoders.mjs`)
 
