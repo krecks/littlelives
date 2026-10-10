@@ -104,5 +104,6 @@ export default defineConfig({
   server: { headers: crossOriginIsolation },
   preview: { headers: crossOriginIsolation },
   worker: { format: 'es' },
-  build: { target: 'es2022', chunkSizeWarningLimit: 8000 },
+  // The main chunk is about 1.7 MB (Babylon by module, see render/babylon/core.ts): warn if it grows.
+  build: { target: 'es2022', chunkSizeWarningLimit: 2000 },
 });

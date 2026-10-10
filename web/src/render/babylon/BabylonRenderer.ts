@@ -79,7 +79,7 @@ import { applyShaderFixes } from './shaderFixes';
 import { HALF_WALL_HEIGHT, HouseBuilder, houseObjectKey, placeLights, WALL_HEIGHT, WALL_STUB, type HouseSurfaces, type RoomLight, type RoomTiles } from './house';
 import { Street } from './street';
 import { MaterialLibrary } from './materials';
-import { buildModel, placementVariation, type ModelTemplate } from './models';
+import { buildModel, placementVariation, prefetchModels, type ModelTemplate } from './models';
 import { compressedTextureFeatures } from './loaders';
 import { Characters, MAX_CHARACTERS } from './characters';
 import { installNature, Landscape, natureDecor, Sky } from './nature';
@@ -398,8 +398,8 @@ export class BabylonRenderer implements Renderer {
     this.setupPostProcessing();
     this.setupHelpers();
     await this.setupMarker();
+    // (Their data loads with the first world that has residents, not with the menus.)
     this.characters = new Characters(scene, this.deps.assets, this.lib);
-    void this.characters.init();
     this.applyStyle();
     window.addEventListener('resize', this.onResize);
   }
@@ -462,6 +462,8 @@ export class BabylonRenderer implements Renderer {
       this.cameraPlaced = true;
     }
 
+    // The residents' data downloads alongside the lot (it is first needed after it, in `buildSims`).
+    void this.characters.init();
     // The landscape depends only on the town, not on which lot is viewed (and may be the overview's).
     const nature = await this.useNature('world', world);
     // No grass through floors of rooms built (or furniture bought) since the lawn was scattered.
@@ -513,6 +515,9 @@ export class BabylonRenderer implements Renderer {
     this.applyWallMode();
     this.applyStoreys();
     this.lastLightMinute = -1;
+    // Then the other lots' furniture downloads in the background (the camera may follow someone there).
+    const elsewhere = world.objects.filter((o) => !this.inView(o.x + o.w / 2, o.z + o.d / 2, 0)).map((o) => this.objectModel(o));
+    prefetchModels(elsewhere.filter((key) => this.deps.assets.has(key, 'model')).map((key) => this.deps.assets.get(key, 'model')));
     if (this.debug) console.info(`[render] setWorld ${(performance.now() - started).toFixed(1)} ms${lotBuilt ? '' : ' (lot kept)'}`);
   }
 
