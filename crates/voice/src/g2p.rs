@@ -101,6 +101,9 @@ impl G2p {
     }
 
     fn word_known(&self, word: &str) -> bool {
+        if let Some(plain) = unaccented(word) {
+            return self.word_known(&plain);
+        }
         is_number(word) || self.get_word(word, None, Context::default()).is_some()
     }
 
@@ -118,6 +121,10 @@ impl G2p {
         }
         if is_number(word) {
             return self.number(word);
+        }
+        // "café", "Zoë": read as without the accents rather than dropped.
+        if let Some(plain) = unaccented(word) {
+            return self.word(&plain, ctx);
         }
         if !word.bytes().all(|c| c.is_ascii_alphabetic() || c == b'\'') {
             return None;
@@ -459,6 +466,20 @@ fn restress(ps: &str) -> String {
 
 /// Splits a line into words and punctuation, keeping where spaces were. `[word](/phonemes/)`
 /// fixes a word's pronunciation.
+/// `word` with Latin accents taken off, if it has any (and nothing else outside ASCII).
+fn unaccented(word: &str) -> Option<String> {
+    const FROM: &str = "àáâãäåāçćčèéêëēěìíîïīñńňòóôõöøōùúûüūýÿžśšźżÀÁÂÃÄÅĀÇĆČÈÉÊËĒĚÌÍÎÏĪÑŃŇÒÓÔÕÖØŌÙÚÛÜŪÝŸŽŚŠŹŻ";
+    const TO: &str = "aaaaaaaccceeeeeeiiiiinnnooooooouuuuuyyzsszzAAAAAAACCCEEEEEEIIIIINNNOOOOOOOUUUUUYYZSSZZ";
+    if word.is_ascii() {
+        return None;
+    }
+    let plain: String = word
+        .chars()
+        .map(|c| FROM.chars().position(|f| f == c).and_then(|i| TO.chars().nth(i)).unwrap_or(c))
+        .collect();
+    plain.is_ascii().then_some(plain)
+}
+
 fn tokenize(text: &str) -> Vec<Token> {
     let text = text.replace(['‘', '’'], "'").replace('–', "—");
     let chars: Vec<char> = text.chars().collect();

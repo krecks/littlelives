@@ -39,3 +39,13 @@ fn unknown_words_are_guessed() {
     assert_eq!(g2p.phonemize("[Kokoro](/kˈOkəɹˌO/) runs on the CPU."), "kˈOkəɹˌO ɹˈʌnz ˌɔn ðə sˌipˌijˈu.");
     assert!(!g2p.phonemize("Kokoro").is_empty());
 }
+
+#[test]
+fn accents_are_read_as_plain_letters() {
+    let Some(g2p) = g2p() else { return };
+    assert!(g2p.unknown_words("A new café opened.").is_empty());
+    assert_eq!(g2p.phonemize("café"), g2p.phonemize("cafe"));
+    // A name the dictionary doesn't have is still guessed, not dropped.
+    assert_eq!(g2p.phonemize("Zoë"), g2p.phonemize("Zoe"));
+    assert!(!g2p.phonemize("Zoë").is_empty());
+}
