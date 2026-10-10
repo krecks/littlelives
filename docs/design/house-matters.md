@@ -1,6 +1,6 @@
-# The house matters (0.11)
+# The house matters
 
-*Status: done on `build-and-watch` (0.11). Roadmap: PLAN.md section 8.*
+*Status: in 0.1.0 (built in development build 0.11; numbers like 0.11 here are those builds). Roadmap: PLAN.md section 8.*
 
 Building is the main activity, so the house has to show up in how residents live: what a room
 is like changes how they feel and what they choose, missing essentials have visible

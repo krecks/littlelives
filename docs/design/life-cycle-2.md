@@ -1,6 +1,6 @@
-# Life cycle II (0.13)
+# Life cycle II
 
-*Status: done on `build-and-watch` (0.13). Roadmap: PLAN.md section 8. Builds on 0.12
+*Status: in 0.1.0 (built in development build 0.13; numbers like 0.13 here are those builds). Roadmap: PLAN.md section 8. Builds on 0.12
 ([life-cycle.md](life-cycle.md)).*
 
 Families grow: couples have babies or adopt, babies grow into children and teens who go to

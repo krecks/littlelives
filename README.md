@@ -134,7 +134,7 @@ Pack authors: see [docs/content-packs.md](docs/content-packs.md). The look of th
 
 ## Versions
 
-One version number covers the whole game: `web/package.json` (shown in the main menu and Credits) and the Rust workspace in `Cargo.toml`. `node tools/release/version.mjs` prints it and fails if the two differ (the deploy workflow checks this); `node tools/release/version.mjs 0.4.0` sets both. Each release is a git tag `vX.Y.Z` with notes in [CHANGELOG.md](CHANGELOG.md).
+The current version is **0.1.0**, the first release. One version number covers the whole game: `web/package.json` (shown in the main menu and Credits) and the Rust workspace in `Cargo.toml`. `node tools/release/version.mjs` prints it and fails if the two differ (the deploy workflow checks this); `node tools/release/version.mjs 0.2.0` sets both. Each release is a git tag `vX.Y.Z` with notes in [CHANGELOG.md](CHANGELOG.md). Saves have their own format version (`SAVE_VERSION` in `crates/sim-core/src/save.rs`), so saves made before 0.1.0 still load.
 
 ## Licence
 

@@ -1,6 +1,6 @@
-# Life cycle I (0.12)
+# Life cycle I
 
-*Status: done on `build-and-watch` (0.12). Roadmap: PLAN.md section 8.*
+*Status: in 0.1.0 (built in development build 0.12; numbers like 0.12 here are those builds). Roadmap: PLAN.md section 8.*
 
 Lives move on: residents age, grow old, retire and pass away; partners move in together, grown
 children move out, and newcomers arrive in empty houses. The house has to grow and shrink with

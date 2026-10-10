@@ -1,13 +1,14 @@
 # Resident voices
 
-*Plan for residents speaking their thoughts and conversations out loud. Status (2026-10-10):
-phases 1–4 are in, with the guards of phase 6 that don't need Auto mode (see "Built so far");
-the hand-written engine (phase 5) and Auto mode are next. Babble, a made-up language
-(0.14–0.19), was removed in 0.20.0: residents speak English or not at all. Since 0.20.0 the
-models run on ONNX Runtime Web instead of `tract` (about twice as fast), and residents speak
-with **KittenTTS nano** (eight real men's and women's voices, mixed per resident). In 0.20.0
-children spoke with Paradee-8M, which was also the fallback when KittenTTS was too slow; after
-0.20.0 Paradee was removed and KittenTTS speaks for everyone, children included. Our own engine
+*Plan for residents speaking their thoughts and conversations out loud. Status (0.1.0,
+2026-10-10): resident voices ship in 0.1.0 as an experimental setting. Phases 1–4 are in, with
+the guards of phase 6 that don't need Auto mode (see "Built so far"); the hand-written engine
+(phase 5) and Auto mode are next. Version numbers 0.14–0.20 below are the development builds
+before 0.1.0: Babble, a made-up language (0.14–0.19), was removed in 0.20, where residents began
+to speak English or not at all; since 0.20 the model runs on ONNX Runtime Web instead of `tract`
+(about twice as fast). In 0.20 children spoke with Paradee-8M, which was also the fallback when
+KittenTTS was too slow; for 0.1.0 Paradee was removed, and **KittenTTS nano** (eight real men's
+and women's voices, mixed per resident) speaks for everyone, children included. Our own engine
 may replace the runtime later. Measurements and research behind the choices are at the end.*
 
 ## Built so far
@@ -81,7 +82,7 @@ may replace the runtime later. Measurements and research behind the choices are 
   minutes without a line and reloads on the next (quiet meanwhile); a watchdog pauses voices for
   the session (with a toast) after three lines in a row later than 4 s, or when over 10 % of the
   frames drawn while speech is made exceed 50 ms and that is at least twice the share without.
-  The F3 voice section shows whether voices are on, off or paused. (In 0.20.0 KittenTTS stepped
+  The F3 voice section shows whether voices are on, off or paused. (In 0.20 KittenTTS stepped
   down to Paradee first; with Paradee gone, there is no smaller model to step down to.)
 - **Not yet:** Auto mode, our own engine. Kokoro-82M was measured again on 2026-10-10 and is not
   planned for now (see "Research").
@@ -110,10 +111,10 @@ Runtime Web (later perhaps by our own engine).
 - **Small download, on request.** The model (32 MB with the runtime) is fetched when the player
   turns voices on, or when they hear a voice in the creator.
 
-## The model: Paradee-8M (removed after 0.20)
+## The model: Paradee-8M (removed for 0.1.0)
 
-*Children spoke with Paradee-8M in 0.20.0, and it stood in when KittenTTS was too slow; it was
-removed after 0.20.0 so only KittenTTS is used. Kept here for the measurements and the
+*Children spoke with Paradee-8M in 0.20, and it stood in when KittenTTS was too slow; it was
+removed for 0.1.0 so only KittenTTS is used. Kept here for the measurements and the
 reasoning.*
 
 [Paradee-8M v1.0](https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.0) is Kokoro-82M shrunk
@@ -266,7 +267,7 @@ frozen but fine for us.
   playing" for slower computers.
 
 Measured over three lines per voice (UTMOS, a predictor of listeners' scores, 1–5; Whisper
-understood every line of every voice): Paradee (0.20.0) scored 3.95–4.06 for women and 2.5–3.2 for
+understood every line of every voice): Paradee (0.20) scored 3.95–4.06 for women and 2.5–3.2 for
 its pitched-down men (2.9–3.5 with depth); KittenTTS's men 4.1–4.2 and women 3.4 (Kiki) to 4.25.
 A speaker-recognition model (WeSpeaker ResNet34) heard all of Paradee's residents as nearly the
 same person (similarity 0.92 within a sex, 0.81 across; one real person scores about 0.6–0.8);
@@ -283,9 +284,9 @@ interface VoiceParams { mix: [a, b, w]; pitch: number; speed: number; depth: num
 ```
 
 **Who speaks with what:** everyone with KittenTTS. Children have a mix of the women's voices
-(KittenTTS has no child's voice), raised and made smaller; in 0.20.0 they spoke with Paradee
+(KittenTTS has no child's voice), raised and made smaller; in 0.20 they spoke with Paradee
 instead, because a woman's KittenTTS voice scaled up scored worse (UTMOS 2.4), and that trade was
-made after 0.20.0 to keep a single model. Babies don't speak (the creator plays a baby as the
+made for 0.1.0 to keep a single model. Babies don't speak (the creator plays a baby as the
 child they will be).
 
 **A resident's mix:** a main voice and a second one, `w` of the main (0.5–1, from the
@@ -323,7 +324,7 @@ the model rounds durations to 25 ms frames). Done in the voice worker by the Rus
 samples are the same in every browser and the clip cache keeps working; α < 1 makes the model's
 part shorter, so men cost a little less. Range 0.75–1.3.
 
-**Paradee's generated voices (0.20.0, removed after)** (factors on the model's voice, about
+**Paradee's generated voices (0.20, removed after)** (factors on the model's voice, about
 210 Hz; each resident's place in a range comes from hashes of their id, size following pitch a
 little):
 
@@ -504,7 +505,7 @@ realistic) or in a game (speech pauses while it runs). It takes a few seconds.
   (`game.stats`). If three lines in a row are late, or frame time rises past the budget while
   inference runs, voices step down (as in the benchmark) for the session and a toast says why
   once.
-- **No smaller model to step down to:** in 0.20.0 KittenTTS gave way to Paradee for the session
+- **No smaller model to step down to:** in 0.20 KittenTTS gave way to Paradee for the session
   when its lines came late, slowed frames or it couldn't load. With Paradee removed, those cases
   pause voices (`voice/index.ts`: three lines in a row later than 4 s, or slowed frames), or leave
   them off with the load error in Settings.
