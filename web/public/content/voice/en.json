@@ -386,7 +386,11 @@
     ],
     "meditate": [
       "Breathe in. Breathe out.",
-      "Let it all go."
+      "Let it all go."    ],
+    "knock": [
+      "Hello? Anybody home?",
+      "Knock, knock!",
+      "It's me, {me}!"
     ]
   },
   "emotion": {

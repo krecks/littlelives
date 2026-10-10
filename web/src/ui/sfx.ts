@@ -4,40 +4,25 @@
  * "Sound effects" setting. The audio context starts on the first sound after a user gesture.
  */
 
+import { audioContext, bus } from '../audio/mixer';
 import { settings } from '../settings/settings.svelte';
 
 export type Sound = 'pick' | 'place' | 'sell' | 'rotate' | 'error' | 'build' | 'remove' | 'paint' | 'upgrade' | 'tab' | 'open' | 'close';
 
-const MASTER = 0.5;
 /** The same sound again within this many ms is skipped (a burst of hover moves, a held key). */
 const DEBOUNCE_MS = 45;
 
-let ctx: AudioContext | null = null;
 let out: GainNode | null = null;
 let noise: AudioBuffer | null = null;
 const last = new Map<Sound, number>();
-
-function audio(): AudioContext | null {
-  if (!ctx) {
-    try {
-      ctx = new AudioContext();
-      out = ctx.createGain();
-      out.gain.value = MASTER;
-      out.connect(ctx.destination);
-    } catch {
-      return null;
-    }
-  }
-  if (ctx.state === 'suspended') void ctx.resume();
-  return ctx;
-}
 
 export function play(sound: Sound): void {
   if (!settings.sound) return;
   const now = performance.now();
   if (now - (last.get(sound) ?? -Infinity) < DEBOUNCE_MS) return;
   last.set(sound, now);
-  const ac = audio();
+  const ac = audioContext();
+  out = bus('effects');
   if (!ac || !out) return;
   const t = ac.currentTime + 0.005;
   switch (sound) {

@@ -9,9 +9,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::MINUTES_PER_TICK;
 use crate::clock;
-use crate::content::{CareerLevel, Content, MAX_NEEDS, MAX_SKILLS, WorkweekRule};
+use crate::content::{CareerLevel, Content, MAX_NEEDS, MAX_SKILLS, Pose, WorkweekRule};
 use crate::social::{self, EventKind};
-use crate::world::{GameMode, Task, TaskKind, World, end_activity, practise};
+use crate::world::{Activity, GameMode, Phase, Task, TaskKind, World, end_activity, practise};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -66,6 +66,8 @@ pub enum Transition {
     Visit { plot: u32, directed: bool },
     /// Reached home.
     Home,
+    /// Reached the front door to answer `guest`'s knock.
+    Answered { guest: u32 },
 }
 
 /// Skill levels above (+) or below (-) what a job level asks for; the weakest skill counts.
@@ -177,6 +179,7 @@ pub(crate) fn update(w: &mut World) {
         }
         report_skill_ups(w, i);
     }
+    doors(w);
     charge_rent(w, day);
     job_market(w, day);
 }
@@ -407,6 +410,10 @@ fn apply_transition(w: &mut World, i: usize, transition: Transition) {
             };
             let until = tick + ticks(hours * 60.0);
             w.sims[i].visiting = Some(Visit { plot, until });
+            // With door rules the story is told when they're let in (`answer`).
+            if w.content.visits.door.is_some() && !w.plots[plot as usize].public {
+                return;
+            }
             // Tell the story if the hosts are home.
             let host = w
                 .households
@@ -422,7 +429,120 @@ fn apply_transition(w: &mut World, i: usize, transition: Transition) {
             }
         }
         Transition::Home => w.sims[i].visiting = None,
+        Transition::Answered { guest } => answer(w, i, guest as usize),
     }
+}
+
+/// The plot a visitor is knocking at, and how long they've waited and who is coming, if they are.
+fn knocking(sim: &crate::world::Sim) -> Option<(u32, u32, Option<u32>)> {
+    match sim.current.as_ref()? {
+        Activity { task: Task { kind: TaskKind::Visit { plot }, .. }, phase: Phase::Knocking { ticks, host }, .. } => Some((*plot, *ticks, *host)),
+        _ => None,
+    }
+}
+
+/// Visitors at front doors (`visits.door`): someone at home is sent to answer; with nobody to
+/// answer, the visitor gives up after a while and goes home.
+fn doors(w: &mut World) {
+    let Some(rules) = w.content.visits.door.clone() else { return };
+    let tick = w.tick;
+    let wait = ticks(rules.wait_minutes);
+    for i in 0..w.sims.len() {
+        let Some((plot, waited, host)) = knocking(&w.sims[i]) else { continue };
+        let waited = u64::from(waited);
+        // Still coming? (They may have been called away, gone to bed or to work.)
+        let host = host.filter(|&h| {
+            let s = &w.sims[h as usize];
+            let answering = |t: &Task| matches!(t.kind, TaskKind::Answer { guest } if guest as usize == i);
+            s.current.as_ref().is_some_and(|a| answering(&a.task)) || s.queue.iter().any(answering)
+        });
+        let host = host.or_else(|| {
+            let h = door_host(w, plot, i)?;
+            let World { sims, content, objects, .. } = &mut *w;
+            let s = &mut sims[h];
+            if s.current.is_some() {
+                end_activity(s, content, objects);
+            }
+            s.queue.push_front(Task { kind: TaskKind::Answer { guest: i as u32 }, directed: false });
+            Some(h as u32)
+        });
+        if let Some(Activity { phase: Phase::Knocking { host: h, .. }, .. }) = w.sims[i].current.as_mut() {
+            *h = host;
+        }
+        // Nobody comes (or whoever was coming never makes it): home again.
+        if (host.is_none() && waited >= wait) || waited >= wait * 3 {
+            let sim = &mut w.sims[i];
+            sim.current = None;
+            if !sim.queue.iter().any(|t| matches!(t.kind, TaskKind::GoHome)) {
+                sim.queue.push_front(Task { kind: TaskKind::GoHome, directed: false });
+            }
+            let household = w.households.iter().position(|h| h.plot == Some(plot));
+            if let Some(member) = household.and_then(|h| w.sims.iter().position(|s| s.here() && s.household as usize == h)) {
+                w.events.push(tick, EventKind::NobodyHome, i, member, None);
+            }
+        }
+    }
+}
+
+/// Who answers the door of `plot`: the grown-up of the household living there who is nearest to
+/// the door, at home, awake, and not busy with something the player asked for or a conversation.
+fn door_host(w: &World, plot: u32, guest: usize) -> Option<usize> {
+    let household = w.households.iter().position(|h| h.plot == Some(plot))?;
+    let door = w.plots[plot as usize].arrival_point();
+    let free = |s: &crate::world::Sim| {
+        s.current.as_ref().is_none_or(|a| {
+            !a.task.directed
+                && !matches!(a.phase, Phase::Conversing { .. })
+                && !matches!(a.task.kind, TaskKind::Work | TaskKind::GoHome | TaskKind::Visit { .. } | TaskKind::Answer { .. })
+        }) && !s.queue.front().is_some_and(|t| t.directed)
+    };
+    w.sims
+        .iter()
+        .enumerate()
+        .filter(|&(j, s)| {
+            j != guest
+                && s.here()
+                && s.household as usize == household
+                && s.away_until.is_none()
+                && s.visiting.is_none()
+                && s.pose != Pose::Lie
+                && s.engaged_with.is_none()
+                && s.adult(&w.content)
+                && w.plot_at(s.tile().0, s.tile().1) == Some(plot)
+                && free(s)
+        })
+        .map(|(j, s)| (j, (s.pos[0] - door[0]).hypot(s.pos[1] - door[1])))
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(j, _)| j)
+}
+
+/// Host `h` opened the door to `guest`: friends (and acquaintances) come in, people the host
+/// can't stand and visitors at an unreasonable hour are sent away.
+fn answer(w: &mut World, h: usize, guest: usize) {
+    let Some(rules) = w.content.visits.door.clone() else { return };
+    if w.sims.get(guest).and_then(knocking).is_none() {
+        return;
+    }
+    let tick = w.tick;
+    let hour = clock::hour(tick);
+    let visits = &w.content.visits;
+    let sensible_hour = (visits.earliest_hour - 2.0..=visits.latest_hour + 2.0).contains(&hour);
+    let welcome = sensible_hour && w.relationships.get(h, guest).friendship >= rules.welcome_friendship;
+    w.sims[guest].current = None;
+    if welcome {
+        w.events.push(tick, EventKind::Visited, guest, h, None);
+        if let Some(greet) = rules.greet {
+            w.sims[h].queue.push_front(Task { kind: TaskKind::Social { target: guest as u32, social: greet }, directed: false });
+        }
+        return;
+    }
+    let World { sims, content, events, .. } = &mut *w;
+    let sim = &mut sims[guest];
+    sim.queue.push_front(Task { kind: TaskKind::GoHome, directed: false });
+    if let Some(m) = rules.turned_away {
+        social::add_feeling(&mut sim.feelings, m, &content.feelings, tick);
+    }
+    events.push(tick, EventKind::TurnedAway, guest, h, None);
 }
 
 /// Off the map at work: needs change and skills grow, then come home with pay and maybe a promotion.

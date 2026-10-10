@@ -770,6 +770,10 @@ pub enum EventKind {
     Adopted,
     /// `a` finished school with a final grade of `n` (0..100).
     Graduated,
+    /// `b` didn't let `a` in at the door.
+    TurnedAway,
+    /// `a` knocked at the door of `b`'s home, but nobody answered.
+    NobodyHome,
 }
 
 impl EventKind {
@@ -781,8 +785,8 @@ impl EventKind {
             | Fired | GoalReached | MovedIn | GrewOlder | Retired | Died | MovedInWith | MovedOut
             | MovedAway | Expecting | Born | Adopted | Graduated => 2,
             BecameFriends | BecameGoodFriends | BecameEnemies | Crush | ProposalRejected
-            | Fight | Jealous | QuitJob | RentDebt | Broke | Accident => 1,
-            Met | MissedWork | SkillUp | PaidRent | Upgraded | Visited | GoalSuggested | Repaired => 0,
+            | Fight | Jealous | QuitJob | RentDebt | Broke | Accident | TurnedAway => 1,
+            Met | MissedWork | SkillUp | PaidRent | Upgraded | Visited | GoalSuggested | Repaired | NobodyHome => 0,
         }
     }
 }
