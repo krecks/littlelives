@@ -109,6 +109,8 @@ export interface EdgePreview {
   form?: number;
   /** Doors and windows: style index; fences and gates: fence style index. */
   style?: number;
+  /** New walls: covering of both faces. */
+  cover?: number;
 }
 
 /** A wall face the Paint tool would cover (`side` 0 looks towards -z / -x / half 0). */

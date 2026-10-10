@@ -100,13 +100,21 @@ export class WallCutState {
   readonly look = new Vector4(0, 0, 0, 0);
   /** x: all walls down (0/1); y: stub height in metres. */
   readonly params = new Vector4(0, 0.35, 0, 0);
+  /**
+   * A stretch of wall hidden while Build mode's preview stands in for it: everything within
+   * `holeSpan.x` of the segment `hole` (x0, z0, x1, z1), between heights `holeSpan.y` and `.z`.
+   * A zero width hides nothing.
+   */
+  readonly hole = new Vector4(0, 0, 0, 0);
+  readonly holeSpan = new Vector4(0, 0, 0, 0);
 }
 
 /**
  * Lowers wall vertices in the vertex shader. Per vertex `wallCut` = [mask A, kind, mask B, 0]:
  * the vertex is cut when the camera looks along a direction set in both masks (or all walls are
  * down); kind 1 clamps it to the stub height, kind 2 hides it below the ground (window frames,
- * lintels). Uniforms are bound per draw, so frozen materials still follow the state.
+ * lintels). Fragments in the state's `hole` are dropped. Uniforms are bound per draw, so frozen
+ * materials still follow the state.
  */
 class WallCutPlugin extends MaterialPluginBase {
   constructor(
@@ -135,18 +143,41 @@ class WallCutPlugin extends MaterialPluginBase {
   }
 
   override getUniforms(): { externalUniforms: string[] } {
-    return { externalUniforms: ['wallCutLook', 'wallCutParams'] };
+    return { externalUniforms: ['wallCutLook', 'wallCutParams', 'wallHole', 'wallHoleSpan'] };
   }
 
   override hardBindForSubMesh(_ubo: UniformBuffer, _scene: Scene, _engine: AbstractEngine, subMesh: SubMesh): void {
     const effect = subMesh.effect;
     if (!effect) return;
-    const { look, params } = this.state;
+    const { look, params, hole, holeSpan } = this.state;
     effect.setFloat4('wallCutLook', look.x, look.y, look.z, look.w);
     effect.setFloat4('wallCutParams', params.x, params.y, params.z, params.w);
+    effect.setFloat4('wallHole', hole.x, hole.y, hole.z, hole.w);
+    effect.setFloat4('wallHoleSpan', holeSpan.x, holeSpan.y, holeSpan.z, holeSpan.w);
   }
 
   override getCustomCode(shaderType: string, shaderLanguage?: ShaderLanguage): Nullable<{ [pointName: string]: string }> {
+    if (shaderType === 'fragment') {
+      const wgsl = shaderLanguage === ShaderLanguage.WGSL;
+      const [u, p, v4, f] = wgsl ? ['uniforms.', 'fragmentInputs.vPositionW', 'vec4f', 'let'] : ['', 'vPositionW', 'vec4', 'float'];
+      return {
+        CUSTOM_FRAGMENT_DEFINITIONS: `
+#ifdef WALLCUT
+${wgsl ? `uniform wallHole: ${v4};\nuniform wallHoleSpan: ${v4};` : `uniform ${v4} wallHole;\nuniform ${v4} wallHoleSpan;`}
+#endif
+`,
+        CUSTOM_FRAGMENT_MAIN_BEGIN: `
+#ifdef WALLCUT
+if (${u}wallHoleSpan.x > 0.0) {
+  ${wgsl ? 'let ab: vec2f' : 'vec2 ab'} = ${u}wallHole.zw - ${u}wallHole.xy;
+  ${f} t = dot(${p}.xz - ${u}wallHole.xy, ab) / max(dot(ab, ab), 1e-6);
+  ${wgsl ? 'let off: vec2f' : 'vec2 off'} = ${p}.xz - (${u}wallHole.xy + ab * t);
+  if (t >= 0.0 && t <= 1.0 && dot(off, off) < ${u}wallHoleSpan.x * ${u}wallHoleSpan.x && ${p}.y > ${u}wallHoleSpan.y && ${p}.y < ${u}wallHoleSpan.z) { discard; }
+}
+#endif
+`,
+      };
+    }
     if (shaderType !== 'vertex') return null;
     if (shaderLanguage === ShaderLanguage.WGSL) {
       return {

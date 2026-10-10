@@ -509,6 +509,24 @@ export class BuildBuyInput {
     return Math.min(fz, 1 - fz) <= Math.min(fx, 1 - fx) ? { axis: 'h', x: tx, z: Math.round(ground.z) } : { axis: 'v', x: Math.round(ground.x), z: tz };
   }
 
+  /** The nearest full-height wall (with or without an opening) round the pointer's tile, if any. */
+  private nearestWall(ground: Point): { axis: Axis; x: number; z: number } | null {
+    const tx = Math.floor(ground.x);
+    const tz = Math.floor(ground.z);
+    const fx = ground.x - tx;
+    const fz = ground.z - tz;
+    const diagonal = this.diagonals.get(`${tx}:${tz}`);
+    const around: [number, { axis: Axis; x: number; z: number }][] = [
+      [fz, { axis: 'h', x: tx, z: tz }],
+      [1 - fz, { axis: 'h', x: tx, z: tz + 1 }],
+      [fx, { axis: 'v', x: tx, z: tz }],
+      [1 - fx, { axis: 'v', x: tx + 1, z: tz }],
+    ];
+    if (diagonal) around.push([(diagonal === 'dp' ? Math.abs(fx - fz) : Math.abs(fx + fz - 1)) / Math.SQRT2, { axis: diagonal, x: tx, z: tz }]);
+    const walls = around.filter(([, e]) => ['wall', 'door', 'window'].includes(this.edgeState(e)) && !(this.edgeState(e) === 'wall' && this.lookOf(e).form));
+    return walls.length ? walls.reduce((a, b) => (b[0] < a[0] ? b : a))[1] : null;
+  }
+
   /**
    * The run of edges drawn from corner `a` towards the pointer: straight along the longer
    * direction, or diagonal (one tile per step, corner to corner) when the drag is near 45°.
@@ -565,7 +583,8 @@ export class BuildBuyInput {
     const look = game.buildLook;
     const opening = this.opening();
     if (opening) {
-      const edge = this.nearestEdge(ground);
+      // Doors and windows keep to walls, so passing from one wall tile to the next stays on the wall.
+      const edge = (opening !== 'gate' && this.nearestWall(ground)) || this.nearestEdge(ground);
       // Gates stand on grid edges (a diagonal under the pointer gives way to the nearest one).
       const e = opening === 'gate' && (edge.axis === 'dp' || edge.axis === 'dn') ? this.gridEdge(ground) : edge;
       return [{ ...e, kind: opening, style: opening === 'door' ? look.door : opening === 'window' ? look.window : look.fence }];

@@ -51,7 +51,7 @@ import {
   type AbstractEngine,
 } from './core';
 import type { FrameState } from '../../core/bridge';
-import { groundDepth, type MeshArrays, type ObjectPlacement, type WorldStructure } from '../../core/protocol';
+import { groundDepth, type DiagonalWall, type MeshArrays, type ObjectPlacement, type Opening, type WallEdge, type WorldStructure } from '../../core/protocol';
 import type { QualitySettings } from '../quality';
 import { LOOK } from '../look';
 import type {
@@ -75,7 +75,7 @@ import type {
 import { createLighting, lightingAt } from './environment';
 import { buildFences } from './fences';
 import { applyShaderFixes } from './shaderFixes';
-import { HALF_WALL_HEIGHT, HouseBuilder, houseObjectKey, placeLights, WALL_HEIGHT, WALL_STUB, type HouseSurfaces, type RoomLight, type RoomTiles } from './house';
+import { HALF_WALL_HEIGHT, HouseBuilder, houseObjectKey, placeLights, WALL_HALF, WALL_HEIGHT, WALL_STUB, type HouseSurfaces, type RoomLight, type RoomTiles } from './house';
 import { Street } from './street';
 import { MaterialLibrary } from './materials';
 import { buildModel, placementVariation, prefetchModels, type ModelTemplate } from './models';
@@ -304,7 +304,8 @@ export class BabylonRenderer implements Renderer {
   private ghostRoot!: TransformNode;
   private ghostKey = '';
   private ghostMeshes: Mesh[] = [];
-  private readonly ghostColor = new Float32Array(4);
+  /** Each ghost mesh's own material: shown where the thing fits; the translucent tint where it can't go. */
+  private ghostOwn: (Material | null)[] = [];
   private ghostMaterial!: StandardMaterial;
   /** Flat arrow on the tile the ghost is used from, pointing out of it. */
   private ghostArrow!: Mesh;
@@ -324,6 +325,11 @@ export class BabylonRenderer implements Renderer {
   private previewMeshes!: Record<'wall' | 'door' | 'window' | 'open', Mesh>;
   private previewBuffers!: Record<'wall' | 'door' | 'window' | 'open', Float32Array>;
   private previewValid = true;
+  /** Fences, gates, doors and windows the edge preview shows as built, and what they show. */
+  private builtPreview: Mesh[] = [];
+  private builtPreviewKey = '';
+  /** The next of them, hidden until its shaders are ready, with the stretch of wall it hides (x0, z0, x1, z1, width, y0, y1). */
+  private builtPending: { meshes: Mesh[]; hole: number[] | null } | null = null;
   private grid!: Mesh;
   private gridOn = false;
   private paintPreview!: Mesh;
@@ -549,6 +555,7 @@ export class BabylonRenderer implements Renderer {
     this.skyDome.drift(this.engine.getDeltaTime());
     this.fx.update(this.engine.getDeltaTime());
     if (this.ghostShown) this.updateGhost(this.engine.getDeltaTime());
+    if (this.builtPending) this.swapBuilt();
     if (this.roofs.length && this.roofVisible() !== this.roofShown) {
       this.roofShown = !this.roofShown;
       this.showRoofs();
@@ -768,8 +775,11 @@ export class BabylonRenderer implements Renderer {
   }
 
   setEdgePreview(edges: readonly EdgePreview[], valid: boolean): void {
+    // Where they can go, walls, doors, windows, fences and gates show as built; removals (and what can't go) as films.
+    const built = valid ? edges.filter((e) => e.kind !== 'open') : [];
+    this.showBuilt(built);
     const counts = { wall: 0, door: 0, window: 0, open: 0 };
-    for (const e of edges) {
+    for (const e of built.length ? edges.filter((e) => !built.includes(e)) : edges) {
       // Fences show as low walls, gates as low doors.
       const kind = e.kind === 'fence' ? 'wall' : e.kind === 'gate' ? 'door' : e.kind;
       let buf = this.previewBuffers[kind];
@@ -840,6 +850,136 @@ export class BabylonRenderer implements Renderer {
       }
       this.resetSnapshot();
     }
+  }
+
+  /**
+   * Fences and gates in their style; walls, doors and windows as the house would build them
+   * (standing while walls are down), the stretch of wall they go into hidden meanwhile.
+   */
+  private showBuilt(edges: readonly EdgePreview[]): void {
+    const key = edges.length ? JSON.stringify([this.storey, this.wallMode, edges]) : '';
+    if (key === this.builtPreviewKey) return;
+    this.builtPreviewKey = key;
+    for (const mesh of this.builtPending?.meshes ?? []) mesh.dispose(false, false);
+    this.builtPending = null;
+    const world = this.lastWorld;
+    if (!edges.length || !world) {
+      for (const mesh of this.builtPreview) mesh.dispose(false, false);
+      this.builtPreview = [];
+      this.lib.wallCut.holeSpan.x = 0;
+      this.resetSnapshot();
+      return;
+    }
+    // The shown preview stays until the next one can draw (no gap moving from tile to tile).
+    const next: Mesh[] = [];
+    let hole: number[] | null = null;
+    const fences = edges.flatMap((e) => ((e.kind === 'fence' || e.kind === 'gate') && (e.axis === 'h' || e.axis === 'v') ? [{ axis: e.axis, x: e.x, z: e.z, kind: e.kind, style: e.style }] : []));
+    const fenceMesh = buildFences(this.scene, fences, this.deps.content.fenceStyles);
+    if (fenceMesh) next.push(fenceMesh);
+    // A lot with just these walls (in the rooms as they are), the walls they go into keeping their looks.
+    const W = world.width;
+    const walls: WallEdge[] = [];
+    const openings: Opening[] = [];
+    const diagonals: DiagonalWall[] = [];
+    const standing: EdgePreview[] = [];
+    const previewed = new Set(edges.map((e) => `${e.axis}:${e.x}:${e.z}`));
+    const opened = new Map((world.openings ?? []).map((o) => [`${o.axis}:${o.x}:${o.z}`, o]));
+    const walled = new Map((world.walls ?? []).map((w) => [`${w.axis}:${w.x}:${w.z}`, w]));
+    const slanted = new Map((world.diagonals ?? []).map((d) => [`${d.axis}:${d.x}:${d.z}`, d]));
+    // With walls cut down, a door or window put into a wall raises the whole of it (the straight
+    // run either side, as built) so it shows in the wall it goes into.
+    const run: EdgePreview[] = [];
+    if (this.wallMode !== 'up') {
+      for (const e of edges) {
+        if (e.kind !== 'door' && e.kind !== 'window') continue;
+        const at = `${e.axis}:${e.x}:${e.z}`;
+        if (!walled.has(at) && !slanted.has(at)) continue;
+        const [dx, dz] = e.axis === 'h' ? [1, 0] : e.axis === 'v' ? [0, 1] : e.axis === 'dp' ? [1, 1] : [1, -1];
+        for (const step of [-1, 1]) {
+          for (let k = step; ; k += step) {
+            const [x, z] = [e.x + dx * k, e.z + dz * k];
+            const along = `${e.axis}:${x}:${z}`;
+            if (previewed.has(along)) continue;
+            const had = slanted.get(along) ?? opened.get(along) ?? walled.get(along);
+            if (!had) break;
+            previewed.add(along);
+            run.push({ axis: e.axis, x, z, kind: 'kind' in had ? had.kind : 'wall', style: 'style' in had ? had.style : undefined });
+          }
+        }
+      }
+    }
+    for (const e of [...edges, ...run]) {
+      if (e.kind !== 'wall' && e.kind !== 'door' && e.kind !== 'window') continue;
+      const faces: [number, number] | undefined = e.cover ? [e.cover, e.cover] : undefined;
+      if (e.axis === 'dp' || e.axis === 'dn') {
+        const had = slanted.get(`${e.axis}:${e.x}:${e.z}`);
+        const r = world.rooms[e.z * W + e.x] ?? 0;
+        if (had) standing.push(e);
+        diagonals.push({ axis: e.axis, x: e.x, z: e.z, kind: e.kind, rooms: had?.rooms ?? [r, r], faces: faces ?? had?.faces, form: had ? had.form : e.form, style: e.style });
+      } else {
+        const had = walled.get(`${e.axis}:${e.x}:${e.z}`);
+        if (had) standing.push(e);
+        walls.push({ axis: e.axis, x: e.x, z: e.z, faces: faces ?? had?.faces, form: e.kind === 'wall' ? (had ? had.form : e.form) : undefined });
+        if (e.kind !== 'wall') openings.push({ axis: e.axis, x: e.x, z: e.z, kind: e.kind, style: e.style });
+      }
+    }
+    if (walls.length || diagonals.length) {
+      const view = this.view ? { ...this.view, z: this.view.z + this.storey * this.storeys.depth } : null;
+      const house = this.house.build({ ...world, walls, openings, diagonals }, view, { upper: this.storey > 0, preview: true });
+      if (house) next.push(...house.meshes);
+      hole = this.holeFor(standing);
+    }
+    for (const mesh of next) {
+      mesh.parent = this.storeyLayer;
+      mesh.alwaysSelectAsActiveMesh = true;
+      mesh.setEnabled(false);
+    }
+    this.builtPending = { meshes: next, hole };
+    this.swapBuilt();
+  }
+
+  /** Shows the pending preview (and hides the wall it stands in) once all of it is ready to draw. */
+  private swapBuilt(): void {
+    const pending = this.builtPending;
+    if (!pending || !pending.meshes.every((mesh) => mesh.isReady(true))) return;
+    this.builtPending = null;
+    for (const mesh of this.builtPreview) mesh.dispose(false, false);
+    this.builtPreview = pending.meshes;
+    for (const mesh of this.builtPreview) mesh.setEnabled(true);
+    const cut = this.lib.wallCut;
+    if (pending.hole) {
+      const [x0, z0, x1, z1, w, y0, y1] = pending.hole;
+      cut.hole.set(x0, z0, x1, z1);
+      cut.holeSpan.set(w, y0, y1, 0);
+    } else cut.holeSpan.x = 0;
+    this.resetSnapshot();
+  }
+
+  /** The stretch of wall `edges` cover (in one line: a door or window and the wall it goes into), for `swapBuilt` to hide. */
+  private holeFor(edges: readonly EdgePreview[]): number[] | null {
+    // In the world, this storey's rows lie over the ground's (see `setStorey`).
+    const shift = this.storey * this.storeys.depth;
+    const ends = edges.map((e): [number, number, number, number] => {
+      const t = e.axis === 'h' || e.axis === 'v' ? WALL_HALF : WALL_HALF * Math.SQRT1_2;
+      const z = e.z - shift;
+      if (e.axis === 'h') return [e.x + t, z, e.x + 1 - t, z];
+      if (e.axis === 'v') return [e.x, z + t, e.x, z + 1 - t];
+      if (e.axis === 'dp') return [e.x + t, z + t, e.x + 1 - t, z + 1 - t];
+      return [e.x + t, z + 1 - t, e.x + 1 - t, z + t];
+    });
+    if (!ends.length) return null;
+    // One segment from the first to the farthest end along the line (none for a bent run).
+    const [x0, z0, x1, z1] = ends[0];
+    const [ux, uz] = [x1 - x0, z1 - z0];
+    const along = (x: number, z: number) => (x - x0) * ux + (z - z0) * uz;
+    const off = (x: number, z: number) => Math.abs((x - x0) * uz - (z - z0) * ux);
+    if (ends.some(([a, b, c, d]) => off(a, b) > 1e-6 || off(c, d) > 1e-6)) return null;
+    const points = ends.flatMap(([a, b, c, d]) => [[a, b], [c, d]]);
+    const lo = points.reduce((m, p) => (along(p[0], p[1]) < along(m[0], m[1]) ? p : m));
+    const hi = points.reduce((m, p) => (along(p[0], p[1]) > along(m[0], m[1]) ? p : m));
+    // Within reach of trim and sills (a crossing wall loses no more than that); this storey's walls only.
+    const y0 = this.storey * WALL_HEIGHT;
+    return [lo[0], lo[1], hi[0], hi[1], WALL_HALF + 0.08, this.storey ? y0 + 0.005 : -1, y0 + WALL_HEIGHT + 0.005];
   }
 
   setPaintPreview(faces: readonly PaintPreviewFace[], cover: number | null): void {
@@ -1598,6 +1738,7 @@ export class BabylonRenderer implements Renderer {
     this.ghostRoot.position.y = HIDDEN_Y;
     const ghostMat = (this.ghostMaterial = new StandardMaterial('ghost', this.scene));
     ghostMat.alpha = 0.5;
+    ghostMat.diffuseColor = new Color3(1.0, 0.45, 0.42);
     ghostMat.specularColor = Color3.Black();
     ghostMat.emissiveColor = new Color3(0.25, 0.25, 0.25);
     ghostMat.backFaceCulling = false;
@@ -2200,11 +2341,12 @@ export class BabylonRenderer implements Renderer {
     return this.lib.surface(key, { doubleSided: true });
   }
 
-  /** Builds (once per model key) the translucent preview meshes for buy mode. */
+  /** Builds (once per model key) the preview meshes for buy mode: the thing itself, held up. */
   private loadGhost(model: string): void {
     this.ghostKey = model;
     for (const mesh of this.ghostMeshes) mesh.dispose(false, false);
     this.ghostMeshes = [];
+    this.ghostOwn = [];
     const key = model;
     void buildModel(this.scene, `ghost:${key}`, this.deps.assets.get(key, 'model'), [1, 1]).then((template) => {
       if (this.ghostKey !== key) {
@@ -2212,23 +2354,23 @@ export class BabylonRenderer implements Renderer {
         return;
       }
       for (const mesh of template.meshes) {
-        mesh.material = this.ghostMaterial;
         mesh.parent = this.ghostRoot;
         mesh.isPickable = false;
         mesh.renderingGroupId = 1;
         mesh.thinInstanceSetBuffer('matrix', Matrix.Identity().asArray() as unknown as Float32Array, 16, true);
-        mesh.thinInstanceSetBuffer('color', this.ghostColor, 4, false);
         mesh.alwaysSelectAsActiveMesh = true;
       }
       this.ghostMeshes = template.meshes;
+      this.ghostOwn = template.meshes.map((mesh) => mesh.material);
       this.setGhostTint();
     });
   }
 
   private setGhostTint(): void {
-    this.ghostColor.set(this.ghostValid ? [0.55, 1.0, 0.6, 1] : [1.0, 0.45, 0.42, 1]);
-    this.ghostArrowMaterial.emissiveColor.set(this.ghostColor[0], this.ghostColor[1], this.ghostColor[2]);
-    for (const mesh of this.ghostMeshes) mesh.thinInstanceBufferUpdated('color');
+    // Where it fits, the thing itself (and a green arrow); where it can't go, a red see-through copy.
+    if (this.ghostValid) this.ghostArrowMaterial.emissiveColor.set(0.55, 1.0, 0.6);
+    else this.ghostArrowMaterial.emissiveColor.set(1.0, 0.45, 0.42);
+    this.ghostMeshes.forEach((mesh, i) => (mesh.material = this.ghostValid ? this.ghostOwn[i] : this.ghostMaterial));
     this.resetSnapshot();
   }
 

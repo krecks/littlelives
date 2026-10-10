@@ -55,6 +55,15 @@
   .ask .text {
     padding-right: 4px;
   }
+  /* A plain .btn is white and inherits the toast's white text: make it light-on-dark instead. */
+  .ask .btn:not(.primary) {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .ask .btn:not(.primary):hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
   .icon {
     display: grid;
     place-items: center;

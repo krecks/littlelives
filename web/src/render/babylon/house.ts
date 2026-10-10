@@ -38,6 +38,8 @@ import { addHipPolygon, area, convexHull, diagonalEnds, halfAt, halfCentroid, ha
 export const WALL_HEIGHT = 2.8;
 export const WALL_STUB = 0.35;
 const T = 0.07; // half wall thickness (sim-core WALL_THICKNESS / 2)
+/** Half a wall's thickness (m). */
+export const WALL_HALF = T;
 const DOOR_HEIGHT = 2.1;
 const PLINTH = 0.32;
 // Window opening (matches sim-core `WINDOW_SILL` / `WINDOW_HEAD`); the glazed part is narrower
@@ -211,6 +213,8 @@ export interface StoreyBuild {
   holes?: ReadonlySet<number>;
   /** Landings at the top of the stairs (same keys): the stairwell's railing leaves them open. */
   landings?: ReadonlySet<number>;
+  /** Build mode's preview: walls, doors and windows only, uncut (they stand while walls are down). */
+  preview?: boolean;
 }
 
 export interface HouseBuild {
@@ -999,7 +1003,7 @@ export class HouseBuilder {
     for (let z = bounds.z; z < bounds.z + bounds.d; z++) {
       for (let x = bounds.x; x < bounds.x + bounds.w; x++) {
         const r = room(x, z);
-        if (r === 0 || storey.holes?.has(z * W + x)) continue;
+        if (r === 0 || storey.preview || storey.holes?.has(z * W + x)) continue;
         const covering = laid.get(z * W + x);
         const def = covering ? this.looks.floors[covering - 1] : undefined;
         const floorOf = (r: number) => {
@@ -1070,13 +1074,14 @@ export class HouseBuilder {
     const roofTrim = new Geo().color(TRIM);
     const gables = new Geo().color(scheme.wall);
     const viewDiagonals = (world.diagonals ?? []).some((d) => inView(d.x, d.z) && (d.rooms[0] !== 0 || d.rooms[1] !== 0));
-    if (Number.isFinite(minX) && !viewDiagonals) {
+    const roofing = !storey.preview && Number.isFinite(minX);
+    if (roofing && !viewDiagonals) {
       // No roof where a room upstairs stands on this one.
       const roofed = (x: number, z: number) => (storey.covered?.(x, z) ? 0 : room(x, z));
       for (const rect of indoorRects(roofed, minX, minZ, maxX, maxZ)) {
         addRoofShaped(rect, scheme, roof, roofTrim, gables);
       }
-    } else if (Number.isFinite(minX)) {
+    } else if (roofing) {
       // With diagonal walls: per connected indoor area. A convex outline (a diamond, a box with
       // cut corners) gets a hip roof that follows it; any other shape gets the usual rectangles
       // over its tiles, split tiles included whole (their outdoor half under a deeper eave).
@@ -1145,7 +1150,8 @@ export class HouseBuilder {
     const free = (x: number, z: number) =>
       inView(Math.floor(x), Math.floor(z)) && roomP(x, z) === 0 && !diagonal(Math.floor(x), Math.floor(z)) && !occupied.has(Math.floor(z) * W + Math.floor(x)) && !paved(x, z);
     const shrubs: [number, number, number, number][] = [];
-    for (const axis of storey.upper ? [] : (['h', 'v'] as const)) {
+    const garden = !storey.upper && !storey.preview;
+    for (const axis of garden ? (['h', 'v'] as const) : []) {
       for (const [x, z, kind] of edges.all(axis)) {
         if (kind === 'door') continue;
         const near = (dx: number, dz: number) => edges.get(axis, x + dx, z + dz) === 'door';
@@ -1162,7 +1168,7 @@ export class HouseBuilder {
       }
     }
     // Along diagonal walls with a room on one side: a shrub in the outdoor half (not by doors).
-    for (const d of storey.upper ? [] : (world.diagonals ?? [])) {
+    for (const d of garden ? (world.diagonals ?? []) : []) {
       if (d.kind === 'door' || !inView(d.x, d.z) || (d.rooms[0] === 0) === (d.rooms[1] === 0)) continue;
       const step = d.axis === 'dp' ? 1 : -1;
       if (diagonal(d.x - 1, d.z - step)?.kind === 'door' || diagonal(d.x + 1, d.z + step)?.kind === 'door') continue;
@@ -1175,7 +1181,7 @@ export class HouseBuilder {
       shrubs.push([px, pz, 0.5 + hash(d.x, d.z, 34) * 0.2, hash(d.x, d.z, 33) * 6.28]);
     }
     const trees: [number, number, number, number][] = [];
-    if (view && Number.isFinite(minX) && !storey.upper) {
+    if (view && Number.isFinite(minX) && garden) {
       const spots = [
         [view.x + 1.6, view.z + 1.6],
         [view.x + view.w - 1.6, view.z + 1.6],
@@ -1193,9 +1199,10 @@ export class HouseBuilder {
     const casters: Mesh[] = [];
     const roofs: Mesh[] = [];
     const add = (geo: Geo, name: string, key: string | Material, opts: { cut?: boolean; cast?: boolean; roof?: boolean } = {}) => {
-      const mesh = geo.toMesh(name, this.scene, { colors: true, cut: opts.cut ?? true });
+      const cut = !storey.preview && (opts.cut ?? true);
+      const mesh = geo.toMesh(name, this.scene, { colors: true, cut });
       if (!mesh) return;
-      mesh.material = typeof key === 'string' ? this.material(key, opts.cut ?? true) : key;
+      mesh.material = typeof key === 'string' ? this.material(key, cut) : key;
       mesh.receiveShadows = true;
       mesh.isPickable = false;
       meshes.push(mesh);
@@ -1215,7 +1222,8 @@ export class HouseBuilder {
     // what lies behind it is complete when it is blended over.
     const panes = meshes.find((m) => m.name === 'windows');
     if (panes) panes.alphaIndex = 10;
-    add(ao, 'contactShadows', this.lib.contactShadow(), { cut: true });
+    // (A preview's walls stand on the shadows of the walls they stand in for.)
+    if (!storey.preview) add(ao, 'contactShadows', this.lib.contactShadow(), { cut: true });
     add(wood, 'floors', M.floorWood, { cut: false });
     add(tile, 'floorsTiled', M.floorTile, { cut: false });
     add(carpet, 'floorsCarpet', M.floorCarpet, { cut: false });
