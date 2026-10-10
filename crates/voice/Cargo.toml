@@ -1,17 +1,15 @@
 [package]
 name = "voice"
-description = "Resident voices: English text to Misaki phonemes, and Paradee-8M speech synthesis."
+description = "Resident voices: English text to Misaki phonemes and Paradee-8M's input ids."
 edition.workspace = true
 version.workspace = true
 license.workspace = true
 
 [dependencies]
 serde_json.workspace = true
-tract-onnx = { version = "=0.23.8", default-features = false }
-
-[features]
-# Browsers: `getrandom` (pulled in by tract) needs its JS backend on wasm32-unknown-unknown.
-getrandom-js = ["tract-onnx/getrandom-js"]
 
 [dev-dependencies]
 flate2 = "1"
+# Native tests only: a second ONNX runtime checks the edited model (`tools/voice/model.mjs`)
+# runs, keeps its pitch input and is deterministic. Never part of the browser build.
+tract-onnx = { version = "=0.23.8", default-features = false }

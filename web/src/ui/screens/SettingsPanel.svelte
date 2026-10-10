@@ -335,7 +335,7 @@
       </section>
       <section>
         <h3>Voices</h3>
-        <SettingRow title="Resident voices" hint="The resident you're looking at, and conversations you start, are spoken out loud in English. Runs on this computer; the voice downloads about 29 MB once." badges={['Experimental']}>
+        <SettingRow title="Resident voices" hint="The resident you're looking at, and conversations you start, are spoken out loud in English. Runs on this computer; the voice downloads about 25 MB once." badges={['Experimental']}>
           <Toggle label="Resident voices" bind:checked={settings.voices} />
         </SettingRow>
         {#if settings.voices}

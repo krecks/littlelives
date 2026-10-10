@@ -14,13 +14,15 @@
     "test:sim": "cd .. && cargo test -p sim-core",
     "voice": "node ../tools/voice/fetch.mjs && cd .. && cargo build -p voice-wasm --target wasm32-unknown-unknown --release && wasm-bindgen target/wasm32-unknown-unknown/release/voice_wasm.wasm --target web --out-dir web/src/voice/wasm-pkg",
     "test:voice": "cd .. && cargo test -p voice --release",
+    "check:voice": "node ../tools/voice/check.mjs",
     "assets": "node ../tools/assets/optimize.mjs",
     "decoders": "node ../tools/assets/decoders.mjs"
   },
   "dependencies": {
     "@babylonjs/core": "9.29.0",
     "@babylonjs/loaders": "9.29.0",
-    "@fontsource-variable/inter": "^5.3.0"
+    "@fontsource-variable/inter": "^5.3.0",
+    "onnxruntime-web": "1.30.0"
   },
   "devDependencies": {
     "@gltf-transform/core": "^4.5.1",

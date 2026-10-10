@@ -7,23 +7,38 @@
  * - Misaki's US English dictionaries (Apache-2.0): https://github.com/hexgrad/misaki
  *
  * Everything is pinned to a revision and checked against its SHA-256, so every build speaks the
- * same. Files already present with the right hash are kept. Usage: `node tools/voice/fetch.mjs`.
+ * same. The model is edited after download (`model.mjs`: a `pitch` input and deterministic
+ * noise) and the edited file is pinned by its own SHA-256 too. Files already present with the
+ * right hash are kept. Usage: `node tools/voice/fetch.mjs`.
  */
 
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import { editModel } from './model.mjs';
 
 const OUT = fileURLToPath(new URL('../../web/public/voice/', import.meta.url));
 
 const PARADEE = 'https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.0/resolve/f662642d44c03c17588e4176469c54d462c0b623';
 const MISAKI = 'https://raw.githubusercontent.com/hexgrad/misaki/fba1236595f2d2bf21d414ba6e57d25256afada3/misaki/data';
 
+/**
+ * `edit`: applied to the downloaded bytes; `sha256` pins the download, `editedSha256` the result.
+ * The edited model's name carries the edit's version, so browsers never reuse an older copy.
+ */
 const FILES = [
-  { url: `${PARADEE}/onnx/paradee_int8.onnx`, out: 'paradee-8m.onnx', sha256: '60e8f8a1bc7c546488154e9d99ecac6e9c50baf3f4b684c5b0de48ea03b698eb' },
+  {
+    url: `${PARADEE}/onnx/paradee_int8.onnx`,
+    out: 'paradee-8m-edit1.onnx',
+    sha256: '60e8f8a1bc7c546488154e9d99ecac6e9c50baf3f4b684c5b0de48ea03b698eb',
+    edit: editModel,
+    editedSha256: '9a7da90056ff77d5ba527f4bd0684b59e8aa4306a0600cdb93b30ec8ecbad394',
+  },
   { url: `${PARADEE}/config.json`, out: 'paradee-8m.json', sha256: 'f24046974a3a8c747affefb45c7c504263a99d5081787908b16abe8f5ac94fcd' },
 ];
+/** Files earlier versions wrote that are no longer used (they would be copied into the build). */
+const OBSOLETE = ['paradee-8m.onnx'];
 const LEXICON = [
   { url: `${MISAKI}/us_gold.json`, sha256: 'dc414872a49a28ae6c141463d502fd945f3b2fde040484fdc47d00cc4612686f' },
   { url: `${MISAKI}/us_silver.json`, sha256: 'de8f67be911bb6c659187b4a65fd966b6a30e56350e0f790d763210b053ac475' },
@@ -52,10 +67,17 @@ await mkdir(OUT, { recursive: true });
 
 for (const file of FILES) {
   const path = OUT + file.out;
-  if (await existing(path, file.sha256)) continue;
+  if (await existing(path, file.editedSha256 ?? file.sha256)) continue;
   console.log(`voice: downloading ${file.out}`);
-  await writeFile(path, await download(file));
+  let bytes = await download(file);
+  if (file.edit) {
+    bytes = Buffer.from(file.edit(new Uint8Array(bytes)));
+    const actual = sha256(bytes);
+    if (actual !== file.editedSha256) throw new Error(`${file.out}: edited SHA-256 ${actual}, expected ${file.editedSha256}`);
+  }
+  await writeFile(path, bytes);
 }
+for (const name of OBSOLETE) await rm(OUT + name, { force: true });
 
 /**
  * The dictionary as `word<TAB>phonemes` lines, gzipped. Gold entries win over silver ones; for

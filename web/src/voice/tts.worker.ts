@@ -1,11 +1,14 @@
 /**
- * Voice worker: owns the Rust/WASM voice engine (phonemizer + Paradee-8M through tract) and
- * turns lines of text into 24 kHz audio, one at a time, off the main thread.
+ * Voice worker: turns lines of text into 24 kHz audio, one at a time, off the main thread.
+ * Our Rust/WASM phonemizer (`crates/voice-wasm`) turns text into Paradee-8M's input ids, and
+ * ONNX Runtime Web runs the model (its WASM build with SIMD, on this one thread).
  *
- * The engine code, the model and the dictionary are fetched once and kept in the Cache API,
- * so the next session starts without downloading.
+ * The runtime, the model and the dictionary are self-hosted, fetched once and kept in the
+ * Cache API, so the next session starts without downloading.
  */
 
+import * as ort from 'onnxruntime-web/wasm';
+import ortWasmUrl from 'onnxruntime-web/ort-wasm-simd-threaded.wasm?url';
 import init, { Voice } from './wasm-pkg/voice_wasm.js';
 import wasmUrl from './wasm-pkg/voice_wasm_bg.wasm?url';
 import type { FromVoiceWorker, ToVoiceWorker } from './protocol';
@@ -16,15 +19,24 @@ interface WorkerScope {
 }
 const scope = self as unknown as WorkerScope;
 
-const CACHE = 'littlelives-voice-v1';
+/** Bumped when the files change; older caches are deleted. */
+const CACHE = 'littlelives-voice-v2';
 
-/** The voice per language: model, its config and the pronunciation dictionary (under `voice/`). */
+/**
+ * The voice per language: the model (edited by `tools/voice/fetch.mjs`), its config and the
+ * pronunciation dictionary (under `voice/`), with sizes in bytes for the progress bar.
+ */
 const VOICES: Record<string, { model: [string, number]; config: string; lexicon: [string, number] }> = {
-  en: { model: ['paradee-8m.onnx', 9_040_000], config: 'paradee-8m.json', lexicon: ['en-us.lexz', 1_320_000] },
+  en: { model: ['paradee-8m-edit1.onnx', 9_044_733], config: 'paradee-8m.json', lexicon: ['en-us.lexz', 1_320_518] },
 };
+const ORT_WASM_BYTES = 14_239_897;
+const VOICE_WASM_BYTES = 155_400;
 
 let voice: Voice | null = null;
+let session: ort.InferenceSession | null = null;
 let loading: Promise<void> | null = null;
+/** Lines are made one after another: a run must finish before the next starts. */
+let queue: Promise<void> = Promise.resolve();
 
 scope.onmessage = (e) => {
   const msg = e.data;
@@ -34,20 +46,38 @@ scope.onmessage = (e) => {
       scope.postMessage({ type: 'error', message: String(err) });
     });
   } else if (msg.type === 'speak') {
-    void speak(msg.id, msg.text, msg.speed, msg.pitch);
+    queue = queue.then(() => speak(msg.id, msg.text, msg.speed, msg.pitch));
   }
 };
 
 async function speak(id: number, text: string, speed: number, pitch: number): Promise<void> {
   try {
     await loading;
-    if (!voice) throw new Error('voice model not loaded');
+    if (!voice || !session) throw new Error('voice model not loaded');
     const start = performance.now();
-    const samples = voice.speak(text, speed, pitch);
+    const samples = await synthesize(voice, session, text, speed, pitch);
     scope.postMessage({ type: 'audio', id, samples, ms: performance.now() - start }, [samples.buffer]);
   } catch (err) {
     scope.postMessage({ type: 'error', id, message: String(err) });
   }
+}
+
+async function synthesize(voice: Voice, session: ort.InferenceSession, text: string, speed: number, pitch: number): Promise<Float32Array> {
+  const inputs = voice.inputs(text, speed, pitch);
+  const ids = inputs.ids;
+  const feeds = {
+    input_ids: new ort.Tensor('int64', ids, [1, ids.length]),
+    speed: new ort.Tensor('float32', Float32Array.of(inputs.speed), [1]),
+    pitch: new ort.Tensor('float32', Float32Array.of(inputs.pitch), [1]),
+  };
+  inputs.free();
+  if (ids.length === 0) return new Float32Array(0);
+  const out = await session.run(feeds);
+  const wave = out.waveform;
+  // A copy of our own, so its buffer can be transferred to the main thread.
+  const samples = new Float32Array(wave.data as Float32Array);
+  for (const t of Object.values(out)) t.dispose();
+  return samples;
 }
 
 async function load(base: string, language: string): Promise<void> {
@@ -55,7 +85,8 @@ async function load(base: string, language: string): Promise<void> {
   const v = VOICES[language];
   if (!v) throw new Error(`no voice for language "${language}"`);
   const files = [
-    { url: wasmUrl, size: 18_300_000 },
+    { url: ortWasmUrl, size: ORT_WASM_BYTES },
+    { url: wasmUrl, size: VOICE_WASM_BYTES },
     { url: `${base}voice/${v.model[0]}`, size: v.model[1] },
     { url: `${base}voice/${v.lexicon[0]}`, size: v.lexicon[1] },
     { url: `${base}voice/${v.config}`, size: 1_800 },
@@ -63,8 +94,8 @@ async function load(base: string, language: string): Promise<void> {
   const total = files.reduce((n, f) => n + f.size, 0);
   const done = files.map(() => 0);
   const report = () => scope.postMessage({ type: 'progress', loaded: done.reduce((a, b) => a + b, 0), total });
-  const cache = await caches.open(CACHE).catch(() => null);
-  const [wasm, model, lexicon, config] = await Promise.all(
+  const cache = await openCache();
+  const [ortWasm, wasm, model, lexicon, config] = await Promise.all(
     files.map((f, i) =>
       fetchCached(cache, f.url, (n) => {
         done[i] = Math.min(n, f.size);
@@ -73,9 +104,27 @@ async function load(base: string, language: string): Promise<void> {
     ),
   );
   await init({ module_or_path: wasm });
-  const text = await gunzipText(lexicon);
-  voice = new Voice(text, new Uint8Array(model), new TextDecoder().decode(config));
+  voice = new Voice(await gunzipText(lexicon), new TextDecoder().decode(config));
+  // One thread, no proxy worker (this is the worker); the runtime comes from our own download.
+  ort.env.wasm.numThreads = 1;
+  ort.env.wasm.proxy = false;
+  ort.env.wasm.wasmPaths = { wasm: ortWasmUrl };
+  ort.env.wasm.wasmBinary = ortWasm;
+  ort.env.logLevel = 'error';
+  session = await ort.InferenceSession.create(new Uint8Array(model), { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
   scope.postMessage({ type: 'ready', ms: performance.now() - start });
+}
+
+/** This version's cache; caches of earlier versions are deleted. */
+async function openCache(): Promise<Cache | null> {
+  try {
+    for (const name of await caches.keys()) {
+      if (name.startsWith('littlelives-voice-') && name !== CACHE) await caches.delete(name);
+    }
+    return await caches.open(CACHE);
+  } catch {
+    return null;
+  }
 }
 
 /** Unpacks a gzipped file, or reads it as text if a server already unpacked it. */

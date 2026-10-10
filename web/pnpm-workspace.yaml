@@ -1,0 +1,4 @@
+# protobufjs (a dependency of onnxruntime-web) has a postinstall script that only checks its own
+# version; the voice worker doesn't need it.
+allowBuilds:
+  protobufjs: false
