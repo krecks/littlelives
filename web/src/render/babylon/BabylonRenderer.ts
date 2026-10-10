@@ -1867,9 +1867,18 @@ export class BabylonRenderer implements Renderer {
     const rooms = world.rooms;
     // Stairwells: the tiles above each flight of stairs are open to the storey below.
     const holes = new Set<number>();
+    const landings = new Set<number>();
     for (const o of world.objects) {
       if (!this.deps.content.object(o.def)?.stairs) continue;
       for (let z = o.z; z < o.z + o.d; z++) for (let x = o.x; x < o.x + o.w; x++) holes.add((z + depth) * W + x);
+      // The tile past the top step, on the storey above (as sim-core `storeys::stair_of`).
+      const [lx, lz] = [
+        [o.x + Math.floor((o.w - 1) / 2), o.z - 1],
+        [o.x - 1, o.z + Math.floor((o.d - 1) / 2)],
+        [o.x + Math.floor((o.w - 1) / 2), o.z + o.d],
+        [o.x + o.w, o.z + Math.floor((o.d - 1) / 2)],
+      ][o.rot % 4];
+      landings.add((lz + depth) * W + lx);
     }
     const builds = [];
     for (let k = 0; k < count; k++) {
@@ -1878,7 +1887,7 @@ export class BabylonRenderer implements Renderer {
       // Nothing up there yet: no storey to build.
       if (k > 0 && view && !(world.walls ?? []).some((e) => e.z >= view.z && e.z <= view.z + view.d && e.x >= view.x && e.x <= view.x + view.w)) break;
       const covered = (x: number, z: number) => k + 1 < count && (rooms[(z + depth) * W + x] ?? 0) !== 0;
-      const built = this.house.build(world, view, k === 0 ? { covered } : { upper: true, covered, holes });
+      const built = this.house.build(world, view, k === 0 ? { covered } : { upper: true, covered, holes, landings });
       if (!built) {
         if (k === 0) break;
         continue;

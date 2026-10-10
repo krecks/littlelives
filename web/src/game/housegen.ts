@@ -443,6 +443,8 @@ function windows(cfg: HouseGenConfig, rng: () => number, f: Floor, house: Rect):
     edges.forEach((e, i) => {
       if (r.kind === 'bathroom' && placed >= 1) return;
       if ((i + Math.floor(spacing / 2)) % spacing !== 0) return;
+      // Not where the stairs (or the stairwell) run along the wall.
+      if (sides(e).some(([x, z]) => f.taken.has(key(x, z)))) return;
       // Not right next to a door or at a corner.
       const [axis, xs, zs] = e.split(':');
       const [x, z] = [Number(xs), Number(zs)];

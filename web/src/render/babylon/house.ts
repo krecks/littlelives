@@ -209,6 +209,8 @@ export interface StoreyBuild {
   covered?: (x: number, z: number) => boolean;
   /** Stairwell tiles (`z * width + x`): open to the storey below, so no floor. */
   holes?: ReadonlySet<number>;
+  /** Landings at the top of the stairs (same keys): the stairwell's railing leaves them open. */
+  landings?: ReadonlySet<number>;
 }
 
 export interface HouseBuild {
@@ -1027,6 +1029,42 @@ export class HouseBuilder {
       }
     }
 
+    // ---- a railing round each stairwell (open towards the landing, none along walls) ----
+    // Its own mesh: the cutaway lowers walls, not railings.
+    const railings = new Geo().color('#3C3A38');
+    if (storey.holes?.size) {
+      const RAIL = 0.95;
+      const hole = (x: number, z: number) => storey.holes!.has(z * W + x);
+      const trim = railings;
+      const rail = (x0: number, z0: number, x1: number, z1: number) => {
+        const along = x0 === x1 ? 'z' : 'x';
+        const [a0, a1] = along === 'x' ? [x0, x1] : [z0, z1];
+        const c = along === 'x' ? z0 : x0;
+        const bar = (u0: number, u1: number, y0: number, y1: number, half: number) =>
+          along === 'x' ? trim.box(u0, y0, c - half, u1, y1, c + half) : trim.box(c - half, y0, u0, c + half, y1, u1);
+        bar(a0, a1, RAIL - 0.05, RAIL, 0.03);
+        bar(a0, a1, 0.06, 0.1, 0.02);
+        for (let u = a0 + 0.12; u < a1 - 0.06; u += 0.14) bar(u - 0.012, u + 0.012, 0.1, RAIL - 0.05, 0.012);
+        bar(a0 - 0.035, a0 + 0.035, 0, RAIL + 0.04, 0.035);
+        bar(a1 - 0.035, a1 + 0.035, 0, RAIL + 0.04, 0.035);
+      };
+      for (const i of storey.holes) {
+        const x = i % W;
+        const z = Math.floor(i / W);
+        if (!inView(x, z)) continue;
+        const sides: [number, number, 'h' | 'v', number, number, number, number, number, number][] = [
+          [x, z - 1, 'h', x, z, x, z, x + 1, z],
+          [x, z + 1, 'h', x, z + 1, x, z + 1, x + 1, z + 1],
+          [x - 1, z, 'v', x, z, x, z, x, z + 1],
+          [x + 1, z, 'v', x + 1, z, x + 1, z, x + 1, z + 1],
+        ];
+        for (const [nx, nz, axis, ex, ez, x0, z0, x1, z1] of sides) {
+          if (hole(nx, nz) || storey.landings?.has(nz * W + nx) || edges.get(axis, ex, ez)) continue;
+          rail(x0, z0, x1, z1);
+        }
+      }
+    }
+
     // ---- roofs over the indoor area --------------------------------------------------
     const roof = new Geo().color(scheme.roof);
     const roofTrim = new Geo().color(TRIM);
@@ -1182,6 +1220,7 @@ export class HouseBuilder {
     add(tile, 'floorsTiled', M.floorTile, { cut: false });
     add(carpet, 'floorsCarpet', M.floorCarpet, { cut: false });
     add(stoneFloor, 'floorsStone', M.stone, { cut: false });
+    add(railings, 'railings', M.trim, { cut: false, cast: true });
     add(roof, 'roof', M.roof, { cut: false, cast: true, roof: true });
     add(roofTrim, 'roofTrim', M.trim, { cut: false, cast: true, roof: true });
     add(gables, 'gables', scheme.brick ? M.brick : M.siding, { cut: false, cast: true, roof: true });
