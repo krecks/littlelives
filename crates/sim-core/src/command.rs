@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Player commands. Serialized as `{"type": "...", ...}` from the UI.
 #[derive(Debug, Clone, Deserialize)]
@@ -34,6 +34,12 @@ pub enum Command {
     RemoveGoal {
         sim: u32,
         index: usize,
+    },
+    /// Moves a goal to another place on the list (higher up steers more).
+    MoveGoal {
+        sim: u32,
+        index: usize,
+        to: usize,
     },
     /// Take on a goal the resident suggested.
     AcceptSuggestion {
@@ -183,6 +189,20 @@ pub enum Command {
     Redo {
         household: u32,
     },
+    /// Build mode: builds a saved house on the household's empty lot (see `World::build_blueprint`).
+    BuildBlueprint {
+        household: u32,
+        blueprint: crate::blueprint::Blueprint,
+    },
+    /// Build mode: moves the room around tile `(x, z)` of the home by `(dx, dz)` tiles, with its
+    /// walls, doors, windows, floors and everything standing in it (see `World::move_room`).
+    MoveRoom {
+        household: u32,
+        x: i32,
+        z: i32,
+        dx: i32,
+        dz: i32,
+    },
     /// New residents move into a household that has a home (an empty one, after building
     /// first): they arrive where `sims` stand (their `household` is ignored), with `bonds`
     /// between them (indices into `sims`). `name` renames the household.
@@ -249,7 +269,7 @@ pub struct FloorPaint {
     pub covering: u8,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EdgeAxis {
     H,
@@ -271,7 +291,7 @@ impl EdgeAxis {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EdgeKind {
     Wall,
@@ -301,6 +321,8 @@ impl Command {
             | Command::Paint { household, .. }
             | Command::PaintFloor { household, .. }
             | Command::SetRoof { household, .. }
+            | Command::BuildBlueprint { household, .. }
+            | Command::MoveRoom { household, .. }
             | Command::Repair { household, .. } => Some(household),
             _ => None,
         }

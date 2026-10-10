@@ -4,6 +4,7 @@
   import { services } from '../services';
   import { play } from '../sfx';
   import { game, type BuildTool } from '../state.svelte';
+  import Blueprints from './Blueprints.svelte';
   import LookPicker from './LookPicker.svelte';
 
   /** Build mode's tools: walls, rooms, paint, floors, doors, windows and removing them, on the home lot. */
@@ -20,11 +21,14 @@
     { id: 'window', label: 'Window', icon: 'icon.ui.window', unit: '', steps: ['Point at a wall, straight or diagonal', 'Click to fit a window'] },
     { id: 'roof', label: 'Roof', icon: 'icon.ui.roof', unit: '', steps: ['Pick a roof shape', 'Pick a colour', 'It changes at once'] },
     { id: 'remove', label: 'Remove', icon: 'icon.ui.eraser', unit: '/m', steps: ['Click a door or window to wall it up', 'Or drag along walls', 'Let go to tear them down'] },
+    { id: 'move', label: 'Move', icon: 'icon.ui.move', unit: '', steps: ['Point at a room', 'Drag it where it should go', 'Let go to move it'] },
+    { id: 'blueprint', label: 'Blueprints', icon: 'icon.ui.blueprint', unit: '', steps: ['Save the house you built', 'Clear a lot (or start on an empty one)', 'Build a blueprint on it'] },
   ];
   /** What the tool costs with the look picked (per metre for walls, per face for paint, per tile for floors). */
   const price = (id: BuildTool): string => {
     if (!prices) return '';
-    if (game.creative || id === 'roof') return 'Free';
+    if (id === 'blueprint') return '';
+    if (game.creative || id === 'roof' || id === 'move') return 'Free';
     const look = game.buildLook;
     const p =
       id === 'wall' || id === 'room'
@@ -88,7 +92,7 @@
         <span class="muted">This edit</span>
         {#key game.buildCost}<b class="tabular" class:short>{money(game.buildCost)}</b>{/key}
         {#if short}<span class="short">— {money(game.buildCost - game.funds)} short</span>{/if}
-      {:else if game.buildTool !== 'roof'}
+      {:else if game.buildTool !== 'roof' && game.buildTool !== 'move' && game.buildTool !== 'blueprint'}
         <span class="muted">Point at your lot to see what it costs.</span>
       {/if}
     </div>
@@ -109,13 +113,19 @@
         Fences keep a garden outdoors (no floor, no roof); leave a gate so nobody is shut in.
       {:else if game.buildTool === 'door' || game.buildTool === 'window'}
         Doors and windows go into full-height walls; pick another style to replace one.
+      {:else if game.buildTool === 'move'}
+        The room's walls, doors, windows, floor and furniture come along; walls it shares with another room stay.
+      {:else if game.buildTool === 'blueprint'}
+        A blueprint is built all at once, turned to face the street, and paid like building it by hand.
       {:else}
         Residents and furniture can't be shut in.
       {/if}
       <kbd>Esc</kbd> or right-click cancels.
     </p>
   </div>
-  <div class="look"><LookPicker tool={game.buildTool} /></div>
+  <div class="look">
+    {#if game.buildTool === 'blueprint'}<Blueprints />{:else}<LookPicker tool={game.buildTool} />{/if}
+  </div>
 </div>
 
 <style>

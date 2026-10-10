@@ -21,7 +21,7 @@ function requestKey(r: StartRequest): string {
   if (r.kind === 'load') return `load:${r.saveId}`;
   const members = (h: HouseholdDraft) => h.members.map((m) => m.uid).join(',');
   // The whole town counts: going back and changing the neighbours needs a new session.
-  const town = `${r.town.name}:${r.town.seed}:${r.town.slots.map((s) => s.template).join(',')}:${r.town.households.map((h) => `${h.slot}=${members(h.household)}`).join(';')}`;
+  const town = `${r.town.name}:${r.town.seed}:${r.town.slots.map((s) => `${s.template}@${s.lot ?? 'medium'}`).join(',')}:${r.town.households.map((h) => `${h.slot}=${members(h.household)}`).join(';')}`;
   // A household edited after its session was prepared (back to step 2) needs a new one too.
   return `${r.existing ? 'play' : 'new'}:${r.mode ?? 'living'}:${town}:${r.slot}:${JSON.stringify(r.household)}`;
 }
@@ -233,7 +233,7 @@ class GameHost {
 }
 
 function liveOptions(s: Settings) {
-  return { bloom: s.bloom, tiltShift: s.tiltShift, resolutionScale: s.resolutionScale, cameraSensitivity: s.cameraSensitivity, visualStyle: s.visualStyle };
+  return { resolutionScale: s.resolutionScale, cameraSensitivity: s.cameraSensitivity, visualStyle: s.visualStyle };
 }
 
 function reducedMotion(): boolean {

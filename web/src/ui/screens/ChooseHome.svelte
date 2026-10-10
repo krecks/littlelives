@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { menuScene } from '../../game/menuScene';
-  import { houseTemplate, loadTemplates, vacantSlots, type PlotSlot, type Templates } from '../../game/town';
+  import { houseTemplate, loadTemplates, lotDims, vacantSlots, withLotSize, type LotSize, type PlotSlot, type Templates } from '../../game/town';
   import { app } from '../app.svelte';
   import { money } from '../format';
   import Icon from '../Icon.svelte';
@@ -10,13 +10,20 @@
   import { services } from '../services';
 
   let templates = $state.raw<Templates | null>(null);
-  const town = app.town!;
+  /** Changes when a lot is made bigger or smaller (the lots along the street move). */
+  const town = $derived(app.town!);
   /** Null: build first, a family moves in later. */
   const household = app.buildFirst ? null : app.household;
   const economy = services.content.economy;
-  const vacant = vacantSlots(town);
-  const vacantIds = vacant.map((v) => v.index);
-  let selected = $state<PlotSlot | null>(vacant.find((v) => v.index === app.homeSlot) ?? vacant[0] ?? null);
+  const vacant = $derived(vacantSlots(town));
+  const vacantIds = $derived(vacant.map((v) => v.index));
+  let selectedIndex = $state<number | null>(vacantSlots(app.town!).find((v) => v.index === app.homeSlot)?.index ?? vacantSlots(app.town!)[0]?.index ?? null);
+  const selected = $derived(selectedIndex === null ? null : (town.slots[selectedIndex] ?? null));
+  const lotSize = $derived<LotSize>(selected?.lot ?? 'medium');
+  const dims = $derived(templates && selected ? lotDims(templates, selected.lot) : null);
+  function setLotSize(size: LotSize) {
+    if (templates && selected) app.town = withLotSize(templates, town, selected.index, size);
+  }
   let hover = $state<number | null>(null);
   /** The camera is on the chosen lot (false: the whole town). */
   let close = $state(true);
@@ -66,7 +73,7 @@
       close = false;
       return;
     }
-    selected = slot;
+    selectedIndex = slot.index;
     close = true;
   }
 
@@ -131,20 +138,28 @@
     </section>
 
     <aside class="details menu-glass">
-      {#if selected && house}
-        <Segmented
-          label="Start with"
-          bind:value={lot}
-          options={[
-            { value: 'house', label: 'The house' },
-            { value: 'empty', label: 'An empty lot' },
-          ]}
-        />
-        {#key `${selected.index}:${lot}`}
+      {#if selected}
+        {#if house}
+          <Segmented
+            label="Start with"
+            bind:value={lot}
+            options={[
+              { value: 'house', label: 'The house' },
+              { value: 'empty', label: 'An empty lot' },
+            ]}
+          />
+        {/if}
+        {#if templates?.lotSizes}
+          <div class="lot-size">
+            <span class="eyebrow">Lot size</span>
+            <Segmented label="Lot size" bind:value={() => lotSize, setLotSize} options={[{ value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }, { value: 'large', label: 'Large' }]} />
+          </div>
+        {/if}
+        {#key `${selected.index}:${lot}:${selected.template}`}
           <div class="card">
             <span class="eyebrow">{town.name}</span>
             <h2>{selected.name}</h2>
-            {#if lot === 'empty'}
+            {#if lot === 'empty' || !house}
               <b class="house">An empty lot</b>
               <p>The house is cleared away: build your own from the ground up.{household ? '' : ' A family can move in whenever you like.'}</p>
             {:else}
@@ -152,10 +167,11 @@
               <p>{house.description}</p>
             {/if}
             <dl>
-              {#if lot === 'empty' && templates}
+              {#if dims}
                 <dt>Lot</dt>
-                <dd>{templates.plot.width} × {templates.plot.depth} m</dd>
-              {:else}
+                <dd>{dims.width} × {dims.depth} m{economy.rent ? ` · rent ${money(economy.rent.base + Math.round(economy.rent.perTile * dims.width * dims.depth))} a week` : ''}</dd>
+              {/if}
+              {#if house && lot === 'house'}
                 <dt>Bedrooms</dt>
                 <dd>{house.bedrooms}</dd>
               {/if}
@@ -332,6 +348,12 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+  }
+  .lot-size {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
   }
   .others {
     display: flex;

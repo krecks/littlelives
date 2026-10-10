@@ -43,6 +43,12 @@ scope.onmessage = (e) => {
       if (game) postWorld();
     } else if (msg.type === 'events' && game) {
       scope.postMessage({ type: 'events', requestId: msg.requestId, events: JSON.parse(game.events()) });
+    } else if (msg.type === 'blueprint' && game) {
+      try {
+        scope.postMessage({ type: 'blueprint', requestId: msg.requestId, data: game.blueprint(msg.household) });
+      } catch (err) {
+        scope.postMessage({ type: 'blueprint', requestId: msg.requestId, data: null, error: err instanceof Error ? err.message : String(err) });
+      }
     } else if (msg.type === 'socialOptions' && game) {
       const options = JSON.parse(game.social_options(msg.actor, msg.target));
       scope.postMessage({ type: 'socialOptions', requestId: msg.requestId, options });

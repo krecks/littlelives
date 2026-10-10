@@ -64,6 +64,11 @@ impl Game {
         view::social_options_json(&self.world, actor as usize, target as usize)
     }
 
+    /// The household's home as a blueprint (JSON; see `sim_core::blueprint`).
+    pub fn blueprint(&self, household: u32) -> Result<String, JsError> {
+        self.world.blueprint_json(household).map_err(|e| JsError::new(&e.to_string()))
+    }
+
     /// The whole story log, oldest first (JSON).
     pub fn events(&self) -> String {
         view::events_json(&self.world)

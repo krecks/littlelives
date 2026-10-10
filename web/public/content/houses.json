@@ -3,6 +3,11 @@
   "width": 26,
   "depth": 22
  },
+ "lotSizes": {
+  "small": {"width": 20, "depth": 18},
+  "medium": {"width": 26, "depth": 22},
+  "large": {"width": 34, "depth": 26}
+ },
  "houses": [
   {
    "id": "maple",

@@ -117,6 +117,13 @@ export class SimBridge {
     return this.request<SocialEvent[]>((requestId) => ({ type: 'events', requestId }));
   }
 
+  /** The household's home as a blueprint (JSON); rejects if it has no home. */
+  async requestBlueprint(household: number): Promise<string> {
+    const reply = await this.request<{ data: string | null; error?: string }>((requestId) => ({ type: 'blueprint', requestId, household }));
+    if (reply.data === null) throw new Error(reply.error ?? 'no blueprint');
+    return reply.data;
+  }
+
   private request<T>(message: (requestId: number) => ToWorker): Promise<T> {
     const requestId = this.nextRequest++;
     return new Promise<T>((resolve) => {
@@ -223,6 +230,9 @@ export class SimBridge {
         break;
       case 'events':
         this.resolve(msg.requestId, msg.events);
+        break;
+      case 'blueprint':
+        this.resolve(msg.requestId, { data: msg.data, error: msg.error });
         break;
       case 'stats':
         this.threadStats = msg.stats;
