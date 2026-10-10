@@ -1555,6 +1555,17 @@ mod tests {
     }
 
     #[test]
+    fn appearance_is_kept_whole() {
+        // The web keeps more than colours in the appearance (a voice chosen in the creator).
+        let look = serde_json::json!({"body":"#fff","voice":{"pitch":1.08,"speed":0.95,"seed":12345}});
+        let lot = LOT.replace(r##"{"body":"#fff"}"##, &look.to_string());
+        let w = World::from_json(CONTENT, &lot, 3).unwrap();
+        assert_eq!(w.sims[0].appearance, look);
+        let loaded = World::from_save_json(CONTENT, &w.save_json()).unwrap();
+        assert_eq!(loaded.sims[0].appearance, look);
+    }
+
+    #[test]
     fn lying_sim_is_saved_standing_in_front_of_the_bed() {
         let mut w = World::from_json(CONTENT, LOT, 3).unwrap();
         w.autonomy = false;

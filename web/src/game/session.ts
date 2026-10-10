@@ -31,7 +31,7 @@ import { Director } from './director';
 import { BuildBuyInput, editFeedback, type Picked } from './buildmode';
 import { styledModel } from '../ui/buy/catalog';
 import { play } from '../ui/sfx';
-import { greyed, householdBonds, householdSpawns, lookFromSeed, lookOfStage, palette, type HouseholdDraft } from './household';
+import { greyed, householdBonds, householdSpawns, lookFromSeed, lookOfStage, palette, type Appearance, type HouseholdDraft } from './household';
 import { PointerInput } from './input';
 import { assembleTown, loadTemplates, useTownContent, type NeighbourhoodDraft } from './town';
 import { UiMirror } from './uiUpdates';
@@ -726,13 +726,15 @@ export async function startSession(
     if (disposed) return;
     // Newcomers and babies the simulation made up carry an appearance seed: give them their
     // look (babies from their parents', so parents first).
-    type Seeded = { seed?: number; parents?: number[] } | null;
+    type Seeded = { seed?: number; parents?: number[]; voice?: Appearance['voice'] } | null;
     for (const pass of [false, true]) {
       for (const s of w.sims) {
-        const { seed, parents } = (s.appearance as Seeded) ?? {};
+        const { seed, parents, voice } = (s.appearance as Seeded) ?? {};
         if (typeof seed !== 'number' || !!parents?.length !== pass) continue;
         const looks = (parents ?? []).map((p) => w.sims[p]?.appearance).filter((a) => a && (a as Seeded)?.seed === undefined);
         s.appearance = lookFromSeed(assets, s.gender, seed, looks);
+        // Only the look comes from the seed: a voice stored with it is kept.
+        if (voice) s.appearance.voice = voice;
       }
     }
     for (const s of w.sims) {

@@ -300,7 +300,7 @@ export class VoiceDirector {
     const info = game.roster.find((s) => s.id === id);
     if (info?.stage === 'baby') return;
     const text = fill(line.text, this.firstName(id), partnerId >= 0 ? this.firstName(partnerId) : '');
-    const voice = withTone(voiceFor(id, info?.gender, info?.stage), line.tone);
+    const voice = withTone(voiceFor(id, info?.gender, info?.stage, info?.appearance?.voice), line.tone);
     // A line said before plays at once, even while the engine is unloaded.
     const cached = cachedClip(text, voice);
     if (!cached) {

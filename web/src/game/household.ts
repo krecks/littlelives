@@ -3,6 +3,7 @@
 import type { AssetRegistry } from '../assets/registry';
 import type { Content, LifeStageDef } from '../content/content';
 import { GARMENTS, pickOutfit } from '../render/babylon/characters/outfit';
+import { VOICE_RANGE, type VoiceChoice } from '../voice/voices';
 
 export const HAIR_STYLES = ['short', 'long', 'bun', 'none'] as const;
 export type HairStyle = (typeof HAIR_STYLES)[number];
@@ -35,6 +36,8 @@ export interface Appearance {
   stageScale?: number;
   stageHead?: number;
   stageStoop?: number;
+  /** A voice chosen in the creator (`voice/voices.ts`); missing: the voice made from the id. */
+  voice?: VoiceChoice;
 }
 
 /** `hex` mixed `amount` of the way towards silver. */
@@ -162,6 +165,23 @@ export function regender(content: Content, sim: SimDraft, from: string, taken: r
 /** Drafts made before garments could be chosen get a random outfit (kept from then on). */
 export function ensureOutfit(sim: SimDraft): void {
   if (!sim.appearance.top) Object.assign(sim.appearance, pickOutfit(sim.gender));
+}
+
+/**
+ * The draft's own voice, made on first use with a seed of its own (not a random choice: random
+ * residents keep the generated voice, like the neighbours).
+ */
+export function draftVoice(sim: SimDraft): VoiceChoice {
+  sim.appearance.voice ??= { pitch: 1, speed: 1, seed: Math.floor(Math.random() * 2 ** 31) };
+  return sim.appearance.voice;
+}
+
+/** The creator's dice for the voice: anywhere in the range, the same seed. */
+export function randomVoice(sim: SimDraft): void {
+  const voice = draftVoice(sim);
+  const roll = ([lo, hi]: readonly [number, number]) => Math.round((lo + Math.random() * (hi - lo)) * 100) / 100;
+  voice.pitch = roll(VOICE_RANGE.pitch);
+  voice.speed = roll(VOICE_RANGE.speed);
 }
 
 export function randomSim(content: Content, assets: AssetRegistry, taken: readonly string[] = []): SimDraft {

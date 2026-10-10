@@ -60,11 +60,11 @@ interface Batch {
   cams: { x: number; y: number; z: number }[];
 }
 
-/** Cache key: everything that changes the picture (not the height: framing follows the head). */
+/** Cache key: everything that changes the picture (not the height: framing follows the head; not the voice). */
 export function lookKey(look: SimLook): string {
   const a = look.appearance as unknown as Record<string, unknown>;
   const sorted = Object.keys(a)
-    .filter((k) => k !== 'height')
+    .filter((k) => k !== 'height' && k !== 'voice')
     .sort()
     .map((k) => [k, a[k]]);
   // Without garments the outfit comes from the Sim's id (older saves).
