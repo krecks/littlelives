@@ -8797,6 +8797,10 @@
       "type": "icon",
       "url": "icons/door.svg"
     },
+    "icon.ui.stairs": {
+      "type": "icon",
+      "url": "icons/stairs.svg"
+    },
     "icon.ui.window": {
       "type": "icon",
       "url": "icons/window.svg"

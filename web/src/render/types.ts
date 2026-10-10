@@ -8,9 +8,6 @@ import type { Content } from '../content/content';
 import type { FrameState } from '../core/bridge';
 import type { WorldStructure } from '../core/protocol';
 import type { Appearance } from '../game/household';
-import type { VisualStyle } from './styles';
-
-export type { VisualStyle } from './styles';
 
 /**
  * `up`: full walls and roofs. `cutaway`: walls between the camera and the rooms behind them
@@ -64,8 +61,6 @@ export interface LiveRenderOptions {
   /** Fraction of native resolution, 0.5..1. */
   resolutionScale: number;
   cameraSensitivity: number;
-  /** Look of the world (lighting, sky, post-processing); omitted = unchanged. */
-  visualStyle?: VisualStyle;
 }
 
 /** Translucent preview of an object being placed in buy mode. */
@@ -112,6 +107,8 @@ export interface EdgePreview {
   kind: 'wall' | 'door' | 'window' | 'open' | 'fence' | 'gate';
   /** Walls: 1 previews a half wall. */
   form?: number;
+  /** Doors and windows: style index; fences and gates: fence style index. */
+  style?: number;
 }
 
 /** A wall face the Paint tool would cover (`side` 0 looks towards -z / -x / half 0). */
@@ -200,8 +197,6 @@ export interface Renderer {
   setHoverTile(tile: { x: number; z: number } | null): void;
   setSelectedSim(id: number | null): void;
   setWallMode(mode: WallMode): void;
-  /** Switches the visual style live (also possible through `configure`). */
-  setVisualStyle(style: VisualStyle): void;
   /** Build/buy mode: object placement preview (null hides it). Cheap; call on every pointer move. */
   setPlacementGhost(ghost: PlacementGhost | null): void;
   /**

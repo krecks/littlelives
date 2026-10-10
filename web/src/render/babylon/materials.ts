@@ -264,7 +264,6 @@ export class MaterialLibrary {
   private readonly lit = new Set<PBRMaterial>();
   private readonly thawed = new Set<PBRMaterial>();
   private refreezeFrames = 0;
-  private nearest = false;
   private shadowMaterial: StandardMaterial | null = null;
   /** Wall cutaway state read by every `cutaway` material. */
   readonly wallCut = new WallCutState();
@@ -382,18 +381,6 @@ export class MaterialLibrary {
     }
   }
 
-  /** Nearest-neighbour texture filtering for a low-res retro look (applies to all surfaces). */
-  setNearest(on: boolean): void {
-    if (on === this.nearest) return;
-    this.nearest = on;
-    for (const tex of this.textures.values()) this.applySampling(tex);
-  }
-
-  private applySampling(tex: Texture): void {
-    tex.updateSamplingMode(this.nearest ? Texture.NEAREST_NEAREST_MIPLINEAR : Texture.TRILINEAR_SAMPLINGMODE);
-    tex.anisotropicFilteringLevel = this.nearest ? 1 : 8;
-  }
-
   /** Loads a prefiltered `.env` environment; resolves (without throwing) even when it fails. */
   loadEnvironment(url: string): Promise<boolean> {
     return new Promise((resolve) => {
@@ -479,7 +466,7 @@ export class MaterialLibrary {
     if (!tex) {
       tex = textureWithFallback(url, this.scene, srgb);
       tex.uScale = tex.vScale = scale;
-      this.applySampling(tex);
+      tex.anisotropicFilteringLevel = 8;
       this.textures.set(id, tex);
     }
     return tex;

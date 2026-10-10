@@ -83,6 +83,8 @@
   /** Items passing the search, "Affordable" and "For us" filters, across all categories. */
   const matching = $derived(
     content.shop.filter((def) => {
+      // Stairs are built in Build mode.
+      if (def.stairs) return false;
       if (affordableOnly && !game.affords(def.price ?? 0)) return false;
       if (lovedOnly && !lovers.has(def.id)) return false;
       if (wanted && !content.offers(def, wanted, game.buyFilter?.skill)) return false;

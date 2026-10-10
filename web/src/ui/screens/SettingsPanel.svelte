@@ -1,6 +1,5 @@
 <script lang="ts">
   import { resetSettings, RESTART_KEYS, settings } from '../../settings/settings.svelte';
-  import { STYLES, VISUAL_STYLES } from '../../render/styles';
   import { app } from '../app.svelte';
   import { services } from '../services';
   import { game } from '../state.svelte';
@@ -25,7 +24,6 @@
   });
 
   const pages = [
-    { id: 'look', label: 'Look', icon: 'icon.ui.eyedropper' },
     { id: 'performance', label: 'Performance', icon: 'icon.ui.perf' },
     { id: 'gameplay', label: 'Gameplay', icon: 'icon.ui.live' },
     { id: 'camera', label: 'Camera & time', icon: 'icon.ui.watch' },
@@ -33,7 +31,7 @@
     { id: 'audio', label: 'Audio', icon: 'icon.career.music' },
     { id: 'controls', label: 'Controls', icon: 'icon.ui.move' },
   ] as const;
-  let page = $state<(typeof pages)[number]['id']>('look');
+  let page = $state<(typeof pages)[number]['id']>('performance');
 
   // Remember restart-only values when opened during a game, to show a notice if they change.
   const initial = Object.fromEntries(RESTART_KEYS.map((k) => [k, settings[k]]));
@@ -159,19 +157,7 @@
       <p class="notice">Some changes apply the next time you start or load a game.</p>
     {/if}
 
-    {#if page === 'look'}
-      <section>
-        <h3>Visual style</h3>
-        <div class="styles" role="radiogroup" aria-label="Visual style">
-          {#each VISUAL_STYLES as id (id)}
-            <button role="radio" aria-checked={settings.visualStyle === id} class:active={settings.visualStyle === id} onclick={() => (settings.visualStyle = id)}>
-              <b>{STYLES[id].label}</b>
-              <span>{STYLES[id].description}</span>
-            </button>
-          {/each}
-        </div>
-      </section>
-    {:else if page === 'performance'}
+    {#if page === 'performance'}
       <p class="intro">Each of these trades looks for speed. If the game stutters, lower the resolution first: it saves the most.</p>
       <section>
         <h3>Image</h3>
@@ -489,36 +475,6 @@
     color: #8a5e0c;
     font-weight: 550;
     font-size: 13px;
-  }
-  .styles {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    padding: 8px 0 14px;
-  }
-  .styles button {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 12px;
-    border-radius: var(--radius-sm);
-    border: 1.5px solid var(--hairline);
-    text-align: left;
-    transition:
-      border-color var(--fast) var(--ease),
-      background var(--fast) var(--ease);
-  }
-  .styles button:hover {
-    border-color: rgba(91, 124, 250, 0.4);
-  }
-  .styles button.active {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-  }
-  .styles span {
-    color: var(--text-muted);
-    font-size: 12px;
-    line-height: 1.4;
   }
   .slider {
     width: 170px;

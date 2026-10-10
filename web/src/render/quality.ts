@@ -3,8 +3,6 @@
  * testing (`?quality=`) and `high` gives the defaults.
  */
 
-import type { VisualStyle } from './styles';
-
 export interface QualitySettings {
   shadowMapSize: number;
   msaaSamples: number;
@@ -17,8 +15,6 @@ export interface QualitySettings {
    * +2.8 ms on WebGL2 (where supported; otherwise four lamps).
    */
   clusteredLamps: boolean;
-  /** Initial visual style (changeable live with `Renderer.setVisualStyle`). Default `classic`. */
-  visualStyle?: VisualStyle;
 }
 
 export const QUALITY: Record<'low' | 'medium' | 'high' | 'ultra', QualitySettings> = {

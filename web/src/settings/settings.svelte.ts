@@ -4,13 +4,10 @@
  */
 
 import { QUALITY, type QualitySettings } from '../render/quality';
-import { VISUAL_STYLES, type VisualStyle } from '../render/styles';
 
 export type QualityPreset = keyof typeof QUALITY;
 
 export interface Settings {
-  /** Look of the world: `classic` (warm stylised realism), `bright` (clean, pastel), `retro`. Applies live. */
-  visualStyle: VisualStyle;
   renderer: 'auto' | 'webgl';
   /** Fraction of native resolution, 0.5..1. */
   resolutionScale: number;
@@ -65,7 +62,6 @@ export const RESTART_KEYS: readonly (keyof Settings)[] = ['renderer', 'shadowDet
 const STORAGE_KEY = 'open-sims-wasm.settings';
 
 export const DEFAULT_SETTINGS: Settings = {
-  visualStyle: 'classic',
   renderer: 'auto',
   resolutionScale: 1,
   shadowDetail: QUALITY.high.shadowMapSize,
@@ -101,9 +97,8 @@ function load(): Settings {
     const old = stored.quality && stored.shadowDetail === undefined ? QUALITY[stored.quality] : undefined;
     const preset = old ? { shadowDetail: old.shadowMapSize, antiAliasing: old.msaaSamples > 1, allLamps: old.clusteredLamps } : {};
     const merged = { ...DEFAULT_SETTINGS, ...preset, ...stored };
-    // Settings that are gone (bloom, tilt-shift, the quality preset) aren't kept.
+    // Settings that are gone (bloom, tilt-shift, the quality preset, the visual style) aren't kept.
     for (const k of Object.keys(merged)) if (!(k in DEFAULT_SETTINGS)) delete (merged as Record<string, unknown>)[k];
-    if (!VISUAL_STYLES.includes(merged.visualStyle)) merged.visualStyle = DEFAULT_SETTINGS.visualStyle;
     // Babble (0.14–0.19) is gone: anything but a language we have becomes the default.
     if (!['en'].includes(merged.voiceLanguage)) merged.voiceLanguage = DEFAULT_SETTINGS.voiceLanguage;
     return merged;
@@ -142,6 +137,5 @@ export function qualityFromSettings(s: Settings, params: URLSearchParams): Quali
   return {
     ...chosen,
     snapshotRendering: chosen.snapshotRendering && params.get('snapshot') !== '0',
-    visualStyle: (VISUAL_STYLES as readonly string[]).includes(params.get('style') ?? '') ? (params.get('style') as VisualStyle) : s.visualStyle,
   };
 }

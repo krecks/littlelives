@@ -1,21 +1,18 @@
-# Look and visual styles
+# Look
 
 *Design notes for how Littlelives looks. Inspired by classic life-simulation games, described
 here on our own terms.*
 
-The world can be drawn in three styles: **Classic** (the default), **Bright** and **Retro**.
-A style changes only lighting, sky, post-processing, colour grading and material response.
-Gameplay, models and asset keys are the same in every style, and switching is live. All art is
-original or CC0.
+The world has one look: warm, painterly realism with golden-hour light and blue moonlit nights.
+All art is original or CC0.
 
-Code: `web/src/render/styles.ts` holds the presets as data; `web/src/render/babylon/*` applies
-them.
+Code: `web/src/render/look.ts` holds the look as data; `web/src/render/babylon/*` applies it.
 
-## Shared goals
+## Goals
 
 - **A warm, lived-in neighbourhood.** Houses, gardens and people should read as a small,
   cared-for world: a warm, stylised-realistic look rather than photorealism or flat cartoon.
-- **Time of day you can feel.** Every style is driven by time-of-day keyframes (sun, sky fill,
+- **Time of day you can feel.** The look is driven by time-of-day keyframes (sun, sky fill,
   image-based light, horizon, zenith, exposure and lamps every few hours), so mornings, golden
   hour, blue hour and night each have their own mood.
 - **Only the sun turns warm at sunset.** The sky fill and ambient light stay neutral to cool, and
@@ -25,14 +22,9 @@ them.
 - **Warm lamps against cool nights.** At night a moonlight grade turns dark tones blue-grey
   (grass alone would otherwise read dark green) while lamps and lit windows stay warm.
 - **Readable at a glance.** The dollhouse view has to show who is where and what they are doing,
-  so clarity beats extra effects. Expensive or distracting effects are style choices that can be
-  switched off. There is no bloom or tilt-shift blur.
+  so clarity beats extra effects. There is no bloom or tilt-shift blur.
 
-## The three styles
-
-### Classic (default)
-
-*Warm, painterly realism with golden-hour light and blue moonlit nights.*
+## Light and grading
 
 | Aspect | Choice |
 |---|---|
@@ -42,31 +34,7 @@ them.
 | Effects | A light vignette and soft distance haze. |
 | Shadows | Soft, filtered shadows (the shadow map size is the "Shadow detail" setting: 2048 by default). |
 
-### Bright
-
-*Clean, colourful and soft, with gentle shadows and a pastel sky.*
-
-| Aspect | Choice |
-|---|---|
-| Light | A higher sun (`sunHeight` 1.05) for shorter, gentler shadows; soft, even light and a pastel sky. |
-| Nights | A lighter night grade (0.7) and paler, creamier lamps (`#FFD8A8`). |
-| Grading | Neutral tone mapping, nearly flat contrast (1.02), saturation +18, only a hint of split toning. |
-| Effects | Almost no vignette or haze, a little sharpening for crisp silhouettes. |
-| Shadows | Soft. |
-
-### Retro
-
-*Muted colours, hard light and chunky pixels, like the early-2000s classics.*
-
-| Aspect | Choice |
-|---|---|
-| Light | A fixed afternoon sun (no arc) with hard shadows. |
-| Nights | Darker nights with a gentler grade (0.55) and amber lamps. |
-| Grading | ACES tone mapping, higher contrast (1.18), saturation −22, warm split toning in both highlights and shadows for a faded look. |
-| Effects | Light film grain; rendered at half resolution with nearest-neighbour upscaling and nearest-neighbour texture filtering for chunky pixels. |
-| Shadows | Hard-edged. |
-
-## The world in every style
+## The world
 
 | Element | Design |
 |---|---|
@@ -74,5 +42,5 @@ them.
 | Cutaway | Done on the GPU. Each wall vertex stores which view directions it hides, and the vertex shader lowers it to a 0.35 m stub. Roofs show only with walls up and when not zoomed in. |
 | Night interiors | Up to 4 warm room lights at room centres or at floor lamps. Windows glow from outside at night only. |
 | Garden | A bright yellow-green lawn, foundation shrubs, lot trees, clouds and a sun glow in the sky. |
-| Selection marker | A small marker over the selected resident. Its colour follows their mood through a five-step palette per style (`marker` in `styles.ts`). |
+| Selection marker | A small marker over the selected resident. Its colour follows their mood through a five-step palette (`marker` in `look.ts`). |
 | Residents | Stylised-realistic proportions with a face (eyes, brows, mouth) and a walk, sit and gesture rig. Skin roughness 0.48 and hair 0.34 give a soft, slightly glossy finish. |

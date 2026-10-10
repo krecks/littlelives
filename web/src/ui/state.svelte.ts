@@ -16,7 +16,7 @@ export interface MenuState {
 
 /** Live: play. Buy: furnish (place, move, upgrade, sell). Build: walls, rooms, doors and windows. */
 export type GameMode = 'live' | 'buy' | 'build';
-export type BuildTool = 'wall' | 'room' | 'fence' | 'gate' | 'paint' | 'floor' | 'door' | 'window' | 'roof' | 'remove' | 'move' | 'blueprint';
+export type BuildTool = 'wall' | 'room' | 'fence' | 'gate' | 'paint' | 'floor' | 'door' | 'window' | 'stairs' | 'roof' | 'remove' | 'move' | 'blueprint';
 
 /** What Build mode puts up: wall covering (0: automatic, else wall covering + 1) and form, door and window style. */
 export interface BuildLook {

@@ -1,6 +1,6 @@
 /**
- * Time-of-day lighting: interpolates sun, sky and exposure between the visual style's
- * keyframes (`render/styles.ts`). Pure math; the renderer applies the result.
+ * Time-of-day lighting: interpolates sun, sky and exposure between the look's keyframes
+ * (`render/look.ts`). Pure math; the renderer applies the result.
  *
  * Rough physical ratios behind the keys: on a clear day direct sun is ~4-5x the sky's diffuse
  * light on the ground; at golden hour they are about equal; at night the "camera" compensates
@@ -8,7 +8,7 @@
  */
 
 import { Color3, Vector3 } from './core';
-import type { StylePreset } from '../styles';
+import type { Look } from '../look';
 
 const SUNRISE = 6;
 const SUNSET = 20;
@@ -36,8 +36,8 @@ export interface Lighting {
 }
 
 /** Writes lighting for `minuteOfDay` into `out` (no allocations after the first call). */
-export function lightingAt(minuteOfDay: number, style: StylePreset, out: Lighting): Lighting {
-  const keys = style.keys;
+export function lightingAt(minuteOfDay: number, look: Look, out: Lighting): Lighting {
+  const keys = look.keys;
   const hour = (minuteOfDay / 60) % 24;
   let i = 0;
   while (i < keys.length - 2 && keys[i + 1].hour <= hour) i++;
@@ -58,13 +58,12 @@ export function lightingAt(minuteOfDay: number, style: StylePreset, out: Lightin
   lerpHex(a.clear, b.clear, t, out.clearColor);
   lerpHex(a.zenith, b.zenith, t, out.zenithColor);
 
-  // Sun arcs east -> west during the day (low and long-shadowed in the classic style); at
-  // night a fixed high "moon" keeps soft shadows. Retro keeps a fixed afternoon sun.
+  // Sun arcs east -> west during the day (low and long-shadowed); at night a fixed high "moon"
+  // keeps soft shadows.
   if (hour >= SUNRISE && hour <= SUNSET) {
     const arc = ((hour - SUNRISE) / (SUNSET - SUNRISE)) * Math.PI;
     out.sunUp = Math.sin(arc);
-    if (style.sunArc) out.sunDirection.set(-Math.cos(arc), -(0.22 + out.sunUp * 0.9) * style.sunHeight, 0.45).normalize();
-    else out.sunDirection.set(-0.55, -0.85, 0.4).normalize();
+    out.sunDirection.set(-Math.cos(arc), -(0.22 + out.sunUp * 0.9) * look.sunHeight, 0.45).normalize();
   } else {
     out.sunUp = 0;
     out.sunDirection.set(0.35, -1, 0.25).normalize();

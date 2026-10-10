@@ -451,7 +451,7 @@ id) and `last` (household names).
   (likes `rest`, `lounge`, `spa`). Icons are `icon.emotion.<id>`.
 - **Buy categories** (groups in brackets): `kitchen` (`appliances`, `counters`, `dining`),
   `bathroom` (`toilets`, `bathing`, `sinks`, `laundry`), `bedroom` (`beds`, `storage`,
-  `dressing`), `kids`, `living` (`seating`, `tables`, `media`, `shelves`, `stairs`), `office`,
+  `dressing`), `kids`, `living` (`seating`, `tables`, `media`, `shelves`), `office`,
   `fitness`, `hobbies` (`music`, `games`, `crafts`), `decor` (`wall`, `ornaments`, `textiles`),
   `lighting` (`ceiling`, `wall`, `floor`, `table`), `outdoor` (`seating`, `cooking`, `play`,
   `lights`, `decor`), `garden` (groups `trees`, `shrubs`, `flowers`, `edibles`,

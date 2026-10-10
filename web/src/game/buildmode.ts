@@ -234,6 +234,11 @@ export class BuildBuyInput {
     return this.building() && game.buildTool === 'floor';
   }
 
+  /** Build mode's Stairs tool: places and moves staircases like Buy mode places furniture. */
+  stairsTool(): boolean {
+    return this.building() && game.buildTool === 'stairs';
+  }
+
   hover(ground: Point | null, objectId: number | null = null): void {
     if (this.picking()) {
       this.clearPreviews();
@@ -246,13 +251,13 @@ export class BuildBuyInput {
     this.lastHover = ground;
     if (!ground) return this.clearPreviews();
     if (this.pressed) this.lastGround = ground;
-    if (this.building()) this.hoverBuild(ground);
-    else if (game.mode === 'buy') this.hoverBuy(ground);
+    if (this.stairsTool() || game.mode === 'buy') this.hoverBuy(ground);
+    else if (this.building()) this.hoverBuild(ground);
   }
 
   /** Redraw the Buy ghost where the pointer last was (after a turn, without waiting for the pointer to move). */
   rehover(): void {
-    if (this.lastHover && game.mode === 'buy' && !this.picking()) this.hoverBuy(this.lastHover);
+    if (this.lastHover && (game.mode === 'buy' || this.stairsTool()) && !this.picking()) this.hoverBuy(this.lastHover);
   }
 
   /** The next click picks up a look (E, or Alt held) instead of building or placing. */
@@ -268,7 +273,9 @@ export class BuildBuyInput {
   pick(ground: Point | null, objectId: number | null, apply = true): Picked | null {
     const look = game.buildLook;
     const obj = objectId === null ? undefined : game.objects.find((o) => o.id === objectId);
-    if (obj && this.content.object(obj.def)?.price !== undefined) {
+    const def = obj && this.content.object(obj.def);
+    if (obj && def?.stairs) return { kind: 'tool', tool: 'stairs' };
+    if (obj && def?.price !== undefined) {
       return { kind: 'object', def: obj.def, style: obj.style, rot: obj.rot, turn: obj.turn ?? 0 };
     }
     if (!ground) return null;
@@ -302,6 +309,7 @@ export class BuildBuyInput {
     const p = this.pick(ground, objectId, false);
     if (!p) return 'Nothing to pick up here';
     if (p.kind === 'object') return `Another ${this.content.object(p.def)?.name ?? p.def}`;
+    if (p.tool === 'stairs') return 'Another staircase';
     if (p.tool === 'floor') {
       const t = this.tileOf(ground!);
       const c = this.floors.get(`${t.x}:${t.z}`) ?? 0;
@@ -320,6 +328,7 @@ export class BuildBuyInput {
   /** Returns true when the click was used. */
   click(ground: Point | null, objectId: number | null): boolean {
     if (this.paintTool() || this.floorTool()) return true;
+    if (this.stairsTool()) return this.clickStairs(ground, objectId);
     if (this.building()) return ground ? this.clickBuild(ground) : true;
     if (game.mode === 'buy') return this.clickBuy(ground, objectId);
     return false;
@@ -447,9 +456,33 @@ export class BuildBuyInput {
     const home = this.home();
     const obj = objectId === null ? undefined : game.objects.find((o) => o.id === objectId);
     game.buySelection = null;
-    if (!obj || !home || obj.x < home.x || obj.z < home.z || obj.x >= home.x + home.w || obj.z >= home.z + home.d) return true;
+    // Stairs are moved in Build mode (Stairs tool).
+    if (!obj || !home || this.content.object(obj.def)?.stairs || obj.x < home.x || obj.z < home.z || obj.x >= home.x + home.w || obj.z >= home.z + home.d) return true;
     // Clicking something at home picks it up: move it, turn it (R), restyle it from the panel.
     game.placing = { def: obj.def, rot: obj.rot, turn: obj.turn ?? 0, objectId: obj.id };
+    if (ground) this.hoverBuy(ground);
+    return true;
+  }
+
+  /** The staircase the Stairs tool builds. */
+  stairsDef(): ObjectDef | undefined {
+    return this.content.shop.find((d) => d.stairs);
+  }
+
+  /**
+   * Stairs tool: places the staircase in hand (it stays there for another). With nothing in
+   * hand, a click on stairs at home picks them up to move them; anywhere else, takes a new one.
+   */
+  private clickStairs(ground: Point | null, objectId: number | null): boolean {
+    if (game.placing) return this.clickBuy(ground, objectId);
+    const home = this.home();
+    const obj = objectId === null ? undefined : game.objects.find((o) => o.id === objectId);
+    if (obj && home && this.content.object(obj.def)?.stairs && obj.x >= home.x && obj.z >= home.z && obj.x < home.x + home.w && obj.z < home.z + home.d) {
+      game.placing = { def: obj.def, rot: obj.rot, turn: obj.turn ?? 0, objectId: obj.id };
+    } else {
+      const def = this.stairsDef();
+      if (def) game.placing = { def: def.id, rot: 0, turn: 0, objectId: null };
+    }
     if (ground) this.hoverBuy(ground);
     return true;
   }

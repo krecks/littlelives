@@ -490,6 +490,8 @@ export async function startSession(
       buildBuy.modeChanged();
     },
     startPlacing(def) {
+      // Stairs are built in Build mode.
+      if (content.object(def)?.stairs) return controls.setBuildTool('stairs');
       controls.setMode('buy');
       game.buySelection = null;
       const turns = !!content.object(def) && content.turns(content.object(def)!);
@@ -498,12 +500,17 @@ export async function startSession(
     startMoving(objectId) {
       const obj = game.objects.find((o) => o.id === objectId);
       if (!obj) return;
-      controls.setMode('buy');
-      game.buySelection = null;
+      if (content.object(obj.def)?.stairs) {
+        controls.setBuildTool('stairs');
+        buildBuy.cancel();
+      } else {
+        controls.setMode('buy');
+        game.buySelection = null;
+      }
       game.placing = { def: obj.def, rot: obj.rot, turn: obj.turn ?? 0, objectId };
     },
     rotatePlacing(fine = false) {
-      if (game.mode !== 'buy') return;
+      if (game.mode !== 'buy' && !buildBuy.stairsTool()) return;
       // Facing and turn as one angle: a quarter turn, or 15° for things that turn freely.
       const turned = (def: string, rot: number, turn: number) => {
         const d = content.object(def);
@@ -524,7 +531,7 @@ export async function startSession(
       buildBuy.cancel();
     },
     sell(objectId) {
-      if (game.mode !== 'buy') return;
+      if (game.mode !== 'buy' && !buildBuy.stairsTool()) return;
       // Selling what's in hand puts it down first (selling renumbers the objects after it).
       if (game.placing?.objectId === objectId) buildBuy.cancel();
       bridge.send({ type: 'sell', household: game.home, object: objectId });
@@ -597,12 +604,17 @@ export async function startSession(
     },
     setBuildTool(tool) {
       controls.setMode('build');
+      // Leaving or (re)entering the Stairs tool drops the staircase in hand.
+      if (tool !== game.buildTool || tool === 'stairs') buildBuy.cancel();
       game.buildTool = tool;
       // Painting needs the walls standing to see them; the roof shows with walls up.
       if (tool === 'paint' && game.wallMode === 'down') controls.setWallMode('cutaway');
       if (tool === 'roof') controls.setWallMode('up');
       game.buildStart = null;
       buildBuy.clearPreviews();
+      // Stairs: one in hand straight away.
+      const stairs = tool === 'stairs' ? buildBuy.stairsDef() : undefined;
+      if (stairs) game.placing = { def: stairs.id, rot: 0, turn: 0, objectId: null };
     },
     build(edits) {
       bridge.send({ type: 'build', household: game.home, edits });
@@ -1064,7 +1076,7 @@ export async function startSession(
         return controls.toggleEyedropper();
       case 'Delete':
       case 'Backspace':
-        if (game.mode === 'buy') {
+        if (game.mode === 'buy' || buildBuy.stairsTool()) {
           const target = game.placing?.objectId ?? game.buySelection;
           if (target !== null) controls.sell(target);
         }
@@ -1181,7 +1193,6 @@ export async function startSession(
       renderer.configure({
         resolutionScale: s.resolutionScale,
         cameraSensitivity: s.cameraSensitivity,
-        visualStyle: s.visualStyle,
       });
       bridge.send({ type: 'setAutonomy', enabled: s.autonomy });
       bridge.send({ type: 'setAutoFast', enabled: s.skipQuietHours });

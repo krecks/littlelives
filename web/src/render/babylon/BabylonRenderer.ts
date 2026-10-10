@@ -11,8 +11,7 @@
  *   in the vertex shader from a per-vertex attribute.
  * - No allocations in `update()`.
  *
- * Look: a visual style (styles.ts) drives lighting keys, sky, fog, post-processing, colour
- * grading and filtering; it can change live.
+ * Look: `look.ts` drives lighting keys, sky, fog, post-processing and colour grading.
  */
 
 import {
@@ -54,7 +53,7 @@ import {
 import type { FrameState } from '../../core/bridge';
 import { groundDepth, type MeshArrays, type ObjectPlacement, type WorldStructure } from '../../core/protocol';
 import type { QualitySettings } from '../quality';
-import { stylePreset, type StylePreset, type VisualStyle } from '../styles';
+import { LOOK } from '../look';
 import type {
   BuildEffect,
   CameraPose,
@@ -261,7 +260,6 @@ export class BabylonRenderer implements Renderer {
   /** Lot the camera was last turned towards (see `buildSims`). */
   private framedView = '';
 
-  private style: StylePreset;
   private options: LiveRenderOptions = { resolutionScale: 1, cameraSensitivity: 1 };
   private skyDome!: Sky;
   private readonly lighting = createLighting();
@@ -352,7 +350,6 @@ export class BabylonRenderer implements Renderer {
     private readonly deps: RendererDeps,
     private readonly quality: QualitySettings,
   ) {
-    this.style = stylePreset(quality.visualStyle);
     const hour = Number(new URLSearchParams(location.search).get('hour'));
     this.fixedHour = Number.isFinite(hour) && new URLSearchParams(location.search).has('hour') ? hour : null;
   }
@@ -406,7 +403,7 @@ export class BabylonRenderer implements Renderer {
     await this.setupMarker();
     // (Their data loads with the first world that has residents, not with the menus.)
     this.characters = new Characters(scene, this.deps.assets, this.lib);
-    this.applyStyle();
+    this.applyLook();
     window.addEventListener('resize', this.onResize);
   }
 
@@ -645,20 +642,13 @@ export class BabylonRenderer implements Renderer {
     this.resetSnapshot();
   }
 
-  setVisualStyle(style: VisualStyle): void {
-    if (style === this.style.id) return;
-    this.style = stylePreset(style);
-    this.applyStyle();
-  }
-
   configure(options: LiveRenderOptions): void {
     this.options = { ...this.options, ...options };
-    if (options.visualStyle && options.visualStyle !== this.style.id) this.style = stylePreset(options.visualStyle);
     const s = Math.max(0.25, options.cameraSensitivity);
     this.camera.angularSensibilityX = this.camera.angularSensibilityY = 1000 / s;
     this.camera.panningSensibility = 90 / s;
     this.camera.wheelDeltaPercentage = 0.012 * s;
-    this.applyStyle();
+    this.applyLook();
   }
 
   // --- build mode ----------------------------------------------------------------------
@@ -1314,7 +1304,7 @@ export class BabylonRenderer implements Renderer {
     cam.inertialAlphaOffset = cam.inertialBetaOffset = cam.inertialRadiusOffset = 0;
     cam.attachControl(true);
     this.updateShadowList();
-    this.scene.fogDensity = this.style.fog;
+    this.scene.fogDensity = LOOK.fog;
     this.applyLighting(this.lastMinute);
     this.lastLightMinute = this.lastMinute;
     this.cutLook = -1;
@@ -1343,8 +1333,8 @@ export class BabylonRenderer implements Renderer {
       this.resetSnapshot();
     }
     // Haze is tuned for the game's close camera; from high above it would wash the town out.
-    const fog = this.style.fog * Math.min(1, Math.max(0.3, 55 / this.camera.radius));
-    if (Math.abs(fog - this.scene.fogDensity) > this.style.fog * 0.02) this.scene.fogDensity = fog;
+    const fog = LOOK.fog * Math.min(1, Math.max(0.3, 55 / this.camera.radius));
+    if (Math.abs(fog - this.scene.fogDensity) > LOOK.fog * 0.02) this.scene.fogDensity = fog;
     this.followCamera();
     this.skyDome.drift(dt);
     this.townListener?.();
@@ -1788,43 +1778,30 @@ export class BabylonRenderer implements Renderer {
 
   // --- style -------------------------------------------------------------------------
 
-  /** Applies the visual style and the live options (post-processing, fog, filtering, ...). */
-  private applyStyle(): void {
-    const st = this.style;
-    const o = this.options;
+  /** Applies the look and the live options (post-processing, fog, resolution, ...). */
+  private applyLook(): void {
     const post = this.post;
     if (post) {
       const ip = post.imageProcessing;
-      ip.toneMappingType = st.toneMapping === 'neutral' ? ImageProcessingConfiguration.TONEMAPPING_KHR_PBR_NEUTRAL : ImageProcessingConfiguration.TONEMAPPING_ACES;
-      ip.contrast = st.contrast;
-      ip.vignetteWeight = st.vignette;
+      ip.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
+      ip.contrast = LOOK.contrast;
+      ip.vignetteWeight = LOOK.vignette;
       const curves = ip.colorCurves!;
-      curves.globalSaturation = st.saturation;
-      curves.highlightsHue = st.highlightsHue;
-      curves.highlightsDensity = st.highlightsDensity;
-      curves.shadowsHue = st.shadowsHue;
-      curves.shadowsDensity = st.shadowsDensity;
-      post.sharpenEnabled = st.sharpen > 0;
-      if (st.sharpen > 0) post.sharpen.edgeAmount = st.sharpen;
-      post.grainEnabled = st.grain > 0;
-      if (st.grain > 0) {
-        post.grain.intensity = st.grain;
-        post.grain.animated = false;
-      }
+      curves.globalSaturation = LOOK.saturation;
+      curves.highlightsHue = LOOK.highlightsHue;
+      curves.highlightsDensity = LOOK.highlightsDensity;
+      curves.shadowsHue = LOOK.shadowsHue;
+      curves.shadowsDensity = LOOK.shadowsDensity;
     }
-    this.scene.fogDensity = st.fog;
-    this.shadows.usePercentageCloserFiltering = st.softShadows;
-    this.shadows.filteringQuality = st.softShadows ? ShadowGenerator.QUALITY_MEDIUM : ShadowGenerator.QUALITY_LOW;
-    this.lib.setNearest(st.nearestTextures);
-    const scale = Math.min(1, Math.max(0.5, o.resolutionScale));
-    this.engine.setHardwareScalingLevel(st.pixelScale / (window.devicePixelRatio * scale));
-    this.canvas.style.imageRendering = st.pixelScale > 1 ? 'pixelated' : '';
-    this.markerPalette = st.marker.map((hex) => {
+    this.scene.fogDensity = LOOK.fog;
+    const scale = Math.min(1, Math.max(0.5, this.options.resolutionScale));
+    this.engine.setHardwareScalingLevel(1 / (window.devicePixelRatio * scale));
+    this.markerPalette = LOOK.marker.map((hex) => {
       const c = Color3.FromHexString(hex).toLinearSpace();
       return [c.r * 1.2, c.g * 1.2, c.b * 1.2, 1];
     });
-    this.lampColor.copyFrom(Color3.FromHexString(st.lampColor).toLinearSpace());
-    this.glowColor.copyFrom(Color3.FromHexString(st.windowGlow).toLinearSpace());
+    this.lampColor.copyFrom(Color3.FromHexString(LOOK.lampColor).toLinearSpace());
+    this.glowColor.copyFrom(Color3.FromHexString(LOOK.windowGlow).toLinearSpace());
     const minute = this.townMode ? this.townMinute : this.lastMinute;
     this.applyLighting(minute);
     this.lastLightMinute = minute;
@@ -2311,7 +2288,7 @@ export class BabylonRenderer implements Renderer {
   }
 
   private applyLighting(minute: number): void {
-    const l = lightingAt(minute, this.style, this.lighting);
+    const l = lightingAt(minute, LOOK, this.lighting);
     this.sun.direction.copyFrom(l.sunDirection);
     l.sunDirection.scaleToRef(-40, this.vTmp);
     this.sun.position.copyFrom(this.townMode && this.overview ? this.overview.centre : this.lotCentre).addInPlace(this.vTmp);
@@ -2327,10 +2304,10 @@ export class BabylonRenderer implements Renderer {
     this.skyDome.update(l);
     this.lib.setEnvironmentIntensity(l.envIntensity);
     if (this.post) {
-      this.post.imageProcessing.exposure = l.exposure * this.style.exposure;
+      this.post.imageProcessing.exposure = l.exposure * LOOK.exposure;
       // Moonlit nights: blue-grey dark tones, warm lamps and windows (see nightGrade.ts).
       if (this.nightGrade) {
-        this.nightGrade.amount = l.night * this.style.nightGrade;
+        this.nightGrade.amount = l.night * LOOK.nightGrade;
         this.nightGrade.update();
       }
     }

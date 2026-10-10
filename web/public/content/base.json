@@ -3375,8 +3375,7 @@
         {"id": "seating", "label": "Seating"},
         {"id": "tables", "label": "Tables"},
         {"id": "media", "label": "TV & music"},
-        {"id": "shelves", "label": "Shelves"},
-        {"id": "stairs", "label": "Stairs"}
+        {"id": "shelves", "label": "Shelves"}
       ]
     },
     {

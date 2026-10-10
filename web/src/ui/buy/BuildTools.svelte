@@ -7,7 +7,7 @@
   import Blueprints from './Blueprints.svelte';
   import LookPicker from './LookPicker.svelte';
 
-  /** Build mode's tools: walls, rooms, paint, floors, doors, windows and removing them, on the home lot. */
+  /** Build mode's tools: walls, rooms, paint, floors, doors, windows, stairs and removing them, on the home lot. */
   const content = services.content;
   const prices = $derived(game.catalog?.build);
   const tools: { id: BuildTool; label: string; icon: string; unit: string; steps: string[] }[] = [
@@ -19,6 +19,7 @@
     { id: 'floor', label: 'Floor', icon: 'icon.ui.floor', unit: '', steps: ['Pick a floor', 'Click a tile — or drag over several', 'Shift-click: a whole room'] },
     { id: 'door', label: 'Door', icon: 'icon.ui.door', unit: '', steps: ['Point at a wall, straight or diagonal', 'Click to fit a door'] },
     { id: 'window', label: 'Window', icon: 'icon.ui.window', unit: '', steps: ['Point at a wall, straight or diagonal', 'Click to fit a window'] },
+    { id: 'stairs', label: 'Stairs', icon: 'icon.ui.stairs', unit: '', steps: ['Build the storey above first', 'Click where the stairs start — R turns them', 'Click your stairs to move them; Delete sells them'] },
     { id: 'roof', label: 'Roof', icon: 'icon.ui.roof', unit: '', steps: ['Pick a roof shape', 'Pick a colour', 'It changes at once'] },
     { id: 'remove', label: 'Remove', icon: 'icon.ui.eraser', unit: '/m', steps: ['Click a door or window to wall it up', 'Or drag along walls', 'Let go to tear them down'] },
     { id: 'move', label: 'Move', icon: 'icon.ui.move', unit: '', steps: ['Point at a room', 'Drag it where it should go', 'Let go to move it'] },
@@ -29,6 +30,10 @@
     if (!prices) return '';
     if (id === 'blueprint') return '';
     if (game.creative || id === 'roof' || id === 'move') return 'Free';
+    if (id === 'stairs') {
+      const stairs = content.shop.find((d) => d.stairs)?.price ?? 0;
+      return stairs ? money(stairs) : 'Free';
+    }
     const look = game.buildLook;
     const p =
       id === 'wall' || id === 'room'
@@ -88,6 +93,12 @@
         <span class="muted">{game.floorTiles} {game.floorTiles === 1 ? 'tile' : 'tiles'}</span>
         {#key game.buildCost}<b class="tabular" class:short>{game.buildCost ? money(game.buildCost) : 'Free'}</b>{/key}
         {#if short}<span class="short">— {money(game.buildCost - game.funds)} short</span>{/if}
+      {:else if game.buildTool === 'stairs'}
+        {#if game.placing && !game.placeValid && game.placeHint}
+          <span class="short">{game.placeHint}</span>
+        {:else if !game.placing}
+          <span class="muted">Click your stairs to move them, or anywhere on your lot for a new staircase.</span>
+        {/if}
       {:else if game.buildCost > 0}
         <span class="muted">This edit</span>
         {#key game.buildCost}<b class="tabular" class:short>{money(game.buildCost)}</b>{/key}
@@ -113,6 +124,8 @@
         Fences keep a garden outdoors (no floor, no roof); leave a gate so nobody is shut in.
       {:else if game.buildTool === 'door' || game.buildTool === 'window'}
         Doors and windows go into full-height walls; pick another style to replace one.
+      {:else if game.buildTool === 'stairs'}
+        Stairs lead up to the storey above and are climbed from the front; nothing can stand on the steps or where they come up.
       {:else if game.buildTool === 'move'}
         The room's walls, doors, windows, floor and furniture come along; walls it shares with another room stay.
       {:else if game.buildTool === 'blueprint'}

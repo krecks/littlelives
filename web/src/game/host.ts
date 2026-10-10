@@ -233,7 +233,7 @@ class GameHost {
 }
 
 function liveOptions(s: Settings) {
-  return { resolutionScale: s.resolutionScale, cameraSensitivity: s.cameraSensitivity, visualStyle: s.visualStyle };
+  return { resolutionScale: s.resolutionScale, cameraSensitivity: s.cameraSensitivity };
 }
 
 function reducedMotion(): boolean {
