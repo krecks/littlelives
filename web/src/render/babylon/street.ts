@@ -673,21 +673,19 @@ export class Street {
       this.meshes.push(poolMesh);
     }
     add(shadows, 'streetShadows', this.lib.contactShadow());
+    // Interior lamps of the viewed house never reach the street (keeps its shaders simple): the
+    // room lights, or the clustered container holding them. Left out as soon as the meshes exist.
+    const interior = this.scene.lights.filter((l) => l.name.startsWith('room') || l.name === 'lamps');
+    this.lib.excludeFromLights(interior, new Set(this.meshes));
     const foliage: Mesh[] = [];
     for (const kind of Object.keys(FOLIAGE) as FoliageKind[]) {
       const meshes = await this.instances(kind, plants[kind]);
+      this.lib.excludeFromLights(interior, new Set(meshes));
       foliage.push(...meshes);
       if (kind === 'hedge') this.casters.push(...meshes);
     }
     for (const mesh of this.meshes) mesh.freezeWorldMatrix();
     this.drawn = [...this.meshes, ...foliage];
-    // Interior lamps of the viewed house never reach the street (keeps its shaders simple).
-    const mine = new Set([...this.meshes, ...foliage]);
-    for (const light of this.scene.lights) {
-      // The room lights, or the clustered container holding them.
-      if (!light.name.startsWith('room') && light.name !== 'lamps') continue;
-      light.excludedMeshes = [...light.excludedMeshes.filter((m) => !m.isDisposed() && !mine.has(m as Mesh)), ...mine];
-    }
     const lamps = this.lamps;
     this.lamps = -1;
     if (lamps >= 0) this.setNight(lamps, this.glow);

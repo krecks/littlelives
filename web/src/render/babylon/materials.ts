@@ -28,8 +28,10 @@ import {
   Vector4,
   type AbstractEngine,
   type AbstractMesh,
+  type Light,
   type Material,
   type MaterialDefines,
+  type Mesh,
   type Nullable,
   type Scene,
   type SubMesh,
@@ -364,6 +366,20 @@ export class MaterialLibrary {
     material.unfreeze();
     this.thawed.add(material);
     this.refreezeFrames = 3;
+  }
+
+  /**
+   * Leaves `meshes` out of `lights` (replacing earlier entries of the same meshes). A frozen
+   * material keeps the lights its shader was compiled with, and on WebGPU a mesh drawn with fewer
+   * lights than its shader expects fails to draw, so meshes left out now (perhaps already drawn
+   * while their models were still loading) get their materials thawed to recompile.
+   */
+  excludeFromLights(lights: readonly Light[], meshes: ReadonlySet<Mesh>): void {
+    for (const light of lights) {
+      const before = new Set(light.excludedMeshes);
+      light.excludedMeshes = [...light.excludedMeshes.filter((m) => !m.isDisposed() && !meshes.has(m as Mesh)), ...meshes];
+      for (const mesh of meshes) if (!before.has(mesh) && mesh.material) this.touch(mesh.material);
+    }
   }
 
   /** Nearest-neighbour texture filtering for a low-res retro look (applies to all surfaces). */

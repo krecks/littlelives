@@ -1197,10 +1197,7 @@ export class BabylonRenderer implements Renderer {
         await overview.build(world);
         if (this.townHighlight) overview.setHighlight(this.townHighlight);
         // Interior lamps of the game's house never reach the overview.
-        const own = new Set<Mesh>(overview.meshes);
-        for (const light of [...this.roomLights, ...(this.lampCluster ? [this.lampCluster] : [])]) {
-          light.excludedMeshes = [...light.excludedMeshes.filter((m) => !m.isDisposed() && !own.has(m as Mesh)), ...own];
-        }
+        this.lib.excludeFromLights([...this.roomLights, ...(this.lampCluster ? [this.lampCluster] : [])], new Set<Mesh>(overview.meshes));
       } finally {
         this.endBuild();
       }
@@ -1422,9 +1419,7 @@ export class BabylonRenderer implements Renderer {
     const landscape = new Set([...all, this.skyDome.mesh]);
     if (landscape.size !== this.lightExcluded.size || [...landscape].some((m) => !this.lightExcluded.has(m))) {
       this.lightExcluded = landscape;
-      for (const light of [...this.roomLights, ...(this.lampCluster ? [this.lampCluster] : [])]) {
-        light.excludedMeshes = [...new Set([...light.excludedMeshes.filter((m) => !m.isDisposed()), ...landscape])];
-      }
+      this.lib.excludeFromLights([...this.roomLights, ...(this.lampCluster ? [this.lampCluster] : [])], landscape);
     }
     return set;
   }
