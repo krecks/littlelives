@@ -320,12 +320,14 @@ the catalog filtered to it).
 "planner": {
   "boost": 6, "offBlock": 0.35, "urgentBelow": 0.15, "floor": 0.15, "skipChance": 0.1,
   "keptShare": 0.75, "maxMinutes": 240, "maxSleepMinutes": 720, "reviewHour": 7,
-  "maxGoals": 3, "maxSuggestions": 2, "suggestionDays": 2,
+  "maxGoals": 10, "maxSuggestions": 2, "goalFalloff": 0.15, "suggestionDays": 2,
   "discipline": { "lazy": 0.6, "energetic": 1.3 },
   "keptFeeling": "keptPlan", "noPlaceFeeling": "nowhereToDoIt", "goalFeeling": "goalReached"
 }
 ```
 
+`goalFalloff`: goals higher on a resident's list steer more; the goal at place *n* (0 = the top)
+steers with strength `1 / (1 + goalFalloff × n)`, and only the highest goal of each kind counts.
 `suggestionDays`: a goal a resident suggests is taken on by itself if the player neither
 accepts nor dismisses it for that many days. `discipline` multiplies how well residents with a trait stick to plans (with their mood);
 traits whose `tagPreference` dislikes an activity's tags skip it more. A pack's own top-level

@@ -10,6 +10,7 @@
     "build": "npm run wasm && npm run voice && vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
+    "lint": "eslint src",
     "test:sim": "cd .. && cargo test -p sim-core",
     "voice": "node ../tools/voice/fetch.mjs && cd .. && cargo build -p voice-wasm --target wasm32-unknown-unknown --release && wasm-bindgen target/wasm32-unknown-unknown/release/voice_wasm.wasm --target web --out-dir web/src/voice/wasm-pkg",
     "test:voice": "cd .. && cargo test -p voice --release"
@@ -22,9 +23,13 @@
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tsconfig/svelte": "^5.0.8",
+    "eslint": "^10.12.0",
+    "eslint-plugin-svelte": "^3.23.0",
     "svelte": "^5.57.2",
     "svelte-check": "^4.7.6",
+    "svelte-eslint-parser": "^1.8.1",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.1",
     "vite": "^8.3.3"
   }
 }

@@ -26,21 +26,21 @@ them.
   (grass alone would otherwise read dark green) while lamps and lit windows stay warm.
 - **Readable at a glance.** The dollhouse view has to show who is where and what they are doing,
   so clarity beats extra effects. Expensive or distracting effects are style choices that can be
-  switched off. Bloom and tilt-shift also follow the quality setting (`render/quality.ts`).
+  switched off. There is no bloom or tilt-shift blur.
 
 ## The three styles
 
 ### Classic (default)
 
-*Warm, painterly realism with golden-hour light, bloom and a miniature focus.*
+*Warm, painterly realism with golden-hour light and blue moonlit nights.*
 
 | Aspect | Choice |
 |---|---|
 | Light | Saturated warm sun on an arc, lowered (`sunHeight` 0.8) for long, dramatic shadows. A low peach sunrise, a golden (not red) late afternoon, an orange sunset only as the sun touches the horizon, then a blue dusk with lamps coming on. |
 | Nights | A blue moon fill with a strong night grade (0.85), so nights are clearly blue but not murky; warm lamps (`#FFC27A`) and glowing windows. |
 | Grading | ACES tone mapping, contrast 1.1, saturation +14. Split toning: warm highlights (hue 38) and cool shadows (hue 222). |
-| Effects | Visible bloom (threshold 0.72, weight 0.3), a light vignette, soft distance haze, and a subtle tilt-shift blur for the miniature look. |
-| Shadows | Soft, filtered shadows (the shadow map size comes from the quality setting: 2048 at medium and high). |
+| Effects | A light vignette and soft distance haze. |
+| Shadows | Soft, filtered shadows (the shadow map size is the "Shadow detail" setting: 2048 by default). |
 
 ### Bright
 
@@ -51,7 +51,7 @@ them.
 | Light | A higher sun (`sunHeight` 1.05) for shorter, gentler shadows; soft, even light and a pastel sky. |
 | Nights | A lighter night grade (0.7) and paler, creamier lamps (`#FFD8A8`). |
 | Grading | Neutral tone mapping, nearly flat contrast (1.02), saturation +18, only a hint of split toning. |
-| Effects | Faint bloom (threshold 0.92, weight 0.14), almost no vignette or haze, no tilt-shift, a little sharpening for crisp silhouettes. |
+| Effects | Almost no vignette or haze, a little sharpening for crisp silhouettes. |
 | Shadows | Soft. |
 
 ### Retro
@@ -63,7 +63,7 @@ them.
 | Light | A fixed afternoon sun (no arc) with hard shadows. |
 | Nights | Darker nights with a gentler grade (0.55) and amber lamps. |
 | Grading | ACES tone mapping, higher contrast (1.18), saturation −22, warm split toning in both highlights and shadows for a faded look. |
-| Effects | No bloom or tilt-shift; light film grain; rendered at half resolution with nearest-neighbour upscaling and nearest-neighbour texture filtering for chunky pixels. |
+| Effects | Light film grain; rendered at half resolution with nearest-neighbour upscaling and nearest-neighbour texture filtering for chunky pixels. |
 | Shadows | Hard-edged. |
 
 ## The world in every style
