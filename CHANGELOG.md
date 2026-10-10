@@ -2,6 +2,13 @@
 
 All notable changes to Littlelives. Versions follow [semantic versioning](https://semver.org); each release is a git tag `vX.Y.Z`.
 
+## Unreleased (0.20.0)
+
+### Removed
+- **Babble**, the made-up language, is gone: residents speak English or not at all. *Settings → Audio* no longer has a Language choice; a saved Babble setting becomes English.
+- While the English voice loads, residents stay quiet (they used to babble), and babies don't speak.
+- If speech keeps coming late or slows the game down, resident voices pause for the session, with a message saying why (they used to switch to Babble).
+
 ## 0.19.0 — 2026-10-10
 
 **Play it in your browser:** https://krecks.github.io/littlelives/

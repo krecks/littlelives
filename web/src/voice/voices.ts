@@ -1,15 +1,13 @@
 /**
  * How each resident sounds: Paradee has one (female) voice, shaped per resident by pitch and
  * speed. Derived from the resident id, gender and life stage, so a resident always sounds the
- * same; never saved. Babble also shifts the formants (the size of the voice); for English that
- * comes with our own engine (docs/design/voices.md).
+ * same; never saved. Formants (the size of the voice) come with our own engine
+ * (docs/design/voices.md).
  */
 
 export interface VoiceParams {
   speed: number;
   pitch: number;
-  /** Size of the voice: 1 a grown woman's, lower is larger, higher is smaller. Babble only, for now. */
-  formant?: number;
 }
 
 /** 0..1 from an integer and a salt (a small integer hash, stable across sessions). */
@@ -23,32 +21,24 @@ function unit(id: number, salt: number): number {
 
 export function voiceFor(id: number, gender: string | undefined, stage?: string): VoiceParams {
   const p = unit(id, 1);
-  const f = unit(id, 3);
   const male = gender === 'male';
   let pitch = male ? 0.6 + p * 0.12 : gender === 'female' ? 0.92 + p * 0.24 : 0.7 + p * 0.4;
-  let formant = male ? 0.84 + f * 0.06 : gender === 'female' ? 0.98 + f * 0.08 : 0.88 + f * 0.16;
   let speed = 0.92 + unit(id, 2) * 0.16;
-  // Children sound alike whatever their gender; boys' voices drop in their teens; elders a little lower and slower.
+  // Babies don't speak; children sound alike whatever their gender; boys' voices drop in their teens; elders a little lower and slower.
   switch (stage) {
-    case 'baby':
-      pitch = 1.7 + p * 0.2;
-      formant = 1.4;
-      break;
     case 'child':
       pitch = 1.25 + p * 0.2;
-      formant = 1.2 + f * 0.08;
       speed *= 1.04;
       break;
     case 'teen':
       pitch = male ? 0.72 + p * 0.14 : pitch * 1.04;
-      formant = male ? 0.9 + f * 0.06 : formant * 1.03;
       break;
     case 'elder':
       pitch *= 0.94;
       speed *= 0.93;
       break;
   }
-  return { pitch, speed, formant };
+  return { pitch, speed };
 }
 
 /** Line tone on top of the resident's voice. */

@@ -11,7 +11,6 @@
   import SettingRow from './SettingRow.svelte';
   import type { Lifespan } from '../../core/protocol';
   import { benchVerdict, runBenchmark, synthesize, voiceStatus } from '../../voice/service.svelte';
-  import { babble } from '../../voice/babble';
   import { playClip } from '../../voice/player';
   import { voiceFor } from '../../voice/voices';
 
@@ -67,7 +66,7 @@
       const male = sampleCount++ % 2 === 1;
       const text = male ? "Hey! I'm one of your residents. Is this what I sound like?" : "Hi! I'm one of your residents. This is how I sound.";
       const voice = voiceFor(sampleCount, male ? 'male' : 'female');
-      playClip(settings.voiceLanguage === 'babble' ? babble(text, voice) : await synthesize(text, voice));
+      playClip(await synthesize(text, voice));
     } finally {
       sampleBusy = false;
     }
@@ -336,27 +335,20 @@
       </section>
       <section>
         <h3>Voices</h3>
-        <SettingRow title="Resident voices" hint="The resident you're looking at, and conversations you start, are spoken out loud. Runs on this computer." badges={['Experimental']}>
+        <SettingRow title="Resident voices" hint="The resident you're looking at, and conversations you start, are spoken out loud in English. Runs on this computer; the voice downloads about 29 MB once." badges={['Experimental']}>
           <Toggle label="Resident voices" bind:checked={settings.voices} />
         </SettingRow>
         {#if settings.voices}
-          <SettingRow title="Language" hint="Babble is made up: nothing to download, works anywhere. English downloads about 29 MB once.">
-            <Segmented label="Language" bind:value={settings.voiceLanguage} options={[{ value: 'en', label: 'English' }, { value: 'babble', label: 'Babble' }]} />
+          <SettingRow title="Voice model" hint={modelStatus}>
+            <Segmented label="Voice model" bind:value={settings.voiceModel} options={[{ value: 'paradee-8m', label: 'Paradee-8M' }]} />
           </SettingRow>
-          {#if settings.voiceLanguage === 'en'}
-            <SettingRow title="Voice model" hint={modelStatus}>
-              <Segmented label="Voice model" bind:value={settings.voiceModel} options={[{ value: 'paradee-8m', label: 'Paradee-8M' }]} />
-            </SettingRow>
-          {/if}
           <SettingRow title="Voice volume">
             <input class="slider" type="range" min="0" max="1" step="0.05" aria-label="Voice volume" bind:value={settings.voiceVolume} />
             <output>{percent(settings.voiceVolume)}</output>
           </SettingRow>
-          <SettingRow title="Try it" hint={settings.voiceLanguage === 'en' ? benchText : undefined}>
+          <SettingRow title="Try it" hint={benchText}>
             <button class="btn ghost" disabled={sampleBusy} onclick={sample}>Hear a sample</button>
-            {#if settings.voiceLanguage === 'en'}
-              <button class="btn ghost" disabled={voiceStatus.benchmarking} onclick={() => void runBenchmark().catch(() => {})}>Speed test</button>
-            {/if}
+            <button class="btn ghost" disabled={voiceStatus.benchmarking} onclick={() => void runBenchmark().catch(() => {})}>Speed test</button>
           </SettingRow>
         {/if}
       </section>

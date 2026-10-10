@@ -48,8 +48,8 @@ export interface Settings {
   directControl: 'inspect' | 'always';
   /** Residents speak out loud (docs/design/voices.md). Downloads the voice model when first on. */
   voices: boolean;
-  /** `babble`: a made-up language, no download (voice/babble.ts). */
-  voiceLanguage: 'en' | 'babble';
+  /** Language residents speak (English only, for now). */
+  voiceLanguage: 'en';
   voiceModel: 'paradee-8m';
   /** 0..1. */
   voiceVolume: number;
@@ -104,7 +104,8 @@ function load(): Settings {
     // Settings that are gone (bloom, tilt-shift, the quality preset) aren't kept.
     for (const k of Object.keys(merged)) if (!(k in DEFAULT_SETTINGS)) delete (merged as Record<string, unknown>)[k];
     if (!VISUAL_STYLES.includes(merged.visualStyle)) merged.visualStyle = DEFAULT_SETTINGS.visualStyle;
-    if (!['en', 'babble'].includes(merged.voiceLanguage)) merged.voiceLanguage = DEFAULT_SETTINGS.voiceLanguage;
+    // Babble (0.14–0.19) is gone: anything but a language we have becomes the default.
+    if (!['en'].includes(merged.voiceLanguage)) merged.voiceLanguage = DEFAULT_SETTINGS.voiceLanguage;
     return merged;
   } catch {
     return { ...DEFAULT_SETTINGS };

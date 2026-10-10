@@ -1,8 +1,9 @@
 # Resident voices
 
 *Plan for residents speaking their thoughts and conversations out loud. Status (2026-10-10):
-phases 1–4 are in, with Babble (0.14) and the guards of phase 6 that don't need Auto mode (see
-"Built so far"); the hand-written engine (phase 5), Auto mode and Kokoro are next. Measurements
+phases 1–4 are in, with the guards of phase 6 that don't need Auto mode (see "Built so far");
+the hand-written engine (phase 5), Auto mode and Kokoro are next. Babble, a made-up language
+(0.14–0.19), was removed in 0.20.0: residents speak English or not at all. Measurements
 and research behind the choices are at the end.*
 
 ## Built so far
@@ -20,28 +21,20 @@ and research behind the choices are at the end.*
 - **Measured in Chrome (M-series Mac):** about 1 s per typical line, 3.8× faster than real
   time on one thread, no frame over 17 ms while speaking. Download: 18.3 MB engine WASM (3.9 MB
   gzipped), 9 MB model, 1.3 MB dictionary, cached after the first time.
-- **Babble (0.14, `voice/babble.ts`):** a source-filter synthesiser rendered straight into a
-  24 kHz clip on the main thread (about 1 ms per second of speech, measured in Node on an
-  M-series Mac), so it shares the voice bus, panning and limits with English. Chosen in
-  Settings, said while English loads or after it fails, and always by babies (crying). Voices
-  by life stage (`voices.ts`): children higher and smaller, boys' voices drop as teens, elders
-  lower and slower; Babble also shifts formants per resident.
-- **Guards (0.14, `voice/index.ts`):** the engine unloads after 5 minutes without an English
-  line and reloads on the next (Babble meanwhile); a watchdog steps the session down to Babble
-  (with a toast) after three English lines in a row later than 4 s, or when over 10 % of the
-  frames drawn while English is made exceed 50 ms and that is at least twice the share
-  without. The F3 voice section shows the language and how many lines were Babble.
+- **Voices by life stage (`voices.ts`):** children higher, boys' voices drop as teens, elders
+  lower and slower. Babies don't speak.
+- **Guards (`voice/index.ts`):** nothing is said while the engine loads; it unloads after 5
+  minutes without a line and reloads on the next (quiet meanwhile); a watchdog pauses voices for
+  the session (with a toast) after three lines in a row later than 4 s, or when over 10 % of the
+  frames drawn while speech is made exceed 50 ms and that is at least twice the share without.
+  The F3 voice section shows whether voices are on, off or paused.
 - **Not yet:** formant shift for English (lower voices still sound like a pitched-down woman),
   Kokoro-82M as a second model, Auto mode, the clip cache.
 
 Residents speak with a text-to-speech model that runs **entirely in the browser**: no server, no
 API key, nothing leaves the player's computer. English uses **Paradee-8M** (9 MB), run by **our
-own Rust engine** compiled to WebAssembly. A made-up language, **Babble**, needs no download and
-works on every machine. Kokoro-82M, the model Paradee was distilled from, stays an optional
+own Rust engine** compiled to WebAssembly. Kokoro-82M, the model Paradee was distilled from, stays an optional
 download for more voices.
-
-> **Naming:** "Simlish" is Electronic Arts' word. Following the naming rules in `PLAN.md`, the
-> made-up language is called **Babble** everywhere a player or pack author reads it.
 
 ## Goals and rules
 
@@ -168,8 +161,6 @@ interface VoiceSpec { pitch: number; formant: number; speed: number; seed: numbe
   so we can distil a second, male voice (e.g. Kokoro's `am_michael`) into another 9 MB model.
 - **Kokoro-82M** (optional model): two of its 28 English voices blended per resident (a voice is a
   style vector, so blending is a linear mix), plus speed. More variety, much larger download.
-- **Babble:** base pitch, formant and rate from the same hash, so a resident's Babble voice
-  matches the character of their English one.
 
 ## Phonemizer: our own, in Rust, without espeak-ng
 
@@ -213,8 +204,8 @@ from Interface. Everything applies live, so nothing is added to `RESTART_KEYS`.
 | Row | Control | Notes |
 |---|---|---|
 | Resident voices | Toggle | Default off. |
-| Language | English · Babble | English needs a voice model; Babble needs nothing. |
-| Voice model | Paradee-8M · Kokoro-82M | Paradee: 9 MB, fast, one voice shaped per resident (default). Kokoro: 92–326 MB, 28 voices. Shows the state: "Not downloaded · 9 MB", "Downloading 45 %", "Ready", and a **Delete download** button. Disabled for Babble. |
+| Language | (hidden while English is the only one) | Comes back as a row when a second language ships. |
+| Voice model | Paradee-8M · Kokoro-82M | Paradee: 9 MB, fast, one voice shaped per resident (default). Kokoro: 92–326 MB, 28 voices. Shows the state: "Not downloaded · 9 MB", "Downloading 45 %", "Ready", and a **Delete download** button. |
 | Runs on | Auto · CPU · GPU | Paradee runs on the CPU only (an 8M model gains nothing from the GPU), so GPU is disabled with that explanation. For Kokoro, Auto uses the benchmark's choice; GPU is disabled without WebGPU. |
 | Benchmark | **Test this computer** button | Shows the last result, e.g. "Paradee: 0.3 s per line · Kokoro CPU: 2.9 s · Kokoro GPU: 0.3 s, smooth". |
 | Voice volume | Slider | Separate from sound effects. |
@@ -223,7 +214,7 @@ New keys in `settings.svelte.ts`:
 
 ```ts
 voices: boolean;                          // false
-voiceLanguage: 'en' | 'babble';           // 'en'
+voiceLanguage: 'en';                      // 'en'
 voiceModel: 'paradee-8m' | 'kokoro-82m';  // 'paradee-8m'
 voiceDevice: 'auto' | 'cpu' | 'gpu';      // 'auto'
 voiceVolume: number;                      // 0.8
@@ -233,7 +224,7 @@ The benchmark result is stored under its own localStorage key (`littlelives.voic
 `Settings`, so "Reset to defaults" does not throw away a measurement.
 
 Turning voices on with English the first time: download the model (progress in the row), run the
-benchmark automatically, then speak. Until the model is ready, residents speak Babble.
+benchmark automatically, then speak. Until the model is ready, residents stay quiet.
 
 ## Performance
 
@@ -244,7 +235,6 @@ benchmark automatically, then speak. Until the model is ready, residents speak B
 | Deciding who speaks, picking lines, playback | Main thread | Microseconds, event-driven (no per-frame work) |
 | Phonemes and Paradee inference | **Own module worker** (`voice/tts.worker.ts`) running `voice-wasm`, separate from the sim worker | Target under 0.4 s per line, never blocks a frame |
 | Kokoro-82M (optional) | Same worker; CPU via our engine or ONNX Runtime WASM, GPU via ONNX Runtime WebGPU | 0.3–3 s per line |
-| Babble synthesis | Web Audio on the audio thread | Negligible |
 
 - **Paradee:** one thread is enough. Two voices at once can use two engine instances if the
   benchmark shows spare cores (`navigator.hardwareConcurrency` ≥ 6), leaving cores for the main
@@ -275,7 +265,7 @@ realistic) or in a game (speech pauses while it runs). Paradee alone takes a few
      frame time p95 rises ≤ 2 ms with no frames over 50 ms;
    - otherwise **CPU** if its median RTF ≤ 0.5;
    - otherwise the model is **too slow on this computer**: Auto falls back (Kokoro to Paradee,
-     Paradee to Babble) and the row says so. The player can still force a mode.
+     Paradee to voices off) and the row says so. The player can still force a mode.
 4. Store `{ model, modelVersion, engineVersion, device, rtf, firstLineMs, frameP95RiseMs, cores,
    gpuAdapter, date }`. The benchmark re-runs automatically when the model, the engine, the core
    count or the GPU adapter changes.
@@ -311,19 +301,7 @@ Today's bubbles are icons only (`game/bubbles.ts`), so speech needs text. First 
   and the optional in-browser language model for thoughts (see `PLAN.md`, "Smarter thoughts").
 
 Each line has an optional tone (`happy`, `sad`, `angry`, `flirty`, `question`) that adjusts speed
-and pitch, and Babble's intonation.
-
-## Babble
-
-A small Web Audio synthesiser (`voice/babble.ts`), no samples and no model:
-
-- The line's length decides how many syllables are said, so Babble "says" the same line.
-- Syllables come from a fixed consonant/vowel set chosen by a hash of the word, so the same word
-  always sounds the same.
-- Vowels are a buzzy source through two or three band-pass formant filters; consonants are short
-  noise bursts. A pitch contour per line follows the tone (questions rise, angry is louder and
-  faster, sad is lower and slower).
-- Plays through the same voice bus as English, so volume, two-voice limit and positioning apply.
+and pitch.
 
 ## Playback
 
@@ -349,7 +327,6 @@ Web code lives in `web/src/voice/`, behind one small interface used by the game 
 | `voice/voices.ts` | `VoiceSpec` from resident id, gender and age. |
 | `voice/tts.ts` + `voice/tts.worker.ts` | Worker client and worker: load model, `speak(text, voice) → Float32Array` (transferred, 24 kHz), unload. |
 | `voice/benchmark.ts` | The benchmark and the device choice. |
-| `voice/babble.ts` | Babble synthesiser. |
 | `voice/player.ts` | Voice bus, panners, clip cache. |
 
 ## Phases
@@ -358,8 +335,8 @@ Web code lives in `web/src/voice/`, behind one small interface used by the game 
 |---|---|---|
 | 1. Baseline (2–3 days) | `crates/voice` with `tract` running Paradee plus the `pitch` graph edit, in a worker next to the running game; try `misaki-rs` without espeak on `wasm32`. | Paradee speaks hand-written phonemes in the browser; RTF and frame impact measured in Chrome, Firefox and Safari; `misaki-rs` or our own `g2p` chosen. |
 | 2. Phonemizer (2–4 days) | `g2p` (or `misaki-rs` plus our fallback). | Every content line phonemizes from the dictionary; names get a plausible reading; no GPL code shipped. |
-| 3. Babble and rules | Settings tab, `VoiceDirector` with the "who may speak" rules and guards, lines content, Babble, voice bus with panning. | Selecting a resident or starting a conversation makes them babble; nobody else does; no frame cost. |
-| 4. English | Download with progress, `VoiceSpec` (pitch, speed), clip cache, unloading, Babble while loading. | Selected residents speak English; residents sound different from each other. |
+| 3. Rules | Settings tab, `VoiceDirector` with the "who may speak" rules and guards, lines content, voice bus with panning. (Babble, a made-up language, was part of this phase from 0.14 to 0.19; removed in 0.20.) | Selecting a resident or starting a conversation makes them speak; nobody else does; no frame cost. |
+| 4. English | Download with progress, `VoiceSpec` (pitch, speed), clip cache, unloading, quiet while loading. | Selected residents speak English; residents sound different from each other. |
 | 5. Own engine (1–2 weeks) | Hand-written inference, golden tests against `tract`, formant shift, seeded noise. | At least 8× real time in the browser on one thread; WASM under 1.5 MB; male voices that sound male (or decide to distil a male voice). |
 | 6. Benchmark | "Test this computer", Auto mode, re-run on change, live watchdog, F3 line; Kokoro-82M as the optional model (CPU and GPU). | Auto picks the right mode without frame drops; a slow machine steps down with a clear message. |
 | Later | Thoughts from the Planner (0.8) and from an in-browser language model; lip sync; persistent clip cache (IndexedDB, Opus via WebCodecs); a distilled male voice; more languages. | |

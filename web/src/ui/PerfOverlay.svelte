@@ -65,7 +65,7 @@
         <div><span>Busy (5 s)</span><b>{pct(v.busy)}</b></div>
       {/if}
       {#if v.language !== 'off'}
-        <div><span>Playing</span><b>{v.speaking} · {v.spoken} said ({v.babbled} Babble) · {v.dropped} dropped</b></div>
+        <div><span>Playing</span><b>{v.speaking} · {v.spoken} said · {v.dropped} dropped</b></div>
       {/if}
     {/if}
     <form class="debug" onsubmit={(e) => (e.preventDefault(), void report())}>

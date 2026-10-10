@@ -6,9 +6,8 @@
  * - the one whose panel is open (`game.inspected`), and whoever they are talking to;
  * - both sides of a conversation the player started from the social menu.
  *
- * English needs the voice model; Babble (a made-up language, `babble.ts`) needs nothing. Residents
- * babble while English loads, babies always do, and the whole game steps down to Babble for the
- * session when English keeps coming late or slows the frames.
+ * Lines are only said once the voice model is ready; babies don't speak. Voices pause for the
+ * session when speech keeps coming late or slows the frames.
  *
  * Presentation only: nothing goes back to the simulation. Work per frame is a cheap check; the
  * snapshot is read about ten times a second.
@@ -19,7 +18,6 @@ import type { FrameState } from '../core/bridge';
 import type { Renderer } from '../render/types';
 import { settings } from '../settings/settings.svelte';
 import { game, toast } from '../ui/state.svelte';
-import { babble } from './babble';
 import { fill, loadLines, Lines, type Line } from './lines';
 import { playClip, updateVoiceVolume, type Playing } from './player';
 import { ensureVoice, synthesize, unloadVoice, voiceStatus } from './service.svelte';
@@ -31,13 +29,13 @@ const MAX_VOICES = 2;
 const MAX_IN_FLIGHT = 2;
 /** A line not ready by then is dropped: the moment has passed. */
 const MAX_WAIT_MS = 4000;
-/** English lines this late, so many times in a row, step voices down to Babble. */
+/** Lines this late, so many times in a row, pause voices for the session. */
 const LATE_RUN = 3;
-/** Frames this slow, in this share of the frames drawn while English is being made, step down too. */
+/** Frames this slow, in this share of the frames drawn while speech is being made, pause them too. */
 const SLOW_FRAME_MS = 50;
 const SLOW_SHARE = 0.1;
 const FRAME_WINDOW = 120;
-/** The English engine is unloaded after this long without a line (it reloads from the cache). */
+/** The engine is unloaded after this long without a line (it reloads from the cache). */
 const IDLE_UNLOAD_MS = 5 * 60_000;
 /** Quiet time after a resident's own thought before the next one. */
 const THOUGHT_GAP_MS = 6000;
@@ -62,9 +60,7 @@ export interface VoiceDirectorStats {
   inFlight: number;
   spoken: number;
   dropped: number;
-  /** Lines said in Babble. */
-  babbled: number;
-  language: 'off' | 'english' | 'babble' | 'babble (stepped down)';
+  language: 'off' | 'english' | 'paused';
 }
 
 interface Speaking {
@@ -81,15 +77,14 @@ export class VoiceDirector {
   /** Lines played, and lines given up on (engine busy, too late, too many voices). */
   private spoken = 0;
   private dropped = 0;
-  private babbled = 0;
-  /** English came late or slowed the game: Babble for the rest of the session. */
-  private steppedDown = false;
+  /** Speech came late or slowed the game: no voices for the rest of the session. */
+  private paused = false;
   private lateRun = 0;
   private lastFrame = 0;
-  /** Frames drawn while English was being made, and those over `SLOW_FRAME_MS`; the same while not. */
+  /** Frames drawn while speech was being made, and those over `SLOW_FRAME_MS`; the same while not. */
   private readonly frames = { busy: 0, busySlow: 0, idle: 0, idleSlow: 0 };
-  /** Last English line asked for; the engine was unloaded for being idle. */
-  private lastEnglish = performance.now();
+  /** Last line asked for; the engine was unloaded for being idle. */
+  private lastLine = performance.now();
   private asleep = false;
   private lastTick = 0;
   private counter = 0;
@@ -105,9 +100,9 @@ export class VoiceDirector {
   ) {
   }
 
-  /** Lines for the voice language, (re)loaded when it changes. Babble says the English lines. */
+  /** Lines for the voice language, (re)loaded when it changes. */
   private ensureLines(): void {
-    const language = settings.voiceLanguage === 'babble' ? 'en' : settings.voiceLanguage;
+    const language = settings.voiceLanguage;
     if (this.linesLanguage === language) return;
     this.linesLanguage = language;
     this.lines = null;
@@ -126,17 +121,15 @@ export class VoiceDirector {
     this.watchFrames(now);
     if (now - this.lastTick < TICK_MS) return;
     this.lastTick = now;
-    if (!settings.voices) {
+    if (!settings.voices || this.paused) {
       this.stopAll();
       return;
     }
     this.ensureLines();
-    if (this.english()) {
-      if (voiceStatus.state === 'off' && !this.asleep) void ensureVoice().catch(() => {});
-      if (voiceStatus.state === 'ready' && this.inFlight === 0 && performance.now() - this.lastEnglish > IDLE_UNLOAD_MS) {
-        unloadVoice();
-        this.asleep = true;
-      }
+    if (voiceStatus.state === 'off' && !this.asleep) void ensureVoice().catch(() => {});
+    if (voiceStatus.state === 'ready' && this.inFlight === 0 && performance.now() - this.lastLine > IDLE_UNLOAD_MS) {
+      unloadVoice();
+      this.asleep = true;
     }
     updateVoiceVolume();
 
@@ -197,21 +190,16 @@ export class VoiceDirector {
 
   /** For the debug overlay. */
   stats(): VoiceDirectorStats {
-    const language = !settings.voices ? 'off' : this.steppedDown ? 'babble (stepped down)' : this.english() ? 'english' : 'babble';
-    return { speaking: this.speaking.length, inFlight: this.inFlight, spoken: this.spoken, dropped: this.dropped, babbled: this.babbled, language };
+    const language = !settings.voices ? 'off' : this.paused ? 'paused' : 'english';
+    return { speaking: this.speaking.length, inFlight: this.inFlight, spoken: this.spoken, dropped: this.dropped, language };
   }
 
-  /** English is the chosen language and hasn't been stepped down from. */
-  private english(): boolean {
-    return settings.voiceLanguage === 'en' && !this.steppedDown;
-  }
-
-  /** Counts slow frames while English is being made, against those while it isn't. */
+  /** Counts slow frames while speech is being made, against those while it isn't. */
   private watchFrames(now: number): void {
     const dt = now - this.lastFrame;
     this.lastFrame = now;
     // Gaps from a hidden tab or a paused game say nothing about voices.
-    if (dt <= 0 || dt > 1000 || document.hidden || this.steppedDown) return;
+    if (dt <= 0 || dt > 1000 || document.hidden || this.paused) return;
     const f = this.frames;
     const slow = dt > SLOW_FRAME_MS ? 1 : 0;
     if (this.inFlight > 0 && voiceStatus.state === 'ready') {
@@ -225,18 +213,18 @@ export class VoiceDirector {
     const busyShare = f.busySlow / f.busy;
     const idleShare = f.idle ? f.idleSlow / f.idle : 0;
     // Only when speech makes it worse: a game that is slow anyway isn't the voices' fault.
-    if (busyShare > SLOW_SHARE && busyShare > idleShare * 2) this.stepDown('frames');
+    if (busyShare > SLOW_SHARE && busyShare > idleShare * 2) this.pause('frames');
     Object.assign(f, { busy: 0, busySlow: 0, idle: 0, idleSlow: 0 });
   }
 
-  private stepDown(why: 'late' | 'frames'): void {
-    if (this.steppedDown) return;
-    this.steppedDown = true;
+  private pause(why: 'late' | 'frames'): void {
+    if (this.paused) return;
+    this.paused = true;
     unloadVoice();
     toast(
       why === 'late'
-        ? 'Residents speak Babble for now: English speech came too slowly on this computer.'
-        : 'Residents speak Babble for now: making English speech slowed the game down.',
+        ? 'Resident voices are paused for now: speech came too slowly on this computer.'
+        : 'Resident voices are paused for now: making speech slowed the game down.',
       6000,
     );
   }
@@ -310,15 +298,16 @@ export class VoiceDirector {
 
   private say(id: number, index: number, line: Line, partnerId: number, thought: boolean, now: number): void {
     const info = game.roster.find((s) => s.id === id);
-    const baby = info?.stage === 'baby';
-    // Babble when chosen, for babies, and while English is still loading (or reloading after being idle).
-    const english = this.english() && !baby;
-    const ready = english && voiceStatus.state === 'ready';
-    if (english && voiceStatus.state === 'off') {
-      this.asleep = false;
-      void ensureVoice().catch(() => {});
+    if (info?.stage === 'baby') return;
+    // Nothing is said while the engine loads (or reloads after being idle): the moment passes.
+    if (voiceStatus.state !== 'ready') {
+      if (voiceStatus.state === 'off') {
+        this.asleep = false;
+        void ensureVoice().catch(() => {});
+      }
+      return;
     }
-    if (ready && this.inFlight >= MAX_IN_FLIGHT) {
+    if (this.inFlight >= MAX_IN_FLIGHT) {
       this.dropped++;
       return;
     }
@@ -327,16 +316,10 @@ export class VoiceDirector {
     const text = fill(line.text, this.firstName(id), partnerId >= 0 ? this.firstName(partnerId) : '');
     const voice = withTone(voiceFor(id, info?.gender, info?.stage), line.tone);
     const requested = performance.now();
-    let clip: Promise<Float32Array>;
-    if (ready) {
-      this.inFlight++;
-      this.lastEnglish = requested;
-      clip = synthesize(text, voice).finally(() => this.inFlight--);
-      void clip.then(() => this.timed(performance.now() - requested)).catch(() => {});
-    } else {
-      this.babbled++;
-      clip = Promise.resolve(babble(text, voice, baby ? 'cry' : line.tone));
-    }
+    this.inFlight++;
+    this.lastLine = requested;
+    const clip = synthesize(text, voice).finally(() => this.inFlight--);
+    void clip.then(() => this.timed(performance.now() - requested)).catch(() => {});
     void clip
       .then(async (samples) => {
         // An answer waits for the other side to finish (within reason).
@@ -361,10 +344,10 @@ export class VoiceDirector {
       .catch(() => {});
   }
 
-  /** How long an English line took to make; too many late ones in a row step down to Babble. */
+  /** How long a line took to make; too many late ones in a row pause voices. */
   private timed(ms: number): void {
     this.lateRun = ms > MAX_WAIT_MS ? this.lateRun + 1 : 0;
-    if (this.lateRun >= LATE_RUN) this.stepDown('late');
+    if (this.lateRun >= LATE_RUN) this.pause('late');
   }
 
   private firstName(id: number): string {
