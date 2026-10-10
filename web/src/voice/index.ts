@@ -20,7 +20,7 @@ import { settings } from '../settings/settings.svelte';
 import { game, toast } from '../ui/state.svelte';
 import { fill, loadLines, Lines, type Line } from './lines';
 import { playClip, updateVoiceVolume, type Playing } from './player';
-import { ensureVoice, synthesize, unloadVoice, voiceStatus } from './service.svelte';
+import { cachedClip, ensureVoice, speak, unloadVoice, voiceStatus } from './service.svelte';
 import { voiceFor, withTone } from './voices';
 
 const TICK_MS = 100;
@@ -299,27 +299,36 @@ export class VoiceDirector {
   private say(id: number, index: number, line: Line, partnerId: number, thought: boolean, now: number): void {
     const info = game.roster.find((s) => s.id === id);
     if (info?.stage === 'baby') return;
-    // Nothing is said while the engine loads (or reloads after being idle): the moment passes.
-    if (voiceStatus.state !== 'ready') {
-      if (voiceStatus.state === 'off') {
-        this.asleep = false;
-        void ensureVoice().catch(() => {});
+    const text = fill(line.text, this.firstName(id), partnerId >= 0 ? this.firstName(partnerId) : '');
+    const voice = withTone(voiceFor(id, info?.gender, info?.stage), line.tone);
+    // A line said before plays at once, even while the engine is unloaded.
+    const cached = cachedClip(text, voice);
+    if (!cached) {
+      // Nothing new is said while the engine loads (or reloads after being idle): the moment passes.
+      if (voiceStatus.state !== 'ready') {
+        if (voiceStatus.state === 'off') {
+          this.asleep = false;
+          void ensureVoice().catch(() => {});
+        }
+        return;
       }
-      return;
-    }
-    if (this.inFlight >= MAX_IN_FLIGHT) {
-      this.dropped++;
-      return;
+      if (this.inFlight >= MAX_IN_FLIGHT) {
+        this.dropped++;
+        return;
+      }
     }
     const state = this.sims.get(id);
     if (thought && state) state.quietUntil = now + THOUGHT_GAP_MS;
-    const text = fill(line.text, this.firstName(id), partnerId >= 0 ? this.firstName(partnerId) : '');
-    const voice = withTone(voiceFor(id, info?.gender, info?.stage), line.tone);
     const requested = performance.now();
-    this.inFlight++;
-    this.lastLine = requested;
-    const clip = synthesize(text, voice).finally(() => this.inFlight--);
-    void clip.then(() => this.timed(performance.now() - requested)).catch(() => {});
+    let clip: Promise<Float32Array>;
+    if (cached) {
+      clip = Promise.resolve(cached);
+    } else {
+      this.inFlight++;
+      this.lastLine = requested;
+      clip = speak(text, voice).finally(() => this.inFlight--);
+      void clip.then(() => this.timed(performance.now() - requested)).catch(() => {});
+    }
     void clip
       .then(async (samples) => {
         // An answer waits for the other side to finish (within reason).

@@ -64,6 +64,9 @@
         {/if}
         <div><span>Busy (5 s)</span><b>{pct(v.busy)}</b></div>
       {/if}
+      {#if v.cachedClips}
+        <div><span>Clip cache</span><b>{v.cachedClips} · {mb(v.cacheBytes)} · {v.cacheHits} reused</b></div>
+      {/if}
       {#if v.language !== 'off'}
         <div><span>Playing</span><b>{v.speaking} · {v.spoken} said · {v.dropped} dropped</b></div>
       {/if}

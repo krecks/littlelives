@@ -10,7 +10,7 @@
   import Toggle from '../kit/Toggle.svelte';
   import SettingRow from './SettingRow.svelte';
   import type { Lifespan } from '../../core/protocol';
-  import { benchVerdict, runBenchmark, synthesize, voiceStatus } from '../../voice/service.svelte';
+  import { benchVerdict, runBenchmark, speak, voiceStatus } from '../../voice/service.svelte';
   import { playClip } from '../../voice/player';
   import { voiceFor } from '../../voice/voices';
 
@@ -66,7 +66,7 @@
       const male = sampleCount++ % 2 === 1;
       const text = male ? "Hey! I'm one of your residents. Is this what I sound like?" : "Hi! I'm one of your residents. This is how I sound.";
       const voice = voiceFor(sampleCount, male ? 'male' : 'female');
-      playClip(await synthesize(text, voice));
+      playClip(await speak(text, voice));
     } finally {
       sampleBusy = false;
     }

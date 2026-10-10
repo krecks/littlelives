@@ -4,6 +4,9 @@ All notable changes to Littlelives. Versions follow [semantic versioning](https:
 
 ## Unreleased (0.20.0)
 
+### Changed
+- **Lines said before play at once:** each clip a resident speaks is kept (up to 24 MB, about four minutes of speech), so when they say the same line again it plays straight away, even while the voice is unloaded. The performance overlay (F3) shows how many clips are kept and reused.
+
 ### Removed
 - **Babble**, the made-up language, is gone: residents speak English or not at all. *Settings → Audio* no longer has a Language choice; a saved Babble setting becomes English.
 - While the English voice loads, residents stay quiet (they used to babble), and babies don't speak.

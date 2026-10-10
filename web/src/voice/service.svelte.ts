@@ -36,6 +36,10 @@ export interface VoiceThreadStats {
   rtf: number;
   /** Share of the last few seconds the worker spent making speech, 0..1. */
   busy: number;
+  /** Clips kept for reuse, their size in bytes, and lines served from them. */
+  cachedClips: number;
+  cacheBytes: number;
+  cacheHits: number;
 }
 
 export const voiceStatus = $state({
@@ -115,7 +119,60 @@ export function ensureVoice(): Promise<void> {
   return new Promise((resolve, reject) => readyWaiters.push({ resolve, reject }));
 }
 
-/** Audio for one line (24 kHz mono). Lines are made one after another in the worker. */
+/**
+ * Clips already made, by language, model, text and voice. The engine is deterministic (seeded
+ * noise), so a resident saying the same line again sounds exactly the same: reuse the clip
+ * instead of making it again. Least recently used first out; survives the engine unloading.
+ */
+const CACHE_BYTES = 24 * 2 ** 20;
+const clips = new Map<string, Float32Array>();
+const making = new Map<string, Promise<Float32Array>>();
+const cache = { bytes: 0, hits: 0 };
+
+function clipKey(text: string, voice: VoiceParams): string {
+  return `${settings.voiceLanguage}|${MODEL_ID}|${voice.speed.toFixed(3)}|${voice.pitch.toFixed(3)}|${text}`;
+}
+
+/** The clip for this line and voice if it was made before (and keeps it fresh), else null. */
+export function cachedClip(text: string, voice: VoiceParams): Float32Array | null {
+  const key = clipKey(text, voice);
+  const clip = clips.get(key);
+  if (!clip) return null;
+  clips.delete(key);
+  clips.set(key, clip);
+  cache.hits++;
+  return clip;
+}
+
+/** Audio for one line, from the cache or made (once, however often it's asked for meanwhile). */
+export function speak(text: string, voice: VoiceParams): Promise<Float32Array> {
+  const cached = cachedClip(text, voice);
+  if (cached) return Promise.resolve(cached);
+  const key = clipKey(text, voice);
+  const inFlight = making.get(key);
+  if (inFlight) return inFlight;
+  const clip = synthesize(text, voice)
+    .then((samples) => {
+      keep(key, samples);
+      return samples;
+    })
+    .finally(() => making.delete(key));
+  making.set(key, clip);
+  return clip;
+}
+
+function keep(key: string, samples: Float32Array): void {
+  if (clips.has(key) || samples.byteLength > CACHE_BYTES / 8) return;
+  clips.set(key, samples);
+  cache.bytes += samples.byteLength;
+  for (const [k, old] of clips) {
+    if (cache.bytes <= CACHE_BYTES) break;
+    clips.delete(k);
+    cache.bytes -= old.byteLength;
+  }
+}
+
+/** Audio for one line (24 kHz mono), always made fresh (the speed test). Lines are made one after another in the worker. */
 export async function synthesize(text: string, voice: VoiceParams): Promise<Float32Array> {
   await ensureVoice();
   const id = nextId++;
@@ -137,6 +194,9 @@ export function voiceThreadStats(): VoiceThreadStats {
     avgMs: counters.lines ? counters.totalMs / counters.lines : 0,
     rtf: counters.audioSeconds ? counters.totalMs / 1000 / counters.audioSeconds : 0,
     busy: Math.min(1, recentMs / BUSY_WINDOW_MS),
+    cachedClips: clips.size,
+    cacheBytes: cache.bytes,
+    cacheHits: cache.hits,
   };
 }
 
