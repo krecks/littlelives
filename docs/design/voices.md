@@ -2,21 +2,27 @@
 
 *Plan for residents speaking their thoughts and conversations out loud. Status (2026-10-10):
 phases 1–4 are in, with the guards of phase 6 that don't need Auto mode (see "Built so far");
-the hand-written engine (phase 5), Auto mode and Kokoro are next. Babble, a made-up language
+the hand-written engine (phase 5) and Auto mode are next. Babble, a made-up language
 (0.14–0.19), was removed in 0.20.0: residents speak English or not at all. Since 0.20.0 the
-model runs on ONNX Runtime Web instead of `tract` (about twice as fast); our own engine may
-replace it later. Measurements and research behind the choices are at the end.*
+models run on ONNX Runtime Web instead of `tract` (about twice as fast), and **teens and
+grown-ups speak with KittenTTS nano** (eight real men's and women's voices, mixed per resident)
+while children keep Paradee-8M; our own engine may replace the runtime later. Measurements and
+research behind the choices are at the end.*
 
 ## Built so far
 
 - **Phonemizer (`crates/voice`, `crates/voice-wasm`):** Misaki's English rules ported to Rust
   (`g2p.rs`; matches Python Misaki 0.9.4 on all 25 test sentences in `tests/data`), the merged
   Misaki dictionary, letter-to-sound guesses for unknown names (`rules.rs`), and the model's
-  phoneme ids (`tokens.rs`). The browser WASM only turns text into the model's inputs (155 KB).
-- **Model (0.20):** Paradee-8M runs in the voice worker with **ONNX Runtime Web** 1.30.0
-  (`onnxruntime-web/wasm`: its WebAssembly build with SIMD, one thread, no proxy worker; the
-  14.2 MB runtime is bundled with the game and loaded through the same cached download). It
-  works with and without cross-origin isolation. Lines are made one at a time.
+  phoneme ids (`tokens.rs`); for KittenTTS, Misaki to espeak-style IPA and its tokenizer
+  (`kitten.rs`, see "KittenTTS nano"). The browser WASM only turns text into the models' inputs
+  and trims and resizes their output (180 KB, 72 KB gzipped; KittenTTS added 8 KB).
+- **Models (0.20):** Paradee-8M and KittenTTS nano run in the voice worker with **ONNX Runtime
+  Web** 1.30.0 (`onnxruntime-web/wasm`: its WebAssembly build with SIMD, one thread, no proxy
+  worker; the 14.2 MB runtime is bundled with the game and loaded through the same cached
+  download), one session each, each loaded the first time a voice needs it (the runtime,
+  phonemizer and dictionary once for both). It works with and without cross-origin isolation.
+  Lines are made one at a time, by `voice/synth.ts` (the Node checks use the same code).
 - **Model edits (`tools/voice/model.mjs`):** `npm run voice` (`tools/voice/fetch.mjs`) fetches the
   pinned upstream `paradee_int8.onnx` and edits it in Node (a minimal protobuf reader/writer, so
   CI needs no Python): a `pitch` input multiplies the pitch curve, and the two random nodes are
@@ -27,11 +33,14 @@ replace it later. Measurements and research behind the choices are at the end.*
   library generator's (autocorrelation under 0.004, spectral flatness 0.998), the output is as
   close to the original model as two runs of the original are to each other, and it costs no
   time. The result is pinned by its own SHA-256 and named `paradee-8m-edit1.onnx` (a new edit
-  gets a new name, so browsers never mix versions).
+  gets a new name, so browsers never mix versions). KittenTTS gets the same edits plus int8
+  weight storage (see "KittenTTS nano").
 - **Tests:** `npm run test:voice` (Rust: phonemizer against Misaki, ids, and the edited model run
   natively with `tract`, a dev-dependency only, as a second runtime: deterministic, pitch keeps
-  the timing, speed shortens); `npm run check:voice` (also in CI: ONNX Runtime Web in Node with
-  the browser's WASM, the same lines bit-identical across runs and sessions).
+  the timing, speed shortens; every game line tokenises for both models); `npm run check:voice`
+  (also in CI: ONNX Runtime Web in Node with the browser's WASM and the worker's `synth.ts`, both
+  models bit-identical across runs and sessions, KittenTTS against golden hashes, which hold on
+  arm64 and x86-64; pitch, speed, depth, mixes and trimming checked).
 - **Browser (`web/src/voice/`):** voice worker with a Cache API download (`tts.worker.ts`),
   app-wide service and speed test (`service.svelte.ts`), the director with the "who may speak"
   rules (`index.ts`), lines per language (`content/voice/en.json`, keyed by content ids, per item and interaction;
@@ -50,30 +59,40 @@ replace it later. Measurements and research behind the choices are at the end.*
   | Engine ready (files cached) | 0.4 s | 1.2–1.3 s (creating the session) |
   | Download (raw / gzipped) | 28.7 / 12.6 MB | 24.8 / 12.5 MB |
 
-  ONNX Runtime Web's download: runtime 14.2 MB (3.7 MB gzipped), phonemizer 0.16 MB, worker
+  ONNX Runtime Web's download: runtime 14.2 MB (3.7 MB gzipped), phonemizer 0.18 MB, worker
   0.08 MB, model 9.0 MB (7.4 MB), dictionary 1.3 MB; cached after the first time.
-- **Voices by gender and life stage (`voices.ts`):** pitch, speed and **depth** (the size of
-  the voice) per resident, from their id: men larger and lower, women around the model's own
-  voice, teens in between (boys' voices drop), children smaller and higher, elders slower. Babies
-  don't speak. See "Voices from one model".
+
+  With KittenTTS (0.20, production build in Chrome for Testing on an M3 Pro, served without
+  cross-origin isolation like GitHub Pages): the speed test's median line 1.2 s for KittenTTS
+  (2.2× real time) and 0.57 s for Paradee (6.4×), worst frame 16.8 ms for both while the menu's
+  town draws; in a game, KittenTTS lines took 0.70–0.95 s and no frame drawn while they were made
+  was over 16.8 ms. KittenTTS adds 15.5 MB (13.5 MB gzipped) and its voices 1.0 MB: 41.3 MB for
+  everything (26.9 MB gzipped), 32.2 MB for KittenTTS alone, 24.8 MB for Paradee alone.
+- **Voices by gender and life stage (`voices.ts`):** teens and grown-ups speak with KittenTTS,
+  each with their own mix of two of its voices; children with Paradee, smaller and higher;
+  pitch, speed and **depth** (the size of the voice) per resident, from their id; elders slower.
+  Babies don't speak. See "Voices".
 - **Depth by resampling (0.20):** the voice worker runs the model at pitch P/α and speed s/α
   and resamples its output by α (`crates/voice/src/resample.rs`, in the voice WASM), so the
   formants scale by α while pitch and length stay. A few milliseconds per line (2–6 ms in Chrome
   for 1.5–2 s lines, about 5 ms for a 3.7 s line in Node).
-- **Voices chosen in the household creator:** pitch, speed and depth per resident, kept in the
-  save (see "A resident's own voice").
+- **Voices chosen in the household creator:** the resident's own mix or one of KittenTTS's
+  voices, and pitch, speed and depth, kept in the save (see "A resident's own voice").
 - **Guards (`voice/index.ts`):** nothing is said while the engine loads; it unloads after 5
   minutes without a line and reloads on the next (quiet meanwhile); a watchdog pauses voices for
   the session (with a toast) after three lines in a row later than 4 s, or when over 10 % of the
   frames drawn while speech is made exceed 50 ms and that is at least twice the share without.
-  The F3 voice section shows whether voices are on, off or paused.
-- **Not yet:** Kokoro-82M as a second model, Auto mode, our own engine, a distilled male voice.
+  The F3 voice section shows whether voices are on, off or paused. KittenTTS has its own guard
+  first (see "Guards while playing"): its lines go to Paradee when they would come late, and
+  Paradee takes over for the session when it keeps happening, slows frames or KittenTTS can't load.
+- **Not yet:** Auto mode, our own engine. Kokoro-82M was measured again on 2026-10-10 and is not
+  planned for now (see "Research").
 
-Residents speak with a text-to-speech model that runs **entirely in the browser**: no server, no
-API key, nothing leaves the player's computer. English uses **Paradee-8M** (9 MB), phonemized by
-our own Rust code compiled to WebAssembly and run by ONNX Runtime Web (later perhaps by our own
-engine). Kokoro-82M, the model Paradee was distilled from, stays an optional download for more
-voices.
+Residents speak with text-to-speech models that run **entirely in the browser**: no server, no
+API key, nothing leaves the player's computer. English uses **KittenTTS nano** (15.5 MB, eight
+voices) for teens and grown-ups and **Paradee-8M** (9 MB, one voice) for children, both
+phonemized by our own Rust code compiled to WebAssembly and run by ONNX Runtime Web (later perhaps
+by our own engine).
 
 ## Goals and rules
 
@@ -91,8 +110,9 @@ voices.
   picked with a hash of the resident id and event, not the sim's random number generator, so
   saves and replays are unaffected and `sim-core` needs no changes.
 - **Every resident sounds different**, and always the same, across sessions and saves.
-- **Small download, on request.** Paradee (9 MB) is fetched when the player turns English voices
-  on; Kokoro-82M (92–326 MB) only if they choose it.
+- **Small download, on request.** The models (41 MB with the runtime, 27 MB compressed) are
+  fetched when the player turns voices on, or when they hear a voice in the creator (only the
+  model that voice needs).
 
 ## The model: Paradee-8M
 
@@ -207,15 +227,91 @@ ratio. A benchmark test fails if real-time factor regresses.
 
 If the hand-written engine stalls, ONNX Runtime Web stays.
 
-## Voices from one model
+## KittenTTS nano (teens and grown-ups, 0.20)
 
-Paradee speaks one female voice. Each resident gets a voice derived from their **stable resident
-id** (release 0.7), gender and life stage, computed on the main thread (`voiceFor`); a voice
-chosen in the creator is saved on top (see "A resident's own voice"):
+[KittenTTS](https://github.com/KittenML/KittenTTS) nano 0.8 (Apache-2.0, KittenML) is a
+StyleTTS2-style model like Kokoro's, about 15M parameters, with **eight voices**: Bella, Luna,
+Rosie and Kiki (women), Jasper, Bruno, Hugo and Leo (men). A voice is a table of 256-number style
+vectors, one per text length, fed as the `style` input, so two voices can be **mixed** linearly.
+Its makers call the 0.8 ONNX models "legacy" (their KittenTTS 2 is 1.7B parameters); they are
+frozen but fine for us.
+
+- **Download and edits (`tools/voice/fetch.mjs`, `model.mjs`, `npz.mjs`):** the fp32 model
+  (`kitten-tts-nano-0.8-fp32`, pinned revision and SHA-256) has its large float weights stored as
+  int8 with one float scale per output channel and `DequantizeLinear` (`quantizeWeights`), so it
+  is 15.5 MB but computes in float. (The upstream int8 build uses dynamic quantisation,
+  `ConvInteger`/`MatMulInteger`, which ONNX Runtime Web's WASM runs *slower* than float: 2.2–2.6×
+  real time against 3.0–3.7×, and it scored lower.) Then the Paradee edits: deterministic noise
+  and a `pitch` input. KittenTTS's decoder reads the pitch curve inside an `If` subgraph, so the
+  pitch is spliced by renaming the curve's producer and giving the scaled curve the old name
+  (`splice: 'output'`): ×0.85 and ×1.15 move the pitch by the same factors and keep the timing.
+  `voices.npz` becomes `kitten-nano-0.8-voices.f32`, the first 128 rows of the eight voices as raw
+  floats (1 MB; a line longer than 127 characters uses the last row). All pinned by SHA-256, Node
+  only.
+- **Input (`crates/voice/src/kitten.rs`):** KittenTTS was trained on espeak-ng's IPA (GPL). Misaki
+  was made from espeak's output by a fixed substitution table, so we apply it backwards
+  (`misaki_to_espeak`: `A`→`eɪ`, `I`→`aɪ`, `O`→`oʊ`, `ʤ`→`dʒ`, `T`→`ɾ`, `ɜɹ`→`ɜː`, `əɹ`→`ɚ`, …) and put
+  back the vowel length marks Misaki drops (`iː`, `uː`, `ɑː`, `ɔː`; final unstressed `i` short).
+  Over all 1,026 game lines this differs from espeak-ng's own output in 2.6 % of the sounds, the
+  worst being espeak's mistakes ("Mmm" read as "M-M-M", "Brr" as "B-R-R"), and the voices score
+  the same with either. Then KittenTTS's own tokenisation: words and punctuation split and joined
+  with spaces, its 178-symbol table, `0 … ids … 10 0`. `lines.rs` fails on any game line with a
+  symbol KittenTTS doesn't know.
+- **Output:** the last 5,000 samples are dropped (as KittenTTS's code does) and the silence
+  around the speech trimmed (its clips start with up to 0.8 s of silence and a soft breath:
+  10 ms frames, threshold 5 % of the loudest frame's RMS, 50 ms kept before and 100 ms after),
+  then resized by depth like Paradee's. In Rust (`kitten::trim`), so every browser gets the same
+  samples.
+- **Speed:** about 2–3× real time on one thread, 0.5–1.3 s for a typical line in Node and Chrome
+  on an M3 Pro: about half Paradee's speed (KittenTTS is twice the size). See "Guards while
+  playing" for slower computers.
+
+Measured over three lines per voice (UTMOS, a predictor of listeners' scores, 1–5; Whisper
+understood every line of every voice): Paradee today scores 3.95–4.06 for women and 2.5–3.2 for
+its pitched-down men (2.9–3.5 with depth); KittenTTS's men 4.1–4.2 and women 3.4 (Kiki) to 4.25.
+A speaker-recognition model (WeSpeaker ResNet34) heard all of Paradee's residents as nearly the
+same person (similarity 0.92 within a sex, 0.81 across; one real person scores about 0.6–0.8);
+KittenTTS's mixes 0.56 within a sex and 0.16 across.
+
+## Voices
+
+Each resident gets a voice derived from their **stable resident id** (release 0.7), gender and
+life stage, computed on the main thread (`voiceFor`); a voice chosen in the creator is saved on
+top (see "A resident's own voice"):
 
 ```ts
-interface VoiceParams { pitch: number; speed: number; depth: number }
+interface VoiceParams { model: 'kitten' | 'paradee'; mix: [a, b, w]; pitch: number; speed: number; depth: number }
 ```
+
+**Who speaks with what:** teens, young adults, adults and elders with KittenTTS (teens score 4.14
+on KittenTTS against 3.88 on Paradee); children with Paradee (KittenTTS has no child's voice, and
+scaling a woman's up sounded worse: UTMOS 2.4); babies don't speak (the creator plays a baby as
+the child they will be). `paradeeVoice` gives everyone a Paradee voice too, for when KittenTTS
+can't keep up.
+
+**A KittenTTS resident's mix:** a main voice and a second one, `w` of the main (0.5–1, from the
+id): men from the men's voices, women from the women's, other genders from all eight. Kiki, very
+high (about 290 Hz) and the least natural, is never the main voice, only a second one (or chosen
+in the creator). Each voice is evened out:
+
+| Voice | Sex | Measured rate (syllables/s at speed 1) | `pace` (to 4.5/s) | `pitch` |
+|---|---|---|---|---|
+| Bella | f | 2.95 | 1.53 | 1 |
+| Luna | f | 4.04 | 1.11 | 1 |
+| Rosie | f | 4.08 | 1.10 | 1 |
+| Kiki | f | 4.82 | 0.93 | 1 |
+| Jasper | m | 4.45 | 1.01 | 0.90 |
+| Bruno | m | 4.46 | 1.01 | 1 |
+| Hugo | m | 4.22 | 1.07 | 0.90 |
+| Leo | m | 3.43 | 1.31 | 0.96 |
+
+Jasper and Hugo are light voices (about 170 Hz) and sound more like men a little lower; Bruno
+(108 Hz) and Leo lose naturalness when lowered (UTMOS −0.3 at ×0.9), so they stay. On top: pitch
+0.94–1.06 (teens 1.04–1.12), depth 0.97–1.03 (teens 1.03–1.07), speed 0.88–1.12, and the elders'
+factors below. Measured on six men and six women: median pitch 113–167 Hz for men, 192–219 Hz
+for women; UTMOS 3.8–4.2.
+
+**Paradee voices** (children, and everyone when KittenTTS can't keep up):
 
 **Depth (the voice's size).** Pitching a woman's voice down leaves her vocal tract the same size,
 so men used to sound like a pitched-down woman. Depth α scales the formants: the model runs at
@@ -232,7 +328,7 @@ range comes from hashes of their id, size following pitch a little):
 
 | Group | Pitch | Depth | Notes |
 |---|---|---|---|
-| Men | 0.52–0.76 (about 110–160 Hz) | 0.82–0.88 | |
+| Men | 0.52–0.76 (about 140–160 Hz: Paradee's pitch follows less than asked below ×0.8, and voicing gets rough) | 0.82–0.88 | |
 | Women | 0.84–1.22 | 0.95–1.06 | |
 | Others | 0.66–1.08 | 0.87–1.00 | |
 | Teen boys | 0.68–0.90 | 0.88–0.95 | voices dropping |
@@ -249,16 +345,20 @@ formants, is 16 % lower for men than for women (829 against 986 Hz; it was 3 % w
 and over the whole band men went from brighter than women (2164 against 2052 Hz) to clearly darker
 (1617 against 1922 Hz). Median pitch: men 133–151 Hz, women 185–246 Hz, the child 273 Hz.
 
-- **If male voices still sound wrong:** Paradee's training code is public and ran on one MacBook,
-  so we can distil a second, male voice (e.g. Kokoro's `am_michael`) into another 9 MB model.
-- **Kokoro-82M** (optional model): two of its 28 English voices blended per resident (a voice is a
-  style vector, so blending is a linear mix), plus speed. More variety, much larger download.
+- **If KittenTTS proves too slow on many computers:** Paradee's training code is public and ran
+  on one MacBook, so a male Paradee could be distilled from Kokoro's `am_puck` or `am_fenrir`
+  (about a day of computing and 2–3 days of work per 9 MB voice), keeping Paradee's speed.
 
 ### A resident's own voice
 
-The household creator's *Identity* tab has a *Voice* section: **Pitch** (lower to higher),
-**Speed** (slower to faster), **Depth** (smaller to larger), a dice, a button back to the default, and **Hear** (the resident
-says "Hi, I'm Ada! This is how I sound." in that voice; a baby is heard as the child they will be).
+The household creator's *Identity* tab has a *Voice* section: a row with **Own mix** and the
+four KittenTTS voices that fit the gender (all eight for other genders; picking one plays it),
+**Pitch** (lower to higher), **Speed** (slower to faster), **Depth** (smaller to larger), a dice
+(a fitting voice or a new mix, and pitch, speed and depth anywhere in their range), a button back
+to the default (own mix, factors 1), and **Hear** (the resident says "Hi, I'm Ada! This is how I
+sound." in that voice; a baby is heard as the child they will be). Every control is heard for
+grown-ups and children alike, except the voice row for children, who keep a child's voice and
+take their chosen voice from their teens; changing the gender drops a voice of the other sex.
 Hearing works with resident voices off in Settings and doesn't turn them on; the engine is
 unloaded again when the creator closes. The note under the button shows the engine loading or
 downloading, an error, or that voices are off.
@@ -267,8 +367,12 @@ The choice is stored in the resident's appearance, which the simulation keeps as
 the save format doesn't change:
 
 ```ts
-appearance.voice = { pitch: 1.08, speed: 0.95, depth: 0.96, seed: 1439030069 }
+appearance.voice = { pitch: 1.08, speed: 0.95, depth: 0.96, seed: 1439030069, base: 5 }
 ```
+
+- **`base`** (0.20, optional): a KittenTTS voice (`KITTEN_VOICES` index: 0–3 the women's, 4–7 the
+  men's) as the voice instead of the resident's mix; missing: the mix from `seed`. Older choices
+  have no `base` and keep their factors, which now apply to their KittenTTS voice.
 
 - **Factors on the generated voice** (`voiceFor`), 1 (or missing) being as generated: pitch and
   speed 0.88–1.12 (about two semitones of pitch), depth 0.92–1.08 (the slider runs from smaller
@@ -331,9 +435,8 @@ from Interface. Everything applies live, so nothing is added to `RESTART_KEYS`.
 |---|---|---|
 | Resident voices | Toggle | Default off. |
 | Language | (hidden while English is the only one) | Comes back as a row when a second language ships. |
-| Voice model | Paradee-8M · Kokoro-82M | Paradee: 9 MB, fast, one voice shaped per resident (default). Kokoro: 92–326 MB, 28 voices. Shows the state: "Not downloaded · 9 MB", "Downloading 45 %", "Ready", and a **Delete download** button. |
-| Runs on | Auto · CPU · GPU | Paradee runs on the CPU only (an 8M model gains nothing from the GPU), so GPU is disabled with that explanation. For Kokoro, Auto uses the benchmark's choice; GPU is disabled without WebGPU. |
-| Benchmark | **Test this computer** button | Shows the last result, e.g. "Paradee: 0.3 s per line · Kokoro CPU: 2.9 s · Kokoro GPU: 0.3 s, smooth". |
+| Voice models | Status | Which model speaks for whom (KittenTTS for teens and grown-ups, Paradee for children and as the fallback), each one's state, and the download (about 41 MB). Both run on the CPU. (The `voiceModel` setting stays, unused.) |
+| Try it | **Hear a sample** and **Speed test** | The speed test measures both models with the scene drawing: "Grown-ups (KittenTTS): 1.2 s per line, 2.2× real time, smooth · Children (Paradee): 0.6 s per line, 6.4× real time, smooth". A KittenTTS result over 3 s per line says Paradee will speak instead, and games start that way. |
 | Voice volume | Slider | Separate from sound effects. |
 
 New keys in `settings.svelte.ts`:
@@ -359,8 +462,8 @@ benchmark automatically, then speak. Until the model is ready, residents stay qu
 | Work | Thread | Cost |
 |---|---|---|
 | Deciding who speaks, picking lines, playback | Main thread | Microseconds, event-driven (no per-frame work) |
-| Phonemes and Paradee inference | **Own module worker** (`voice/tts.worker.ts`) running `voice-wasm`, separate from the sim worker | Target under 0.4 s per line, never blocks a frame |
-| Kokoro-82M (optional) | Same worker; CPU via our engine or ONNX Runtime WASM, GPU via ONNX Runtime WebGPU | 0.3–3 s per line |
+| Phonemes and Paradee inference | **Own module worker** (`voice/tts.worker.ts`) running `voice-wasm`, separate from the sim worker | About 0.2–0.6 s per line, never blocks a frame |
+| KittenTTS inference | Same worker, its own session on the same runtime, lines one at a time | About 0.5–1.3 s per line on an M3 Pro |
 
 - **Paradee:** one thread is enough. Two voices at once can use two engine instances if the
   benchmark shows spare cores (`navigator.hardwareConcurrency` ≥ 6), leaving cores for the main
@@ -406,6 +509,14 @@ realistic) or in a game (speech pauses while it runs). Paradee alone takes a few
   (`game.stats`). If three lines in a row are late, or frame time rises past the budget while
   inference runs, voices step down (as in the benchmark) for the session and a toast says why
   once.
+- **KittenTTS first gives way to Paradee (0.20, `voice/index.ts`):** a grown-up's line goes to
+  Paradee when KittenTTS isn't ready yet (Paradee, smaller, is usually ready first) or when it
+  would come later than 2.5 s (its recent time per character × the line's length, times the lines
+  already being made). Everyone moves to Paradee for the session, with a toast, after three
+  KittenTTS lines in a row later than 2.5 s, five grown-ups' lines in a row expected too late on
+  their own, frames slowed while it worked, or a failed load; a speed test that found it too slow
+  starts the session that way, without loading it. Only if Paradee can't keep up either do voices
+  pause. F3 shows both models' state, which one grown-ups use and how many lines fell back.
 - **Memory:** the worker is unloaded after 5 minutes without speech, and when voices are turned
   off. Finished clips are kept in an in-memory LRU cache as 16-bit audio, capped at about 8 MB
   (a few hundred lines), keyed by `hash(model, engineVersion, voice, text)`. Because the engine is
@@ -478,8 +589,9 @@ Web code lives in `web/src/voice/`, behind one small interface used by the game 
 |---|---|
 | `voice/index.ts` | `VoiceDirector`: watches the frame state and UI state, applies the "who may speak" rules and guards, queues lines. The only thing `game/session.ts` talks to. |
 | `voice/lines.ts` | Picks a line for an event from content (hash-based). |
-| `voice/voices.ts` | Pitch and speed from resident id, gender, life stage and the voice chosen in the creator. |
-| `voice/tts.ts` + `voice/tts.worker.ts` | Worker client and worker: load model, `speak(text, voice) → Float32Array` (transferred, 24 kHz), unload. |
+| `voice/voices.ts` | Model, KittenTTS mix, pitch, speed and depth from resident id, gender, life stage and the voice chosen in the creator. |
+| `voice/service.svelte.ts` + `voice/tts.worker.ts` | Worker client and worker: load a model, `speak(text, voice) → Float32Array` (transferred, 24 kHz), clip cache, speed test, unload. |
+| `voice/synth.ts` | One line from either model (the worker and the Node checks share it). |
 | `voice/benchmark.ts` | The benchmark and the device choice. |
 | `voice/player.ts` | Voice bus, panners, clip cache. |
 
@@ -497,6 +609,23 @@ Web code lives in `web/src/voice/`, behind one small interface used by the game 
 
 Every phase keeps `pnpm check` clean and the frame-time budget checked, with voices on and off.
 
+## Research: different voices (2026-10-10)
+
+The owner found men and women sounding alike. Measured (M3 Pro, ONNX Runtime Web WASM on one
+thread in Node and in Chrome for Testing; WebGPU in Chrome; UTMOS and Whisper for quality,
+WeSpeaker for how different voices are, Praat for pitch and formants; three game lines):
+
+| Option | Per line | Download | Voices | Verdict |
+|---|---|---|---|---|
+| Paradee with other style vectors | 0.2–0.5 s | 9 MB | 1 | Its voice is two learned constants (1×32, 1×16), not Kokoro's 256-number style, so Kokoro's voices can't be fed; changing them mostly breaks the voice. |
+| **KittenTTS nano 0.8**, weight-only int8 | 0.9–1.6 s | 15.5 + 1 MB | 8 + mixes | **Chosen** (above). |
+| Kokoro-82M q8, WASM | 2.8–4.5 s | 86–92 MB | 28 + blends | Slower than real time on one thread (1.0× with four threads and cross-origin isolation). |
+| Kokoro-82M, WebGPU | 1.2–1.75 s, first line up to 7 s | 155–326 MB | 28 + blends | Not the 10× reported elsewhere under our constraints; fp32 halved the frame rate on a 120 Hz screen. |
+| Kokoro-7M-Distill | 0.16–0.28 s | 31 MB | 1 | Takes Kokoro's style input but every voice comes out as the same woman. |
+| Piper LibriTTS-R medium, int8 | 0.14–0.27 s | 22 MB | 904 | Fast, real men's voices, good scores, but fine-tuned from the lessac voice, whose data licence is research-only. The from-scratch LibriTTS high voice is CC BY 4.0 but slower than real time. |
+| A distilled male Paradee | Paradee's | +9 MB per voice | 1 per model | Kept as the fallback plan (see "Voices"). |
+| Pocket TTS, Supertonic, KittenTTS 2 and others | | 100 MB–1.7 GB | | Too big, or licence or archive problems. |
+
 ## Research summary (2026-10-09)
 
 | Option | Verdict |
@@ -505,7 +634,7 @@ Every phase keeps `pnpm check` clean and the frame-time budget checked, with voi
 | Kokoro-82M | Optional larger model. Apache-2.0; q8 92 MB, fp32 326 MB; about real time on CPU with 4 threads, about 10× on WebGPU (M1 Max). 28 English voices that can be blended. |
 | Kokoro-7M-Distill | 30 MB, faster (35×) but lower quality (UTMOS 4.18) than Paradee (Paradee paper). |
 | Piper / VITS | The multi-speaker English voice is trained on a dataset that forbids commercial use; lower quality. |
-| Kitten TTS | 25–78 MB, only 8 voices; the maker calls the browser builds legacy. |
+| Kitten TTS | 25–78 MB, only 8 voices; the maker calls the browser builds legacy. (Chosen on 2026-10-10 for teens and grown-ups after measuring: 15.5 MB as weight-only int8, see above.) |
 | Supertonic | Archived in September 2026; restrictive licence. |
 | MMS-TTS | Non-commercial licence. |
 | Chatterbox, OuteTTS, CSM, Dia, Orpheus | Too big or too slow next to a 3D game. |
