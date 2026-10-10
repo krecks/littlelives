@@ -149,7 +149,7 @@ impl World {
         Ok(())
     }
 
-    fn restore(&mut self, s: HomeSnapshot) {
+    pub(crate) fn restore(&mut self, s: HomeSnapshot) {
         if s.lot != self.lot {
             self.lot_version += 1;
         }
@@ -160,6 +160,7 @@ impl World {
         self.sims = s.sims;
         self.households = s.households;
         self.plots = s.plots;
+        self.refresh_stairs();
         self.structure_version += 1;
     }
 
@@ -246,18 +247,21 @@ impl World {
     fn fits_on_plot(&self, obj: &ObjectInstance, plot: u32) -> bool {
         let p = &self.plots[plot as usize];
         let (fx, fz) = obj.front_tile(&self.content);
-        p.contains(fx, fz) && obj.tiles(&self.content).all(|(x, z)| p.contains(x, z))
+        let on = |x: i32, z: i32| p.contains(x, self.ground_z(z));
+        on(fx, fz) && obj.tiles(&self.content).all(|(x, z)| on(x, z))
     }
 
     /// Tiles reachable on foot from the plot's entry (a mask over the whole lot).
-    fn reachable(&self, plot: u32) -> Vec<bool> {
+    pub(crate) fn reachable(&self, plot: u32) -> Vec<bool> {
         let lot = &self.lot;
         let nav = NavGrid {
             lot,
             blocked: &self.blocked,
+            stairs: &self.stairs,
         };
         let p = &self.plots[plot as usize];
         let inside = |x: i32, z: i32| {
+            let z = self.ground_z(z);
             x >= p.x - REACH_MARGIN
                 && z >= p.z - REACH_MARGIN
                 && x < p.x + p.w + REACH_MARGIN
@@ -272,12 +276,10 @@ impl World {
         let mut open = VecDeque::from([start]);
         seen[lot.tile_index(start.0, start.1)] = true;
         while let Some((x, z)) = open.pop_front() {
-            for (dx, dz) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
-                let (nx, nz) = (x + dx, z + dz);
-                if inside(nx, nz)
-                    && nav.can_step(x, z, nx, nz)
-                    && !std::mem::replace(&mut seen[lot.tile_index(nx, nz)], true)
-                {
+            let steps = [(1, 0), (-1, 0), (0, 1), (0, -1)].map(|(dx, dz)| (x + dx, z + dz));
+            let up_or_down = self.stairs.link(x, z).filter(|&(lx, lz)| nav.tile_free(lx, lz));
+            for (nx, nz) in steps.into_iter().filter(|&(nx, nz)| nav.can_step(x, z, nx, nz)).chain(up_or_down) {
+                if inside(nx, nz) && !std::mem::replace(&mut seen[lot.tile_index(nx, nz)], true) {
                     open.push_back((nx, nz));
                 }
             }
@@ -314,7 +316,8 @@ impl World {
         // No Sim at home gets shut in.
         let sims_ok = self.sims.iter().all(|s| {
             let (x, z) = s.tile();
-            let on_plot = x >= p.x && z >= p.z && x < p.x + p.w && z < p.z + p.d;
+            let gz = self.ground_z(z);
+            let on_plot = x >= p.x && gz >= p.z && x < p.x + p.w && gz < p.z + p.d;
             let i = self.lot.tile_index(x, z);
             s.away_until.is_some() || !on_plot || !before.1[i] || after.1[i]
         });
@@ -329,7 +332,7 @@ impl World {
 
     /// Places object `def` on the home plot if it fits there and blocks nothing.
     #[allow(clippy::too_many_arguments)]
-    fn place_at_home(
+    pub(crate) fn place_at_home(
         &mut self,
         plot: u32,
         def: usize,
@@ -359,7 +362,16 @@ impl World {
         let before = self.reach_signature(plot);
         let id = self.place(def, x, z, rot, style, quality, value)?;
         let (fx, fz) = self.objects[id as usize].front_tile(&self.content);
-        let front_ok = self.reachable(plot)[self.lot.tile_index(fx, fz)];
+        let seen = self.reachable(plot);
+        // Upstairs before there are stairs, nothing in the room can be reached yet anyway.
+        let cut_off = || {
+            let room = self.lot.room_at(fx, fz);
+            let p = &self.plots[plot as usize];
+            let k = self.storey_of(fz) * self.storey_depth();
+            room != OUTDOORS
+                && !(p.z + k..p.z + p.d + k).any(|z| (p.x..p.x + p.w).any(|x| self.lot.room_at(x, z) == room && seen[self.lot.tile_index(x, z)]))
+        };
+        let front_ok = seen[self.lot.tile_index(fx, fz)] || (self.storey_of(fz) > 0 && cut_off());
         if !front_ok || !self.keeps_reach(plot, &before, Some(id)) {
             self.remove_object(id);
             return Err(Error::new("that would block the way"));
@@ -760,13 +772,18 @@ impl World {
         for (at, look) in looks {
             self.lot.set_look(at, look);
         }
+        // Rooms first: upstairs, where there's floor depends on them.
+        self.lot.compute_rooms();
         if !self.keeps_reach(plot, &before, None) {
             self.lot = saved;
             return Err(Error::new(
                 "that would shut a resident or an object in — add a door or a gate",
             ));
         }
-        self.lot.compute_rooms();
+        if let Err(e) = self.storeys_stand(plot) {
+            self.lot = saved;
+            return Err(e);
+        }
         self.pay(h, cost);
         self.structure_version += 1;
         Ok(())
@@ -835,7 +852,7 @@ impl World {
         let mut changes: Vec<(u16, u16, u8)> = Vec::new();
         let mut cost = 0;
         for t in tiles {
-            if !p.contains(t.x, t.z) || !self.lot.in_bounds(t.x, t.z) {
+            if !p.contains(t.x, self.ground_z(t.z)) || !self.lot.in_bounds(t.x, t.z) {
                 return Err(Error::new("you can only lay floors on your own lot"));
             }
             if t.covering as usize > rules.floors.len() {
@@ -869,9 +886,11 @@ impl World {
     fn edge_on_plot(&self, plot: u32, axis: EdgeAxis, x: i32, z: i32) -> bool {
         let p = &self.plots[plot as usize];
         let (lw, ld) = (self.lot.width as i32, self.lot.depth as i32);
-        if x < 0 || z < 0 {
+        if x < 0 || z < 0 || z > ld {
             return false;
         }
+        // On any storey: compare with the plot on the ground rows.
+        let (z, ld) = (self.ground_z(z), ld.min(self.storey_depth()));
         match axis {
             EdgeAxis::H => {
                 x >= p.x && x < p.x + p.w && z >= p.z && z <= p.z + p.d && x < lw && z <= ld
@@ -881,6 +900,38 @@ impl World {
             }
             EdgeAxis::Dp | EdgeAxis::Dn => p.contains(x, z) && self.lot.in_bounds(x, z),
         }
+    }
+
+    /// Upstairs stands on downstairs: every room above the ground has a room under each of its
+    /// tiles, and every wall above the ground stands on a room's ceiling (a room on one side of
+    /// it below). Nothing stands on the stairwell either.
+    pub(crate) fn storeys_stand(&self, plot: u32) -> Result<(), Error> {
+        if self.storeys < 2 {
+            return Ok(());
+        }
+        let p = &self.plots[plot as usize];
+        let d = self.storey_depth();
+        let indoor = |x: i32, z: i32| self.lot.in_bounds(x, z) && self.lot.room_at(x, z) != OUTDOORS;
+        for k in 1..self.storeys as i32 {
+            for z in p.z + k * d..p.z + p.d + k * d {
+                for x in p.x..p.x + p.w {
+                    if indoor(x, z) && !indoor(x, z - d) {
+                        return Err(Error::new("a room upstairs needs a room under it"));
+                    }
+                }
+            }
+            for z in p.z + k * d..=p.z + p.d + k * d {
+                for x in p.x..=p.x + p.w {
+                    let h = x < p.x + p.w && self.lot.h_edge(x as usize, z as usize) != Edge::Open;
+                    let v = z < p.z + p.d + k * d && self.lot.v_edge(x as usize, z as usize) != Edge::Open;
+                    let diag = x < p.x + p.w && z < p.z + p.d + k * d && self.lot.diag(x, z).is_some();
+                    if h && !(indoor(x, z - 1 - d) || indoor(x, z - d)) || v && !(indoor(x - 1, z - d) || indoor(x, z - d)) || diag && !indoor(x, z - d) {
+                        return Err(Error::new("walls upstairs have to stand on a room below"));
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Removes an object. Sims using it stop, and later object ids shift down by one.
@@ -914,9 +965,12 @@ impl World {
         for (i, o) in self.objects.iter_mut().enumerate() {
             o.id = i as u32;
         }
-        for (x, z) in obj.tiles(&self.content) {
+        for (x, z) in self.blocking_tiles(&obj) {
             let i = self.lot.tile_index(x, z);
             self.blocked[i] = false;
+        }
+        if self.content.objects[obj.def].stairs {
+            self.refresh_stairs();
         }
         self.structure_version += 1;
         obj

@@ -212,6 +212,10 @@ pub enum TaskKind {
     },
     /// Walk back home.
     GoHome,
+    /// Go to the front door to answer a visitor's knock (`visits.door`).
+    Answer {
+        guest: u32,
+    },
     /// Tidy up around tile `(x, z)` (`roomRules.clean`).
     Clean {
         x: i32,
@@ -252,6 +256,12 @@ pub enum Phase {
     Conversing {
         elapsed: f32,
         success: bool,
+    },
+    /// A visitor at the front door, waiting to be let in (`visits.door`, run by `life`).
+    Knocking {
+        ticks: u32,
+        /// The resident on their way to answer.
+        host: Option<u32>,
     },
 }
 
@@ -458,7 +468,7 @@ impl Sim {
         }
         match (act.task.kind, &act.phase) {
             // People on their way somewhere don't stop to chat (it would strand them).
-            (TaskKind::Work | TaskKind::Visit { .. } | TaskKind::GoHome, _) => false,
+            (TaskKind::Work | TaskKind::Visit { .. } | TaskKind::GoHome | TaskKind::Answer { .. }, _) => false,
             (TaskKind::Social { .. }, Phase::Conversing { .. }) => false,
             (_, Phase::Routing { .. }) => true,
             _ => act.tags & content.social_rules.busy_tags == 0,
@@ -667,6 +677,10 @@ pub struct World {
     pub(crate) rooms_version: u32,
     /// Overall score of the room or garden each tile is in (`roomRules.away` off the plots).
     pub(crate) room_score: Vec<f32>,
+    /// How many storeys the lot holds (see `storeys.rs`); 1: only the ground.
+    pub storeys: u8,
+    /// Rows per storey and the stairs between them, for walking.
+    pub(crate) stairs: crate::path::StairMap,
 }
 
 /// Read-only context for one Sim's update.
@@ -720,6 +734,12 @@ impl World {
 
     pub fn new(content: Content, lot_file: &LotFile, seed: u32) -> Result<Self, Error> {
         let mut world = Self::empty(content, Lot::from_file(lot_file)?, Rng::new(seed));
+        // Storeys from the file before its objects (stairs, furniture upstairs).
+        let storeys = lot_file.storeys.unwrap_or(1).clamp(1, 4);
+        if storeys > 1 {
+            world.storeys = storeys;
+            world.stairs.depth = lot_file.depth as i32;
+        }
         world.mode = lot_file.mode;
         world.lifespan = lot_file.lifespan;
         world.meta = lot_file.meta.clone();
@@ -795,6 +815,7 @@ impl World {
         for h in 0..world.households.len() {
             crate::lifecycle::cribs_for_babies(&mut world, h);
         }
+        world.make_storeys();
         world.refresh_rooms();
         Ok(world)
     }
@@ -835,6 +856,8 @@ impl World {
             rooms: Vec::new(),
             rooms_version: 0,
             room_score: Vec::new(),
+            storeys: 1,
+            stairs: crate::path::StairMap::default(),
         }
     }
 
@@ -852,7 +875,9 @@ impl World {
         &self.blocked
     }
 
+    /// The plot a tile is on (on any storey).
     pub fn plot_at(&self, x: i32, z: i32) -> Option<u32> {
+        let z = self.ground_z(z);
         self.plots.iter().find(|p| p.contains(x, z)).map(|p| p.id)
     }
 
@@ -912,6 +937,7 @@ impl World {
         }) {
             return Err(Error::new(format!("'{name}' at {x},{z} is blocked by a wall")));
         }
+        self.check_storey_fit(&obj)?;
         Ok(obj)
     }
 
@@ -930,12 +956,16 @@ impl World {
         obj.style = style;
         obj.quality = quality.min(self.content.object_rules.max_quality);
         obj.value = value;
-        for (tx, tz) in obj.tiles(&self.content) {
+        for (tx, tz) in self.blocking_tiles(&obj) {
             let i = self.lot.tile_index(tx, tz);
             self.blocked[i] = true;
         }
         self.object_plot.push(self.plot_at(x, z));
+        let stairs = self.content.objects[def].stairs;
         self.objects.push(obj);
+        if stairs {
+            self.refresh_stairs();
+        }
         self.structure_version += 1;
         Ok(self.objects.len() as u32 - 1)
     }
@@ -1442,7 +1472,7 @@ impl World {
         self.briefs.clear();
         for s in &self.sims {
             let (x, z) = s.tile();
-            let plot = self.plots.iter().find(|p| p.contains(x, z)).map(|p| p.id);
+            let plot = self.plot_at(x, z);
             self.briefs.push(SimBrief {
                 pos: s.pos,
                 available: s.here() && s.available_for_social(&self.content),
@@ -1476,13 +1506,14 @@ impl World {
                 exits,
                 room_score,
                 dirt,
+                stairs,
                 ..
             } = self;
             let ctx = Ctx {
                 room_score,
                 dirt,
                 content,
-                nav: NavGrid { lot, blocked },
+                nav: NavGrid { lot, blocked, stairs },
                 rels: relationships,
                 briefs,
                 households,
@@ -1545,6 +1576,7 @@ impl World {
                 | Command::SkipHouseholdRoutine { .. }
                 | Command::AddGoal { .. }
                 | Command::RemoveGoal { .. }
+                | Command::MoveGoal { .. }
                 | Command::AcceptSuggestion { .. }
                 | Command::DismissSuggestion { .. }
         );
@@ -1602,12 +1634,22 @@ impl World {
                 if s.planner.goals.len() >= max {
                     return Err(Error::new(format!("{} has {max} goals already", s.name)));
                 }
+                if s.planner.goals.iter().any(|g| g.same(&goal)) {
+                    return Err(Error::new(format!("{} has that goal already", s.name)));
+                }
                 s.planner.goals.push(goal);
             }
             Command::RemoveGoal { sim, index } => {
                 let goals = &mut self.sim_mut(sim)?.planner.goals;
                 if index < goals.len() {
                     goals.remove(index);
+                }
+            }
+            Command::MoveGoal { sim, index, to } => {
+                let goals = &mut self.sim_mut(sim)?.planner.goals;
+                if index < goals.len() && to < goals.len() {
+                    let goal = goals.remove(index);
+                    goals.insert(to, goal);
                 }
             }
             Command::AcceptSuggestion { sim, index } => {
@@ -1620,7 +1662,10 @@ impl World {
                     }
                     let mut goal = s.planner.suggestions.remove(index);
                     goal.since_day = day;
-                    s.planner.goals.push(goal);
+                    // Already on the list (the player added it meanwhile): the idea just goes.
+                    if !s.planner.goals.iter().any(|g| g.same(&goal)) {
+                        s.planner.goals.push(goal);
+                    }
                 }
             }
             Command::DismissSuggestion { sim, index } => {
@@ -1799,6 +1844,8 @@ impl World {
                 color,
             } => self.set_roof(household, style, color)?,
             Command::Repair { household, object } => self.repair(household, object)?,
+            Command::BuildBlueprint { household, blueprint } => self.build_blueprint(household, &blueprint)?,
+            Command::MoveRoom { household, x, z, dx, dz } => self.move_room(household, x, z, dx, dz)?,
             Command::MoveIn {
                 household,
                 name,
@@ -1895,19 +1942,22 @@ fn is_night(sim: &Sim, ctx: &Ctx) -> bool {
     rhythm.is_night(ctx.hour, wake_hour(sim, ctx))
 }
 
-/// Target skill levels: what probation and the next promotion need, and skill goals.
-fn job_goals(sim: &Sim, content: &Content) -> [f32; MAX_SKILLS] {
+/// Target skill levels (what probation and the next promotion need, and skill goals) and how
+/// keen they are on each (the job's fully, a goal's by its place on the list).
+fn job_goals(sim: &Sim, content: &Content) -> ([f32; MAX_SKILLS], [f32; MAX_SKILLS]) {
     let mut goals = [0.0f32; MAX_SKILLS];
+    let mut keen = [0.0f32; MAX_SKILLS];
     if let Some(job) = &sim.job {
         let levels = &content.careers[job.career].levels;
         for level in levels[job.level..].iter().take(2) {
             for &(s, l) in &level.requires {
                 goals[s] = goals[s].max(l);
+                keen[s] = 1.0;
             }
         }
     }
-    crate::planner::skill_targets(content, sim, &mut goals);
-    goals
+    crate::planner::skill_targets(content, sim, &mut goals, &mut keen);
+    (goals, keen)
 }
 
 /// How much an idle Sim wants to practise with `inter` (0 when needs come first).
@@ -1920,7 +1970,7 @@ fn training_interest(sim: &Sim, content: &Content, inter: &crate::content::Inter
     if lowest < 0.35 {
         return 0.0;
     }
-    let goals = job_goals(sim, content);
+    let (goals, keen) = job_goals(sim, content);
     let mut best = 0.0f32;
     for (s, &gain) in inter.skill_gain.iter().enumerate() {
         if gain <= 0.0 || sim.skills[s] >= rules.max_level {
@@ -1928,7 +1978,7 @@ fn training_interest(sim: &Sim, content: &Content, inter: &crate::content::Inter
         }
         let mut want = rules.interest * sim.mods.skill_gain[s];
         if goals[s] > sim.skills[s] {
-            want += rules.goal_interest;
+            want += rules.goal_interest * keen[s];
         }
         best = best.max(want);
     }
@@ -2141,7 +2191,7 @@ fn pick_autonomous(
             if allowed == Access::Full {
                 let rules = &object_rules.repair;
                 let (fx, fz) = obj.front_tile(content);
-                let distance = (fx as f32 + 0.5 - sim.pos[0]).hypot(fz as f32 + 0.5 - sim.pos[1]);
+                let distance = ctx.nav.stairs.distance([fx as f32 + 0.5, fz as f32 + 0.5], sim.pos);
                 let level = rules.skill.map_or(0.0, |s| sim.skills[s]);
                 let (plan, floor) = crate::planner::tags_factor(content, sim, rules.tags);
                 // More urgent the more they need what it gives (a broken toilet, bursting).
@@ -2161,7 +2211,7 @@ fn pick_autonomous(
             continue;
         }
         let (fx, fz) = obj.front_tile(content);
-        let distance = (fx as f32 + 0.5 - sim.pos[0]).hypot(fz as f32 + 0.5 - sim.pos[1]);
+        let distance = ctx.nav.stairs.distance([fx as f32 + 0.5, fz as f32 + 0.5], sim.pos);
         // Nicer rooms draw residents, the more so the less they like their surroundings.
         let place = 1.0
             + content.room_rules.preference
@@ -2219,7 +2269,7 @@ fn pick_autonomous(
             continue;
         }
         // Chat with people on the same lot (or nearby on the street); crossing town is a visit.
-        let distance = (other.pos[0] - sim.pos[0]).hypot(other.pos[1] - sim.pos[1]);
+        let distance = ctx.nav.stairs.distance(other.pos, sim.pos);
         let same_place = match (here, other.plot) {
             (Some(a), Some(b)) => a == b,
             _ => distance <= SOCIAL_RANGE,
@@ -2287,7 +2337,7 @@ fn pick_autonomous(
             }
         }
         if let Some((d, x, z)) = best {
-            let distance = (x as f32 + 0.5 - sim.pos[0]).hypot(z as f32 + 0.5 - sim.pos[1]);
+            let distance = ctx.nav.stairs.distance([x as f32 + 0.5, z as f32 + 0.5], sim.pos);
             let (plan, floor) = crate::planner::tags_factor(content, sim, rules.tags);
             let s = (rules.interest * d * (1.5 - environment) / (1.0 + distance * 0.08)).max(floor)
                 * feel(rules.tags)
@@ -2428,6 +2478,15 @@ fn start_task(sim: &mut Sim, task: Task, ctx: &Ctx, objects: &mut [ObjectInstanc
             };
             (door, (door[0].floor() as i32, door[1].floor() as i32), 0)
         }
+        TaskKind::Answer { guest } => {
+            let Some(other) = ctx.briefs.get(guest as usize) else {
+                return;
+            };
+            let Some(goal) = conversation::approach_tile(nav, other.pos, sim.pos) else {
+                return;
+            };
+            ([goal.0 as f32 + 0.5, goal.1 as f32 + 0.5], goal, 0)
+        }
         TaskKind::Social { target, social } => {
             let Some(other) = ctx.briefs.get(target as usize) else {
                 return;
@@ -2489,10 +2548,23 @@ fn progress(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance], rng: &mut 
         return;
     };
     let finished = match &mut act.phase {
+        // Waiting at the door; `life::doors` lets them in or sends them home.
+        Phase::Knocking { ticks, .. } => {
+            *ticks += 1;
+            false
+        }
         Phase::Routing { waypoints, next } => {
             let mut budget = WALK_SPEED * sim.mods.walk_speed;
             while budget > 0.0 && *next < waypoints.len() {
                 let wp = waypoints[*next];
+                // Off the top step onto the landing (or back): a storey's rows are far apart.
+                let stairs = &ctx.nav.stairs;
+                if stairs.depth > 0 && stairs.storey(wp[1].floor() as i32) != stairs.storey(sim.pos[1].floor() as i32) {
+                    sim.pos = wp;
+                    budget -= 1.0;
+                    *next += 1;
+                    continue;
+                }
                 let (dx, dz) = (wp[0] - sim.pos[0], wp[1] - sim.pos[1]);
                 let dist = dx.hypot(dz);
                 if dist > 1e-4 {
@@ -2686,7 +2758,25 @@ fn arrive(sim: &mut Sim, ctx: &Ctx, objects: &mut [ObjectInstance]) {
             sim.current = None;
             sim.transition = Some(crate::life::Transition::Work);
         }
-        TaskKind::Visit { .. } => sim.current = None,
+        TaskKind::Visit { plot } => {
+            // At a house (not a park) with door rules: knock and wait (`life::doors`).
+            if content.visits.door.is_some() && !ctx.plots[plot as usize].public {
+                let p = &ctx.plots[plot as usize];
+                let centre = [p.x as f32 + p.w as f32 / 2.0, p.z as f32 + p.d as f32 / 2.0];
+                sim.yaw = (centre[0] - sim.pos[0]).atan2(centre[1] - sim.pos[1]);
+                sim.pose = Pose::Stand;
+                act.phase = Phase::Knocking { ticks: 0, host: None };
+            } else {
+                sim.current = None;
+            }
+        }
+        TaskKind::Answer { guest } => {
+            if let Some(other) = ctx.briefs.get(guest as usize) {
+                sim.yaw = (other.pos[0] - sim.pos[0]).atan2(other.pos[1] - sim.pos[1]);
+            }
+            sim.current = None;
+            sim.transition = Some(crate::life::Transition::Answered { guest });
+        }
         TaskKind::GoHome => {
             sim.current = None;
             sim.transition = Some(crate::life::Transition::Home);

@@ -35,7 +35,7 @@ import {
   type UniformBuffer,
 } from '@babylonjs/core';
 import type { AssetRegistry } from '../../assets/registry';
-import type { WorldStructure } from '../../core/protocol';
+import { groundDepth, type WorldStructure } from '../../core/protocol';
 import type { Lighting } from './environment';
 import { foliageCardCode } from './foliageCards';
 import { MaterialLibrary } from './materials';
@@ -117,7 +117,7 @@ export class Landscape {
   constructor(world: WorldStructure) {
     this.seed = world.meta?.seed ?? 1;
     this.w = world.width;
-    this.d = world.depth;
+    this.d = groundDepth(world);
   }
 
   /** Distance from the town rectangle (0 inside). */
@@ -264,7 +264,7 @@ export class Landscape {
     const flowers: Matrix[] = [];
     const tuftTiles: number[] = [];
     const flowerTiles: number[] = [];
-    for (let z = 0; z < world.depth; z++) {
+    for (let z = 0; z < groundDepth(world); z++) {
       for (let x = 0; x < world.width; x++) {
         const i = z * world.width + x;
         if (onPavement(x + 0.5, z + 0.5)) continue;
@@ -283,7 +283,7 @@ export class Landscape {
     // Lawn detail around the town too, thinning out with distance.
     for (let n = 0; n < 5000; n++) {
       const x = -APRON - 30 + rand() * (world.width + APRON * 2 + 60);
-      const z = -APRON - 30 + rand() * (world.depth + APRON * 2 + 60);
+      const z = -APRON - 30 + rand() * (groundDepth(world) + APRON * 2 + 60);
       const dist = this.distanceToTown(x, z);
       if (dist === 0 || rand() < dist / 40) continue;
       const m = scatter(x - 0.5, z - 0.5, rand, 0.8 + rand() * 0.7, this.heightAt(x, z));

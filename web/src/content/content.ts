@@ -61,6 +61,8 @@ export interface ObjectDef {
   slots?: number;
   /** Can only be placed outdoors (trees, flower beds, ponds). */
   outdoors?: boolean;
+  /** A flight of stairs to the storey above (sim-core `storeys.rs`). */
+  stairs?: boolean;
   /** Gives light at night (lamps, lanterns): reach in metres, relative brightness, height of the bulb. */
   light?: { range?: number; intensity?: number; height?: number };
   /** Turns freely (at any angle, for looks); default: 1×1 objects of `objectRules.freeRotation` categories. */
@@ -412,7 +414,7 @@ export class Content {
     this.eventTexts = file.events ?? {};
     this.activities = file.activities ?? [];
     this.goals = file.goals ?? [];
-    this.planner = { maxMinutes: 240, maxSleepMinutes: 720, maxGoals: 3, ...file.planner };
+    this.planner = { maxMinutes: 240, maxSleepMinutes: 720, maxGoals: 10, ...file.planner };
     this.objects = new Map(file.objects.map((o) => [o.id, o]));
     this.objectList = file.objects;
     this.freeRotation = new Set(file.objectRules?.freeRotation ?? []);

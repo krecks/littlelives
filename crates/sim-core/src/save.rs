@@ -21,7 +21,10 @@
 //! and the lifespan (`lifespan`; absent: off, so older games don't start aging by surprise),
 //! residents who are gone (`sims[].gone`) and former residents the story names (`former`);
 //! 14 = a baby on the way (`households[].expecting`); 15 = story events name the content they
-//! are about by id (`events[].refs`), so a content change can't rename them.
+//! are about by id (`events[].refs`), so a content change can't rename them; 16 = story events
+//! for visitors at the door (`turnedAway`, `nobodyHome`). Answering the door isn't saved: a
+//! visitor knocking when the game was saved knocks again; 17 = storeys (`storeys`; the lot's rows
+//! hold every storey, see `storeys.rs`; absent: one, and the lot grows to the content's count).
 //! Older files load. Saves written before feelings
 //! were renamed from "moodlets" store them under `moodlets`; a serde alias still reads it.
 
@@ -38,7 +41,7 @@ use crate::planner::{BlockResult, Goal, HomeWish, Outcome, Planner, Reason, Rout
 use crate::world::{GameMode, Household, Plot, Task, TaskKind, World};
 use crate::{Error, MINUTES_PER_TICK, clock::MAX_SPEED};
 
-pub const SAVE_VERSION: u32 = 15;
+pub const SAVE_VERSION: u32 = 17;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -56,6 +59,9 @@ pub struct SaveFile {
     /// How fast residents age (absent before v13: off).
     #[serde(default)]
     pub lifespan: Option<crate::lifecycle::Lifespan>,
+    /// Storeys the lot holds (its depth is that many times the town's; absent before v17: 1).
+    #[serde(default)]
+    pub storeys: Option<u8>,
     /// Whether the player's residents move on their own (absent: yes).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub player_moves: Option<bool>,
@@ -487,7 +493,7 @@ impl World {
                     .map(|a| &a.task)
                     .into_iter()
                     .chain(s.queue())
-                    .map(|t| self.task_save(t))
+                    .filter_map(|t| self.task_save(t))
                     .collect();
                 let feelings = s
                     .feelings
@@ -575,6 +581,7 @@ impl World {
             speed: self.speed,
             autonomy: self.autonomy,
             lifespan: Some(self.lifespan),
+            storeys: Some(self.storeys),
             player_moves: (!self.player_moves).then_some(false),
             rng: self.rng.state(),
             lot: LotSave {
@@ -669,6 +676,12 @@ impl World {
         decode_looks(&mut lot, &content, &save.lot.looks);
         decode_floors(&mut lot, &content, &save.lot.floors);
         let mut world = World::empty(content, lot, Rng::new(save.rng));
+        // Storeys before the furniture: what may stand upstairs depends on them.
+        let storeys = save.storeys.unwrap_or(1).max(1);
+        if storeys > 1 && world.lot.depth.is_multiple_of(storeys as usize) {
+            world.storeys = storeys;
+            world.stairs.depth = (world.lot.depth / storeys as usize) as i32;
+        }
         world.mode = save.mode;
         world.tick = save.tick;
         world.speed = save.speed.min(MAX_SPEED);
@@ -968,13 +981,15 @@ impl World {
                 world.dirt[i] = (f32::from(d) / 255.0).min(1.0);
             }
         }
+        world.make_storeys();
         world.refresh_rooms();
         Ok(world)
     }
 
-    fn task_save(&self, t: &Task) -> TaskSave {
+    /// `None` for tasks that aren't saved: answering the door (the visitor knocks again after loading).
+    fn task_save(&self, t: &Task) -> Option<TaskSave> {
         let content = &self.content;
-        match t.kind {
+        Some(match t.kind {
             TaskKind::Use {
                 object,
                 interaction,
@@ -1016,7 +1031,8 @@ impl World {
             TaskKind::Spot { accident } => TaskSave::Spot {
                 accident: content.accidents[accident].id.clone(),
             },
-        }
+            TaskKind::Answer { .. } => return None,
+        })
     }
 }
 
@@ -1345,7 +1361,13 @@ fn planner_load(content: &Content, p: &PlannerSave) -> Planner {
     Planner {
         routines: p.routines.iter().filter_map(|r| routine_load(content, r)).collect(),
         skip_household: p.skip_household.clone(),
-        goals: p.goals.iter().filter_map(|g| goal_load(content, g)).collect(),
+        // Older saves may hold the same goal twice: keep the first.
+        goals: p.goals.iter().filter_map(|g| goal_load(content, g)).fold(Vec::new(), |mut goals: Vec<Goal>, g| {
+            if !goals.iter().any(|o| o.same(&g)) {
+                goals.push(g);
+            }
+            goals
+        }),
         suggestions: p.suggestions.iter().filter_map(|g| goal_load(content, g)).collect(),
         run: None,
         history: p

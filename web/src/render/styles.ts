@@ -57,12 +57,6 @@ export interface StylePreset {
    */
   nightGrade: number;
   vignette: number;
-  bloomThreshold: number;
-  /** 0 disables bloom for this style. */
-  bloomWeight: number;
-  bloomKernel: number;
-  /** Tilt-shift miniature blur: max radius in pixels at 1080p; 0 disables it for this style. */
-  tiltShift: number;
   /** Edge sharpening amount (0 = off). */
   sharpen: number;
   /** Film grain intensity (0 = off). */
@@ -107,11 +101,11 @@ const RETRO_NIGHT = {
 
 export const STYLES: Record<VisualStyle, StylePreset> = {
   // Stylised realism: warm saturated sun with long golden-hour shadows, bluish ambient fill,
-  // visible bloom and haze, tilt-shift depth of field, blue moonlit nights with warm lamps.
+  // soft haze, blue moonlit nights with warm lamps.
   classic: {
     id: 'classic',
     label: 'Classic',
-    description: 'Warm, painterly realism with golden-hour light, bloom and a miniature focus.',
+    description: 'Warm, painterly realism with golden-hour light and blue moonlit nights.',
     keys: [
       { hour: 0, ...CLASSIC_NIGHT },
       { hour: 4.8, ...CLASSIC_NIGHT },
@@ -144,10 +138,6 @@ export const STYLES: Record<VisualStyle, StylePreset> = {
     shadowsDensity: 26,
     nightGrade: 0.85,
     vignette: 1.2,
-    bloomThreshold: 0.72,
-    bloomWeight: 0.3,
-    bloomKernel: 64,
-    tiltShift: 4.5,
     sharpen: 0,
     grain: 0,
     fog: 0.0032,
@@ -188,10 +178,6 @@ export const STYLES: Record<VisualStyle, StylePreset> = {
     shadowsDensity: 14,
     nightGrade: 0.7,
     vignette: 0.35,
-    bloomThreshold: 0.92,
-    bloomWeight: 0.14,
-    bloomKernel: 48,
-    tiltShift: 0,
     sharpen: 0.25,
     grain: 0,
     fog: 0.0012,
@@ -230,10 +216,6 @@ export const STYLES: Record<VisualStyle, StylePreset> = {
     shadowsDensity: 10,
     nightGrade: 0.55,
     vignette: 0.6,
-    bloomThreshold: 1,
-    bloomWeight: 0,
-    bloomKernel: 32,
-    tiltShift: 0,
     sharpen: 0,
     grain: 6,
     fog: 0.0016,

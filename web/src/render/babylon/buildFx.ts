@@ -74,11 +74,11 @@ export class BuildEffects {
     switch (fx.kind) {
       case 'place':
       case 'upgrade':
-        this.ring(fx.kind, cx, cz, size);
+        this.ring(fx.kind, cx, cz, size, fx.y ?? 0);
         this.burst((this.sparkles ??= this.system('sparkle')), fx, fx.kind === 'upgrade' ? 56 : 40, 0.15, fx.kind === 'upgrade' ? 1.2 : 0.7);
         break;
       case 'sell':
-        this.ring(fx.kind, cx, cz, size);
+        this.ring(fx.kind, cx, cz, size, fx.y ?? 0);
         this.burst((this.dust ??= this.system('dust')), fx, 22, 0.05, 0.4);
         // A little glitter: the money comes back.
         this.burst((this.sparkles ??= this.system('sparkle')), fx, 12, 0.3, 0.8);
@@ -135,7 +135,7 @@ export class BuildEffects {
     this.dust?.dispose();
   }
 
-  private ring(kind: BuildEffect['kind'], cx: number, cz: number, size: number): void {
+  private ring(kind: BuildEffect['kind'], cx: number, cz: number, size: number, y: number): void {
     let ring = this.rings.find((r) => r.age >= RING_TIME);
     if (!ring) {
       if (this.rings.length >= RING_POOL) ring = this.rings.reduce((a, b) => (a.age > b.age ? a : b));
@@ -148,7 +148,7 @@ export class BuildEffects {
       }
     }
     ring.mesh.material = this.ringMaterial(RING_COLORS[kind]);
-    ring.mesh.position.set(cx, 0.045, cz);
+    ring.mesh.position.set(cx, y + 0.045, cz);
     ring.mesh.setEnabled(true);
     ring.age = 0;
     ring.size = size;
@@ -173,7 +173,8 @@ export class BuildEffects {
   /** Queues `count` particles inside the effect's footprint, between heights `y0` and `y1`. */
   private burst(ps: ParticleSystem, fx: BuildEffect, count: number, y0: number, y1: number): void {
     const queue = this.bursts.get(ps)!;
-    queue.push({ x0: fx.x, y0, z0: fx.z, x1: fx.x + fx.w, y1, z1: fx.z + fx.d, left: count });
+    const base = fx.y ?? 0;
+    queue.push({ x0: fx.x, y0: base + y0, z0: fx.z, x1: fx.x + fx.w, y1: base + y1, z1: fx.z + fx.d, left: count });
     ps.manualEmitCount = Math.max(0, ps.manualEmitCount) + count;
     if (!ps.isStarted()) ps.start();
   }

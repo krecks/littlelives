@@ -7,7 +7,7 @@
  */
 
 import type { Content } from '../content/content';
-import type { SocialEvent, WorldStructure } from '../core/protocol';
+import { groundDepth, type SocialEvent, type WorldStructure } from '../core/protocol';
 import type { SnapshotLayout } from '../core/snapshot';
 import type { GameShot, WallMode } from '../render/types';
 
@@ -71,6 +71,12 @@ export class Director {
   setWorld(world: WorldStructure, home: number | null): void {
     this.world = world;
     this.home = home;
+  }
+
+  /** A lot row on the ground's rows (residents upstairs are framed where they stand). */
+  private groundRow(z: number): number {
+    const d = this.world && (this.world.storeys ?? 1) > 1 ? groundDepth(this.world) : 0;
+    return d > 0 ? z - Math.floor(z / d) * d : z;
   }
 
   /** Objects the player just placed: their first use is worth a look. */
@@ -192,7 +198,7 @@ export class Director {
     const snap = this.deps.snapshot();
     const pos = (i: number) => {
       const o = layout.headerLen + i * layout.simStride;
-      return [snap[o + layout.sim.x], snap[o + layout.sim.z]] as const;
+      return [snap[o + layout.sim.x], this.groundRow(snap[o + layout.sim.z])] as const;
     };
     let alpha: number | undefined;
     if (sims.length > 1) {
@@ -245,7 +251,7 @@ export class Director {
     const o = layout.headerLen + i * layout.simStride;
     if (snap[o + layout.sim.away] > 0) return false;
     const x = snap[o + layout.sim.x];
-    const z = snap[o + layout.sim.z];
+    const z = this.groundRow(snap[o + layout.sim.z]);
     return x >= plot.x && z >= plot.z && x < plot.x + plot.w && z < plot.z + plot.d;
   }
 }

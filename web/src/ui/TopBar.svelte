@@ -156,6 +156,17 @@
     >
       <Icon name="icon.ui.town" />
     </button>
+    {#if game.storeys > 1}
+      <div class="storeys" role="group" aria-label="Storey">
+        <button class="tool" title="Storey down (Page Down)" aria-label="Storey down" disabled={game.storey === 0} onclick={() => services.controls.setStorey(game.storey - 1)}>
+          <span class="arrow down"><Icon name="icon.ui.back" size={16} /></span>
+        </button>
+        <span class="storey" title="Storey in view: higher ones are hidden">{game.storey === 0 ? 'Ground' : `Floor ${game.storey}`}</span>
+        <button class="tool" title="Storey up (Page Up)" aria-label="Storey up" disabled={game.storey >= game.storeys - 1} onclick={() => services.controls.setStorey(game.storey + 1)}>
+          <span class="arrow up"><Icon name="icon.ui.back" size={16} /></span>
+        </button>
+      </div>
+    {/if}
     <button
       class="tool"
       title="Walls: {game.wallMode} (W: up → cutaway → down)"
@@ -293,6 +304,29 @@
   .tool:disabled {
     opacity: 0.4;
     cursor: default;
+  }
+  .storeys {
+    display: flex;
+    align-items: center;
+  }
+  .storeys .tool {
+    width: 28px;
+  }
+  .storey {
+    min-width: 50px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 650;
+    color: var(--text-muted);
+  }
+  .arrow {
+    display: inline-flex;
+  }
+  .arrow.up {
+    transform: rotate(90deg);
+  }
+  .arrow.down {
+    transform: rotate(-90deg);
   }
   .undo.redo {
     padding: 0 10px;

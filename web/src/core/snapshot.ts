@@ -46,6 +46,8 @@ export interface SnapshotLayout {
     thought?: number;
     /** Activity index (1–3) or goal definition (4). */
     thoughtSubject?: number;
+    /** Height in storeys (0 the ground; fractions on the stairs); `z` is in lot rows (see `WorldStructure.storeys`). */
+    height?: number;
   };
   /** Animation tags from content (`animations` in base.json), named by `sim.action`. */
   actions: string[];

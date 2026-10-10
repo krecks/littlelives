@@ -44,6 +44,7 @@ const PLINTH = 0.32;
 // than the edge, with wall piers either side.
 const SILL = 0.9;
 const HEAD = 2.1;
+const [SILL0, HEAD0] = [SILL, HEAD];
 const WIN_INSET = 0.12;
 /** Height of a half wall (`form` 1). */
 export const HALF_WALL_HEIGHT = 1.05;
@@ -200,6 +201,16 @@ export interface LampLight {
   height?: number;
 }
 
+/** How a storey is built (`HouseBuilder.build`); the ground storey needs none of it. */
+export interface StoreyBuild {
+  /** Above the ground: no stone base, no garden. */
+  upper?: boolean;
+  /** Tiles with a room upstairs (no roof over them here). */
+  covered?: (x: number, z: number) => boolean;
+  /** Stairwell tiles (`z * width + x`): open to the storey below, so no floor. */
+  holes?: ReadonlySet<number>;
+}
+
 export interface HouseBuild {
   meshes: Mesh[];
   /** Shadow casters. */
@@ -241,6 +252,8 @@ export interface SilhouetteSpec {
   garage: { x0: number; z0: number; x1: number; z1: number } | null;
   /** The roof the player chose (`PlotInfo.roof`); absent: the house's own look. */
   roof?: [number, number];
+  /** Storeys the house has (absent: one). */
+  storeys?: number;
 }
 
 export interface SilhouetteBuild {
@@ -408,8 +421,10 @@ export class HouseBuilder {
   }
   private readonly glassGlow = new Color3();
 
-  build(world: WorldStructure, view: ViewRect | null): HouseBuild | null {
+  build(world: WorldStructure, view: ViewRect | null, storey: StoreyBuild = {}): HouseBuild | null {
     if (!world.walls || !world.openings) return null;
+    // Upstairs: walls start at the floor (no stone base), and there's no garden.
+    const plinth = storey.upper ? 0 : PLINTH;
     const W = world.width;
     const D = world.depth;
     const room = (x: number, z: number) => (x >= 0 && z >= 0 && x < W && z < D ? world.rooms[z * W + x] : 0);
@@ -578,13 +593,13 @@ export class HouseBuilder {
       if (r === 0) {
         // Exterior: stone plinth below, siding/brick above, frieze board under the eaves.
         const Q = (a: number, y: number, d: number): V3 => (axis === 'h' ? [a, y, plane + n[2] * d] : [plane + n[0] * d, y, a]);
-        if (y0 < PLINTH) {
+        if (y0 < plinth) {
           const out = 0.03;
-          stone.poly([P(a0, y0), P(a1, y0), P(a1, Math.min(PLINTH, y1)), P(a0, Math.min(PLINTH, y1))], n);
-          stone.poly([Q(a0, PLINTH, 0), Q(a1, PLINTH, 0), Q(a1, PLINTH, out), Q(a0, PLINTH, out)], [0, 1, 0]);
-          stone.poly([Q(a0, y0, out), Q(a1, y0, out), Q(a1, PLINTH, out), Q(a0, PLINTH, out)], n);
+          stone.poly([P(a0, y0), P(a1, y0), P(a1, Math.min(plinth, y1)), P(a0, Math.min(plinth, y1))], n);
+          stone.poly([Q(a0, plinth, 0), Q(a1, plinth, 0), Q(a1, plinth, out), Q(a0, plinth, out)], [0, 1, 0]);
+          stone.poly([Q(a0, y0, out), Q(a1, y0, out), Q(a1, plinth, out), Q(a0, plinth, out)], n);
         }
-        const yb = Math.max(y0, PLINTH);
+        const yb = Math.max(y0, plinth);
         if (y1 > yb) (own ?? ext).poly([P(a0, yb), P(a1, yb), P(a1, y1), P(a0, y1)], n);
         mark(yb, y1);
         if (y1 >= H - 0.01) {
@@ -773,13 +788,13 @@ export class HouseBuilder {
         ao.poly([f.at(a0, y, dOff + sign * o0), f.at(a1, y, dOff + sign * o0), f.at(a1, y, dOff + sign * o1), f.at(a0, y, dOff + sign * o1)], [0, 1, 0], undefined, alphas);
       };
       if (r === 0) {
-        if (y0 < PLINTH) {
+        if (y0 < plinth) {
           const ledge = 0.03;
-          f.face(stone, a0, a1, y0, Math.min(PLINTH, y1), dOff, sign);
-          stone.poly([f.at(a0, PLINTH, dOff), f.at(a1, PLINTH, dOff), f.at(a1, PLINTH, dOff + sign * ledge), f.at(a0, PLINTH, dOff + sign * ledge)], [0, 1, 0]);
-          f.face(stone, a0, a1, y0, PLINTH, dOff + sign * ledge, sign);
+          f.face(stone, a0, a1, y0, Math.min(plinth, y1), dOff, sign);
+          stone.poly([f.at(a0, plinth, dOff), f.at(a1, plinth, dOff), f.at(a1, plinth, dOff + sign * ledge), f.at(a0, plinth, dOff + sign * ledge)], [0, 1, 0]);
+          f.face(stone, a0, a1, y0, plinth, dOff + sign * ledge, sign);
         }
-        const yb = Math.max(y0, PLINTH);
+        const yb = Math.max(y0, plinth);
         if (y1 > yb) f.face(own ?? ext, a0, a1, yb, y1, dOff, sign);
         mark(yb, y1);
         if (y1 >= H - 0.01) {
@@ -982,7 +997,7 @@ export class HouseBuilder {
     for (let z = bounds.z; z < bounds.z + bounds.d; z++) {
       for (let x = bounds.x; x < bounds.x + bounds.w; x++) {
         const r = room(x, z);
-        if (r === 0) continue;
+        if (r === 0 || storey.holes?.has(z * W + x)) continue;
         const covering = laid.get(z * W + x);
         const def = covering ? this.looks.floors[covering - 1] : undefined;
         const floorOf = (r: number) => {
@@ -1018,7 +1033,9 @@ export class HouseBuilder {
     const gables = new Geo().color(scheme.wall);
     const viewDiagonals = (world.diagonals ?? []).some((d) => inView(d.x, d.z) && (d.rooms[0] !== 0 || d.rooms[1] !== 0));
     if (Number.isFinite(minX) && !viewDiagonals) {
-      for (const rect of indoorRects(room, minX, minZ, maxX, maxZ)) {
+      // No roof where a room upstairs stands on this one.
+      const roofed = (x: number, z: number) => (storey.covered?.(x, z) ? 0 : room(x, z));
+      for (const rect of indoorRects(roofed, minX, minZ, maxX, maxZ)) {
         addRoofShaped(rect, scheme, roof, roofTrim, gables);
       }
     } else if (Number.isFinite(minX)) {
@@ -1090,7 +1107,7 @@ export class HouseBuilder {
     const free = (x: number, z: number) =>
       inView(Math.floor(x), Math.floor(z)) && roomP(x, z) === 0 && !diagonal(Math.floor(x), Math.floor(z)) && !occupied.has(Math.floor(z) * W + Math.floor(x)) && !paved(x, z);
     const shrubs: [number, number, number, number][] = [];
-    for (const axis of ['h', 'v'] as const) {
+    for (const axis of storey.upper ? [] : (['h', 'v'] as const)) {
       for (const [x, z, kind] of edges.all(axis)) {
         if (kind === 'door') continue;
         const near = (dx: number, dz: number) => edges.get(axis, x + dx, z + dz) === 'door';
@@ -1107,7 +1124,7 @@ export class HouseBuilder {
       }
     }
     // Along diagonal walls with a room on one side: a shrub in the outdoor half (not by doors).
-    for (const d of world.diagonals ?? []) {
+    for (const d of storey.upper ? [] : (world.diagonals ?? [])) {
       if (d.kind === 'door' || !inView(d.x, d.z) || (d.rooms[0] === 0) === (d.rooms[1] === 0)) continue;
       const step = d.axis === 'dp' ? 1 : -1;
       if (diagonal(d.x - 1, d.z - step)?.kind === 'door' || diagonal(d.x + 1, d.z + step)?.kind === 'door') continue;
@@ -1120,7 +1137,7 @@ export class HouseBuilder {
       shrubs.push([px, pz, 0.5 + hash(d.x, d.z, 34) * 0.2, hash(d.x, d.z, 33) * 6.28]);
     }
     const trees: [number, number, number, number][] = [];
-    if (view && Number.isFinite(minX)) {
+    if (view && Number.isFinite(minX) && !storey.upper) {
       const spots = [
         [view.x + 1.6, view.z + 1.6],
         [view.x + view.w - 1.6, view.z + 1.6],
@@ -1178,7 +1195,8 @@ export class HouseBuilder {
    * driveway. Returns the meshes (one per material for the whole street), the ones that cast
    * shadows, and the porch / garage lamps for the street's night lighting.
    */
-  silhouettes(houses: readonly SilhouetteSpec[], openings: readonly Opening[]): SilhouetteBuild {
+  /** `storeyDepth`: rows per storey of the lot (openings upstairs are on rows `k * storeyDepth ..`). */
+  silhouettes(houses: readonly SilhouetteSpec[], openings: readonly Opening[], storeyDepth = 0): SilhouetteBuild {
     const siding = new Geo();
     const brick = new Geo();
     const stone = new Geo().color('#D8D2C8');
@@ -1206,9 +1224,16 @@ export class HouseBuilder {
       const walls = s.brick ? brick : siding;
       const curtain = pick(CURTAINS, b.x0, b.z0, 7);
       walls.color(s.wall);
-      shell(walls, b.x0, b.z0, b.x1, b.z1, H);
+      const tall = H * (b.storeys ?? 1);
+      shell(walls, b.x0, b.z0, b.x1, b.z1, tall);
       const [x0, z0, x1, z1] = [b.x0 - T, b.z0 - T, b.x1 + T, b.z1 + T];
-      for (const o of openings) {
+      for (const lot of openings) {
+        // Openings upstairs: on the same face, a storey higher.
+        const k = storeyDepth > 0 ? Math.floor(lot.z / storeyDepth) : 0;
+        if (k >= (b.storeys ?? 1) || (k > 0 && lot.kind !== 'window')) continue;
+        const o = k ? { ...lot, z: lot.z - k * storeyDepth } : lot;
+        const SILL = SILL0 + k * H;
+        const HEAD = HEAD0 + k * H;
         // Which face of the box the opening lies on (if any).
         const side =
           o.axis === 'h'
@@ -1265,7 +1290,7 @@ export class HouseBuilder {
         }
       }
       roof.color(s.roof);
-      addRoofShaped({ x0: b.x0, z0: b.z0, x1: b.x1, z1: b.z1 }, s, roof, trim, walls);
+      addRoofShaped({ x0: b.x0, z0: b.z0, x1: b.x1, z1: b.z1 }, s, roof, trim, walls, tall);
       if (hash(b.x0, b.z0, 8) < 0.6 && s.shape !== 'flat' && !b.roof) this.chimney(b, s, brick, stone);
       const g = b.garage;
       if (g) {

@@ -53,6 +53,7 @@ import { outfitFor, writeOutfit, type OutfitParams } from './characters/outfit';
 import { BLANKET_WIDTH, blanketMaterial, buildBlanket, type BlanketShape } from './characters/blanket';
 import { addLocal, addRotation, blendInto, makeAdditive, PoseScratch, resetAdditive, sampleClip, skin, type Additive, type Placement } from './characters/pose';
 import type { MaterialLibrary } from './materials';
+import { WALL_HEIGHT } from './house';
 
 /** Rows in the pose texture (= Sim capacity). */
 export const MAX_CHARACTERS = 64;
@@ -239,6 +240,8 @@ const ACTIONS: Record<string, ActionAnim> = {
   listen: { stand: ['idle', 'foldArms'], hands: HANDS.open },
   meditate: { stand: ['idle'], hands: HANDS.open },
   idle: { stand: ['idle'], hands: HANDS.relaxed },
+  // A visitor at the front door: a knock, then waiting.
+  knock: { stand: ['interact', 'idle'], hands: HANDS.relaxed },
 };
 /** Clips that may be missing from older asset builds, and their stand-ins. */
 const CLIP_FALLBACK: Record<string, string> = {
@@ -421,6 +424,8 @@ function copyPlayer(from: Player, to: Player): void {
 
 interface SimRig {
   id: number;
+  /** Height of the floor under them (upper storeys, part way up the stairs). */
+  floorY: number;
   body: BodyData;
   scale: number;
   /** Head size relative to the body (children's heads are bigger). */
@@ -537,6 +542,14 @@ export class Characters {
   private readonly skeletons = new Map<string, Skeleton>();
   private sims: (SimRig | null)[] = [];
   private objects: PlacedObject[] = [];
+  /** Rows per storey (0: one storey): residents' rows are mapped back onto the ground's. */
+  private storeyDepth = 0;
+
+  /** A lot row on the ground storey's rows (where it's drawn, lifted to its storey's height). */
+  private groundRow(z: number): number {
+    const d = this.storeyDepth;
+    return d > 0 ? z - Math.floor(z / d) * d : z;
+  }
   private readonly objectById = new Map<number, PlacedObject>();
   /** Action tag per `sim.action` index (from the snapshot layout). */
   private actionTags: readonly string[] = [];
@@ -755,8 +768,10 @@ export class Characters {
    * animation state of Sims whose row stays (previews restyling a Sim without restarting it).
    * A Sim may carry `outfitId`, the id its outfit is derived from when it differs from its row.
    */
-  async build(world: Pick<WorldStructure, 'sims' | 'objects'>, keep = false): Promise<void> {
+  async build(world: Pick<WorldStructure, 'sims' | 'objects'> & { storeys?: number; storeyDepth?: number }, keep = false): Promise<void> {
     if (!(await this.init())) return;
+    // Positions arrive in lot rows, which hold every storey (see `WorldStructure.storeys`).
+    this.storeyDepth = (world.storeys ?? 1) > 1 ? (world.storeyDepth ?? 0) : 0;
     const set = this.set!;
     const kept = keep ? this.sims : [];
     this.sims = [];
@@ -792,6 +807,7 @@ export class Characters {
       const scale = ((BASE_HEIGHT[body.name] ?? 1.72) / body.height) * height * stageScale;
       const rig: SimRig = {
         id: s.id,
+        floorY: 0,
         body,
         scale,
         head: s.appearance?.stageHead ?? 1,
@@ -876,15 +892,10 @@ export class Characters {
     }
     // Objects Sims sit, lie or stand at (for seat heights and object-use animations).
     this.objectById.clear();
-    this.objects = world.objects.map((o: ObjectPlacement) => ({
-      def: o.def,
-      cx: o.x + o.w / 2,
-      cz: o.z + o.d / 2,
-      minX: o.x,
-      minZ: o.z,
-      maxX: o.x + o.w,
-      maxZ: o.z + o.d,
-    }));
+    this.objects = world.objects.map((o: ObjectPlacement) => {
+      const z = this.groundRow(o.z);
+      return { def: o.def, cx: o.x + o.w / 2, cz: z + o.d / 2, minX: o.x, minZ: z, maxX: o.x + o.w, maxZ: z + o.d };
+    });
     world.objects.forEach((o, j) => this.objectById.set(o.id, this.objects[j]));
     for (const b of this.blankets.values()) {
       b.matrices.fill(0);
@@ -1024,7 +1035,8 @@ export class Characters {
    * Poses every Sim for this frame. `inView(x, z)` decides visibility; contact-shadow matrices
    * (one 4x4 per Sim row) are written into `shadows`.
    */
-  update(frame: FrameState, inView: (x: number, z: number) => boolean, shadows: Float32Array): void {
+  /** `storey`: the storey in view; residents above it aren't drawn. */
+  update(frame: FrameState, inView: (x: number, z: number) => boolean, shadows: Float32Array, storey = Infinity): void {
     const set = this.set;
     if (!set) return;
     const started = performance.now();
@@ -1055,16 +1067,20 @@ export class Characters {
       const rig = this.sims[i];
       const o = H + i * S;
       const cx = curr[o + k.x];
-      const cz = curr[o + k.z];
+      const cz = this.groundRow(curr[o + k.z]);
+      const pz = this.groundRow(prev[o + k.z]);
+      const ch = k.height !== undefined ? curr[o + k.height] : 0;
       let tx = cx;
       let tz = cz;
+      let th = ch;
       let tyaw = curr[o + k.yaw];
-      if (Math.abs(cx - prev[o + k.x]) + Math.abs(cz - prev[o + k.z]) < SNAP_DISTANCE) {
+      if (Math.abs(cx - prev[o + k.x]) + Math.abs(cz - pz) < SNAP_DISTANCE) {
         tx = prev[o + k.x] + (cx - prev[o + k.x]) * alpha;
-        tz = prev[o + k.z] + (cz - prev[o + k.z]) * alpha;
+        tz = pz + (cz - pz) * alpha;
+        if (k.height !== undefined) th = prev[o + k.height] + (ch - prev[o + k.height]) * alpha;
         tyaw = lerpAngle(prev[o + k.yaw], tyaw, alpha);
       }
-      const show = !!rig && curr[o + k.away] === 0 && inView(tx, tz);
+      const show = !!rig && curr[o + k.away] === 0 && inView(tx, tz) && Math.floor(th + 0.01) <= storey;
       if (!rig || !show) {
         if (this.visible[i]) {
           this.data.fill(0, this.row(i), this.row(i) + NB * 16);
@@ -1077,6 +1093,7 @@ export class Characters {
         continue;
       }
       const dir = (rig.dir = this.directions[i] ?? null);
+      rig.floorY = th * WALL_HEIGHT;
       const pose = curr[o + k.pose];
       const moving = curr[o + k.moving] > 0;
       const social = curr[o + k.anim] | 0;
@@ -1196,7 +1213,7 @@ export class Characters {
       pl.qz = -sy * sp;
       pl.qw = cyw * cp;
       pl.x = rig.x + Math.sin(rig.yaw) * rootFwd;
-      pl.y = rootY;
+      pl.y = rootY + rig.floorY;
       pl.z = rig.z + Math.cos(rig.yaw) * rootFwd;
       pl.scale = rig.scale;
       pl.head = rig.head;
@@ -1217,7 +1234,7 @@ export class Characters {
       shadows[m + 5] = 1;
       shadows[m + 10] = r;
       shadows[m + 12] = rig.x;
-      shadows[m + 13] = 0.02;
+      shadows[m + 13] = 0.02 + rig.floorY;
       shadows[m + 14] = rig.z;
       shadows[m + 15] = 1;
     }

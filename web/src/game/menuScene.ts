@@ -5,7 +5,7 @@
  * through the host (never the sim worker).
  */
 
-import type { WorldStructure } from '../core/protocol';
+import { groundDepth, type WorldStructure } from '../core/protocol';
 import type { LotHighlight, Renderer, TownShot } from '../render/types';
 import { settings } from '../settings/settings.svelte';
 import { services } from '../ui/services';
@@ -113,7 +113,7 @@ class MenuScene {
     if (!world || !renderer || !this.wanted) return;
     const { shot, duration } = this.wanted;
     this.bounds = shot.kind === 'overview' || shot.kind === 'lot' ? shot.frame : null;
-    const key = `${JSON.stringify(shot)}|${world.width}x${world.depth}|${window.innerWidth}x${window.innerHeight}`;
+    const key = `${JSON.stringify(shot)}|${world.width}x${groundDepth(world)}|${window.innerWidth}x${window.innerHeight}`;
     if (key === this.shotKey) return;
     const first = this.shotKey === '';
     this.shotKey = key;
@@ -187,7 +187,7 @@ class MenuScene {
   }
 
   private baseShot(shot: Shot, world: WorldStructure, duration: number): TownShot {
-    const town = { x: 0, z: 0, w: world.width, d: world.depth };
+    const town = { x: 0, z: 0, w: world.width, d: groundDepth(world) };
     // The built-up part (plots and street), without the empty margin.
     const plots = world.plots.length
       ? {

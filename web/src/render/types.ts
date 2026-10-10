@@ -61,8 +61,6 @@ export interface RendererDeps {
 
 /** Settings that can change while a game is running. */
 export interface LiveRenderOptions {
-  bloom: boolean;
-  tiltShift: boolean;
   /** Fraction of native resolution, 0.5..1. */
   resolutionScale: number;
   cameraSensitivity: number;
@@ -81,6 +79,8 @@ export interface BuildEffect {
   d: number;
   /** A placed object to spring into place (new or moved furniture). */
   objectId?: number;
+  /** Height of the floor it's on (upper storeys); 0 when absent. */
+  y?: number;
 }
 
 export interface PlacementGhost {
@@ -220,6 +220,11 @@ export interface Renderer {
   setRoomOverlay(tiles: readonly RoomOverlayTile[]): void;
   /** Build/buy mode: subtle tile grid over a tile rectangle (null hides it). */
   setBuildGrid(rect: ViewRect | null): void;
+  /**
+   * Which storey is in view (0: the ground). Higher storeys are hidden, and build helpers,
+   * previews and ground picks work on this storey's rows of the lot (see `WorldStructure.storeys`).
+   */
+  setStorey(storey: number): void;
   /** Build/buy mode: plays a placement, upgrade, sale or construction effect (after `setWorld` showed the change). */
   buildEffect(fx: BuildEffect): void;
   stats(): RenderStats;
@@ -348,3 +353,6 @@ export interface SimPreviews {
   prefetch(looks: readonly SimLook[]): void;
   wardrobe(gender: string): Promise<Wardrobe | null>;
 }
+
+/** How much higher each storey stands (the house's wall height, `house.ts` `WALL_HEIGHT`). */
+export const STOREY_HEIGHT = 2.8;

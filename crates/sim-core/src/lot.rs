@@ -156,6 +156,10 @@ pub struct LotFile {
     pub lifespan: crate::lifecycle::Lifespan,
     pub width: u16,
     pub depth: u16,
+    /// Storeys the file's houses have (default 1). With more, walls, doors, windows, diagonals and
+    /// objects of storey `k` are given on rows `k * depth ..` (see `storeys.rs`).
+    #[serde(default)]
+    pub storeys: Option<u8>,
     /// Wall segments `[x0, z0, x1, z1]` along grid lines.
     #[serde(default)]
     pub walls: Vec<[u16; 4]>,
@@ -332,6 +336,8 @@ impl Lot {
         if w == 0 || d == 0 || w > 256 || d > 256 {
             return Err(Error::new("lot size must be within 1..=256"));
         }
+        // Every storey's rows (see `storeys.rs`).
+        let d = d * file.storeys.unwrap_or(1).clamp(1, 4) as usize;
         let mut lot = Self::new(w, d);
         for &[x0, z0, x1, z1] in &file.walls {
             let (x0, z0, x1, z1) = (x0 as usize, z0 as usize, x1 as usize, z1 as usize);
@@ -392,8 +398,9 @@ impl Lot {
         v: Vec<Edge>,
         diags: Vec<Option<Diagonal>>,
     ) -> Result<Self, Error> {
-        if width == 0 || depth == 0 || width > 256 || depth > 256 {
-            return Err(Error::new("lot size must be within 1..=256"));
+        // Deeper than a town file may be: the storeys above the ground are rows too.
+        if width == 0 || depth == 0 || width > 256 || depth > 1024 {
+            return Err(Error::new("saved lot size is out of range"));
         }
         if h.len() != width * (depth + 1) || v.len() != (width + 1) * depth {
             return Err(Error::new("saved lot edges have the wrong size"));
@@ -419,6 +426,21 @@ impl Lot {
         };
         lot.compute_rooms();
         Ok(lot)
+    }
+
+    /// Adds rows at the far end, all open (room for the storeys above the ground; see
+    /// `World::storeys`). Edges and tiles already there keep their places.
+    pub fn grow_depth(&mut self, depth: usize) {
+        if depth <= self.depth {
+            return;
+        }
+        self.h_edges.resize(self.width * (depth + 1), Edge::Open);
+        self.v_edges.resize((self.width + 1) * depth, Edge::Open);
+        self.diags.resize(self.width * depth, None);
+        self.rooms.resize(self.width * depth, OUTDOORS);
+        self.halves.resize(self.width * depth, [OUTDOORS; 2]);
+        self.depth = depth;
+        self.compute_rooms();
     }
 
     /// Horizontal and vertical edge arrays, for saving.

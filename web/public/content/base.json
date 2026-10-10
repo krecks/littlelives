@@ -909,6 +909,7 @@
       "mood": -0.06,
       "hours": 6
     },
+    {"id": "turnedAway", "label": "Turned away at the door", "emotion": "sad", "mood": -0.12, "hours": 6},
     {"id": "hadAccident", "label": "Had an accident", "emotion": "embarrassed", "mood": -0.2, "hours": 6},
     {"id": "soreBack", "label": "Sore back", "emotion": "sad", "mood": -0.1, "hours": 8, "effects": {"needDecay": {"comfort": 1.4}}},
     {"id": "proudGraduate", "label": "Proud of their grades", "emotion": "happy", "mood": 0.08, "hours": 48},
@@ -1721,7 +1722,8 @@
     "hours": 2.5,
     "minFriendship": 15,
     "earliestHour": 10,
-    "latestHour": 20
+    "latestHour": 20,
+    "door": {"waitMinutes": 10, "welcomeFriendship": -20, "greet": "chat", "turnedAwayFeeling": "turnedAway", "knockAnim": "knock"}
   },
   "economy": {
     "startingFunds": 2500,
@@ -1776,7 +1778,9 @@
     "expecting": "{a} and {b} are expecting a baby",
     "born": "{a} was born to {b}{and c}",
     "adopted": "{b} adopted {a}",
-    "graduated": "{a} finished school with {grade}"
+    "graduated": "{a} finished school with {grade}",
+    "turnedAway": "{b} didn't let {a} in",
+    "nobodyHome": "{a} knocked at {b}'s door, but nobody answered"
   },
   "activities": [
     {
@@ -1911,8 +1915,9 @@
     "maxMinutes": 240,
     "maxSleepMinutes": 720,
     "reviewHour": 7,
-    "maxGoals": 3,
+    "maxGoals": 10,
     "maxSuggestions": 2,
+    "goalFalloff": 0.15,
     "suggestionDays": 2,
     "discipline": {
       "lazy": 0.6,
@@ -2057,7 +2062,8 @@
     "sing",
     "write",
     "listen",
-    "meditate"
+    "meditate",
+    "knock"
   ],
   "objects": [
     {
@@ -3001,6 +3007,16 @@
         {"id": "change", "label": "Change the baby", "anim": "clean", "minutes": 10, "care": {"bladder": 1.0, "hygiene": 0.7}, "tags": ["care", "chores"]},
         {"id": "play", "label": "Play with the baby", "anim": "play", "minutes": 20, "effects": {"fun": 0.2, "social": 0.15}, "care": {"fun": 0.6, "social": 0.5}, "tags": ["care", "social"]}
       ]
+    },
+    {
+      "id": "stairs",
+      "name": "Staircase",
+      "model": "model.stairs",
+      "footprint": [1, 4],
+      "stairs": true,
+      "interactions": [],
+      "price": 900,
+      "category": "living"
     }
   ],
   "skills": [
@@ -3135,7 +3151,8 @@
     "window": 120,
     "fence": 25,
     "gate": 80,
-    "remove": 0
+    "remove": 0,
+    "storeys": 3
   },
   "styles": [
     {

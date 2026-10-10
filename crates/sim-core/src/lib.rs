@@ -7,6 +7,7 @@
 //! - No allocation in the steady-state tick path where avoidable.
 
 pub mod ai;
+pub mod blueprint;
 pub mod clock;
 pub mod command;
 pub mod content;
@@ -24,6 +25,7 @@ pub mod rng;
 pub mod rooms;
 pub mod save;
 pub mod snapshot;
+pub mod storeys;
 pub mod social;
 pub mod view;
 pub mod world;

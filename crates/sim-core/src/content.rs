@@ -133,6 +133,9 @@ pub struct ObjectDef {
     pub slots: u8,
     /// Can only be placed outdoors (trees, flower beds, ponds).
     pub outdoors: bool,
+    /// A flight of stairs up to the storey above (one tile wide, climbed from the front; see
+    /// `path::Stair`). Residents walk on it instead of around it.
+    pub stairs: bool,
     /// Turns freely (decor, plants): besides its four facings it can stand at any angle
     /// (`ObjectInstance::turn`). The angle is only for looks; the footprint stays on tiles.
     pub turns: bool,
@@ -749,6 +752,23 @@ pub struct VisitRules {
     pub latest_hour: f32,
     /// Tag mask used for schedule/trait preferences of visiting.
     pub tags: TagMask,
+    /// Visitors knock and wait to be let in (`visits.door`); without it they walk straight in.
+    pub door: Option<DoorRules>,
+}
+
+/// A visitor at the door: someone at home answers and lets them in or turns them away.
+#[derive(Debug, Clone)]
+pub struct DoorRules {
+    /// How long a visitor waits for someone to answer before going home.
+    pub wait_minutes: f32,
+    /// Hosts let in visitors they like at least this much (friendship).
+    pub welcome_friendship: f32,
+    /// What the host starts with a visitor they let in (a social).
+    pub greet: Option<usize>,
+    /// Feeling for a visitor who was turned away.
+    pub turned_away: Option<usize>,
+    /// Animation tag while knocking.
+    pub knock_anim: Option<usize>,
 }
 
 #[derive(Debug)]
@@ -860,6 +880,8 @@ pub struct BuildRules {
     /// can have; the renderer reads the rest of each entry (shape, pitch, colour).
     pub roofs: Vec<BuildStyle>,
     pub roof_colors: Vec<BuildStyle>,
+    /// How many storeys a house may have (`build.storeys`, 1..=4; 1: no stairs).
+    pub storeys: u8,
 }
 
 /// A look for walls, doors or windows. The simulation only needs its id (saves) and price; the
@@ -1433,6 +1455,7 @@ struct BuildRaw {
     /// Fence per metre and gate, without fence styles.
     fence: Option<i64>,
     gate: Option<i64>,
+    storeys: Option<u8>,
 }
 
 #[derive(Deserialize)]
@@ -1530,6 +1553,17 @@ struct VisitRaw {
     min_friendship: Option<f32>,
     earliest_hour: Option<f32>,
     latest_hour: Option<f32>,
+    door: Option<DoorRaw>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct DoorRaw {
+    wait_minutes: Option<f32>,
+    welcome_friendship: Option<f32>,
+    greet: Option<String>,
+    turned_away_feeling: Option<String>,
+    knock_anim: Option<String>,
 }
 
 #[derive(Deserialize, Default)]
@@ -1564,6 +1598,8 @@ struct ObjectRaw {
     slots: u8,
     #[serde(default)]
     outdoors: bool,
+    #[serde(default)]
+    stairs: bool,
     /// Buy catalog category (decides free rotation, see `objectRules.freeRotation`).
     #[serde(default)]
     category: Option<String>,
@@ -2002,6 +2038,7 @@ impl Content {
                 price: obj.price,
                 slots: obj.slots,
                 outdoors: obj.outdoors,
+                stairs: obj.stairs,
                 turns: obj.free_rotation.unwrap_or_else(|| {
                     obj.footprint == [1, 1]
                         && obj.category.as_ref().is_some_and(|c| {
@@ -2498,6 +2535,7 @@ impl Content {
             doors: build_styles(&raw.door_styles, "door style")?,
             windows: build_styles(&raw.window_styles, "window style")?,
             floors: build_styles(&raw.floor_coverings, "floor covering")?,
+            storeys: raw.build.storeys.unwrap_or(1).clamp(1, 4),
         };
         let styles = raw
             .styles
@@ -2529,6 +2567,29 @@ impl Content {
             earliest_hour: v.earliest_hour.unwrap_or(9.0),
             latest_hour: v.latest_hour.unwrap_or(21.0),
             tags: 1 << tag_index[VISIT_TAG],
+            door: match &v.door {
+                None => None,
+                Some(d) => Some(DoorRules {
+                    wait_minutes: d.wait_minutes.unwrap_or(10.0).max(1.0),
+                    welcome_friendship: d.welcome_friendship.unwrap_or(-20.0),
+                    greet: match &d.greet {
+                        None => None,
+                        Some(id) => Some(
+                            socials
+                                .iter()
+                                .position(|s| &s.id == id)
+                                .ok_or_else(|| Error::new(format!("visits.door: unknown social '{id}'")))?,
+                        ),
+                    },
+                    turned_away: feeling(&d.turned_away_feeling, "visits.door")?,
+                    knock_anim: match &d.knock_anim {
+                        None => None,
+                        Some(a) => Some(
+                            anim_index(a).ok_or_else(|| Error::new(format!("visits.door: unknown anim '{a}' (declare it in \"animations\")")))?,
+                        ),
+                    },
+                }),
+            },
         };
 
         let mut traits = Vec::with_capacity(raw.traits.len());

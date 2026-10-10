@@ -1072,6 +1072,282 @@
         }
       ]
     },
+    "model.stairs": {
+      "type": "model",
+      "placeholder": [
+        {
+          "shape": "box",
+          "size": [
+            0.86,
+            0.2,
+            0.288
+          ],
+          "at": [
+            0,
+            0.1,
+            1.857
+          ],
+          "color": "#B98B5E",
+          "material": "material.finish.wood",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.86,
+            0.4,
+            0.288
+          ],
+          "at": [
+            0,
+            0.2,
+            1.571
+          ],
+          "color": "#B98B5E",
+          "material": "material.finish.wood",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.86,
+            0.6,
+            0.288
+          ],
+          "at": [
+            0,
+            0.3,
+            1.286
+          ],
+          "color": "#B98B5E",
+          "material": "material.finish.wood",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.86,
+            0.8,
+            0.288
+          ],
+          "at": [
+            0,
+            0.4,
+            1.0
+          ],
+          "color": "#B98B5E",
+          "material": "material.finish.wood",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.86,
+            1.0,
+            0.288
+          ],
+          "at": [
+            0,
+            0.5,
+            0.714
+          ],
+          "color": "#B98B5E",
+          "material": "material.finish.wood",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.86,
+            1.2,
+            0.288
+          ],
+          "at": [
+            0,
+            0.6,
+            0.429
+          ],
+          "color": "#B98B5E",
+          "material": "material.finish.wood",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.86,
+            1.4,
+            0.288
+          ],
+          "at": [
+            0,
+            0.7,
+            0.143
+          ],
+          "color": "#B98B5E",
+          "material": "material.finish.wood",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.86,
+            1.6,
+            0.288
+          ],
+          "at": [
+            0,
+            0.8,
+            -0.143
+          ],
+          "color": "#B98B5E",
+          "material": "material.finish.wood",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.86,
+            1.8,
+            0.288
+          ],
+          "at": [
+            0,
+            0.9,
+            -0.429
+          ],
+          "color": "#B98B5E",
+          "material": "material.finish.wood",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.86,
+            2.0,
+            0.288
+          ],
+          "at": [
+            0,
+            1.0,
+            -0.714
+          ],
+          "color": "#B98B5E",
+          "material": "material.finish.wood",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.86,
+            2.2,
+            0.288
+          ],
+          "at": [
+            0,
+            1.1,
+            -1.0
+          ],
+          "color": "#B98B5E",
+          "material": "material.finish.wood",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.86,
+            2.4,
+            0.288
+          ],
+          "at": [
+            0,
+            1.2,
+            -1.286
+          ],
+          "color": "#B98B5E",
+          "material": "material.finish.wood",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.86,
+            2.6,
+            0.288
+          ],
+          "at": [
+            0,
+            1.3,
+            -1.571
+          ],
+          "color": "#B98B5E",
+          "material": "material.finish.wood",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.86,
+            2.8,
+            0.288
+          ],
+          "at": [
+            0,
+            1.4,
+            -1.857
+          ],
+          "color": "#B98B5E",
+          "material": "material.finish.wood",
+          "radius": 0.004
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.06,
+            0.9,
+            4.0
+          ],
+          "at": [
+            -0.46,
+            1.4,
+            0
+          ],
+          "color": "#7A5A3C",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.06,
+            0.9,
+            4.0
+          ],
+          "at": [
+            0.46,
+            1.4,
+            0
+          ],
+          "color": "#7A5A3C",
+          "material": "material.finish.wood",
+          "radius": 0.01
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.05,
+            0.05,
+            4.6
+          ],
+          "at": [
+            0.46,
+            2.35,
+            0
+          ],
+          "color": "#3C3A38",
+          "radius": 0.02
+        }
+      ]
+    },
     "model.bookshelf": {
       "type": "model",
       "placeholder": [
@@ -8182,6 +8458,14 @@
     "icon.ui.room": {
       "type": "icon",
       "url": "icons/room.svg"
+    },
+    "icon.ui.move": {
+      "type": "icon",
+      "url": "icons/move.svg"
+    },
+    "icon.ui.blueprint": {
+      "type": "icon",
+      "url": "icons/blueprint.svg"
     },
     "icon.ui.floor": {
       "type": "icon",

@@ -43,6 +43,8 @@ export interface GameControls {
   skipHouseholdRoutine(sim: number, routine: number, skip: boolean): void;
   addGoal(sim: number, goal: GoalIn): void;
   removeGoal(sim: number, index: number): void;
+  /** Moves a goal to place `to` on the list (higher up steers more). */
+  moveGoal(sim: number, index: number, to: number): void;
   acceptSuggestion(sim: number, index: number): void;
   dismissSuggestion(sim: number, index: number): void;
   /** Buy mode with only items that fit (a wish, a goal). */
@@ -80,8 +82,14 @@ export interface GameControls {
   upgrade(objectId: number): void;
   /** Build and Buy mode: arms (or disarms) the eyedropper: the next click picks up a look (E). */
   toggleEyedropper(): void;
+  /** Which storey is in view (0: the ground); higher ones are hidden, and building happens on it. */
+  setStorey(storey: number): void;
   /** Build mode: the roof over the home (a roof style and colour). */
   setRoof(style: number, color: number): void;
+  /** Build mode: keeps the home as a blueprint (in this browser) under `name`. */
+  saveBlueprint(name: string): Promise<void>;
+  /** Build mode: builds a saved blueprint on the home's empty lot. */
+  buildBlueprint(id: string): void;
   /** Build mode: pick a tool (walls, rooms, doors, windows, remove); switches to Build mode. */
   setBuildTool(tool: BuildTool): void;
   build(edits: EdgeEdit[]): void;

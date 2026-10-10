@@ -16,7 +16,7 @@ export interface MenuState {
 
 /** Live: play. Buy: furnish (place, move, upgrade, sell). Build: walls, rooms, doors and windows. */
 export type GameMode = 'live' | 'buy' | 'build';
-export type BuildTool = 'wall' | 'room' | 'fence' | 'gate' | 'paint' | 'floor' | 'door' | 'window' | 'roof' | 'remove';
+export type BuildTool = 'wall' | 'room' | 'fence' | 'gate' | 'paint' | 'floor' | 'door' | 'window' | 'roof' | 'remove' | 'move' | 'blueprint';
 
 /** What Build mode puts up: wall covering (0: automatic, else wall covering + 1) and form, door and window style. */
 export interface BuildLook {
@@ -68,6 +68,16 @@ export interface FeedEntry {
 export interface Toast {
   id: number;
   text: string;
+  icon?: string;
+  /** Buttons; a toast with them stays until one is clicked (or `dropToast`). */
+  actions?: ToastAction[];
+}
+
+export interface ToastAction {
+  label: string;
+  primary?: boolean;
+  title?: string;
+  run: () => void;
 }
 
 class GameState {
@@ -117,6 +127,9 @@ class GameState {
   placing = $state.raw<Placing | null>(null);
   /** Owned object picked in buy mode. */
   buySelection = $state<number | null>(null);
+  /** The storey in view (0: the ground) and how many the lot has; higher storeys are hidden. */
+  storey = $state(0);
+  storeys = $state(1);
   /** Build mode's tool (kept between visits). */
   buildTool = $state<BuildTool>('wall');
   /** The looks Build mode's tools use (kept between visits). */
@@ -264,5 +277,16 @@ let toastId = 0;
 export function toast(text: string, ms = 3500): void {
   const id = ++toastId;
   game.toasts = [...game.toasts, { id, text }];
-  setTimeout(() => (game.toasts = game.toasts.filter((t) => t.id !== id)), ms);
+  setTimeout(() => dropToast(id), ms);
+}
+
+/** A toast that asks: it stays until one of its buttons is clicked. Returns its id. */
+export function askToast(text: string, icon: string | undefined, actions: ToastAction[]): number {
+  const id = ++toastId;
+  game.toasts = [...game.toasts, { id, text, icon, actions }];
+  return id;
+}
+
+export function dropToast(id: number): void {
+  game.toasts = game.toasts.filter((t) => t.id !== id);
 }

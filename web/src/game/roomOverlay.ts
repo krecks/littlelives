@@ -7,8 +7,8 @@
  */
 
 import type { Content } from '../content/content';
-import type { RoomView, WorldStructure } from '../core/protocol';
-import type { Renderer, RoomOverlayTile } from '../render/types';
+import { groundDepth, storeyOfRow, type RoomView, type WorldStructure } from '../core/protocol';
+import { STOREY_HEIGHT, type Renderer, type RoomOverlayTile } from '../render/types';
 
 /** Factor names in `RoomView.scores` order. */
 export const ROOM_FACTORS = ['size', 'light', 'decor', 'clean', 'function'] as const;
@@ -49,6 +49,7 @@ export function weakest(r: RoomView): (typeof ROOM_FACTORS)[number] | null {
 interface Tag {
   el: HTMLDivElement;
   x: number;
+  y: number;
   z: number;
 }
 
@@ -68,13 +69,14 @@ export class RoomOverlay {
     container.appendChild(this.root);
   }
 
-  /** Shows `rooms` over `world` (null hides the overlay). Cheap when nothing changed. */
-  set(world: WorldStructure | null, rooms: readonly RoomView[] | null): void {
-    const shown = world && rooms ? rooms.filter((r) => !r.garden) : [];
-    const key = world && rooms ? `${world.lotVersion}|${shown.map((r) => `${r.id}:${r.kind}:${r.scores.join(',')}`).join(';')}` : '';
+  /** Shows `rooms` on storey `storey` of `world` (null hides the overlay). Cheap when nothing changed. */
+  set(world: WorldStructure | null, rooms: readonly RoomView[] | null, storey = 0): void {
+    const shown = world && rooms ? rooms.filter((r) => !r.garden && storeyOfRow(world, r.centre[1]) === storey) : [];
+    const key = world && rooms ? `${world.lotVersion}|${storey}|${shown.map((r) => `${r.id}:${r.kind}:${r.scores.join(',')}`).join(';')}` : '';
     if (key === this.key) return;
     this.key = key;
-    this.renderer.setRoomOverlay(world ? this.tiles(world, shown) : []);
+    this.renderer.setRoomOverlay(world ? this.tiles(world, shown, storey) : []);
+    const lift = world ? storey * groundDepth(world) : 0;
     this.root.replaceChildren();
     this.tags = shown.map((r) => {
       const el = document.createElement('div');
@@ -92,14 +94,14 @@ export class RoomOverlay {
       }
       el.style.display = 'none';
       this.root.appendChild(el);
-      return { el, x: r.centre[0], z: r.centre[1] };
+      return { el, x: r.centre[0], y: storey * STOREY_HEIGHT, z: r.centre[1] - lift };
     });
   }
 
   /** Positions the tags (call per frame while shown). */
   update(): void {
     for (const t of this.tags) {
-      const on = this.renderer.project(t.x, 0.2, t.z, this.screen);
+      const on = this.renderer.project(t.x, t.y + 0.2, t.z, this.screen);
       t.el.style.display = on ? '' : 'none';
       if (on) t.el.style.transform = `translate3d(${this.screen.x}px, ${this.screen.y}px, 0) translate(-50%, -50%)`;
     }
@@ -110,11 +112,13 @@ export class RoomOverlay {
     this.root.remove();
   }
 
-  private tiles(world: WorldStructure, rooms: readonly RoomView[]): RoomOverlayTile[] {
+  /** Tiles of the storey's rooms, in its lot rows (the renderer lifts them to that storey). */
+  private tiles(world: WorldStructure, rooms: readonly RoomView[], storey: number): RoomOverlayTile[] {
     const colors = new Map(rooms.map((r) => [r.id, scoreColor(r.scores[5])]));
     const split = new Map((world.diagonals ?? []).map((d) => [d.z * world.width + d.x, d.rooms]));
     const out: RoomOverlayTile[] = [];
-    for (let z = 0; z < world.depth; z++) {
+    const rows = groundDepth(world);
+    for (let z = storey * rows; z < Math.min(world.depth, (storey + 1) * rows); z++) {
       for (let x = 0; x < world.width; x++) {
         const i = z * world.width + x;
         const halves = split.get(i);

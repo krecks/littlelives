@@ -8,8 +8,8 @@ use crate::world::{Activity, MAX_SIMS, Phase, Sim, Task, TaskKind, World};
 use crate::{TICKS_PER_SECOND, clock};
 
 pub const HEADER_LEN: usize = 8;
-/// Floats per Sim (all 18 used).
-pub const SIM_STRIDE: usize = 18;
+/// Floats per Sim (all 19 used).
+pub const SIM_STRIDE: usize = 19;
 pub const CAPACITY: usize = HEADER_LEN + MAX_SIMS * SIM_STRIDE;
 
 pub mod header {
@@ -65,10 +65,13 @@ pub mod sim {
     /// The thought's subject: activity index (1-3), goal definition (4), room
     /// (`rooms::room_subject`, 5-6), object type (7), accident (8) or need (9).
     pub const THOUGHT_SUBJECT: usize = 17;
+    /// How high the Sim stands, in storeys: 0 on the ground, fractions on the stairs (`Z` is on
+    /// the lot's rows, which hold every storey; see `storeys.rs`).
+    pub const HEIGHT: usize = 18;
 }
 
 // Every field fits in a Sim's row.
-const _: () = assert!(sim::THOUGHT_SUBJECT < SIM_STRIDE && sim::MOOD < SIM_STRIDE);
+const _: () = assert!(sim::THOUGHT_SUBJECT < SIM_STRIDE && sim::MOOD < SIM_STRIDE && sim::HEIGHT < SIM_STRIDE);
 
 /// `(object, action)` for the snapshot; see `sim::OBJECT` and `sim::ACTION`.
 fn object_action(world: &World, s: &Sim) -> (f32, f32) {
@@ -83,6 +86,11 @@ fn object_action(world: &World, s: &Sim) -> (f32, f32) {
     // An accident's while on the spot (asleep on the floor, takeout).
     if let Some(Activity { task: Task { kind: TaskKind::Spot { accident }, .. }, .. }) = s.current() {
         let anim = world.content.accidents[*accident].rest.as_ref().and_then(|r| r.anim);
+        return (-1.0, anim.map_or(-1.0, |a| a as f32));
+    }
+    // A visitor knocking at the door.
+    if let Some(Activity { phase: Phase::Knocking { .. }, .. }) = s.current() {
+        let anim = world.content.visits.door.as_ref().and_then(|d| d.knock_anim);
         return (-1.0, anim.map_or(-1.0, |a| a as f32));
     }
     // Tidying up: no object, the clean animation while at it.
@@ -151,6 +159,7 @@ pub fn write(world: &World, out: &mut [f32]) {
         let thought = s.planner.thought.filter(|_| s.away_until.is_none());
         o[sim::THOUGHT] = thought.map_or(0.0, |t| t.kind as u8 as f32);
         o[sim::THOUGHT_SUBJECT] = thought.map_or(0.0, |t| t.subject as f32);
+        o[sim::HEIGHT] = world.sim_height(s);
     }
     // Conversations: write the shared state into both participants' rows.
     for (i, s) in world.sims.iter().enumerate() {
@@ -198,7 +207,7 @@ pub fn layout_json(content: &Content) -> String {
             "pose": sim::POSE, "moving": sim::MOVING, "social": sim::SOCIAL,
             "outcome": sim::OUTCOME, "partner": sim::PARTNER, "anim": sim::ANIM, "emotion": sim::EMOTION,
             "role": sim::ROLE, "away": sim::AWAY, "object": sim::OBJECT, "action": sim::ACTION,
-            "mood": sim::MOOD, "thought": sim::THOUGHT, "thoughtSubject": sim::THOUGHT_SUBJECT,
+            "mood": sim::MOOD, "thought": sim::THOUGHT, "thoughtSubject": sim::THOUGHT_SUBJECT, "height": sim::HEIGHT,
         },
         "actions": content.animations,
     })

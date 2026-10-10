@@ -16,7 +16,7 @@
 import { ArcRotateCamera, Color3, Constants, Matrix, Quaternion, StandardMaterial, Vector3, type Mesh, type Scene } from '@babylonjs/core';
 import type { AssetRegistry } from '../../assets/registry';
 import type { Content } from '../../content/content';
-import type { ObjectPlacement, PlotInfo, WorldStructure } from '../../core/protocol';
+import { groundDepth, type ObjectPlacement, type PlotInfo, type WorldStructure } from '../../core/protocol';
 import type { LotHighlight, TownShot } from '../types';
 import { Geo, type V3 } from './geometry';
 import type { HouseBuilder } from './house';
@@ -127,8 +127,8 @@ export class TownOverview {
     this.key = key;
     this.plots = world.plots;
     this.width = world.width;
-    this.depth = world.depth;
-    this.centre.set(world.width / 2, 0, world.depth / 2);
+    this.depth = groundDepth(world);
+    this.centre.set(world.width / 2, 0, groundDepth(world) / 2);
     this.casters = [...streetCasters, ...objectMeshes];
     this.buildHighlights(world.plots);
     this.meshes = [...next.all, ...ground, ...objectMeshes, ...this.hl.map((h) => h.mesh)];

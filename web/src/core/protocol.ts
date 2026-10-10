@@ -38,6 +38,10 @@ export type Command =
   | { type: 'redo'; household: number }
   /** The roof over the home: a roof style and colour (free). */
   | { type: 'setRoof'; household: number; style: number; color: number }
+  /** A saved house (`blueprint` as `World::blueprint` wrote it), built on the household's empty lot. */
+  | { type: 'buildBlueprint'; household: number; blueprint: unknown }
+  /** Moves the room around tile (x, z) by (dx, dz) tiles, with what stands in it. */
+  | { type: 'moveRoom'; household: number; x: number; z: number; dx: number; dz: number }
   /** New residents move into the household's home (`bonds` index into `sims`); `name` renames the household. */
   | { type: 'moveIn'; household: number; name?: string; sims: SimSpawn[]; bonds: { a: number; b: number; preset: string }[] }
   /** The resident's own routine blocks (the whole list). */
@@ -47,6 +51,8 @@ export type Command =
   | { type: 'skipHouseholdRoutine'; sim: number; routine: number; skip: boolean }
   | { type: 'addGoal'; sim: number; goal: GoalIn }
   | { type: 'removeGoal'; sim: number; index: number }
+  /** Higher on the list steers more. */
+  | { type: 'moveGoal'; sim: number; index: number; to: number }
   | { type: 'acceptSuggestion'; sim: number; index: number }
   | { type: 'dismissSuggestion'; sim: number; index: number };
 
@@ -299,6 +305,8 @@ export interface PlotInfo {
   house: [number, number, number, number] | null;
   /** The roof the player chose: `[style, colour]` (indices into the content's roof styles and colours). */
   roof?: [number, number];
+  /** Storeys the house on it has (absent: one). */
+  storeys?: number;
 }
 
 /** Sent when walls or objects change (rare). */
@@ -315,7 +323,14 @@ export interface WorldStructure {
   lotVersion: number;
   mode: GameKind;
   width: number;
+  /** Rows of the lot, every storey included (see `storeyDepth`). */
   depth: number;
+  /**
+   * Storeys (sim-core `storeys.rs`): storey `k` is rows `k * storeyDepth ..` of the lot, laid out
+   * like the ground. Absent in older structures: one storey.
+   */
+  storeys?: number;
+  storeyDepth?: number;
   objects: ObjectPlacement[];
   /** Every slot, gone residents included (ids index this list); `roster` in the UI leaves them out. */
   sims: SimInfo[];
@@ -562,6 +577,8 @@ export type ToWorker =
   | { type: 'socialOptions'; requestId: number; actor: number; target: number }
   /** The whole story log. */
   | { type: 'events'; requestId: number }
+  /** The household's home as a blueprint. */
+  | { type: 'blueprint'; requestId: number; household: number }
   /** Which part of the town to build geometry for (tile rectangle); null = everything. */
   | { type: 'view'; region: [number, number, number, number] | null };
 
@@ -587,8 +604,20 @@ export type FromWorker =
   | { type: 'saved'; requestId: number; data: string }
   | { type: 'socialOptions'; requestId: number; options: SocialOption[] }
   | { type: 'events'; requestId: number; events: SocialEvent[] }
+  /** JSON, or null with `error`. */
+  | { type: 'blueprint'; requestId: number; data: string | null; error?: string }
   /** Fallback transport when SharedArrayBuffer is unavailable. */
   | { type: 'snapshot'; data: Float32Array }
   /** About once a second. */
   | { type: 'stats'; stats: SimThreadStats }
   | { type: 'error'; message: string; fatal: boolean };
+
+/** Rows of the town itself (the ground storey; see `WorldStructure.storeyDepth`). */
+export function groundDepth(world: { depth: number; storeyDepth?: number }): number {
+  return world.storeyDepth ?? world.depth;
+}
+
+/** The storey a lot row is on (0: the ground). */
+export function storeyOfRow(world: { depth: number; storeyDepth?: number; storeys?: number }, z: number): number {
+  return (world.storeys ?? 1) > 1 ? Math.max(0, Math.floor(z / groundDepth(world))) : 0;
+}

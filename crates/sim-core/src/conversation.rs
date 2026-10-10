@@ -130,9 +130,10 @@ pub(crate) fn update(w: &mut World) {
         relationships,
         events,
         rng,
+        stairs,
         ..
     } = w;
-    let nav = NavGrid { lot, blocked };
+    let nav = NavGrid { lot, blocked, stairs };
     let n = sims.len();
 
     // Drop engagements whose actor stopped talking (cancelled, interrupted, finished).
@@ -160,7 +161,7 @@ pub(crate) fn update(w: &mut World) {
             },
             Phase::Waiting { ticks } => State::Waiting(*ticks),
             Phase::Conversing { elapsed, success } => State::Conversing(*elapsed, *success),
-            Phase::Using { .. } => continue,
+            Phase::Using { .. } | Phase::Knocking { .. } => continue,
         };
         let s = &content.socials[social];
         let gap = dist(sims[i].pos, sims[t].pos);

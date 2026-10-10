@@ -22,7 +22,7 @@
 
 import type { AssetRegistry } from '../assets/registry';
 import type { Content, ObjectDef } from '../content/content';
-import type { Command, EdgeEdit, FacePaint, FloorPaint, ObjectPlacement, PlotInfo, WorldStructure } from '../core/protocol';
+import { groundDepth, type Command, type EdgeEdit, type FacePaint, type FloorPaint, type ObjectPlacement, type PlotInfo, type WorldStructure } from '../core/protocol';
 import type { BuildEffect, Renderer, ViewRect } from '../render/types';
 import { styledModel } from '../ui/buy/catalog';
 import type { Sound } from '../ui/sfx';
@@ -112,6 +112,8 @@ export class BuildBuyInput {
   private dropped = false;
   /** Last ground point seen while drawing (used when the pointer leaves the lot). */
   private lastGround: Point | null = null;
+  /** Move room: the room being carried (its tiles), and the tile it was picked up by. */
+  private carrying: { tiles: Point[]; at: Point } | null = null;
 
   constructor(
     renderer: Renderer,
@@ -144,6 +146,7 @@ export class BuildBuyInput {
     this.floors = new Map((world.floors ?? []).map(([x, z, c]) => [`${x}:${z}`, c]));
     this.rooms = world.rooms;
     this.width = world.width;
+    this.storeyDepth = groundDepth(world);
     const look = (key: string, l: Look) => this.looks.set(key, { ...this.looks.get(key), ...l });
     for (const e of world.walls ?? []) {
       this.edges.set(`${e.axis}:${e.x}:${e.z}`, 'wall');
@@ -173,10 +176,17 @@ export class BuildBuyInput {
     return this.edges.get(`${e.axis}:${e.x}:${e.z}`) ?? 'open';
   }
 
-  /** The player's home plot, where everything in buy mode happens. */
+  /** Rows per storey of the lot (see `WorldStructure.storeys`). */
+  private storeyDepth = 0;
+
+  /**
+   * The player's home plot, where everything in build and buy mode happens: on the storey in
+   * view, in its rows of the lot (the renderer lifts them to that storey).
+   */
   home(): PlotInfo | null {
     const plot = game.households.find((h) => h.player)?.plot;
-    return plot == null ? null : (game.plots[plot] ?? null);
+    const p = plot == null ? null : (game.plots[plot] ?? null);
+    return p && game.storey > 0 ? { ...p, z: p.z + game.storey * this.storeyDepth } : p;
   }
 
   /** Called when the mode changes: shows the grid and clears old previews. */
@@ -722,9 +732,73 @@ export class BuildBuyInput {
     if (tiles.length) this.send({ type: 'paintFloor', household: game.home, tiles });
   }
 
+  // ---- Move room ------------------------------------------------------------------
+
+  private moveTool(): boolean {
+    return this.building() && game.buildTool === 'move';
+  }
+
+  /** The room on a tile of the home lot (0: outdoors, or not on the lot). */
+  private roomAt(t: Point): number {
+    if (!this.onHomeTile(t)) return 0;
+    const halves = this.halves.get(`${t.x}:${t.z}`);
+    return halves ? halves[0] || halves[1] : (this.rooms[t.z * this.width + t.x] ?? 0);
+  }
+
+  /** Every tile of a room on the home lot (a split tile counts if either half is the room). */
+  private roomTiles(room: number): Point[] {
+    const home = this.home();
+    if (!home || !room) return [];
+    const tiles: Point[] = [];
+    for (let z = home.z; z < home.z + home.d; z++) {
+      for (let x = home.x; x < home.x + home.w; x++) {
+        const halves = this.halves.get(`${x}:${z}`);
+        if (halves ? halves.includes(room) : this.rooms[z * this.width + x] === room) tiles.push({ x, z });
+      }
+    }
+    return tiles;
+  }
+
+  /** The walls, doors and windows of a room (edges touching its tiles), moved by `(dx, dz)`. */
+  private roomEdges(tiles: Point[], dx: number, dz: number): EdgeEdit[] {
+    const inRoom = new Set(tiles.map((t) => `${t.x}:${t.z}`));
+    const edges: EdgeEdit[] = [];
+    for (const [key, kind] of this.edges) {
+      if (kind !== 'wall' && kind !== 'door' && kind !== 'window') continue;
+      const [axis, xs, zs] = key.split(':') as [Axis, string, string];
+      const [x, z] = [Number(xs), Number(zs)];
+      const sides = axis === 'h' ? [`${x}:${z - 1}`, `${x}:${z}`] : axis === 'v' ? [`${x - 1}:${z}`, `${x}:${z}`] : [`${x}:${z}`];
+      if (sides.some((s) => inRoom.has(s))) edges.push({ axis, x: x + dx, z: z + dz, kind, form: this.lookOf({ axis, x, z }).form });
+    }
+    return edges;
+  }
+
+  /** Move room: the room under the pointer, or the one in hand where it would land. */
+  private hoverMove(ground: Point): void {
+    const t = this.tileOf(ground);
+    const c = this.carrying;
+    game.buildCost = 0;
+    if (!c) {
+      const tiles = this.roomTiles(this.roomAt(t));
+      this.preview.setFloorPreview?.(tiles, tiles.length ? 0 : null);
+      this.preview.setEdgePreview?.([], true);
+      game.buildValid = tiles.length > 0;
+      return;
+    }
+    const [dx, dz] = [t.x - c.at.x, t.z - c.at.z];
+    const own = new Set(c.tiles.map((p) => `${p.x}:${p.z}`));
+    const moved = c.tiles.map((p) => ({ x: p.x + dx, z: p.z + dz }));
+    // The simulation re-checks everything (furniture in the way, nobody shut in).
+    const valid = moved.every((p) => this.onHomeTile(p) && (own.has(`${p.x}:${p.z}`) || (this.roomAt(p) === 0 && !this.diagonals.has(`${p.x}:${p.z}`))));
+    this.preview.setFloorPreview?.(moved, 0);
+    this.preview.setEdgePreview?.(this.roomEdges(c.tiles, dx, dz), valid);
+    game.buildValid = valid;
+  }
+
   private hoverBuild(ground: Point): void {
-    // The Roof tool is used from its panel.
-    if (game.buildTool === 'roof') return this.clearPreviews();
+    // The Roof tool is used from its panel, and so are blueprints.
+    if (game.buildTool === 'roof' || game.buildTool === 'blueprint') return this.clearPreviews();
+    if (this.moveTool()) return this.hoverMove(ground);
     if (this.paintTool()) return this.hoverPaint(ground);
     if (this.floorTool()) return this.hoverFloor(ground);
     const edges = this.edits(ground);
@@ -754,7 +828,7 @@ export class BuildBuyInput {
   }
 
   private clickBuild(ground: Point): boolean {
-    if (game.buildTool === 'roof') return true;
+    if (game.buildTool === 'roof' || game.buildTool === 'blueprint' || game.buildTool === 'move') return true;
     if (this.opening()) {
       this.send({ type: 'build', household: game.home, edits: this.edits(ground) });
       return true;
@@ -792,6 +866,18 @@ export class BuildBuyInput {
       this.hoverPaint(ground);
       return true;
     }
+    if (this.moveTool() && ground) {
+      // Move room: pick the room up; it lands where the pointer is let go.
+      const at = this.tileOf(ground);
+      const room = this.roomAt(at);
+      if (!room) return false;
+      this.carrying = { tiles: this.roomTiles(room), at };
+      this.pressed = true;
+      this.dropped = false;
+      this.preview.setLeftDragCamera?.(false);
+      this.hoverMove(ground);
+      return true;
+    }
     if (!this.drawing() || !ground) return false;
     this.pressed = true;
     this.dropped = false;
@@ -812,6 +898,20 @@ export class BuildBuyInput {
       this.dropped = false;
       this.painting = null;
       this.floorStart = null;
+      this.carrying = null;
+      return;
+    }
+    if (this.carrying) {
+      const c = this.carrying;
+      this.carrying = null;
+      const g = ground ?? this.lastHover;
+      if (g) {
+        const t = this.tileOf(g);
+        const [dx, dz] = [t.x - c.at.x, t.z - c.at.z];
+        if (dx || dz) this.send({ type: 'moveRoom', household: game.home, x: c.at.x, z: c.at.z, dx, dz });
+      }
+      this.clearPreviews();
+      if (ground) this.hoverMove(ground);
       return;
     }
     if (this.floorTool()) {
@@ -849,6 +949,7 @@ export class BuildBuyInput {
   cancelDrawing(): boolean {
     this.painting = null;
     this.floorStart = null;
+    this.carrying = null;
     if (!this.pressed && !game.buildStart) return false;
     if (this.pressed) {
       this.dropped = true;
@@ -861,6 +962,7 @@ export class BuildBuyInput {
 
   /** Escape: drop what's in hand. Returns true if there was something to cancel. */
   cancel(): boolean {
+    this.carrying = null;
     if (this.pressed) {
       this.dropped = true;
       this.preview.setLeftDragCamera?.(true);
