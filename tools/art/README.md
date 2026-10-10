@@ -21,7 +21,7 @@ Run Python with `-I` (isolated mode); downloads are treated as data only.
 | `gltf_bbox.py <model.gltf> [--fit W D] [--front +z\|-z\|+x\|-x] [--views out.png]` | World-space bounding box (node hierarchy applied) and triangle/material count of a glTF/GLB; with `--fit` prints the manifest `scale`/`rotationY`/`offset` that puts it in a W×D footprint, bottom at y=0, front at +Z (`--views` renders front/side checks, needs Pillow) |
 | `gltf_compose.py <outdir> <model.gltf>[@x,y,z[,rotY[,scale]]]…` | Merges several glTF/GLB models into one `model.gltf` (e.g. TV on a side table); with one `.glb` it converts it to `.gltf` + `.bin` |
 | `optimize_model.mjs <in> <out.glb> [--tex 512] [--format webp] [--simplify r]` | Node + glTF-Transform (`GT_DIR` = folder with `node_modules/@gltf-transform`): flatten, join primitives per material, weld, optional simplify, WebP textures, quantised geometry (KHR_mesh_quantization), one self-contained `.glb` (the source; the production build compresses it further with `tools/assets/optimize.mjs`: meshopt, KTX2) |
-| `build_library.py <kenney GLTF dir> <ph dir> [id…]` | Builds the furniture model library: `models/kenney/*.glb` (Kenney Furniture Kit) and `models/ph/*.glb` (Poly Haven, 512 px WebP, heavy meshes simplified) through `optimize_model.mjs` |
+| `build_library.py <kenney GLTF dir> <ph dir> [id…]` | Builds the furniture model library: `models/kenney/*.glb` (Kenney Furniture Kit; `SETS` compose a few kit pieces into one model, a microwave on a counter) and `models/ph/*.glb` (Poly Haven, 512 px WebP, heavy meshes simplified) through `optimize_model.mjs` |
 | `furniture.py [out.json]` | Entries for the base objects and their `@modern` / `@cozy` / `@minimal` variants: library glTFs restyled with the game finishes (`fit`, `materials`, `parts`, see `render/babylon/models.ts`) and primitive-part models (some reused or recoloured from `objects_extra.py`). Validates footprints; apply with `apply_entries.py` |
 | `pack_<trait>.py` | Model entries for one personality pack (`model.<trait>.*`), written with `apply_pack.py` |
 | `nature_atlas.py <leafsets_dir> <bark_albedo.jpg> <out_dir>` | Leaf-cluster atlas `leaves.webp` (twig sprays composited from ambientCG LeafSet 024/002/004/019, procedural blossoms, grass, apples, wildflowers; colour bled under the alpha) and `bark.webp` (brown + procedural birch). Needs Pillow, numpy, scipy |
@@ -30,6 +30,7 @@ Run Python with `-I` (isolated mode); downloads are treated as data only.
 | `garden_models.py <out_dir> [name…]` | The garden catalog's models (`garden_*.glb`): flower beds, shrubs, fruit and vegetables, house plants, potted trees and garden decor, from the same cards plus untextured `garden.solid` / `garden.glazed` / `garden.water` meshes |
 | `nature_entries.py <manifest>` | Points `model.tree` / `pine` / `bush` / `grassTuft` / `flowers` at the nature glbs and adds the species and `.far` keys (placed trees get `vary`) |
 | `garden_entries.py <manifest>` | Adds `model.garden.<name>` for every garden model (loose plants get `vary`) and points `model.flowerbed` at the new bed |
+| `catalog.py` | The 0.20 catalogue's models (`content/furniture.json`): kit and Poly Haven models restyled per style plus primitive-part models; writes its own compact manifest `web/public/assets/catalog/manifest.json` (listed in the base manifest's `packs`; one entry per line). Things on a wall hang with their back on the wall face (`z = -0.43`), ceiling things hang from 2.8 m. Validates footprints and finishes |
 | `apply_pack.py <trait> <entries.json>` | Merges entries into `web/public/assets/packs/<trait>/manifest.json` in place |
 
 Nature and garden flow: `foliage_atlas.py` → `nature_models.py` / `garden_models.py` → `nature_entries.py` /
@@ -40,7 +41,7 @@ Nature and garden flow: `foliage_atlas.py` → `nature_models.py` / `garden_mode
 Typical flow: download → `process.py` → copy into `web/public/assets/textures/` →
 `materials.py` / `models.py` → `apply_entries.py web/public/assets/manifest.json materials.json` (and `models.json`).
 
-Furniture flow: `ph_model.py` / Kenney kit download → `build_library.py` → `furniture.py` and
+Furniture flow: `ph_model.py` / Kenney kit download → `build_library.py` → `furniture.py`, `catalog.py` and
 `pack_<trait>.py` → `apply_entries.py` / `apply_pack.py`. Model entry extras read by
 `render/babylon/models.ts`: `fit` [w, h, d] (exact size, bottom on the floor; `align: back` puts the
 back on the footprint edge), `materials` {glTF material name or `*`: {finish, color, roughness,
