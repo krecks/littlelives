@@ -60,6 +60,11 @@ fn generated_houses_are_livable() {
         let nav = NavGrid { lot: &w.lot, blocked: w.blocked(), stairs: w.stair_map() };
         let start = (entry[0].floor() as i32, entry[1].floor() as i32);
         for o in &w.objects {
+            // Pictures, ceiling lamps and rugs nobody uses needn't be reached.
+            let def = &w.content.objects[o.def];
+            if def.layer.mounted() && def.interactions.is_empty() {
+                continue;
+            }
             let front = o.front_tile(&w.content);
             if nav.find_path(start, front).is_none() {
                 failures.push(format!("{label}: can't reach the {} at {},{}", w.content.objects[o.def].id, o.x, o.z));

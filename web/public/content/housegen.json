@@ -59,16 +59,24 @@
   "$margins": "Garden around the house: in front (towards the street, a range), at the back and at the sides (at least).",
   "margins": { "front": [3, 5], "back": 2, "side": 1 },
 
-  "$rooms": "weight: share of the floor a room wants; minSide: its narrowest width. Furniture is placed against the walls in this order: `one` picks one of the ids, `chance` (default 1) whether it comes at all, `count` how many, `opposite` puts it across the room from another (a TV facing the sofa).",
+  "$rooms": "weight: share of the floor a room wants; minSide: its narrowest width. Furniture is placed against the walls in this order: `one` picks one of the ids, `chance` (default 1) whether it comes at all, `count` how many, `opposite` puts it across the room from another (a TV facing the sofa). Then `wall`, `ceiling` and `rug` slots add things that take no floor space (content `layer`; only things nobody uses): pictures and curtains on walls (curtains over windows), lamps from the ceiling, a rug in the middle of the room.",
   "rooms": {
     "bedroom": {
       "weight": 3,
       "minSide": 3,
       "furniture": [
         { "one": ["bed"] },
-        { "one": ["mirror", "lamp", "plant"], "chance": 0.7 },
-        { "one": ["bookshelf", "armchair", "lamp"], "chance": 0.4 }
-      ]
+        { "one": ["nightstandLamp", "nightstand"], "chance": 0.7 },
+        { "one": ["wardrobe", "dresser"], "chance": 0.6 },
+        { "one": ["mirror", "lamp", "plant", "floorLampSimple", "dressingTable"], "chance": 0.7 },
+        { "one": ["bookshelf", "armchair", "lamp", "armchairLounge", "bookcaseLow", "deskWriting"], "chance": 0.4 }
+      ],
+      "wall": [
+        { "one": ["printFramed", "photoPrint", "wallClock", "wallShelf", "wallSconce"], "count": [0, 2] },
+        { "one": ["curtains", "curtainsLong"], "chance": 0.5 }
+      ],
+      "ceiling": [{ "one": ["ceilingPendant", "ceilingLight", "ceilingFan"], "chance": 0.5 }],
+      "rug": [{ "one": ["rugRound", "rugRunner"], "chance": 0.35 }]
     },
     "kitchen": {
       "weight": 3,
@@ -76,9 +84,16 @@
       "furniture": [
         { "one": ["fridge"] },
         { "one": ["sink"] },
-        { "one": ["diningTable"], "chance": 0.85 },
+        { "one": ["stoveElectric", "stoveGas"], "chance": 0.6 },
+        { "one": ["diningTable", "diningGlass", "diningOak", "bistroSet"], "chance": 0.85 },
+        { "one": ["counter", "dishwasher", "microwave", "coffeeMachine", "breakfastCounter", "pantry"], "count": [0, 2] },
         { "one": ["plant", "lamp"], "chance": 0.4 }
-      ]
+      ],
+      "wall": [
+        { "one": ["wallCabinet"], "count": [0, 2] },
+        { "one": ["wallClock", "printFramed"], "chance": 0.3 }
+      ],
+      "ceiling": [{ "one": ["pendantIndustrial", "ceilingLight", "ceilingPendant"], "chance": 0.5 }]
     },
     "bathroom": {
       "weight": 1.6,
@@ -87,19 +102,30 @@
         { "one": ["toilet"] },
         { "one": ["shower"] },
         { "one": ["sink"] },
-        { "one": ["plant", "mirror"], "chance": 0.3 }
-      ]
+        { "one": ["plant", "mirror", "laundryWasher"], "chance": 0.3 }
+      ],
+      "wall": [
+        { "one": ["towelRail"], "chance": 0.6 },
+        { "one": ["mirrorCabinet"], "chance": 0.5 }
+      ],
+      "ceiling": [{ "one": ["ceilingLight"], "chance": 0.4 }]
     },
     "living": {
       "weight": 4.5,
       "minSide": 3,
       "furniture": [
-        { "one": ["sofa"] },
-        { "one": ["tv"], "opposite": "sofa" },
-        { "one": ["armchair"], "chance": 0.7 },
-        { "one": ["bookshelf", "chessTable", "piano", "computerDesk"], "chance": 0.6 },
-        { "one": ["plant", "lamp"], "count": [1, 2] }
-      ]
+        { "one": ["sofa", "sofa", "loveseat", "sofaThree", "sofaDesign"] },
+        { "one": ["tv", "tv", "tvRetro", "homeCinema"], "opposite": "sofa" },
+        { "one": ["armchair", "armchairLounge", "armchairLeather", "armchairDesign"], "chance": 0.7 },
+        { "one": ["bookshelf", "chessTable", "piano", "computerDesk", "bookcaseWide", "stereo", "fireplace", "keyboardDigital"], "chance": 0.6 },
+        { "one": ["plant", "lamp", "floorLampSimple", "tableLamp", "grandfatherClock", "vasePedestal", "urnPorcelain"], "count": [1, 2] }
+      ],
+      "wall": [
+        { "one": ["photoPrint", "printFramed", "wallShelf", "wallSconce", "wallClock"], "count": [1, 2] },
+        { "one": ["curtainsLong", "curtains"], "chance": 0.6 }
+      ],
+      "ceiling": [{ "one": ["chandelier", "ceilingPendant", "ceilingFan"], "chance": 0.5 }],
+      "rug": [{ "one": ["rugLarge", "rugPattern", "rugRound"], "chance": 0.55 }]
     }
   },
 
@@ -112,7 +138,7 @@
   "stairs": "stairs",
 
   "$garden": "A few things outside the house.",
-  "garden": { "objects": ["plant", "flowerbed", "bush", "tree", "pine", "bench"], "count": [0, 3] },
+  "garden": { "objects": ["plant", "flowerbed", "bush", "tree", "pine", "bench", "grill", "gardenChair", "sunLounger", "lampPost", "firePit", "swingSet"], "count": [0, 3] },
 
   "$names": "House names: one word from each list.",
   "names": {

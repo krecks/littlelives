@@ -51,7 +51,22 @@ type Kind = 'bedroom' | 'kitchen' | 'bathroom' | 'living';
 interface RoomSpec {
   weight: number;
   minSide: number;
-  furniture: { one: string[]; chance?: number; count?: [number, number]; opposite?: string }[];
+  furniture: Slot[];
+  /**
+   * Things that take no floor space (content `layer`), after the furniture: on the walls (their
+   * back on a wall or a window), from the ceiling and rugs on the floor. Only things nobody uses
+   * (pictures, lamps, rugs), so nothing needs to reach them.
+   */
+  wall?: Slot[];
+  ceiling?: Slot[];
+  rug?: Slot[];
+}
+
+interface Slot {
+  one: string[];
+  chance?: number;
+  count?: [number, number];
+  opposite?: string;
 }
 
 /** An object's footprint `[w, d]` (along x and z, facing +z), or undefined if it doesn't exist. */
@@ -80,6 +95,8 @@ interface Floor {
   keep: Set<string>;
   /** Tiles taken by furniture. */
   taken: Set<string>;
+  /** Tiles taken on the wall, ceiling and rug layers (`wall:x:z`, ...). */
+  layers?: Set<string>;
 }
 
 const key = (x: number, z: number) => `${x}:${z}`;
@@ -482,8 +499,86 @@ function furnish(cfg: HouseGenConfig, footprint: Footprints, rng: () => number, 
         if (!done && required) return false;
       }
     }
+    for (const layer of ['wall', 'ceiling', 'rug'] as const) {
+      for (const slot of spec[layer] ?? []) {
+        const count = slot.count ? between(rng, slot.count) : 1;
+        for (let n = 0; n < count; n++) {
+          if (rng() >= (slot.chance ?? 1)) continue;
+          const def = pick(rng, slot.one);
+          const fp = footprint(def);
+          if (fp) mount(cfg, footprint, f, r, def, fp, layer, rng);
+        }
+      }
+    }
   }
   return true;
+}
+
+/**
+ * One thing on the wall, ceiling or rug layer of room `r` (it never blocks anything): on a wall,
+ * its back on wall or window edges; from the ceiling, over a free spot; a rug, in the middle of
+ * the room. Never on the stairs, and its front (where the simulation checks for walls) inside the room.
+ */
+function mount(cfg: HouseGenConfig, footprint: Footprints, f: Floor, r: Room, def: string, [fw, fd]: [number, number], layer: 'wall' | 'ceiling' | 'rug', rng: () => number): boolean {
+  const layers = (f.layers ??= new Set());
+  const stairs = new Set<string>();
+  for (const o of f.objects) {
+    if (o.def !== cfg.stairs) continue;
+    const [sw, sd] = footprint(o.def) ?? [1, 4];
+    const [w, d] = o.rot % 2 === 0 ? [sw, sd] : [sd, sw];
+    for (let dz = 0; dz < d; dz++) for (let dx = 0; dx < w; dx++) stairs.add(key(o.x + dx, o.z + dz));
+  }
+  const fits = (x: number, z: number, w: number, d: number, rot: number) => {
+    for (let dz = 0; dz < d; dz++) {
+      for (let dx = 0; dx < w; dx++) {
+        const t = key(x + dx, z + dz);
+        if (!inside(r, x + dx, z + dz) || stairs.has(t) || layers.has(`${layer}:${t}`)) return false;
+      }
+    }
+    const [frx, frz] = frontTile(x, z, w, d, rot);
+    return inside(r, frx, frz);
+  };
+  const take = (x: number, z: number, w: number, d: number, rot: number) => {
+    for (let dz = 0; dz < d; dz++) for (let dx = 0; dx < w; dx++) layers.add(`${layer}:${key(x + dx, z + dz)}`);
+    f.objects.push({ def, x, z, rot });
+    f.fronts.push(null);
+    return true;
+  };
+  if (layer === 'wall') {
+    const backed = (e: string) => f.edges.get(e) === 'wall' || f.edges.get(e) === 'window';
+    for (const side of [0, 1, 2, 3].sort(() => rng() - 0.5)) {
+      const rot = [0, 3, 2, 1][side];
+      const [w, d] = rot % 2 === 0 ? [fw, fd] : [fd, fw];
+      const spots: [number, number, string[]][] = [];
+      if (side === 0) for (let x = r.x; x + w <= r.x + r.w; x++) spots.push([x, r.z, Array.from({ length: w }, (_, i) => `h:${x + i}:${r.z}`)]);
+      if (side === 2) for (let x = r.x; x + w <= r.x + r.w; x++) spots.push([x, r.z + r.d - d, Array.from({ length: w }, (_, i) => `h:${x + i}:${r.z + r.d}`)]);
+      if (side === 3) for (let z = r.z; z + d <= r.z + r.d; z++) spots.push([r.x, z, Array.from({ length: d }, (_, i) => `v:${r.x}:${z + i}`)]);
+      if (side === 1) for (let z = r.z; z + d <= r.z + r.d; z++) spots.push([r.x + r.w - w, z, Array.from({ length: d }, (_, i) => `v:${r.x + r.w}:${z + i}`)]);
+      spots.sort(() => rng() - 0.5);
+      // Curtains go over windows; everything else prefers a plain wall.
+      const window = def.startsWith('curtains');
+      spots.sort((a, b) => Number(b[2].some((e) => f.edges.get(e) === 'window') === window) - Number(a[2].some((e) => f.edges.get(e) === 'window') === window));
+      for (const [x, z, backs] of spots) if (backs.every(backed) && fits(x, z, w, d, rot)) return take(x, z, w, d, rot);
+    }
+    return false;
+  }
+  if (layer === 'ceiling') {
+    const spots: [number, number][] = [];
+    for (let z = r.z; z + fd <= r.z + r.d; z++) for (let x = r.x; x + fw <= r.x + r.w; x++) spots.push([x, z]);
+    // Near the middle of the room.
+    const cx = r.x + (r.w - fw) / 2;
+    const cz = r.z + (r.d - fd) / 2;
+    spots.sort((a, b) => Math.hypot(a[0] - cx, a[1] - cz) - Math.hypot(b[0] - cx, b[1] - cz));
+    for (const [x, z] of spots) if (fits(x, z, fw, fd, 0)) return take(x, z, fw, fd, 0);
+    return false;
+  }
+  for (const rot of [0, 1]) {
+    const [w, d] = rot % 2 === 0 ? [fw, fd] : [fd, fw];
+    const x = r.x + Math.floor((r.w - w) / 2);
+    const z = r.z + Math.floor((r.d - d) / 2);
+    if (fits(x, z, w, d, rot)) return take(x, z, w, d, rot);
+  }
+  return false;
 }
 
 /**

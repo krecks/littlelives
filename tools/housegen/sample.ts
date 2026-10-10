@@ -11,7 +11,12 @@ import { generateHouse, type HouseGenConfig } from '../../web/src/game/housegen.
 
 const root = new URL('../../web/public/content/', import.meta.url);
 const cfg = JSON.parse(readFileSync(new URL('housegen.json', root), 'utf8')) as HouseGenConfig;
-const base = JSON.parse(readFileSync(new URL('base.json', root), 'utf8')) as { objects: { id: string; footprint?: [number, number] }[] };
+type ContentFile = { objects?: { id: string; footprint?: [number, number] }[]; include?: string[] };
+const baseFile = JSON.parse(readFileSync(new URL('base.json', root), 'utf8')) as ContentFile;
+// Objects of base.json and the files it includes (the catalogue in furniture.json, the garden, packs).
+const base = {
+  objects: [baseFile, ...(baseFile.include ?? []).map((f) => JSON.parse(readFileSync(new URL(f, root), 'utf8')) as ContentFile)].flatMap((f) => f.objects ?? []),
+};
 const houses = JSON.parse(readFileSync(new URL('houses.json', root), 'utf8')) as { plot: { width: number; depth: number }; lotSizes: Record<string, { width: number; depth: number }> };
 const footprint = (def: string) => base.objects.find((o) => o.id === def)?.footprint ?? (base.objects.some((o) => o.id === def) ? ([1, 1] as [number, number]) : undefined);
 
